@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
-import { createRoom, getRooms } from '../src/api/rooms';
-import type { NewRoom } from '../src/types';
+import { createRoom, getRooms } from '@/services/rooms/roomService';
+import type { NewRoom } from '@/types';
 
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });
