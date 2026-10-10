@@ -17,9 +17,10 @@ export const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
   onClose,
   onCreateInvoice,
 }) => {
-  const rentedRooms = rooms.filter((r) => r.status !== 'available');
-  const [selectedRoomId, setSelectedRoomId] = useState(rentedRooms[0]?.id || rooms[0]?.id || '');
-  const currentRoom = rooms.find((r) => r.id === selectedRoomId) || rooms[0];
+  const measuredRooms = rooms.filter(r => r.meterBaselineKnown !== false);
+  const rentedRooms = measuredRooms.filter((r) => r.status !== 'available');
+  const [selectedRoomId, setSelectedRoomId] = useState(rentedRooms[0]?.id || measuredRooms[0]?.id || '');
+  const currentRoom = measuredRooms.find((r) => r.id === selectedRoomId) || measuredRooms[0];
   const currentTenant = tenants.find((t) => t.id === currentRoom?.currentTenantId);
 
   const [monthYear, setMonthYear] = useState('09/2026');
@@ -41,7 +42,7 @@ export const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
 
   const handleRoomChange = (roomId: string) => {
     setSelectedRoomId(roomId);
-    const rm = rooms.find((r) => r.id === roomId);
+    const rm = measuredRooms.find((r) => r.id === roomId);
     if (rm) {
       setOldElectric(rm.electricityIndex);
       setNewElectric(rm.electricityIndex + 120);
@@ -136,7 +137,7 @@ export const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
               onChange={(e) => handleRoomChange(e.target.value)}
               className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold focus:outline-none focus:border-emerald-500"
             >
-              {rooms.map((r) => (
+              {measuredRooms.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.roomNumber} ({r.price.toLocaleString('vi-VN')} đ) - {r.status === 'rented' ? 'Đang thuê' : r.status}
                 </option>

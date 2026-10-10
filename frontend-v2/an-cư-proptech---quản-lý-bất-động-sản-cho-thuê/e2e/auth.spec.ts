@@ -11,7 +11,7 @@ const localEnv = new Map(readFileSync(localEnvPath, 'utf8').split(/\r?\n/)
 test('Owner login, reload restoration and Role-menu logout revoke the session', async ({ page, context }) => {
   const browserErrors: string[] = [];
   page.on('pageerror', error => browserErrors.push(error.message));
-  await page.goto('/');
+  await page.goto('/login');
   await expect(page.getByRole('heading', { name: 'Chào mừng trở lại' })).toBeVisible();
   await page.getByLabel('Email', { exact: true }).fill(localEnv.get('LOCAL_OWNER_EMAIL')!);
   await page.getByLabel('Mật khẩu', { exact: true }).fill('wrong-password');

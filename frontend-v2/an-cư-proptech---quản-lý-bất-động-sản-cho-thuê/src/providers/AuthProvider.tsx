@@ -44,7 +44,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     generation.current++;
-    apply(await authApi.login(email, password));
+    const session = await authApi.login(email, password);
+    apply(session);
+    return session.user;
   };
   const logout = async () => {
     if (loggingOut.current) return;

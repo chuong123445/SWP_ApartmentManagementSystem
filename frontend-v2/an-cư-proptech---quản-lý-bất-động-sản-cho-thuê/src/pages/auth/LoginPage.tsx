@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import { Building2, ArrowRight, Eye, EyeOff, LockKeyhole, LoaderCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useLocation, useNavigate } from 'react-router';
+import { loginDestination } from '@/utils/navigation';
 
 export function LoginPage() {
   const { login, error: sessionError } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -15,7 +19,10 @@ export function LoginPage() {
     if (isSubmitting) return;
     setError('');
     setIsSubmitting(true);
-    try { await login(email, password); }
+    try {
+      const user = await login(email, password);
+      navigate(loginDestination(user, location.state?.returnTo), { replace: true });
+    }
     catch (err) { setError(err instanceof Error ? err.message : 'Không thể đăng nhập. Vui lòng thử lại.'); }
     finally { setIsSubmitting(false); }
   };

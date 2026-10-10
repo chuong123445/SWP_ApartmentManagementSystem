@@ -24,6 +24,9 @@ export function WorkspacePage() {
       authError={error}
       overlays={<WorkspaceModals workspace={workspace} navigation={navigation} />}
     >
+      {workspace.inventoryLoading && <p role="status" className="p-3 text-sm text-slate-500">Đang tải căn hộ...</p>}
+      {workspace.inventoryError && <div role="alert" className="p-3 mb-4 bg-rose-50 text-rose-700 rounded-lg">{workspace.inventoryError}
+        <button onClick={workspace.reloadInventory} className="ml-3 underline">Thử lại</button></div>}
       <WorkspaceRoutes workspace={workspace} navigation={navigation} />
     </ManagementLayout>
   );

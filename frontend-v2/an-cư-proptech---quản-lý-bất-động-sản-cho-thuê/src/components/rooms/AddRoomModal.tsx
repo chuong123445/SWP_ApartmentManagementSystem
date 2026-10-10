@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
 import { X, Home } from 'lucide-react';
-import { NewRoom } from '@/types';
+import { NewRoom, Building } from '@/types';
 
 interface AddRoomModalProps {
+  buildings: Building[];
   onClose: () => void;
   onAddRoom: (room: NewRoom) => Promise<void>;
 }
 
-export const AddRoomModal: React.FC<AddRoomModalProps> = ({ onClose, onAddRoom }) => {
+export const AddRoomModal: React.FC<AddRoomModalProps> = ({ buildings, onClose, onAddRoom }) => {
+  const [propertyId, setPropertyId] = useState(buildings[0]?.id ?? '');
+  const [title, setTitle] = useState('');
+  const [publish, setPublish] = useState(false);
+  const selectedProperty = buildings.find(p => p.id === propertyId);
   const [roomNumber, setRoomNumber] = useState('P.303');
   const [floor, setFloor] = useState('3');
   const [area, setArea] = useState('28');
@@ -28,12 +33,14 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ onClose, onAddRoom }
     }
     const newRoom: NewRoom = {
       roomNumber: roomNumber.trim(),
-      buildingId: 'bld-1',
-      floor: Number(floor) || 1,
-      area: Number(area) || 25,
-      price: Number(price) || 4500000,
+      title: title.trim() || `Căn hộ ${roomNumber.trim()}`,
+      buildingId: propertyId,
+      publicationStatus: publish ? 'PUBLISHED' : 'DRAFT',
+      floor: Number(floor),
+      area: Number(area),
+      price: Number(price),
       status: 'available',
-      deposit: Number(deposit) || 4500000,
+      deposit: Number(deposit),
       electricityIndex: Number(electric) || 0,
       waterIndex: Number(water) || 0,
       amenities: ['Máy lạnh', 'Tủ lạnh', 'Bình nóng lạnh', 'Gác lửng cao cấp'],
@@ -70,6 +77,17 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ onClose, onAddRoom }
             </p>
           )}
           <fieldset disabled={isSaving} className="space-y-3 disabled:opacity-60">
+            <div><label htmlFor="new-apartment-property" className="font-semibold text-slate-700 block mb-1">Tài sản / Tòa nhà *</label>
+              <select id="new-apartment-property" required value={propertyId} onChange={e => { setPropertyId(e.target.value); setPublish(false); }} className="w-full border border-slate-300 rounded-lg px-3 py-2">
+                <option value="">Chọn tài sản</option>
+                {buildings.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            <div><label htmlFor="new-apartment-title" className="font-semibold text-slate-700 block mb-1">Tên căn hộ</label>
+              <input id="new-apartment-title" maxLength={150} value={title} onChange={e => setTitle(e.target.value)} placeholder="Căn hộ có ban công..." className="w-full border border-slate-300 rounded-lg px-3 py-2" />
+            </div>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={publish} disabled={selectedProperty?.legalStatus !== 'APPROVED'} onChange={e => setPublish(e.target.checked)} />Đăng công khai trên Home</label>
+            <p className="text-slate-500">{selectedProperty?.legalStatus === 'APPROVED' ? 'Bỏ chọn để lưu bản nháp.' : 'Tài sản chưa được duyệt. Căn hộ sẽ được lưu bản nháp.'}</p>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="font-semibold text-slate-700 block mb-1">Mã / Số phòng *</label>

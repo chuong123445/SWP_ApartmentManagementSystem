@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
-import type { Room, NewRoom, Tenant, Contract, Invoice, MaintenanceTicket, Transaction, SystemConfig, TrustGuardAudit, EscrowDeposit } from '@/types';
-import { initialRooms, initialTenants, initialContracts, initialInvoices, initialMaintenance, initialTransactions, initialConfig, initialTrustAudits, initialEscrows, initialBuildings } from '@/data/mockData';
-import { createRoom, getRooms } from '@/services/rooms/roomService';
+import type { Building, Room, NewRoom, Tenant, Contract, Invoice, MaintenanceTicket, Transaction, SystemConfig, TrustGuardAudit, EscrowDeposit } from '@/types';
+import { initialTenants, initialContracts, initialInvoices, initialMaintenance, initialTransactions, initialConfig, initialTrustAudits, initialEscrows } from '@/data/mockData';
+import { createOwnerApartment, getOwnerApartments, getOwnerProperties } from '@/services/apartments/ownerApartmentService';
 
 export function useRentalWorkspace(canManage: boolean, onReset: () => void) {
-  const API_BASE_URL = '/api';
   // Global Data States
-  const [rooms, setRooms] = useState<Room[]>(initialRooms);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [buildings, setBuildings] = useState<Building[]>([]);
+  const [inventoryError, setInventoryError] = useState('');
+  const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [inventoryRevision, setInventoryRevision] = useState(0);
   const [tenants, setTenants] = useState<Tenant[]>(initialTenants);
   const [contracts, setContracts] = useState<Contract[]>(initialContracts);
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
@@ -20,15 +23,17 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void) {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   useEffect(() => {
     if (!canManage) return;
-    const fetchRoomsFromBackend = async () => {
-      try {
-        setRooms(await getRooms(API_BASE_URL));
-      } catch (error) {
-        console.warn("Chưa gọi được Backend, đang dùng tạm dữ liệu giả trên trình duyệt", error);
-      }
-    };
-    fetchRoomsFromBackend();
-  }, []);
+    let active = true;
+    setInventoryLoading(true); setInventoryError('');
+    Promise.all([getOwnerApartments(), getOwnerProperties()]).then(([apartments, properties]) => {
+      if (!active) return;
+      setRooms(apartments);
+      setBuildings(properties.map(p => ({ id: p.id, name: p.name, address: p.address,
+        totalRooms: apartments.filter(a => a.buildingId === p.id).length, pcccCertified: false, legalStatus: p.approvalStatus })));
+    }).catch(error => { if (active) { setRooms([]); setBuildings([]); setInventoryError(error instanceof Error ? error.message : 'Không thể tải căn hộ.'); } })
+      .finally(() => { if (active) setInventoryLoading(false); });
+    return () => { active = false; };
+  }, [canManage, inventoryRevision]);
   // ==========================================
 
   // Mark invoice as paid
@@ -107,8 +112,9 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void) {
   // ĐOẠN MÃ MỚI: LƯU PHÒNG VÀO SQL QUA JAVA
   // ==========================================
   const handleAddRoom = async (newRoom: NewRoom) => {
-    const savedRoom = await createRoom(API_BASE_URL, newRoom);
+    const savedRoom = await createOwnerApartment(newRoom);
     setRooms((prev) => [savedRoom, ...prev]);
+    setBuildings(prev => prev.map(p => p.id === savedRoom.buildingId ? { ...p, totalRooms: p.totalRooms + 1 } : p));
   };
   // ==========================================
 
@@ -178,7 +184,7 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void) {
 
   // Reset all data
   const handleResetData = () => {
-    setRooms(initialRooms);
+    setInventoryRevision(value => value + 1);
     setTenants(initialTenants);
     setContracts(initialContracts);
     setInvoices(initialInvoices);
@@ -274,7 +280,8 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void) {
   }, ...prev]);
   return {
     rooms, tenants, contracts, invoices, tickets, transactions, config, audits, escrows,
-    buildings: initialBuildings, selectedRoom, setSelectedRoom, selectedInvoice, setSelectedInvoice,
+    buildings, inventoryError, inventoryLoading, reloadInventory: () => setInventoryRevision(value => value + 1),
+    selectedRoom, setSelectedRoom, selectedInvoice, setSelectedInvoice,
     handleMarkPaid, handleAddTenant, handleAddContract, handleAddRoom, handleCheckOut,
     handleUpdateIndices, handleUpdateTicketStatus, handleResetData, handleApproveAudit,
     handleReleaseEscrow, handleCreateEscrow, handleReserveEscrow, handleAddTicket,

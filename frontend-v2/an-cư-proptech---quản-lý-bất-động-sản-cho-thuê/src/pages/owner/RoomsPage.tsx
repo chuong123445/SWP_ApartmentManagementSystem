@@ -70,6 +70,8 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
           bg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
           dot: 'bg-indigo-500',
         };
+      case 'contract_in_progress':
+        return { label: 'Đang làm hợp đồng', bg: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' };
     }
   };
 
@@ -81,7 +83,7 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              100% Căn Hộ Đã Thẩm Định TrustGuard™
+              Căn hộ thuộc tài sản của bạn
             </span>
           </div>
           <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -91,7 +93,7 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
             </span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Theo dõi tình trạng thuê, hợp đồng điện tử SmartCA, số điện nước và ký quỹ Escrow.
+            Quản lý cùng nguồn căn hộ với Home; bản nháp và tài sản chưa duyệt chỉ hiển thị tại đây.
           </p>
         </div>
 
@@ -185,13 +187,13 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
                       <span className="text-base font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
                         {room.roomNumber}
                       </span>
-                      <span title="TrustGuard Verified">
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                      </span>
+                      {room.propertyApprovalStatus === 'APPROVED' && <span title="Tài sản đã được duyệt"><ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /></span>}
                     </div>
                     <span className="text-[11px] text-slate-400">
                       Tầng {room.floor} • {room.area}m²
                     </span>
+                    <p className="text-[11px] text-slate-500 mt-1">{room.propertyName}</p>
+                    <p className="text-[11px] text-slate-500">{room.publicationStatus === 'PUBLISHED' ? 'Đã đăng' : room.publicationStatus === 'HIDDEN' ? 'Đã ẩn' : 'Bản nháp'}</p>
                   </div>
                   <span
                     className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${badge.bg}`}
@@ -237,11 +239,11 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
                 <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600">
                   <div className="flex items-center gap-1.5">
                     <Zap className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Điện: <strong>{room.electricityIndex}</strong></span>
+                    <span>Điện: <strong>{room.meterBaselineKnown === false ? 'Chưa nhập' : room.electricityIndex}</strong></span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Droplets className="w-3.5 h-3.5 text-sky-500" />
-                    <span>Nước: <strong>{room.waterIndex}</strong></span>
+                    <span>Nước: <strong>{room.meterBaselineKnown === false ? 'Chưa nhập' : room.waterIndex}</strong></span>
                   </div>
                 </div>
               </div>

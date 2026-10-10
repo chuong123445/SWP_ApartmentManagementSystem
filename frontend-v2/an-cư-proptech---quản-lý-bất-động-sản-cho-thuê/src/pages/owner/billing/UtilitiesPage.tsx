@@ -22,8 +22,8 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
     const init: { [roomId: string]: { newElectric: string; newWater: string } } = {};
     rooms.forEach((r) => {
       init[r.id] = {
-        newElectric: (r.electricityIndex + Math.floor(80 + Math.random() * 60)).toString(),
-        newWater: (r.waterIndex + Math.floor(5 + Math.random() * 5)).toString(),
+        newElectric: r.meterBaselineKnown === false ? '' : r.electricityIndex.toString(),
+        newWater: r.meterBaselineKnown === false ? '' : r.waterIndex.toString(),
       };
     });
     return init;
@@ -46,7 +46,7 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
   };
 
   const handleSaveAll = () => {
-    const updates = rooms.map((r) => ({
+    const updates = rooms.filter(r => r.meterBaselineKnown !== false).map((r) => ({
       roomId: r.id,
       electric: Number(readings[r.id]?.newElectric) || r.electricityIndex,
       water: Number(readings[r.id]?.newWater) || r.waterIndex,
@@ -132,9 +132,10 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
             <tbody className="divide-y divide-slate-100">
               {rooms.map((room) => {
                 const tenant = tenants.find((t) => t.id === room.currentTenantId);
+                const missingBaseline = room.meterBaselineKnown === false;
                 const currentRecord = readings[room.id] || {
-                  newElectric: room.electricityIndex.toString(),
-                  newWater: room.waterIndex.toString(),
+                  newElectric: missingBaseline ? '' : room.electricityIndex.toString(),
+                  newWater: missingBaseline ? '' : room.waterIndex.toString(),
                 };
 
                 const newE = Number(currentRecord.newElectric) || room.electricityIndex;
@@ -160,7 +161,7 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
 
                     {/* Electric Old */}
                     <td className="px-3.5 py-2.5 font-mono text-slate-600 bg-amber-50/20">
-                      {room.electricityIndex}
+                      {missingBaseline ? 'Chưa nhập' : room.electricityIndex}
                     </td>
 
                     {/* Electric New Input */}
@@ -168,6 +169,7 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
                       <input
                         type="number"
                         value={currentRecord.newElectric}
+                        disabled={missingBaseline}
                         onChange={(e) => handleElectricChange(room.id, e.target.value)}
                         className="w-24 bg-white border border-amber-300 rounded px-2 py-1 font-mono font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                       />
@@ -175,7 +177,7 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
 
                     {/* Electric Usage */}
                     <td className="px-3.5 py-2.5 text-right font-bold text-amber-700 bg-amber-50/60">
-                      {eUsage} kWh
+                      {missingBaseline ? 'Thiếu chỉ số bàn giao' : `${eUsage} kWh`}
                       <span className="text-[10px] text-slate-400 font-normal block">
                         ({eCost.toLocaleString('vi-VN')} đ)
                       </span>
@@ -183,7 +185,7 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
 
                     {/* Water Old */}
                     <td className="px-3.5 py-2.5 font-mono text-slate-600 bg-sky-50/20">
-                      {room.waterIndex}
+                      {missingBaseline ? 'Chưa nhập' : room.waterIndex}
                     </td>
 
                     {/* Water New Input */}
@@ -191,6 +193,7 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
                       <input
                         type="number"
                         value={currentRecord.newWater}
+                        disabled={missingBaseline}
                         onChange={(e) => handleWaterChange(room.id, e.target.value)}
                         className="w-20 bg-white border border-sky-300 rounded px-2 py-1 font-mono font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-sky-500"
                       />
@@ -198,7 +201,7 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
 
                     {/* Water Usage */}
                     <td className="px-3.5 py-2.5 text-right font-bold text-sky-700 bg-sky-50/60">
-                      {wUsage} m³
+                      {missingBaseline ? 'Thiếu chỉ số bàn giao' : `${wUsage} m³`}
                       <span className="text-[10px] text-slate-400 font-normal block">
                         ({wCost.toLocaleString('vi-VN')} đ)
                       </span>
