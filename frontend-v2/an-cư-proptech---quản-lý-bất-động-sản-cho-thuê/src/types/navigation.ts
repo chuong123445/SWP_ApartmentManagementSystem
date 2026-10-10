@@ -3,6 +3,7 @@ export type UserRole = 'admin' | 'user' | 'resident' | 'seeker';
 export type ActiveTab =
   | 'dashboard'
   | 'rooms'
+  | 'rental_requests'
   | 'tenants'
   | 'contracts'
   | 'invoices'

@@ -1,4 +1,4 @@
-export type RoomStatus = 'rented' | 'available' | 'overdue' | 'maintenance' | 'expiring';
+export type RoomStatus = 'rented' | 'available' | 'overdue' | 'maintenance' | 'expiring' | 'contract_in_progress';
 
 
 export interface Building {
@@ -11,6 +11,11 @@ export interface Building {
 }
 
 export interface Room {
+  title?: string;
+  propertyName?: string;
+  publicationStatus?: string;
+  propertyApprovalStatus?: string;
+  meterBaselineKnown?: boolean;
   id: string;
   roomNumber: string;
   buildingId: string;

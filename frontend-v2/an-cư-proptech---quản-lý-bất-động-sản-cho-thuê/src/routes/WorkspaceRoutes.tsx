@@ -13,6 +13,7 @@ import { TrustGuardPage } from '@/pages/owner/TrustGuardPage';
 import { FinancePage } from '@/pages/owner/finance/FinancePage';
 import { ReportsPage } from '@/pages/owner/finance/ReportsPage';
 import { SettingsPage } from '@/pages/owner/SettingsPage';
+import { RentalRequestsPage } from '@/pages/owner/RentalRequestsPage';
 
 export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWorkspace; navigation: WorkspaceNavigation }) {
   const { activeTab, selectTab: setActiveTab, setIsAddRoomOpen, setIsCreateInvoiceOpen } = navigation;
@@ -23,6 +24,7 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
     handleReserveEscrow, handleResetData, handleSaveConfig: setConfig, handleAddTicket, handleSendResidentTicket,
     handleAddTransaction } = workspace;
   return <>
+          {activeTab === 'rental_requests' && <RentalRequestsPage />}
           {activeTab === 'resident_portal' && (
             <ResidentPortalPage
               currentRoom={currentResidentRoom}

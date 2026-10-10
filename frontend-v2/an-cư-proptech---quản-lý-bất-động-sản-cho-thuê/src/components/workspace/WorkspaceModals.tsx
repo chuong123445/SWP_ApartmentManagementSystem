@@ -45,7 +45,7 @@ export function WorkspaceModals({ workspace, navigation }: { workspace: RentalWo
       )}
 
       {isAddRoomOpen && (
-        <AddRoomModal onClose={() => setIsAddRoomOpen(false)} onAddRoom={handleAddRoom} />
+        <AddRoomModal buildings={workspace.buildings} onClose={() => setIsAddRoomOpen(false)} onAddRoom={handleAddRoom} />
       )}
 </>;
 }

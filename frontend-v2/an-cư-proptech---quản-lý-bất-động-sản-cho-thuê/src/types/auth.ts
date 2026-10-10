@@ -20,6 +20,6 @@ export interface AuthContextValue {
   loading: boolean;
   isLoggingOut: boolean;
   error: string;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthUser>;
   logout: () => Promise<void>;
 }

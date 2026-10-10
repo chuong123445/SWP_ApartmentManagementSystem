@@ -61,11 +61,11 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
               <h3 className="text-xl font-bold">Căn Hộ {room.roomNumber}</h3>
               <span className="text-xs bg-emerald-500/20 text-emerald-300 font-semibold px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                TrustGuard Verified 100%
+                {room.propertyApprovalStatus === 'APPROVED' ? 'Tài sản đã được duyệt' : room.propertyApprovalStatus === 'REJECTED' ? 'Tài sản bị từ chối' : 'Tài sản chờ duyệt'}
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Tầng {room.floor} • Diện tích: {room.area}m² • Tối đa: {room.maxOccupants} người • Tòa A Lê Văn Sỹ (Q.3)
+              Tầng {room.floor} • Diện tích: {room.area}m² • Tối đa: {room.maxOccupants} người • {room.propertyName}
             </p>
           </div>
           <button
@@ -107,34 +107,31 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
               <span className="text-[11px] text-slate-500 font-medium">Chỉ số điện</span>
               <div className="text-sm font-bold text-amber-700 mt-0.5 flex items-center justify-center gap-1">
                 <Zap className="w-3.5 h-3.5" />
-                {room.electricityIndex} kWh
+                {room.meterBaselineKnown === false ? 'Chưa có chỉ số bàn giao' : `${room.electricityIndex} kWh`}
               </div>
             </div>
             <div>
               <span className="text-[11px] text-slate-500 font-medium">Chỉ số nước</span>
               <div className="text-sm font-bold text-sky-700 mt-0.5 flex items-center justify-center gap-1">
                 <Droplets className="w-3.5 h-3.5" />
-                {room.waterIndex} m³
+                {room.meterBaselineKnown === false ? 'Chưa có chỉ số bàn giao' : `${room.waterIndex} m³`}
               </div>
             </div>
           </div>
 
-          {/* TrustGuard Legal Verification Card */}
+          {/* Property status comes from the same owned Apartment inventory. */}
           <div className="border border-emerald-200 bg-emerald-50/50 rounded-xl p-4 text-xs space-y-2">
             <div className="flex items-center justify-between pb-2 border-b border-emerald-200/60">
               <span className="font-bold text-emerald-950 flex items-center gap-1.5 text-xs">
                 <Award className="w-4 h-4 text-emerald-700" />
-                Chứng Thư Thẩm Định An Cư TrustGuard™
+                Tài sản: {room.propertyName}
               </span>
               <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
-                Điểm uy tín: 99/100
+                {room.propertyApprovalStatus === 'APPROVED' ? 'Đã duyệt' : room.propertyApprovalStatus === 'REJECTED' ? 'Từ chối' : 'Chờ duyệt'}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2 text-slate-700 text-[11px]">
-              <div>• Pháp lý: <strong>{room.legalDocType || 'Sổ hồng lâu dài'}</strong></div>
-              <div>• Số hồ sơ: <strong className="font-mono">{room.legalDocNumber || 'CH-08912/2021/Q3'}</strong></div>
-              <div>• Nghiệm thu PCCC: <strong className="text-emerald-800">Đạt chuẩn Quốc gia</strong></div>
-              <div>• Bảo chứng cọc: <strong className="text-emerald-800">MBBank Escrow</strong></div>
+              <div>• Đăng tin: <strong>{room.publicationStatus === 'PUBLISHED' ? 'Đã đăng' : room.publicationStatus === 'HIDDEN' ? 'Đã ẩn' : 'Bản nháp'}</strong></div>
             </div>
           </div>
 

@@ -5,14 +5,14 @@ React 19/TypeScript/Vite. Trang quản lý Owner được giữ nguyên; đăng 
 ## Cấu trúc src
 
 ```text
-App.tsx                   Ghép AuthProvider và AppRoutes
+App.tsx                   Ghép BrowserRouter, AuthProvider và AppRoutes
 pages/
   auth/                   LoginPage, AccountVerificationPage
-  owner/                  Dashboard, Rooms, Tenants, Contracts, Maintenance, TrustGuard, Settings
+  owner/                  Dashboard, Rooms, Tenants, Contracts, Maintenance, TrustGuard, Settings, RentalRequestsPage
     billing/              InvoicesPage, UtilitiesPage
     finance/              FinancePage, ReportsPage
   resident/               ResidentPortalPage
-  customer/               ApartmentListingPage
+  customer/               HomePage, ApartmentDetailPage, MyRentalRequestsPage; ApartmentListingPage preview cũ
   WorkspacePage.tsx       Ghép hooks/layout/routes và modal dùng chung
 components/
   navigation/             Header, Sidebar
@@ -20,15 +20,18 @@ components/
   billing/                CreateInvoiceModal, InvoiceDetailModal
   workspace/              WorkspaceModals
   feedback/               SessionLoading
-layouts/                  ManagementLayout dùng chung cho các role
-hooks/                    useAuth, useWorkspaceNavigation, useRentalWorkspace
-services/                 auth/, rooms/, http/
+  apartments/             ApartmentCard
+  rental/                 RequestList
+  common/                 Pagination
+layouts/                  ManagementLayout, CustomerLayout
+hooks/                    useAuth, useWorkspaceNavigation, useRentalWorkspace, useApartments, useRentalRequests
+services/                 auth/, http/, apartments/, rental/
 providers/                AuthProvider
 contexts/                 AuthContext
 routes/                   AppRoutes (auth gate), WorkspaceRoutes (tab dispatch)
-types/                    auth, models, navigation; index.ts export chung
+types/                    auth, models, navigation, apartment, rental; index.ts export chung
 data/                     mockData
-utils/                    kiểm tra role hiển thị, sinh URL VietQR
+utils/                    kiểm tra role hiển thị, sinh URL VietQR, format, navigation
 styles/                   index.css
 ```
 
@@ -49,4 +52,17 @@ Vite proxy `/api` tới `http://localhost:8080`; đổi `API_PROXY_TARGET` nếu
 - `npm run build`: production bundle.
 - `npm run test:e2e`: cần backend local và Vite đang chạy, Owner fixture trong backend `.env.local`; mặc định dùng Edge headless đã cài. `E2E_BROWSER_CHANNEL`/`E2E_BASE_URL` có thể đổi khi test ở môi trường khác.
 
-Access JWT chỉ ở bộ nhớ. Refresh cookie HttpOnly khôi phục phiên khi reload; refresh/logout đi kèm CSRF. Role trải nghiệm không cấp quyền backend. Các module ngoài phòng/auth vẫn còn dữ liệu demo, xem WORK_PROGRESS ở thư mục workspace.
+Access JWT chỉ ở bộ nhớ. Refresh cookie HttpOnly khôi phục phiên khi reload; refresh/logout đi kèm CSRF. Role trải nghiệm không cấp quyền backend. Các module ngoài phòng/auth/catalog/rental vẫn còn dữ liệu demo, xem WORK_PROGRESS ở thư mục workspace.
+
+## Home và luồng thuê thật
+
+- `/`: HomePage công khai, tìm/lọc/phân trang căn hộ từ SQL Server.
+- `/apartments/:id`: chi tiết công khai; Guest đi login rồi trở lại căn hộ; verified Customer gửi lời nhắn thuê.
+- `/my/rental-requests`: Customer xem yêu cầu đã lưu, giữ sau reload.
+- `/app`: workspace Owner/Admin giữ bố cục cũ. Owner có menu **Yêu cầu thuê**, xem/lọc/làm mới inbox theo ownership.
+- Owner **Quản lý Phòng** lấy cùng Apartment với Home qua `ownerApartmentService`, gồm cả nháp/ẩn. Property selector lấy dữ liệu của Owner từ backend; thêm căn hộ không gửi ownerId/client ID/availability. Checkbox đăng công khai chỉ bật khi Property APPROVED. Bỏ `/api/rooms` và mock-room fallback; API lỗi hiển thị lỗi/retry. Room trong types chỉ là view model của giao diện cũ, không phải bảng hoặc API riêng.
+- `/login`: login hiện có; Owner vào /app, Customer vào Home, returnTo giới hạn route nội bộ.
+
+React Router dùng cho các URL mới; tab navigation trong workspace giữ nguyên. Services/apartments dùng public fetch không gửi JWT; services/rental dùng Bearer/refresh client. hooks/useApartments, hooks/useRentalRequests và layouts/CustomerLayout giữ loading/error/empty/pagination. Phần Home/rental không dùng mockData. ApartmentListingPage cũ chỉ còn là preview trong workspace Owner.
+
+Backend local initializer cung cấp dữ liệu mẫu khi ba bảng catalog/request mới đều trống. Customer/Owner credentials đọc từ file `.env.local` backend. Submission chưa giữ chỗ và chỉ tạo PENDING. Inbox đang read-only; accept/reject là task riêng. API OpenAPI ở docs/api/discovery-rental.openapi.json ngoài thư mục frontend. E2E rental dùng hai browser contexts để xác minh request đi từ Customer đến Owner.

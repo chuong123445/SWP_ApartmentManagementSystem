@@ -15,6 +15,7 @@ import {
   Sparkles,
   ShoppingBag,
   UserCheck,
+  MessageSquare,
 } from 'lucide-react';
 import { ActiveTab, UserRole } from '@/types';
 
@@ -48,6 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const adminMenuItems = [
     { id: 'dashboard' as ActiveTab, label: 'Tổng quan', icon: LayoutDashboard },
     { id: 'rooms' as ActiveTab, label: 'Quản lý Phòng', icon: Home },
+    { id: 'rental_requests' as ActiveTab, label: 'Yêu cầu thuê', icon: MessageSquare },
     { id: 'tenants' as ActiveTab, label: 'Khách thuê & eKYC', icon: Users },
     {
       id: 'contracts' as ActiveTab,
@@ -169,7 +171,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           Vận Hành Quản Lý
         </div>}
 
-        {adminMenuItems.filter(() => canManage).map((item) => {
+        {adminMenuItems.filter(item => canManage && (item.id !== 'rental_requests' || accountRole === 'OWNER')).map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
 

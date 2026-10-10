@@ -1,0 +1,64 @@
+import { test, expect } from '@playwright/test';
+import { readFileSync, mkdirSync } from 'node:fs';
+import { resolve } from 'node:path';
+const env = new Map(readFileSync(resolve('../../ancu-proptech-backend/.env.local'), 'utf8').split(/\r?\n/).filter(line => line.includes('=') && !line.startsWith('#')).map(line => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)]));
+
+test('guest discovery, Customer request persistence and Owner inbox', async ({ page, browser }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Tìm căn hộ phù hợp với bạn' })).toBeVisible();
+  await expect(page.getByTestId('apartment-card').first()).toBeVisible();
+  await page.getByLabel('Tên hoặc địa chỉ').fill('Studio');
+  await page.getByRole('button', { name: 'Tìm kiếm', exact: true }).click();
+  await expect(page.getByTestId('apartment-card')).toHaveCount(2);
+  await page.getByTestId('apartment-card').first().getByRole('link', { name: 'Chi tiết', exact: true }).click();
+  const apartmentId = page.url().split('/').at(-1)!;
+  await expect(page.getByRole('link', { name: 'Đăng nhập để gửi yêu cầu thuê' })).toBeVisible();
+  await page.getByRole('link', { name: 'Đăng nhập để gửi yêu cầu thuê' }).click();
+  await page.getByLabel('Email', { exact: true }).fill(env.get('LOCAL_CUSTOMER_EMAIL')!);
+  await page.getByLabel('Mật khẩu', { exact: true }).fill(env.get('LOCAL_CUSTOMER_PASSWORD')!);
+  await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/apartments/${apartmentId}$`));
+  mkdirSync('test-results/visual', { recursive: true });
+  await expect(page.getByLabel('Lời nhắn cho chủ nhà')).toBeVisible();
+  await page.screenshot({ path: 'test-results/visual/apartment-detail.png', fullPage: true });
+  const message = `Kiểm thử yêu cầu thuê ${crypto.randomUUID()}`;
+  await page.getByLabel('Lời nhắn cho chủ nhà').fill(message);
+  const submittedResponse = page.waitForResponse(response => response.url().endsWith(`/apartments/${apartmentId}/rental-requests`) && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Gửi yêu cầu thuê', exact: true }).click();
+  expect((await submittedResponse).status()).toBe(201);
+  await expect(page.getByText('Đã gửi yêu cầu thuê', { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Xem yêu cầu của tôi' }).click();
+  await expect(page.getByTestId('rental-request').filter({ hasText: message })).toBeVisible();
+  await page.reload();
+  await expect(page.getByTestId('rental-request').filter({ hasText: message })).toBeVisible();
+  const availability = await page.request.get(`/api/v1/apartments/${apartmentId}`);
+  expect((await availability.json()).availability).toBe('VACANT');
+  const unauthorizedInbox = await page.request.get('/api/v1/owner/rental-requests');
+  expect(unauthorizedInbox.status()).toBe(401);
+  mkdirSync('test-results/visual', { recursive: true });
+  await page.screenshot({ path: 'test-results/visual/customer-requests.png', fullPage: true });
+
+  const ownerContext = await browser.newContext();
+  try {
+    const ownerPage = await ownerContext.newPage();
+    ownerPage.on('pageerror', error => errors.push(error.message));
+    await ownerPage.goto(`${test.info().project.use.baseURL}/login`);
+    await ownerPage.getByLabel('Email', { exact: true }).fill(env.get('LOCAL_OWNER_EMAIL')!);
+    await ownerPage.getByLabel('Mật khẩu', { exact: true }).fill(env.get('LOCAL_OWNER_PASSWORD')!);
+    await ownerPage.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
+    await ownerPage.locator('#nav-rental_requests').click();
+    await expect(ownerPage.getByRole('heading', { name: 'Yêu cầu thuê căn hộ' })).toBeVisible();
+    await expect(ownerPage.getByTestId('rental-request').filter({ hasText: message })).toBeVisible();
+    await expect(ownerPage.getByTestId('rental-request').filter({ hasText: message })).toContainText(env.get('LOCAL_CUSTOMER_EMAIL')!);
+    await ownerPage.reload();
+    await ownerPage.locator('#nav-rental_requests').click();
+    await expect(ownerPage.getByTestId('rental-request').filter({ hasText: message })).toBeVisible();
+    await ownerPage.screenshot({ path: 'test-results/visual/owner-inbox.png', fullPage: true });
+  } finally { await ownerContext.close(); }
+  await page.getByRole('link', { name: 'Tìm căn hộ', exact: true }).click();
+  await expect(page.getByTestId('apartment-card').first()).toBeVisible();
+  await page.screenshot({ path: 'test-results/visual/home.png', fullPage: true });
+  expect(errors).toEqual([]);
+});
