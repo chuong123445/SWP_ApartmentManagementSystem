@@ -1,0 +1,6 @@
+{
+  "name": "An Cư PropTech - Quản Lý Bất Động Sản Cho Thuê",
+  "description": "Nền tảng quản lý nhà trọ, căn hộ, hợp đồng, hóa đơn điện nước, cư dân và sổ quỹ doanh thu chuyên nghiệp.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
