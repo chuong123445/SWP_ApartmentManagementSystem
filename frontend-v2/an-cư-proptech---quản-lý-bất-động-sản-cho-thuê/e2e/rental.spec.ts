@@ -57,7 +57,7 @@ test('guest discovery, Customer request persistence and Owner inbox', async ({ p
     await expect(ownerPage.getByTestId('rental-request').filter({ hasText: message })).toBeVisible();
     await ownerPage.screenshot({ path: 'test-results/visual/owner-inbox.png', fullPage: true });
   } finally { await ownerContext.close(); }
-  await page.getByRole('link', { name: 'Tìm căn hộ', exact: true }).click();
+  await page.getByRole('link', { name: 'Trang chủ', exact: true }).click();
   await expect(page.getByTestId('apartment-card').first()).toBeVisible();
   await page.screenshot({ path: 'test-results/visual/home.png', fullPage: true });
   expect(errors).toEqual([]);

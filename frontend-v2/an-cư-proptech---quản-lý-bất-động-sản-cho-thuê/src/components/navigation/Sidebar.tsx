@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router';
 import {
   LayoutDashboard,
   Home,
@@ -13,8 +14,6 @@ import {
   Settings,
   Building2,
   Sparkles,
-  ShoppingBag,
-  UserCheck,
   MessageSquare,
 } from 'lucide-react';
 import { ActiveTab, UserRole } from '@/types';
@@ -30,7 +29,6 @@ interface SidebarProps {
   maintenanceCount: number;
   expiringCount: number;
   userRole: UserRole;
-  onSelectRole: (role: UserRole) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -44,7 +42,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   maintenanceCount,
   expiringCount,
   userRole,
-  onSelectRole,
 }) => {
   const adminMenuItems = [
     { id: 'dashboard' as ActiveTab, label: 'Tổng quan', icon: LayoutDashboard },
@@ -85,10 +82,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'settings' as ActiveTab, label: 'Cài đặt Đơn giá', icon: Settings },
   ];
 
-  const userMenuItems = [
-    { id: 'resident_portal' as ActiveTab, label: 'Cổng Cư Dân (P.101)', icon: UserCheck },
-    { id: 'market' as ActiveTab, label: 'Sàn Căn Hộ Thẩm Định', icon: ShoppingBag },
-  ];
 
   return (
     <aside className="w-64 bg-[#111827] text-slate-300 flex flex-col shrink-0 border-r border-slate-800 select-none min-h-screen">
@@ -135,37 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </span>
         </div>
 
-        {/* Public / Resident Portal quick links */}
-        <div className="space-y-1 mb-2 pb-2 border-b border-slate-800/80">
-          {userMenuItems.filter(item => canManage || item.id === 'market').map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => onSelectTab(item.id)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all group ${
-                  isActive
-                    ? 'bg-[#065f46] text-white shadow-xs font-bold ring-1 ring-emerald-500'
-                    : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Icon
-                    className={`w-4 h-4 transition-colors ${
-                      isActive ? 'text-white' : 'text-emerald-400 group-hover:text-white'
-                    }`}
-                  />
-                  <span>{item.label}</span>
-                </div>
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold">
-                  Cư Dân
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
+        <Link to="/" className="flex items-center gap-2.5 px-3 py-2 mb-2 text-xs text-slate-300 rounded-lg hover:bg-slate-800 hover:text-white"><Home className="w-4 h-4" />Trang chủ</Link>
         {/* Admin Menu */}
         {canManage && <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
           Vận Hành Quản Lý
@@ -180,7 +143,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               key={item.id}
               id={`nav-${item.id}`}
               onClick={() => {
-                onSelectRole('admin');
                 onSelectTab(item.id);
               }}
               className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all group ${

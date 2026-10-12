@@ -14,6 +14,7 @@ export default defineConfig(() => {
     server: {
       proxy: {
         '/api': { target: process.env.API_PROXY_TARGET || 'http://localhost:8080', changeOrigin: true },
+        '/apartment/images': { target: process.env.API_PROXY_TARGET || 'http://localhost:8080', changeOrigin: true },
       },
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.

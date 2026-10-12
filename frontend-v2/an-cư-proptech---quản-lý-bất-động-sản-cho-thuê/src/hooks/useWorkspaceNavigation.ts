@@ -3,7 +3,7 @@ import type { ActiveTab, UserRole } from '@/types';
 
 export function useWorkspaceNavigation(canManage: boolean) {
   // User & RBAC State
-  const [userRole, setUserRole] = useState<UserRole>(canManage ? 'admin' : 'seeker');
+  const userRole: UserRole = canManage ? 'admin' : 'seeker';
 
   // Navigation & UI States
   const [activeTab, setActiveTab] = useState<ActiveTab>(canManage ? 'dashboard' : 'market');
@@ -14,18 +14,6 @@ export function useWorkspaceNavigation(canManage: boolean) {
   const [isAddRoomOpen, setIsAddRoomOpen] = useState(false);
   const [isCreateInvoiceOpen, setIsCreateInvoiceOpen] = useState(false);
 
-  // Switch role handler
-  const handleSelectRole = (newRole: UserRole) => {
-    if (!canManage && newRole !== 'seeker') return;
-    setUserRole(newRole);
-    if (newRole === 'user' || newRole === 'resident') {
-      setActiveTab('resident_portal');
-    } else if (newRole === 'seeker') {
-      setActiveTab('market');
-    } else {
-      setActiveTab('dashboard');
-    }
-  };
 
   // Quick Action Handler from Header
   const handleQuickAction = (
@@ -55,6 +43,6 @@ export function useWorkspaceNavigation(canManage: boolean) {
   const resetToDashboard = () => setActiveTab('dashboard');
   return { userRole, activeTab, selectedBuildingId, setSelectedBuildingId, searchQuery, setSearchQuery,
     isAddRoomOpen, setIsAddRoomOpen, isCreateInvoiceOpen, setIsCreateInvoiceOpen,
-    handleSelectRole, handleQuickAction, selectTab, resetToDashboard };
+    handleQuickAction, selectTab, resetToDashboard };
 }
 export type WorkspaceNavigation = ReturnType<typeof useWorkspaceNavigation>;

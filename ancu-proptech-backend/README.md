@@ -49,6 +49,8 @@ Account/SMTP mới thêm `spring-boot-starter-mail`: Reload Maven project trong 
 
 Registration: POST `/api/v1/auth/register` + CSRF, fields email/password/fullName/optional phone/requestedRole OWNER hoặc CUSTOMER. Trả201 pending/unverified User, không token; login để gửi/confirm Self email OTP. SMTP thất bại không xóa tài khoản đã tạo; dùng login và gửi lại. Chặn ADMIN/TENANT/readonly fields/numeric role, email trùng409. Không tự duyệt Property. RegistrationIntegrationTests gồm8 trường hợp, mock mail chỉ dùng trong test.
 
+Ảnh căn hộ local: file ở `src/main/resources/static/apartment/images`, URL public GET/HEAD `/apartment/images/{filename}`. Cột `rental_apartments.cover_image_path` lưu URL tương đối này; list/detail dùng cùng ảnh. Đã cập nhật12căn hộ hiện có theo5file lần lượt bằng `tools/sql/replace-apartment-images.sql`; giữ nguyên các tên `department2.jpg`/`department5.webp`. Script này là cập nhật dữ liệu một lần theo yêu cầu, không chạy khi startup và không tự ghi đè ảnh mới. Snapshot đường dẫn/version cũ lưu riêng trong ignored `target/apartment-images-before-*.csv`; update tăng version căn hộ, không đổi quyền/giá/hợp đồng. Owner tạo căn hộ mới vẫn placeholder cho tới khi có ảnh được gán.
+
 Chuột phải vào `ProptechApplication` → **Run** để chạy local. `spring.profiles.default=local` áp dụng khi chưa chỉ định active profile, tự nạp `application-local.properties` và file ignored `.env.local` trong thư mục backend. Working directory của IDE nên là thư mục backend chứa `pom.xml`.
 
 Nếu muốn chạy bằng PowerShell trong thư mục backend:

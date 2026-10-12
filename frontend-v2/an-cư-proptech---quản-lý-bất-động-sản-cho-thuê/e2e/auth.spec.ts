@@ -44,11 +44,6 @@ test('Owner login, reload restoration and Role-menu logout revoke the session', 
   await expect(page.getByRole('dialog', { name: 'Lập hóa đơn' })).toBeVisible();
   await page.getByRole('dialog').getByRole('button', { name: 'Hủy', exact: true }).click();
 
-  for (const role of ['Cư Dân Căn Hộ', 'Khách Tìm Thuê Căn Hộ', 'Chủ nhà (Owner)']) {
-    await page.getByRole('button', { name: 'Vai trò và tài khoản' }).click();
-    await page.getByRole('button', { name: role, exact: false }).click();
-    await expect(page.locator('main h1').first()).toBeVisible();
-  }
   mkdirSync('test-results/visual', { recursive: true });
   await page.getByRole('button', { name: 'Vai trò và tài khoản' }).click();
   await expect(page.locator('#btn-logout')).toBeVisible();
@@ -63,10 +58,24 @@ test('Owner login, reload restoration and Role-menu logout revoke the session', 
   expect(browserErrors).toEqual([]);
 });
 
-test('Resident preview without issued invoices shows an empty state without crashing', async ({ page }) => {
+test('Owner account menu has no demo roles and Profile/Settings return to management', async ({ page }) => {
   const errors: string[] = [];page.on('pageerror', e => errors.push(e.message));
   await page.route(/\/api\/v1\/owner\/invoices\?/, route => route.fulfill({ contentType: 'application/json', body: '{"items":[],"page":0,"size":20,"totalElements":0,"totalPages":0}' }));
   await page.goto('/login');await page.locator('#login-email').fill(localEnv.get('LOCAL_OWNER_EMAIL')!);await page.locator('#login-password').fill(localEnv.get('LOCAL_OWNER_PASSWORD')!);await page.locator('button[type=submit]').click();
-  await expect(page.getByRole('button', { name: 'Vai trò và tài khoản' })).toBeVisible();await page.getByRole('button', { name: 'Vai trò và tài khoản' }).click();await page.getByRole('button', { name: 'Cư Dân Căn Hộ', exact: false }).click();
-  await expect(page.getByRole('heading', { name: 'Cổng cư dân', exact: true })).toBeVisible();expect(errors).toEqual([]);
+  await expect(page.getByRole('button', { name: 'Vai trò và tài khoản' })).toBeVisible();
+  await expect(page.getByText('Cổng Cư Dân (P.101)', { exact: true })).toHaveCount(0);
+  for (const option of ['Hồ sơ cá nhân', 'Cài đặt tài khoản']) {
+    await page.getByRole('button', { name: 'Vai trò và tài khoản' }).click();
+    const menu = page.getByRole('navigation', { name: 'Điều hướng tài khoản' });
+    await expect(menu.getByText('Chủ nhà (Owner)', { exact: true })).toBeVisible();
+    await expect(menu.getByText('Cư Dân Căn Hộ', { exact: false })).toHaveCount(0);
+    await expect(menu.getByText('Khách Tìm Thuê Căn Hộ', { exact: false })).toHaveCount(0);
+    await menu.getByRole('link', { name: option, exact: true }).click();
+    await expect(page.getByRole('heading', { name: option, exact: true })).toBeVisible();
+    await page.reload();await expect(page.getByRole('link', { name: 'Quay lại trang quản lý', exact: true })).toBeVisible();
+    await page.getByRole('link', { name: 'Quay lại trang quản lý', exact: true }).click();
+    await expect(page.locator('#nav-rooms')).toBeVisible();
+  }
+  await page.getByRole('button', { name: 'Vai trò và tài khoản' }).click();await page.locator('#btn-logout').click();
+  expect(errors).toEqual([]);
 });

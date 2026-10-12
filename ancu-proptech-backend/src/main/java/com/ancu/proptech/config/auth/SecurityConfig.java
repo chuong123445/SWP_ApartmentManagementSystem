@@ -85,6 +85,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/me").authenticated()
                         .requestMatchers("/api/v1/me/profile", "/api/v1/me/password", "/api/v1/me/phone", "/api/v1/me/email-change", "/api/v1/me/email-changes", "/api/v1/me/email-changes/*/confirm").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/apartments", "/api/v1/apartments/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/apartment/images/**").permitAll()
+                        .requestMatchers(HttpMethod.HEAD, "/apartment/images/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/apartments/*/rental-requests").authenticated()
                         .requestMatchers("/api/v1/me/rental-requests", "/api/v1/owner/rental-requests").authenticated()
                         .requestMatchers("/api/v1/owner/apartments", "/api/v1/owner/properties").authenticated()

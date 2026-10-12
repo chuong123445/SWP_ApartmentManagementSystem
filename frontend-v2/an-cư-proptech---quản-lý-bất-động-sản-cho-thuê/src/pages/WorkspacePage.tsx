@@ -6,8 +6,7 @@ import { ManagementLayout } from '@/layouts/ManagementLayout';
 import { WorkspaceRoutes } from '@/routes/WorkspaceRoutes';
 import { WorkspaceModals } from '@/components/workspace/WorkspaceModals';
 
-// One workspace preserves the Owner's existing role-preview/navigation behavior.
-// Pages are grouped by role; shared data stays mounted while switching tabs.
+// Owner navigation retains shared workspace data while switching management tabs.
 export function WorkspacePage() {
   const { user, logout, isLoggingOut, error } = useAuth();
   const canManage = hasManagementRole(user!);
