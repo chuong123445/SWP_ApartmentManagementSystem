@@ -33,11 +33,12 @@ public class ApartmentService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<ApartmentSummary> search(String q, String city, String district, String ward, BigDecimal minRent, BigDecimal maxRent, int page, int size) {
+    public PageResponse<ApartmentSummary> search(String q, String city, String district, String ward, BigDecimal minRent, BigDecimal maxRent, Integer bedrooms, int page, int size) {
         validatePage(page, size);
         if ((q != null && q.length() > 120) || (city != null && city.length() > 80) || (district != null && district.length() > 80) || (ward != null && ward.length() > 80)
                 || (minRent != null && minRent.signum() < 0) || (maxRent != null && maxRent.signum() < 0)
-                || (minRent != null && maxRent != null && minRent.compareTo(maxRent) > 0))
+                || (minRent != null && maxRent != null && minRent.compareTo(maxRent) > 0)
+                || (bedrooms != null && bedrooms < 0))
             throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Bộ lọc căn hộ không hợp lệ.");
         Specification<Apartment> filters = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -50,6 +51,7 @@ public class ApartmentService {
             if (ward != null && !ward.isBlank()) predicates.add(cb.equal(root.get("property").get("ward"), ward.strip()));
             if (minRent != null) predicates.add(cb.greaterThanOrEqualTo(root.get("advertisedMonthlyRent"), minRent));
             if (maxRent != null) predicates.add(cb.lessThanOrEqualTo(root.get("advertisedMonthlyRent"), maxRent));
+            if (bedrooms != null) predicates.add(cb.equal(root.get("bedrooms"), bedrooms));
             return cb.and(predicates.toArray(Predicate[]::new));
         };
         return PageResponse.from(apartments.findAll(visible().and(filters), PageRequest.of(page, size, Sort.by("createdAt", "id"))).map(this::summary));
