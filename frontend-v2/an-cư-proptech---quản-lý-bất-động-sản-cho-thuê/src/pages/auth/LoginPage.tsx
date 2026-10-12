@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Building2, ArrowRight, Eye, EyeOff, LockKeyhole, LoaderCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useLocation, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { loginDestination } from '@/utils/navigation';
 
 export function LoginPage() {
@@ -61,6 +61,7 @@ export function LoginPage() {
               {isSubmitting ? <><LoaderCircle className="w-4 h-4 animate-spin" />Đang đăng nhập...</> : <>Đăng nhập<ArrowRight className="w-4 h-4" /></>}
             </button>
           </form>
+          <p className="text-sm text-slate-500 mt-6 text-center">Chưa có tài khoản? <Link to="/register" className="text-emerald-700 font-semibold">Đăng ký</Link></p>
         </section>
       </div>
     </main>

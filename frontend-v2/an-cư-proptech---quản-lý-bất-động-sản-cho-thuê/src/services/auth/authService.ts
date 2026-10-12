@@ -1,9 +1,9 @@
 import { ApiError, readApiError } from '@/services/http/client';
 
-import type { AuthSession } from '@/types/auth';
+import type { AuthSession, AuthUser } from '@/types/auth';
 export type { AuthSession, AuthUser } from '@/types/auth';
 
-async function authRequest(action: 'login' | 'refresh' | 'logout', body?: unknown): Promise<Response> {
+async function authRequest(action: 'register' | 'login' | 'refresh' | 'logout', body?: unknown): Promise<Response> {
   try {
     const csrfResponse = await fetch('/api/v1/auth/csrf', { credentials: 'same-origin', cache: 'no-store' });
     if (!csrfResponse.ok) throw await readApiError(csrfResponse);
@@ -24,6 +24,18 @@ async function authRequest(action: 'login' | 'refresh' | 'logout', body?: unknow
 
 export async function login(email: string, password: string): Promise<AuthSession> {
   return (await authRequest('login', { email: email.trim(), password })).json();
+}
+
+export interface RegistrationInput {
+  fullName: string;
+  email: string;
+  password: string;
+  phone?: string;
+  requestedRole: 'OWNER' | 'CUSTOMER';
+}
+export async function register(input: RegistrationInput): Promise<AuthUser> {
+  return (await authRequest('register', { fullName: input.fullName.trim(), email: input.email.trim(),
+    password: input.password, phone: input.phone?.trim() || undefined, requestedRole: input.requestedRole })).json();
 }
 
 // A single refresh request per browser tab prevents rotation/reuse races in StrictMode

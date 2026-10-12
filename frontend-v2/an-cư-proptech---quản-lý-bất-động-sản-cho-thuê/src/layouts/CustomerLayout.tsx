@@ -20,7 +20,7 @@ export function CustomerLayout({ children }: { children: ReactNode }) {
           {user && hasManagementRole(user) && <Link to="/app" className="hover:text-emerald-700">Trang quản lý</Link>}
           {user && <><Link to="/account/profile" className="hover:text-emerald-700">Hồ sơ cá nhân</Link><Link to="/account/settings" className="hover:text-emerald-700">Cài đặt tài khoản</Link></>}
           {user ? <><span className="text-slate-500">{user.fullName}</span><button onClick={logout} disabled={isLoggingOut} className="flex items-center gap-1.5 text-rose-700 disabled:opacity-50"><LogOut className="w-4 h-4" />{isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}</button></>
-            : <Link to="/login" className="bg-emerald-600 hover:bg-emerald-700 rounded-lg text-white px-4 py-2">Đăng nhập</Link>}
+            : <><Link to="/register" className="hover:text-emerald-700">Đăng ký</Link><Link to="/login" className="bg-emerald-600 hover:bg-emerald-700 rounded-lg text-white px-4 py-2">Đăng nhập</Link></>}
         </nav>
       </div>
       {error && user && <p role="alert" className="max-w-7xl mx-auto px-5 pb-3 text-rose-700 text-sm">{error}</p>}
