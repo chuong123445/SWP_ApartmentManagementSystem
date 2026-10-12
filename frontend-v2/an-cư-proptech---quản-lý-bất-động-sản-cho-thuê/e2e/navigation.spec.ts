@@ -16,7 +16,7 @@ for (const prefix of ['LOCAL_CUSTOMER', 'LOCAL_TENANT_1']) {
     if (prefix === 'LOCAL_TENANT_1') await expect(menu.getByRole('link', { name: 'Hóa đơn của tôi', exact: true })).toBeVisible();
     else await expect(menu.getByRole('link', { name: 'Hóa đơn của tôi', exact: true })).toHaveCount(0);
     await page.keyboard.press('Escape');await expect(trigger).toBeFocused();await expect(menu).toHaveCount(0);
-    await trigger.click();await page.getByRole('heading', { name: 'Tìm căn hộ phù hợp với bạn', exact: true }).click();await expect(menu).toHaveCount(0);
+    await trigger.click();await page.getByRole('heading', { name: 'Tìm căn hộ cho thuê phù hợp với bạn', exact: true }).click();await expect(menu).toHaveCount(0);
     await trigger.click();await menu.getByRole('link', { name: 'Hồ sơ cá nhân', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Hồ sơ cá nhân', exact: true })).toBeVisible();await expect(menu).toHaveCount(0);
     await page.getByRole('link', { name: 'Quay lại trang chủ', exact: true }).click();await expect(page.getByTestId('apartment-card').first()).toBeVisible();
