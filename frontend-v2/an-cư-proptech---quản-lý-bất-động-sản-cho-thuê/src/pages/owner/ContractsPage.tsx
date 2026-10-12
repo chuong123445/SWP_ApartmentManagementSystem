@@ -16,6 +16,7 @@ import {
 import { Contract, Room, Tenant } from '@/types';
 
 interface ContractsPageProps {
+  readOnly?: boolean;
   contracts: Contract[];
   rooms: Room[];
   tenants: Tenant[];
@@ -27,6 +28,7 @@ export const ContractsPage: React.FC<ContractsPageProps> = ({
   rooms,
   tenants,
   onAddContract,
+  readOnly = false,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [previewContract, setPreviewContract] = useState<Contract | null>(null);
@@ -46,7 +48,7 @@ export const ContractsPage: React.FC<ContractsPageProps> = ({
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              Ký Số VNPT SmartCA & Ký Quỹ Escrow MBBank
+              Quan hệ thuê được lưu trong hệ thống
             </span>
           </div>
           <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -56,7 +58,7 @@ export const ContractsPage: React.FC<ContractsPageProps> = ({
             </span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Toàn bộ hợp đồng có giá trị pháp lý tương đương văn bản công chứng, lưu trữ chứng thư điện tử an toàn.
+            Giá thuê và đơn giá điện nước trong hợp đồng được dùng khi lập hóa đơn.
           </p>
         </div>
 
@@ -86,6 +88,8 @@ export const ContractsPage: React.FC<ContractsPageProps> = ({
             });
           }}
           id="btn-add-contract"
+          disabled={readOnly}
+          title={readOnly ? 'Luồng tạo và ký hợp đồng chưa được triển khai.' : undefined}
           className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
         >
           <Plus className="w-4 h-4" />
@@ -136,7 +140,7 @@ export const ContractsPage: React.FC<ContractsPageProps> = ({
                   <td className="px-4 py-3">
                     <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                       <Award className="w-3 h-3 text-emerald-600" />
-                      {c.signingMethod || 'VNPT SmartCA'}
+                      {c.signingMethod || 'Chưa có dữ liệu ký số'}
                     </span>
                   </td>
                   <td className="px-4 py-3">

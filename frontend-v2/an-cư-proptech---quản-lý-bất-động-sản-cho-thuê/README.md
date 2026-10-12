@@ -56,6 +56,14 @@ Access JWT chỉ ở bộ nhớ. Refresh cookie HttpOnly khôi phục phiên khi
 
 ## Home và luồng thuê thật
 
+Shared account pages: `/account/profile`, `/account/settings`, `pages/account`, AccountLayout/useAccountProfile/services/auth/accountService. Access cho Self kể cả pending onboarding; Profile version giữ phiên, credential/contact change logout all. Email OTP chỉ SMTP backend; disabled rõ khi chưa có provider credentials, không hiển thị raw code. Profile/header cập nhật cùng dữ liệu thật. E2E account.spec.ts chỉ bật E2E_ACCOUNT_FIXTURE=true với tài khoản thử cách ly, không đổi password fixture thực.
+
+Billing hiện dùng SQL qua services/billing/billingService.ts, không dùng initialInvoices/initialTenants/initialContracts. Owner workspace lấy quan hệ thuê thật, chọn hợp đồng ACTIVE, nhập chỉ số cuối/hạn đóng, lưu nháp hoặc lập và gửi. Chỉ server tính totals; modal/Owner list dùng cùng hóa đơn với Tenant. Payment/checkout/assign Tenant qua prototype không ghi trạng thái giả.
+
+Customer đang thuê có panel hóa đơn trên Home và menu /my/invoices; /my/invoices/:id hiển thị chi tiết. Chỉ SENT của đúng Customer; refresh sau focus và mỗi 30 giây khi tab visible, có nút làm mới. Đổi tài khoản không giữ cache của người trước. Địa chỉ chọn phân tầng city/district/ward từ API address-options; submit để lọc, đổi cấp cha xóa lựa chọn con. Options chỉ thuộc catalog đang đăng, không phải danh mục toàn quốc.
+
+Hai tài khoản thử: tenant1@ancu.local (T.101), tenant2@ancu.local (T.102), mật khẩu xem ignored .env.local backend. Luồng hợp đồng/OTP/payment đầy đủ chưa có; ACTIVE contracts là local fixtures. Kiểm tra E2E mới e2e/billing.spec.ts và unit tests/billing.test.ts.
+
 - `/`: HomePage công khai, tìm/lọc/phân trang căn hộ từ SQL Server.
 - `/apartments/:id`: chi tiết công khai; Guest đi login rồi trở lại căn hộ; verified Customer gửi lời nhắn thuê.
 - `/my/rental-requests`: Customer xem yêu cầu đã lưu, giữ sau reload.

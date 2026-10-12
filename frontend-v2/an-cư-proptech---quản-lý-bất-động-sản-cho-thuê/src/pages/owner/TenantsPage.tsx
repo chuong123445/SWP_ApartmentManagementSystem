@@ -15,6 +15,7 @@ import {
 import { Tenant, Room } from '@/types';
 
 interface TenantsPageProps {
+  readOnly?: boolean;
   tenants: Tenant[];
   rooms: Room[];
   onAddTenant: (tenant: Omit<Tenant, 'id'>) => void;
@@ -24,6 +25,7 @@ export const TenantsPage: React.FC<TenantsPageProps> = ({
   tenants,
   rooms,
   onAddTenant,
+  readOnly = false,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -85,7 +87,7 @@ export const TenantsPage: React.FC<TenantsPageProps> = ({
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              100% Cư Dân Đã Hoàn Tất eKYC CCCD Gắn Chip
+              Người thuê gắn với căn hộ và tài khoản
             </span>
           </div>
           <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -101,6 +103,8 @@ export const TenantsPage: React.FC<TenantsPageProps> = ({
 
         <button
           onClick={() => setIsAddModalOpen(true)}
+          disabled={readOnly}
+          title={readOnly ? 'Người thuê được xác định từ hợp đồng; chưa hỗ trợ tạo quan hệ thuê qua màn hình này.' : undefined}
           id="btn-add-tenant"
           className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
         >

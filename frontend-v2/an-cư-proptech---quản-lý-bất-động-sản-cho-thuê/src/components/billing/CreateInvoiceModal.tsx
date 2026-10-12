@@ -1,252 +1,53 @@
-import React, { useState } from 'react';
-import { X, Plus, Calculator, FileText } from 'lucide-react';
-import { Room, Tenant, SystemConfig, Invoice } from '@/types';
-
-interface CreateInvoiceModalProps {
-  rooms: Room[];
-  tenants: Tenant[];
-  config: SystemConfig;
-  onClose: () => void;
-  onCreateInvoice: (newInv: Invoice) => void;
+import { useEffect, useRef, useState } from 'react';
+import { X } from 'lucide-react';
+import type { Invoice } from '@/types';
+import type { Tenancy, BillingContext, BillingInvoice } from '@/types/billing';
+import { getBillingContext, createInvoice, sendInvoice, invoiceView, billingMoney } from '@/services/billing/billingService';
+export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice }: {
+  tenancies: Tenancy[]; onClose: () => void; onCreateInvoice: (invoice: Invoice) => void;
+}) {
+  const active = tenancies.filter(c => c.status === 'ACTIVE');
+  const [contractId, setContractId] = useState(active[0]?.id ?? '');
+  const [context, setContext] = useState<BillingContext | null>(null);
+  const [electricity, setElectricity] = useState(''); const [water, setWater] = useState('');const [due, setDue] = useState('');
+  const [error, setError] = useState('');const [saving, setSaving] = useState(false);
+  const [created, setCreated] = useState<BillingInvoice | null>(null);const [revision, setRevision] = useState(0);
+  const form = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    let active = true;setContext(null);setError('');
+    if (!contractId) return;
+    getBillingContext(contractId).then(c => { if (active) { setContext(c);setElectricity(c.electricityStartReading);setWater(c.waterStartReading);setDue(`${c.period}-28`); } })
+      .catch(e => { if (active) setError(e.message); });return () => { active = false; };
+  }, [contractId, revision]);
+  const save = async (send: boolean) => {
+    if (saving || !context || !form.current?.reportValidity()) return;
+    setSaving(true);setError('');
+    try {
+      const draft = created ?? await createInvoice(contractId, { period: context.period, electricityEndReading: electricity, waterEndReading: water, dueDate: due, baselineVersion: context.baselineVersion });
+      setCreated(draft);onCreateInvoice(invoiceView(draft));
+      if (send) { const sent = await sendInvoice(draft.id, draft.version);onCreateInvoice(invoiceView(sent)); }
+      onClose();
+    } catch (e) { setError(e instanceof Error ? e.message : 'Không thể lưu/gửi hóa đơn.'); }
+    finally { setSaving(false); }
+  };
+  const cls = 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm';
+  return <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4"><section role="dialog" aria-label="Lập hóa đơn" className="bg-white rounded-2xl p-6 max-w-xl w-full max-h-[90vh] overflow-auto">
+    <div className="flex justify-between items-center"><h2 className="text-lg font-bold">Lập hóa đơn cho người thuê</h2><button onClick={onClose} disabled={saving} aria-label="Đóng"><X /></button></div>
+    {error && <p role="alert" className="bg-rose-50 text-rose-700 rounded-lg p-3 mt-4">{error}{!created && <button type="button" onClick={() => setRevision(v => v + 1)} className="ml-2 underline">Tải lại</button>}</p>}
+    {!active.length && <p className="py-4 text-slate-500">Chưa có hợp đồng đang hoạt động để lập hóa đơn.</p>}
+    <form ref={form} onSubmit={e => { e.preventDefault(); void save(false); }} className="space-y-4 mt-4">
+      <fieldset disabled={saving || !!created} className="space-y-4">
+        <div><label htmlFor="invoice-contract" className="text-sm font-semibold">Căn hộ / Người thuê</label><select id="invoice-contract" required className={cls} value={contractId} onChange={e => setContractId(e.target.value)}><option value="">Chọn quan hệ thuê</option>{active.map(c => <option key={c.id} value={c.id}>{c.roomNumber} — {c.customerName}</option>)}</select></div>
+        {contractId && !context && !error && <p role="status">Đang tải chỉ số đầu và giá hợp đồng...</p>}
+        {context && <><div className="bg-slate-50 rounded-lg p-3 text-sm"><p>Kỳ: <strong>{context.period}</strong> · Tiền thuê: <strong>{billingMoney(context.monthlyRent)}</strong></p><p>Điện đầu: {context.electricityStartReading} kWh · {billingMoney(context.electricityUnitPrice)}/kWh</p><p>Nước đầu: {context.waterStartReading} m³ · {billingMoney(context.waterUnitPrice)}/m³</p></div>
+          <div className="grid grid-cols-2 gap-4"><div><label htmlFor="invoice-electricity" className="text-sm font-semibold">Chỉ số điện cuối kỳ</label><input id="invoice-electricity" required type="number" step="0.01" min={context.electricityStartReading} value={electricity} onChange={e => setElectricity(e.target.value)} className={cls} /></div>
+            <div><label htmlFor="invoice-water" className="text-sm font-semibold">Chỉ số nước cuối kỳ</label><input id="invoice-water" required type="number" step="0.01" min={context.waterStartReading} value={water} onChange={e => setWater(e.target.value)} className={cls} /></div></div>
+          <div><label htmlFor="invoice-due-date" className="text-sm font-semibold">Hạn đóng</label><input id="invoice-due-date" required type="date" min={`${context.period}-01`} value={due} onChange={e => setDue(e.target.value)} className={cls} /></div></>}
+      </fieldset>
+      {created && <p className="text-sm text-amber-700">Đã lưu bản nháp. Bạn có thể thử gửi lại hóa đơn này.</p>}
+      <div className="flex justify-end gap-3 pt-4 border-t"><button type="button" onClick={onClose} disabled={saving}>Hủy</button>
+        <button type="submit" id="btn-confirm-create-invoice" disabled={saving || !context} className="border rounded-lg px-4 py-2 disabled:opacity-50">Lưu bản nháp</button>
+        <button type="button" id="btn-create-send-invoice" disabled={saving || !context} onClick={() => void save(true)} className="bg-emerald-600 text-white rounded-lg px-4 py-2 disabled:opacity-50">{saving ? 'Đang xử lý...' : created ? 'Gửi lại' : 'Lập và gửi'}</button></div>
+    </form>
+  </section></div>;
 }
-
-export const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
-  rooms,
-  tenants,
-  config,
-  onClose,
-  onCreateInvoice,
-}) => {
-  const measuredRooms = rooms.filter(r => r.meterBaselineKnown !== false);
-  const rentedRooms = measuredRooms.filter((r) => r.status !== 'available');
-  const [selectedRoomId, setSelectedRoomId] = useState(rentedRooms[0]?.id || measuredRooms[0]?.id || '');
-  const currentRoom = measuredRooms.find((r) => r.id === selectedRoomId) || measuredRooms[0];
-  const currentTenant = tenants.find((t) => t.id === currentRoom?.currentTenantId);
-
-  const [monthYear, setMonthYear] = useState('09/2026');
-  const [dueDate, setDueDate] = useState('05/10/2026');
-  const [oldElectric, setOldElectric] = useState(currentRoom?.electricityIndex || 1420);
-  const [newElectric, setNewElectric] = useState((currentRoom?.electricityIndex || 1420) + 125);
-  const [oldWater, setOldWater] = useState(currentRoom?.waterIndex || 154);
-  const [newWater, setNewWater] = useState((currentRoom?.waterIndex || 154) + 8);
-  const [roomRent, setRoomRent] = useState(currentRoom?.price || 4800000);
-  const [internet, setInternet] = useState(config.internetPrice);
-  const [garbage, setGarbage] = useState(config.garbagePrice);
-
-  const electricUsage = Math.max(0, newElectric - oldElectric);
-  const waterUsage = Math.max(0, newWater - oldWater);
-
-  const electricAmount = electricUsage * config.electricPrice;
-  const waterAmount = waterUsage * config.waterPrice;
-  const totalAmount = roomRent + electricAmount + waterAmount + internet + garbage;
-
-  const handleRoomChange = (roomId: string) => {
-    setSelectedRoomId(roomId);
-    const rm = measuredRooms.find((r) => r.id === roomId);
-    if (rm) {
-      setOldElectric(rm.electricityIndex);
-      setNewElectric(rm.electricityIndex + 120);
-      setOldWater(rm.waterIndex);
-      setNewWater(rm.waterIndex + 7);
-      setRoomRent(rm.price);
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentRoom) return;
-
-    const newInvoice: Invoice = {
-      id: `inv-${Date.now()}`,
-      invoiceCode: `HD-0926-${currentRoom.roomNumber.replace('P.', '')}`,
-      monthYear,
-      roomId: currentRoom.id,
-      roomNumber: currentRoom.roomNumber,
-      tenantName: currentTenant?.name || 'Khách thuê phòng',
-      tenantPhone: currentTenant?.phone || '0900000000',
-      createdAt: new Date().toLocaleDateString('vi-VN'),
-      dueDate,
-      status: 'unpaid',
-      items: [
-        {
-          name: `Tiền thuê phòng tháng ${monthYear}`,
-          unit: 'Tháng',
-          quantity: 1,
-          unitPrice: roomRent,
-          amount: roomRent,
-        },
-        {
-          name: 'Tiền điện sinh hoạt',
-          unit: 'kWh',
-          oldIndex: oldElectric,
-          newIndex: newElectric,
-          quantity: electricUsage,
-          unitPrice: config.electricPrice,
-          amount: electricAmount,
-        },
-        {
-          name: 'Tiền nước sinh hoạt',
-          unit: 'm³',
-          oldIndex: oldWater,
-          newIndex: newWater,
-          quantity: waterUsage,
-          unitPrice: config.waterPrice,
-          amount: waterAmount,
-        },
-        {
-          name: 'Internet cáp quang',
-          unit: 'Phòng',
-          quantity: 1,
-          unitPrice: internet,
-          amount: internet,
-        },
-        {
-          name: 'Phí vệ sinh & quản lý tòa nhà',
-          unit: 'Phòng',
-          quantity: 1,
-          unitPrice: garbage,
-          amount: garbage,
-        },
-      ],
-      totalAmount,
-      paidAmount: 0,
-    };
-
-    onCreateInvoice(newInvoice);
-    onClose();
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 my-8">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-          <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-emerald-600" />
-            <h3 className="text-base font-bold text-slate-900">Lập Hóa Đơn Tiền Phòng Mới</h3>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="mt-4 space-y-3.5 text-xs">
-          <div>
-            <label className="font-semibold text-slate-700 block mb-1">Chọn phòng xuất hóa đơn</label>
-            <select
-              value={selectedRoomId}
-              onChange={(e) => handleRoomChange(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold focus:outline-none focus:border-emerald-500"
-            >
-              {measuredRooms.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.roomNumber} ({r.price.toLocaleString('vi-VN')} đ) - {r.status === 'rented' ? 'Đang thuê' : r.status}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="font-semibold text-slate-700 block mb-1">Kỳ hóa đơn</label>
-              <input
-                type="text"
-                value={monthYear}
-                onChange={(e) => setMonthYear(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-medium"
-              />
-            </div>
-            <div>
-              <label className="font-semibold text-slate-700 block mb-1">Hạn thanh toán</label>
-              <input
-                type="text"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-medium"
-              />
-            </div>
-          </div>
-
-          <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-2">
-            <span className="font-bold text-amber-900 block">Số Điện (kWh) - Đơn giá 3.800 đ</span>
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <label className="text-slate-500 text-[10px]">Chỉ số cũ</label>
-                <input
-                  type="number"
-                  value={oldElectric}
-                  onChange={(e) => setOldElectric(Number(e.target.value))}
-                  className="w-full bg-white border border-amber-300 rounded px-2 py-1 font-bold"
-                />
-              </div>
-              <div>
-                <label className="text-slate-500 text-[10px]">Chỉ số mới</label>
-                <input
-                  type="number"
-                  value={newElectric}
-                  onChange={(e) => setNewElectric(Number(e.target.value))}
-                  className="w-full bg-white border border-amber-300 rounded px-2 py-1 font-bold text-emerald-700"
-                />
-              </div>
-              <div>
-                <label className="text-slate-500 text-[10px]">Tiêu thụ</label>
-                <div className="py-1 font-bold text-amber-800">{electricUsage} kWh</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-3 bg-sky-50/70 border border-sky-200 rounded-xl space-y-2">
-            <span className="font-bold text-sky-900 block">Số Nước (m³) - Đơn giá 28.000 đ</span>
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <label className="text-slate-500 text-[10px]">Chỉ số cũ</label>
-                <input
-                  type="number"
-                  value={oldWater}
-                  onChange={(e) => setOldWater(Number(e.target.value))}
-                  className="w-full bg-white border border-sky-300 rounded px-2 py-1 font-bold"
-                />
-              </div>
-              <div>
-                <label className="text-slate-500 text-[10px]">Chỉ số mới</label>
-                <input
-                  type="number"
-                  value={newWater}
-                  onChange={(e) => setNewWater(Number(e.target.value))}
-                  className="w-full bg-white border border-sky-300 rounded px-2 py-1 font-bold text-emerald-700"
-                />
-              </div>
-              <div>
-                <label className="text-slate-500 text-[10px]">Tiêu thụ</label>
-                <div className="py-1 font-bold text-sky-800">{waterUsage} m³</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-            <span className="font-bold text-slate-800">TỔNG TIỀN PHẢI THU:</span>
-            <span className="text-base font-extrabold text-emerald-700">
-              {totalAmount.toLocaleString('vi-VN')} đ
-            </span>
-          </div>
-
-          <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium"
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              id="btn-confirm-create-invoice"
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold"
-            >
-              Phát Hành Hóa Đơn & Tạo VietQR
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};

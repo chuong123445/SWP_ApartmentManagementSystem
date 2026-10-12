@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router';
 import {
   Search,
   Bell,
@@ -251,6 +252,8 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
               </button>
               <div className="border-t border-slate-100 pt-2 mt-2">
+                <Link to="/account/profile" onClick={() => setIsRoleDropdownOpen(false)} className="block px-3 py-2 rounded-lg hover:bg-slate-50">Hồ sơ cá nhân</Link>
+                <Link to="/account/settings" onClick={() => setIsRoleDropdownOpen(false)} className="block px-3 py-2 rounded-lg hover:bg-slate-50">Cài đặt tài khoản</Link>
                 {authError && <p role="alert" className="px-3 pb-2 text-rose-700">{authError}</p>}
                 <button id="btn-logout" onClick={onLogout} disabled={isLoggingOut}
                   className="w-full text-left px-3 py-2.5 rounded-lg text-rose-700 hover:bg-rose-50 flex items-center gap-2 disabled:opacity-50">

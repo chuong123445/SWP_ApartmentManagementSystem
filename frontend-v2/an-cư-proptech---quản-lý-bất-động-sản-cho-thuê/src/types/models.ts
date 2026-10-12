@@ -90,6 +90,7 @@ export interface InvoiceItem {
 }
 
 export interface Invoice {
+  apiInvoice?: import('./billing').BillingInvoice;
   id: string;
   invoiceCode: string;
   monthYear: string; // e.g. "09/2026"
