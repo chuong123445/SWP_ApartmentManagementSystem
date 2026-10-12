@@ -5,6 +5,7 @@ import { hasManagementRole } from '@/utils/auth';
 import { loginDestination } from '@/utils/navigation';
 import { SessionLoading } from '@/components/feedback/SessionLoading';
 import { LoginPage } from '@/pages/auth/LoginPage';
+import { RegisterPage } from '@/pages/auth/RegisterPage';
 import { AccountVerificationPage } from '@/pages/auth/AccountVerificationPage';
 import { WorkspacePage } from '@/pages/WorkspacePage';
 import { HomePage } from '@/pages/customer/HomePage';
@@ -36,6 +37,7 @@ export function AppRoutes() {
     <Route path="/" element={<HomePage />} />
     <Route path="/apartments/:id" element={<ApartmentDetailPage />} />
     <Route path="/login" element={<LoginRoute />} />
+    <Route path="/register" element={<RegisterPage />} />
     <Route path="/app" element={<RequireAccount role="MANAGER"><WorkspacePage /></RequireAccount>} />
     <Route path="/my/rental-requests" element={<RequireAccount role="CUSTOMER"><MyRentalRequestsPage /></RequireAccount>} />
     <Route path="/my/invoices" element={<RequireAccount role="CUSTOMER"><MyInvoicesPage /></RequireAccount>} />

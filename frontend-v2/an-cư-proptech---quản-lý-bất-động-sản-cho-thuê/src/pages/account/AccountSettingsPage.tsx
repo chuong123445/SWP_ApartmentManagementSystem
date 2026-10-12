@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { AccountLayout } from '@/layouts/AccountLayout';
 import { useAccountProfile } from '@/hooks/useAccountProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { changePassword, changePhone, requestEmailChange, confirmEmailChange, pendingEmailChange } from '@/services/auth/accountService';
 import type { EmailChallenge } from '@/types/account';
 export function AccountSettingsPage() {
+  const location = useLocation();
   const { profile, error, loading, reload } = useAccountProfile();const { endSession } = useAuth();const navigate = useNavigate();
   const [oldPassword, setOldPassword] = useState('');const [newPassword, setNewPassword] = useState('');const [confirmPassword, setConfirmPassword] = useState('');
   const [email, setEmail] = useState('');const [emailPassword, setEmailPassword] = useState('');const [code, setCode] = useState('');const [challenge, setChallenge] = useState<EmailChallenge | null>(null);
-  const [phone, setPhone] = useState('');const [phonePassword, setPhonePassword] = useState('');const [busy, setBusy] = useState('');const [formError, setFormError] = useState('');const [notice, setNotice] = useState('');
+  const [phone, setPhone] = useState('');const [phonePassword, setPhonePassword] = useState('');const [busy, setBusy] = useState('');const [formError, setFormError] = useState('');const [notice, setNotice] = useState(typeof location.state?.notice === 'string' ? location.state.notice : '');
   useEffect(() => { if (profile) { setEmail(profile.email);setPhone(profile.phone ?? ''); } }, [profile]);
   useEffect(() => { let active = true;pendingEmailChange().then(c => { if (active && c?.status === 'PENDING') setChallenge(c); }).catch(() => undefined);return () => { active = false; }; }, []);
   const signedOut = (message: string) => { endSession();navigate('/login', { replace: true, state: { notice: message, returnTo: '/account/settings' } }); };
