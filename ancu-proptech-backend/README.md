@@ -96,3 +96,5 @@ Quan hệ ownership chuẩn: `rental_apartments.property_id → rental_propertie
 `V3__unify_apartments.sql` đổi tên rooms/room_amenities thành legacy_rooms_archive/legacy_room_amenities_archive; dữ liệu vẫn giữ để đối chiếu, không còn entity hoặc API ghi vào chúng. `V4__import_legacy_rooms.sql` theo xác nhận người dùng chuyển P.999/P.303 cho owner@ancu.local, giữ UUID/giá/chỉ số/amenities, tạo Property PENDING_APPROVAL và Apartment DRAFT. Chạy lại không nhập trùng và không nâng approval/publication. Không công khai hoặc giả địa chỉ/pháp lý cho dữ liệu cũ.
 
 Owner chọn Property thật khi thêm căn hộ. DRAFT mặc định; chỉ Property APPROVED được PUBLISHED, frontend và backend đều chặn. Các chỉ số chưa có giữ NULL; UI hiển thị chưa nhập và không tính công tơ từ baseline giả. Xem OpenAPI `docs/api/owner-apartments.openapi.json` ở workspace.
+
+Public discovery filters: q/city/district/ward, inclusive minRent/maxRent and exact nonnegative bedrooms (0 = Studio), combined in SQL before pagination. Invalid numeric values/ranges return 400.

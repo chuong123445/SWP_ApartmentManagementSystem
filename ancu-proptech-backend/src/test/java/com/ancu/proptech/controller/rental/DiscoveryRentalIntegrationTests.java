@@ -86,6 +86,27 @@ class DiscoveryRentalIntegrationTests {
         mvc.perform(get("/api/v1/apartments").param("q", marker + "no-results"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.items").isEmpty()).andExpect(jsonPath("$.totalElements").value(0));
     }
+    @Test void bedroomAndRentFiltersCombineBeforePaginationAndSupportStudio() throws Exception {
+        apartment.setBedrooms(0); apartments.saveAndFlush(apartment);
+        otherApartment.setBedrooms(2); apartments.saveAndFlush(otherApartment);
+        hidden.setBedrooms(0); apartments.saveAndFlush(hidden);
+        mvc.perform(get("/api/v1/apartments").param("q", marker).param("city", "Test City")
+                .param("bedrooms", "0").param("minRent", "5000000").param("maxRent", "5000000").param("size", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(apartment.getId().toString()));
+        mvc.perform(get("/api/v1/apartments").param("q", marker).param("bedrooms", "2"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(otherApartment.getId().toString()));
+        mvc.perform(get("/api/v1/apartments").param("q", marker).param("bedrooms", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+    }
+    @Test void invalidBedroomAndRentFiltersAreRejected() throws Exception {
+        for (String value : List.of("-1", "1.5", "many", "2147483648")) {
+            mvc.perform(get("/api/v1/apartments").param("bedrooms", value)).andExpect(status().isBadRequest());
+        }
+        mvc.perform(get("/api/v1/apartments").param("minRent", "10").param("maxRent", "9")).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/apartments").param("minRent", "-1")).andExpect(status().isBadRequest());
+    }
     @Test void detailsExposePublicOwnerOnlyAndHideDraft() throws Exception {
         mvc.perform(get("/api/v1/apartments/" + apartment.getId()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.advertisedMonthlyRent").value("5000000.00"))
