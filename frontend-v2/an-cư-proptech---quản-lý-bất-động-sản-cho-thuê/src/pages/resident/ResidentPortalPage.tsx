@@ -87,14 +87,14 @@ export const ResidentPortalPage: React.FC<ResidentPortalPageProps> = ({
             <div className="flex items-center gap-2 mb-1.5">
               <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                Cư Dân Đã Xác Thực eKYC CCCD Chip & Ký Quỹ Escrow
+                Người thuê có quan hệ với căn hộ
               </span>
             </div>
             <h1 className="text-2xl font-extrabold text-white">
               Xin chào, {currentTenant.name}!
             </h1>
             <p className="text-xs text-slate-300 mt-1">
-              Bạn đang cư trú tại <strong>Căn Hộ {currentRoom.roomNumber}</strong> - {currentTenant.buildingName}. Hợp đồng bảo chứng An Cư TrustGuard™.
+              Bạn đang cư trú tại <strong>Căn Hộ {currentRoom.roomNumber}</strong> - {currentTenant.buildingName}.
             </p>
           </div>
 
@@ -150,6 +150,8 @@ export const ResidentPortalPage: React.FC<ResidentPortalPageProps> = ({
             ) : (
               <button
                 onClick={() => setIsQrModalOpen(true)}
+                disabled={!!invoice.apiInvoice}
+                title={invoice.apiInvoice ? 'Thanh toán chưa được tích hợp.' : undefined}
                 className="w-full flex items-center justify-center gap-2 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors"
               >
                 <QrCode className="w-4 h-4" />
@@ -176,7 +178,7 @@ export const ResidentPortalPage: React.FC<ResidentPortalPageProps> = ({
               Mã HĐ: <strong className="text-slate-800">{contract.contractNumber}</strong>
             </span>
             <span className="text-[11px] text-slate-400 mt-0.5 block">
-              Ký điện tử: VNPT SmartCA • Thời hạn: {contract.startDate} - {contract.endDate}
+              Thời hạn: {contract.startDate} - {contract.endDate}
             </span>
           </div>
 

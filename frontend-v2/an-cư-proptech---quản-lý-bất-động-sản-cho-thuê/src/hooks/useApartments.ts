@@ -10,10 +10,10 @@ export function useApartments(filters: ApartmentFilters) {
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true); setError('');
-    getApartments(filters, controller.signal).then(setData).catch(err => {
+    getApartments(filters, controller.signal).then(data => { if (!controller.signal.aborted) setData(data); }).catch(err => {
       if (!controller.signal.aborted) setError(err instanceof Error ? err.message : 'Không thể tải căn hộ.');
     }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [filters.q, filters.city, filters.district, filters.minRent, filters.maxRent, filters.page, filters.size, revision]);
+  }, [filters.q, filters.city, filters.district, filters.ward, filters.minRent, filters.maxRent, filters.page, filters.size, revision]);
   return { data, loading, error, reload: () => setRevision(value => value + 1) };
 }

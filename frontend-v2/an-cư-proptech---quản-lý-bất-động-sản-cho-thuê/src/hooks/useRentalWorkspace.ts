@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { Building, Room, NewRoom, Tenant, Contract, Invoice, MaintenanceTicket, Transaction, SystemConfig, TrustGuardAudit, EscrowDeposit } from '@/types';
-import { initialTenants, initialContracts, initialInvoices, initialMaintenance, initialTransactions, initialConfig, initialTrustAudits, initialEscrows } from '@/data/mockData';
+import { initialMaintenance, initialTransactions, initialConfig, initialTrustAudits, initialEscrows } from '@/data/mockData';
 import { createOwnerApartment, getOwnerApartments, getOwnerProperties } from '@/services/apartments/ownerApartmentService';
+import { ownerTenancies, ownerInvoices, tenancyViews, invoiceView, sendInvoice } from '@/services/billing/billingService';
+import type { Tenancy } from '@/types/billing';
 
 export function useRentalWorkspace(canManage: boolean, onReset: () => void) {
   // Global Data States
@@ -10,9 +12,15 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void) {
   const [inventoryError, setInventoryError] = useState('');
   const [inventoryLoading, setInventoryLoading] = useState(false);
   const [inventoryRevision, setInventoryRevision] = useState(0);
-  const [tenants, setTenants] = useState<Tenant[]>(initialTenants);
-  const [contracts, setContracts] = useState<Contract[]>(initialContracts);
-  const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [tenancies, setTenancies] = useState<Tenancy[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [billingError, setBillingError] = useState('');
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [billingRevision, setBillingRevision] = useState(0);
+  const [invoicePage, setInvoicePage] = useState(0);
+  const [invoiceTotalPages, setInvoiceTotalPages] = useState(0);
   const [tickets, setTickets] = useState<MaintenanceTicket[]>(initialMaintenance);
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [config, setConfig] = useState<SystemConfig>(initialConfig);
@@ -25,88 +33,32 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void) {
     if (!canManage) return;
     let active = true;
     setInventoryLoading(true); setInventoryError('');
-    Promise.all([getOwnerApartments(), getOwnerProperties()]).then(([apartments, properties]) => {
+    Promise.all([getOwnerApartments(), getOwnerProperties(), ownerTenancies()]).then(([apartments, properties, leases]) => {
       if (!active) return;
-      setRooms(apartments);
+      setTenancies(leases);
+      const views = tenancyViews(leases);setTenants(views.tenants);setContracts(views.contracts);
+      setRooms(apartments.map(a => ({ ...a, currentTenantId: leases.find(c => c.apartmentId === a.id && c.status === 'ACTIVE')?.customerId })));
       setBuildings(properties.map(p => ({ id: p.id, name: p.name, address: p.address,
         totalRooms: apartments.filter(a => a.buildingId === p.id).length, pcccCertified: false, legalStatus: p.approvalStatus })));
     }).catch(error => { if (active) { setRooms([]); setBuildings([]); setInventoryError(error instanceof Error ? error.message : 'Không thể tải căn hộ.'); } })
       .finally(() => { if (active) setInventoryLoading(false); });
     return () => { active = false; };
   }, [canManage, inventoryRevision]);
+  useEffect(() => {
+    if (!canManage) return;
+    let active = true;setBillingLoading(true);setBillingError('');
+    ownerInvoices(invoicePage).then(data => { if (active) { setInvoices(data.items.map(invoiceView));setInvoiceTotalPages(data.totalPages); } })
+      .catch(e => { if (active) { setInvoices([]);setBillingError(e.message); } }).finally(() => { if (active) setBillingLoading(false); });
+    return () => { active = false; };
+  }, [canManage, invoicePage, billingRevision]);
   // ==========================================
 
-  // Mark invoice as paid
-  const handleMarkPaid = (invoiceId: string) => {
-    setInvoices((prev) =>
-      prev.map((inv) =>
-        inv.id === invoiceId
-          ? {
-              ...inv,
-              status: 'paid',
-              paidAmount: inv.totalAmount,
-              paidAt: `${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN')}`,
-            }
-          : inv
-      )
-    );
+  // Payment/provider integration is not implemented; do not mark real invoices paid locally.
+  const handleMarkPaid = (_invoiceId: string) => setBillingError('Thanh toán chưa được tích hợp. Hóa đơn chưa được xác nhận đã thanh toán.');
 
-    const paidInv = invoices.find((i) => i.id === invoiceId);
-    if (paidInv) {
-      setTransactions((prev) => [
-        {
-          id: `tx-${Date.now()}`,
-          code: `THU-0926-${Math.floor(100 + Math.random() * 900)}`,
-          date: new Date().toLocaleDateString('vi-VN'),
-          type: 'income',
-          category: 'Tiền thuê phòng',
-          amount: paidInv.totalAmount,
-          roomNumber: paidInv.roomNumber,
-          description: `Thu tiền phòng ${paidInv.roomNumber} (${paidInv.tenantName}) qua VietQR Napas247`,
-          paymentMethod: 'VietQR / MBBank',
-        },
-        ...prev,
-      ]);
-    }
-
-    if (selectedInvoice && selectedInvoice.id === invoiceId) {
-      setSelectedInvoice((prev) =>
-        prev
-          ? {
-              ...prev,
-              status: 'paid',
-              paidAmount: prev.totalAmount,
-              paidAt: new Date().toLocaleDateString('vi-VN'),
-            }
-          : null
-      );
-    }
-  };
-
-  // Add new tenant
-  const handleAddTenant = (newTenantData: Omit<Tenant, 'id'>) => {
-    const newId = `ten-${Date.now()}`;
-    const newTenant: Tenant = { ...newTenantData, id: newId };
-    setTenants((prev) => [newTenant, ...prev]);
-
-    // Update room status
-    setRooms((prev) =>
-      prev.map((r) =>
-        r.id === newTenantData.roomId
-          ? { ...r, status: 'rented', currentTenantId: newId, deposit: newTenantData.deposit }
-          : r
-      )
-    );
-  };
-
-  // Add new contract
-  const handleAddContract = (newContractData: Omit<Contract, 'id'>) => {
-    const newContract: Contract = {
-      ...newContractData,
-      id: `hd-${Date.now()}`,
-    };
-    setContracts((prev) => [newContract, ...prev]);
-  };
+  // Tenancy assignment and contract lifecycle require server workflows, not local rows.
+  const handleAddTenant = (_input: Omit<Tenant, 'id'>) => setInventoryError('Chưa hỗ trợ tạo quan hệ thuê qua màn hình này.');
+  const handleAddContract = (_input: Omit<Contract, 'id'>) => setInventoryError('Luồng tạo và ký hợp đồng chưa được triển khai.');
 
   // ==========================================
   // ĐOẠN MÃ MỚI: LƯU PHÒNG VÀO SQL QUA JAVA
@@ -118,14 +70,8 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void) {
   };
   // ==========================================
 
-  // Checkout / Terminate room
-  const handleCheckOut = (roomId: string) => {
-    setRooms((prev) =>
-      prev.map((r) =>
-        r.id === roomId ? { ...r, status: 'available', currentTenantId: undefined } : r
-      )
-    );
-  };
+  // Do not release a real Apartment through a preview action.
+  const handleCheckOut = (_roomId: string) => setInventoryError('Chưa hỗ trợ kết thúc hợp đồng và bàn giao qua màn hình này.');
 
   // Update meter indices
   const handleUpdateIndices = (updates: { roomId: string; electric: number; water: number }[]) => {
@@ -185,9 +131,7 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void) {
   // Reset all data
   const handleResetData = () => {
     setInventoryRevision(value => value + 1);
-    setTenants(initialTenants);
-    setContracts(initialContracts);
-    setInvoices(initialInvoices);
+    setBillingRevision(value => value + 1);
     setTickets(initialMaintenance);
     setTransactions(initialTransactions);
     setConfig(initialConfig);
@@ -261,11 +205,11 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void) {
   const currentResidentTenant = tenants.find((t) => t.roomNumber === 'P.101') || tenants[0];
   const currentResidentRoom = rooms.find((r) => r.id === currentResidentTenant?.roomId) || rooms[0];
   const currentResidentContract = contracts.find((c) => c.tenantId === currentResidentTenant?.id) || contracts[0];
-  const residentInvoices = invoices.filter((i) => i.roomNumber === currentResidentRoom?.roomNumber);
+  const residentInvoices = invoices.filter((i) => i.roomId === currentResidentRoom?.id && i.apiInvoice?.status === 'SENT');
   const residentTickets = tickets.filter((t) => t.roomNumber === currentResidentRoom?.roomNumber);
 
   // Counters for sidebar badges
-  const unpaidCount = invoices.filter((i) => i.status !== 'paid').length;
+  const unpaidCount = invoices.filter((i) => i.apiInvoice?.status === 'SENT').length;
   const maintenanceCount = tickets.filter((t) => t.status !== 'resolved').length;
   const expiringCount = contracts.filter((c) => c.status === 'expiring').length;
 
@@ -274,12 +218,22 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void) {
     setTickets(prev => [{ ...ticket, id: `sc-${Date.now()}`, createdAt: `${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN')}` }, ...prev]);
   const handleSendResidentTicket = (ticket: Omit<MaintenanceTicket, 'id' | 'createdAt'>) =>
     setTickets(prev => [{ ...ticket, id: `tk-${Date.now()}`, createdAt: `${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN')}` }, ...prev]);
-  const handleCreateInvoice = (invoice: Invoice) => setInvoices(prev => [invoice, ...prev]);
+  const handleCreateInvoice = (_invoice: Invoice) => setBillingRevision(value => value + 1);
+  const handleSendInvoice = async (id: string) => {
+    const source = invoices.find(i => i.id === id)?.apiInvoice;
+    if (!source) throw new Error('Không tìm thấy hóa đơn để gửi.');
+    const sent = invoiceView(await sendInvoice(id, source.version));
+    setInvoices(prev => prev.map(i => i.id === id ? sent : i));
+    setSelectedInvoice(prev => prev?.id === id ? sent : prev);
+    setBillingRevision(value => value + 1);
+  };
   const handleAddTransaction = (tx: Omit<Transaction, 'id' | 'code'>) => setTransactions(prev => [{
     ...tx, id: `tx-${Date.now()}`, code: `${tx.type === 'income' ? 'THU' : 'CHI'}-0926-${Math.floor(100 + Math.random() * 900)}`,
   }, ...prev]);
   return {
     rooms, tenants, contracts, invoices, tickets, transactions, config, audits, escrows,
+    tenancies, billingError, billingLoading, invoicePage, setInvoicePage, invoiceTotalPages,
+    reloadBilling: () => setBillingRevision(value => value + 1), handleSendInvoice,
     buildings, inventoryError, inventoryLoading, reloadInventory: () => setInventoryRevision(value => value + 1),
     selectedRoom, setSelectedRoom, selectedInvoice, setSelectedInvoice,
     handleMarkPaid, handleAddTenant, handleAddContract, handleAddRoom, handleCheckOut,

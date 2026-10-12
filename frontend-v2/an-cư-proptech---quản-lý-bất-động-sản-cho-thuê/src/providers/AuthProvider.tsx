@@ -3,6 +3,7 @@ import type { AuthSession, AuthUser } from '@/types/auth';
 import React, { useEffect, useRef, useState } from 'react';
 import * as authApi from '@/services/auth/authService';
 import { ApiError, setAccessToken, setRefreshHandler } from '@/services/http/client';
+import { currentUser } from '@/services/auth/accountService';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -66,5 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  return <AuthContext.Provider value={{ user, loading, isLoggingOut, error, login, logout }}>{children}</AuthContext.Provider>;
+  const reloadUser = async () => { const current = generation.current;const next = await currentUser();if (current === generation.current) setUser(next); };
+  const endSession = () => { generation.current++;setAccessToken(null);setUser(null);setError(''); };
+  return <AuthContext.Provider value={{ user, loading, isLoggingOut, error, login, logout, reloadUser, endSession }}>{children}</AuthContext.Provider>;
 }

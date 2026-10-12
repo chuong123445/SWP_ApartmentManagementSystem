@@ -38,15 +38,11 @@ test('Owner login, reload restoration and Role-menu logout revoke the session', 
   await expect(page.getByRole('heading', { name: 'Thêm Phòng Cho Thuê Mới' })).toBeVisible();
   await page.getByRole('button', { name: 'Hủy', exact: true }).click();
 
-  // Invoice creation remains a local demo. Verify state survives tab unmounts.
+  // Billing is now backed by SQL; verify form access without creating a duplicate period.
   await page.locator('#nav-invoices').click();
-  const beforeInvoiceCount = await page.locator('main tbody tr').count();
   await page.locator('#btn-create-invoice-page').click();
-  await page.locator('#btn-confirm-create-invoice').click();
-  await expect(page.locator('main tbody tr')).toHaveCount(beforeInvoiceCount + 1);
-  await page.locator('#nav-rooms').click();
-  await page.locator('#nav-invoices').click();
-  await expect(page.locator('main tbody tr')).toHaveCount(beforeInvoiceCount + 1);
+  await expect(page.getByRole('dialog', { name: 'Lập hóa đơn' })).toBeVisible();
+  await page.getByRole('dialog').getByRole('button', { name: 'Hủy', exact: true }).click();
 
   for (const role of ['Cư Dân Căn Hộ', 'Khách Tìm Thuê Căn Hộ', 'Chủ nhà (Owner)']) {
     await page.getByRole('button', { name: 'Vai trò và tài khoản' }).click();
@@ -65,4 +61,12 @@ test('Owner login, reload restoration and Role-menu logout revoke the session', 
   await expect(page.getByRole('heading', { name: 'Chào mừng trở lại' })).toBeVisible();
   await page.screenshot({ path: 'test-results/visual/login.png' });
   expect(browserErrors).toEqual([]);
+});
+
+test('Resident preview without issued invoices shows an empty state without crashing', async ({ page }) => {
+  const errors: string[] = [];page.on('pageerror', e => errors.push(e.message));
+  await page.route(/\/api\/v1\/owner\/invoices\?/, route => route.fulfill({ contentType: 'application/json', body: '{"items":[],"page":0,"size":20,"totalElements":0,"totalPages":0}' }));
+  await page.goto('/login');await page.locator('#login-email').fill(localEnv.get('LOCAL_OWNER_EMAIL')!);await page.locator('#login-password').fill(localEnv.get('LOCAL_OWNER_PASSWORD')!);await page.locator('button[type=submit]').click();
+  await expect(page.getByRole('button', { name: 'Vai trò và tài khoản' })).toBeVisible();await page.getByRole('button', { name: 'Vai trò và tài khoản' }).click();await page.getByRole('button', { name: 'Cư Dân Căn Hộ', exact: false }).click();
+  await expect(page.getByRole('heading', { name: 'Cổng cư dân', exact: true })).toBeVisible();expect(errors).toEqual([]);
 });

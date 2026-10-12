@@ -1,5 +1,6 @@
 import { ApiError, readApiError } from '@/services/http/client';
 import type { ApartmentSummary, ApartmentDetail, ApartmentFilters, PageResult } from '@/types/apartment';
+export function getAddressOptions(signal?: AbortSignal) { return publicGet<import('@/types/apartment').AddressOption[]>('/api/v1/apartments/address-options', signal); }
 
 export async function getApartments(filters: ApartmentFilters, signal?: AbortSignal): Promise<PageResult<ApartmentSummary>> {
   const query = new URLSearchParams();

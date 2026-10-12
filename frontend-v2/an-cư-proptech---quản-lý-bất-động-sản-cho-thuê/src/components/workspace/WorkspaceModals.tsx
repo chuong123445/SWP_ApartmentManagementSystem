@@ -28,17 +28,13 @@ export function WorkspaceModals({ workspace, navigation }: { workspace: RentalWo
       {selectedInvoice && (
         <InvoiceDetailModal
           invoice={selectedInvoice}
-          config={config}
           onClose={() => setSelectedInvoice(null)}
-          onMarkPaid={handleMarkPaid}
         />
       )}
 
       {isCreateInvoiceOpen && (
         <CreateInvoiceModal
-          rooms={rooms}
-          tenants={tenants}
-          config={config}
+          tenancies={workspace.tenancies}
           onClose={() => setIsCreateInvoiceOpen(false)}
           onCreateInvoice={handleCreateInvoice}
         />

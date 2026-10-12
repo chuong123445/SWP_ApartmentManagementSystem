@@ -45,6 +45,7 @@ export function LoginPage() {
           <h2 className="text-2xl font-bold text-slate-900">Chào mừng trở lại</h2>
           <p className="text-sm text-slate-500 mt-2 mb-8">Đăng nhập để tiếp tục quản lý tài khoản của bạn.</p>
           <form onSubmit={submit} className="space-y-5">
+            {typeof location.state?.notice === 'string' && <p role="status" className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-3">{location.state.notice}</p>}
             {(error || sessionError) && <p role="alert" className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-3">{error || sessionError}</p>}
             <div><label htmlFor="login-email" className="block text-sm font-semibold text-slate-700 mb-2">Email</label>
               <input id="login-email" type="email" required maxLength={254} autoComplete="username" value={email}
