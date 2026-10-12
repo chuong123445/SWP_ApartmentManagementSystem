@@ -31,7 +31,6 @@ export function ManagementLayout({ account, canManage, navigation, counters, onL
         maintenanceCount={counters.maintenanceCount}
         expiringCount={counters.expiringCount}
         userRole={navigation.userRole}
-        onSelectRole={navigation.handleSelectRole}
       />
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         <Header
@@ -40,9 +39,7 @@ export function ManagementLayout({ account, canManage, navigation, counters, onL
           isLoggingOut={isLoggingOut}
           authError={authError}
           userRole={navigation.userRole}
-          onSelectRole={navigation.handleSelectRole}
           onQuickAction={navigation.handleQuickAction}
-          onNavigateTab={navigation.selectTab}
           searchQuery={navigation.searchQuery}
           onSearchChange={navigation.setSearchQuery}
         />

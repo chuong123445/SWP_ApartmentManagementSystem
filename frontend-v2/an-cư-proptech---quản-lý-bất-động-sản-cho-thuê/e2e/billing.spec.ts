@@ -12,8 +12,8 @@ test('Owner sends persisted invoices to two real tenants, with private drafts an
     const owner = await ownerContext.newPage();const one = await firstContext.newPage();const two = await secondContext.newPage();
     const ownerToken = await login(owner, 'LOCAL_OWNER');await expect(owner.locator('#nav-tenants')).toBeVisible();
     await owner.locator('#nav-tenants').click();await expect(owner.getByText('Khách thuê Một', { exact: true }).first()).toBeVisible();await expect(owner.getByText('T.101', { exact: true }).first()).toBeVisible();
-    const tenantToken = await login(one, 'LOCAL_TENANT_1');await expect(one.getByRole('link', { name: 'Hóa đơn của tôi', exact: true })).toBeVisible();
-    const secondToken = await login(two, 'LOCAL_TENANT_2');await expect(two.getByRole('link', { name: 'Hóa đơn của tôi', exact: true })).toBeVisible();
+    const tenantToken = await login(one, 'LOCAL_TENANT_1');await one.getByRole('button', { name: 'Vai trò và tài khoản' }).click();await expect(one.getByRole('link', { name: 'Hóa đơn của tôi', exact: true })).toBeVisible();
+    const secondToken = await login(two, 'LOCAL_TENANT_2');await two.getByRole('button', { name: 'Vai trò và tài khoản' }).click();await expect(two.getByRole('link', { name: 'Hóa đơn của tôi', exact: true })).toBeVisible();
     const tenanciesResponse = await ownerContext.request.get('/api/v1/owner/tenancies', { headers: { Authorization: `Bearer ${ownerToken}` } });const tenancies = await tenanciesResponse.json();
     await owner.locator('#nav-invoices').click();
     for (const [number, target, token, context, sendImmediately] of [
