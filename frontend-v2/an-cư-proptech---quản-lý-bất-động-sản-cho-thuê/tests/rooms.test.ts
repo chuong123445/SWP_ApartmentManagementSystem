@@ -1,56 +1,46 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
-import { createRoom, getRooms } from '../src/api/rooms';
-import type { NewRoom } from '../src/types';
-
+import { createOwnerApartment, getOwnerApartments, fromOwnerApartment } from '@/services/apartments/ownerApartmentService';
+import type { NewRoom } from '@/types';
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });
-
 const room: NewRoom = {
-  roomNumber: ' P.303 ', buildingId: 'bld-1', floor: 3, area: 28,
+  roomNumber: ' P.303 ', buildingId: 'property-uuid', floor: 3, area: 28,
   price: 5000000, deposit: 5000000, status: 'available',
-  electricityIndex: 1200, waterIndex: 110, maxOccupants: 2,
-  amenities: ['Máy lạnh'],
+  electricityIndex: 1200, waterIndex: 110, maxOccupants: 2, amenities: ['AC'],
 };
-
-test('create sends the Java enum and no client ID; maps the saved UUID and readings', async () => {
+const savedApi = {
+  id: 'apartment-uuid', propertyId: 'property-uuid', propertyName: 'My property', ownerId: 'owner-uuid',
+  roomNumber: 'P.303', title: 'Apartment', floor: 3, areaM2: '28.00', advertisedMonthlyRent: '5000000.00',
+  deposit: '5000000.00', electricityIndex: 1200, waterIndex: 110, maxOccupants: 2,
+  amenities: ['AC'], publicationStatus: 'DRAFT', availability: 'VACANT', propertyApprovalStatus: 'APPROVED',
+};
+test('Owner creates a canonical Apartment using real property UUID, decimal strings and no client owner/state/ID', async () => {
   globalThis.fetch = async (url, options) => {
-    assert.equal(url, 'http://localhost:8080/api/rooms');
-    assert.equal(options?.method, 'POST');
-    const payload = JSON.parse(options!.body as string);
-    assert.equal('id' in payload, false);
-    assert.equal(payload.status, 'AVAILABLE');
-    assert.equal(payload.roomNumber, 'P.303');
-    assert.equal(payload.electricityIndex, 1200);
-    assert.equal(payload.waterIndex, 110);
-    return Response.json({ ...payload, id: 'server-uuid' });
+    assert.equal(url, '/api/v1/owner/apartments'); assert.equal(options?.method, 'POST');
+    const payload=JSON.parse(options!.body as string);
+    for (const field of ['id','ownerId','status','availability','buildingId']) assert.equal(field in payload,false);
+    assert.equal(payload.propertyId,'property-uuid');assert.equal(payload.areaM2,'28');
+    assert.equal(payload.advertisedMonthlyRent,'5000000');assert.equal(payload.publicationStatus,'DRAFT');
+    assert.equal(payload.roomNumber,'P.303');assert.equal(payload.electricityIndex,1200);
+    return Response.json(savedApi);
   };
-  const saved = await createRoom('http://localhost:8080/api', room);
-  assert.equal(saved.id, 'server-uuid');
-  assert.equal(saved.status, 'available');
-  assert.equal(saved.electricityIndex, 1200);
-  assert.equal(saved.waterIndex, 110);
+  const saved=await createOwnerApartment(room);
+  assert.equal(saved.id,'apartment-uuid');assert.equal(saved.buildingId,'property-uuid');
+  assert.equal(saved.status,'available');assert.equal(saved.meterBaselineKnown,true);
 });
-
-test('loading existing database rooms normalizes enums and missing optional fields', async () => {
-  globalThis.fetch = async () => Response.json([
-    { id: 'old-room', buildingId: 'bld-1', roomNumber: 'P.101',
-      floor: 1, area: 25, price: 4500000, status: 'RENTED', amenities: null },
-  ]);
-  const [saved] = await getRooms('http://localhost:8080/api');
-  assert.equal(saved.status, 'rented');
-  assert.equal(saved.electricityIndex, 0);
-  assert.equal(saved.waterIndex, 0);
-  assert.equal(saved.maxOccupants, 2);
-  assert.deepEqual(saved.amenities, []);
+test('Owner list uses Apartment endpoint and retains draft and missing-meter metadata',async()=>{
+  globalThis.fetch=async(url)=>{assert.equal(url,'/api/v1/owner/apartments');return Response.json([{...savedApi,electricityIndex:null,waterIndex:null}]);};
+  const [saved]=await getOwnerApartments();assert.equal(saved.publicationStatus,'DRAFT');assert.equal(saved.meterBaselineKnown,false);
 });
-
-test('server rejection is reported instead of returning an unsaved room', async () => {
-  globalThis.fetch = async () => Response.json({ detail: 'Invalid request' }, { status: 400 });
-  await assert.rejects(createRoom('http://localhost:8080/api', room), /HTTP 400.*Invalid request/);
+test('Contract in progress is not displayed as vacant',()=>{
+  assert.equal(fromOwnerApartment({...savedApi,availability:'CONTRACT_IN_PROGRESS'}).status,'contract_in_progress');
 });
-
-test('connection failures are reported so the form can remain open for retry', async () => {
-  globalThis.fetch = async () => { throw new TypeError('Failed to fetch'); };
-  await assert.rejects(createRoom('http://localhost:8080/api', room), /Không thể kết nối máy chủ/);
+test('Server rejection is reported instead of creating local inventory',async()=>{
+  globalThis.fetch=async()=>Response.json({message:'Duplicate apartment'}, {status:409});
+  await assert.rejects(createOwnerApartment(room),error=>error instanceof Error && error.message==='Duplicate apartment');
+});
+test('Connection failure keeps the add form able to retry',async()=>{
+  globalThis.fetch=async()=>{throw new TypeError('Failed to fetch');};
+  await assert.rejects(createOwnerApartment(room));
 });
