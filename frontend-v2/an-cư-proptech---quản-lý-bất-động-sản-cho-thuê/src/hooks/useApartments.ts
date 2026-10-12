@@ -14,6 +14,6 @@ export function useApartments(filters: ApartmentFilters) {
       if (!controller.signal.aborted) setError(err instanceof Error ? err.message : 'Không thể tải căn hộ.');
     }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [filters.q, filters.city, filters.district, filters.ward, filters.minRent, filters.maxRent, filters.page, filters.size, revision]);
+  }, [filters.q, filters.city, filters.district, filters.ward, filters.minRent, filters.maxRent, filters.bedrooms, filters.page, filters.size, revision]);
   return { data, loading, error, reload: () => setRevision(value => value + 1) };
 }

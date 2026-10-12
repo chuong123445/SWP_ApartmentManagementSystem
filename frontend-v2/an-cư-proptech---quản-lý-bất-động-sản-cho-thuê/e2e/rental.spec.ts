@@ -7,7 +7,7 @@ test('guest discovery, Customer request persistence and Owner inbox', async ({ p
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Tìm căn hộ phù hợp với bạn' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tìm căn hộ cho thuê phù hợp với bạn' })).toBeVisible();
   await expect(page.getByTestId('apartment-card').first()).toBeVisible();
   await page.getByLabel('Tên hoặc địa chỉ').fill('Studio');
   await page.getByRole('button', { name: 'Tìm kiếm', exact: true }).click();

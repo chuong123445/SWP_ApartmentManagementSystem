@@ -10,5 +10,5 @@ export interface ApartmentDetail extends Omit<ApartmentSummary, 'thumbnail'> {
   publicationStatus: string; version: number;
   publicOwner: { id: string; displayName: string; contactVerified: boolean };
 }
-export interface ApartmentFilters { q?: string; city?: string; district?: string; ward?: string; minRent?: string; maxRent?: string; page?: number; size?: number }
+export interface ApartmentFilters { q?: string; city?: string; district?: string; ward?: string; minRent?: string; maxRent?: string; bedrooms?: string; page?: number; size?: number }
 export interface AddressOption { city: string; district: string; ward: string | null }
