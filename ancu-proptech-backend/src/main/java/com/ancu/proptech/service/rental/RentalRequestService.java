@@ -1,0 +1,69 @@
+package com.ancu.proptech.service.rental;
+
+import com.ancu.proptech.dto.common.PageResponse;
+import com.ancu.proptech.dto.rental.*;
+import com.ancu.proptech.exception.common.ApiException;
+import com.ancu.proptech.model.apartment.Apartment;
+import com.ancu.proptech.model.auth.AuthAccount;
+import com.ancu.proptech.model.property.Property;
+import com.ancu.proptech.model.rental.RentalRequest;
+import com.ancu.proptech.repository.apartment.ApartmentRepository;
+import com.ancu.proptech.repository.rental.RentalRequestRepository;
+import com.ancu.proptech.service.auth.AccountAccessService;
+import com.ancu.proptech.service.apartment.ApartmentService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import java.time.Instant;
+import java.util.UUID;
+
+@Service @RequiredArgsConstructor
+public class RentalRequestService {
+    private final ApartmentRepository apartments;
+    private final RentalRequestRepository requests;
+    private final AccountAccessService access;
+
+    @Transactional
+    public RentalRequestResponse submit(Jwt jwt, UUID apartmentId, RentalRequestCreate input) {
+        var customer = access.customer(jwt);
+        Apartment apartment = apartments.findForRequest(apartmentId).orElseThrow(RentalRequestService::notFound);
+        var p = apartment.getProperty();
+        var owner = p.getOwner();
+        if (apartment.getPublicationStatus() != Apartment.PublicationStatus.PUBLISHED || p.getApprovalStatus() != Property.ApprovalStatus.APPROVED
+                || owner.getStatus() != AuthAccount.Status.ACTIVE || !owner.isContactVerified() || owner.getRole() != AuthAccount.Role.OWNER) throw notFound();
+        if (apartment.getAvailability() != Apartment.Availability.VACANT)
+            throw new ApiException(HttpStatus.CONFLICT, "APARTMENT_NOT_AVAILABLE", "Căn hộ hiện không còn nhận yêu cầu thuê.");
+        RentalRequest request = new RentalRequest();
+        request.setApartment(apartment);
+        request.setCustomer(customer);
+        request.setMessage(input.getMessage() == null ? "" : input.getMessage().strip());
+        request.setCreatedAt(Instant.now());
+        request.setStatus(RentalRequest.Status.PENDING);
+        return response(requests.save(request)); // Submission never changes apartment availability.
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<RentalRequestResponse> mine(Jwt jwt, int page, int size) {
+        ApartmentService.validatePage(page, size);
+        var customer = access.customer(jwt);
+        return PageResponse.from(requests.findByCustomerId(customer.getId(), PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"))).map(this::response));
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<RentalRequestResponse> ownerInbox(Jwt jwt, UUID apartmentId, RentalRequest.Status status, int page, int size) {
+        ApartmentService.validatePage(page, size);
+        var owner = access.owner(jwt);
+        return PageResponse.from(requests.findOwnerInbox(owner.getId(), apartmentId, status,
+                PageRequest.of(page, size, Sort.by("createdAt", "id"))).map(this::response));
+    }
+
+    private RentalRequestResponse response(RentalRequest r) {
+        return new RentalRequestResponse(r.getId(), r.getApartment().getId(), r.getApartment().getTitle(), r.getApartment().getProperty().getAddress(),
+                r.getApartment().getAdvertisedMonthlyRent().toPlainString(), r.getCustomer().getId(), r.getCustomer().getFullName(), r.getCustomer().getEmail(),
+                r.getMessage(), r.getStatus().name(), r.getCreatedAt(), r.getVersion());
+    }
+    private static ApiException notFound() { return new ApiException(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Không tìm thấy căn hộ đang được đăng công khai."); }
+}
