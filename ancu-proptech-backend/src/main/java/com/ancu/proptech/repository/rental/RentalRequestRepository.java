@@ -15,7 +15,11 @@ public interface RentalRequestRepository extends JpaRepository<RentalRequest, UU
     @EntityGraph(attributePaths = {"apartment", "apartment.property", "customer"})
     Page<RentalRequest> findByCustomerId(UUID customerId, Pageable page);
     @EntityGraph(attributePaths = {"apartment", "apartment.property", "customer"})
-    @Query("select r from RentalRequest r where r.apartment.property.owner.id = :ownerId "
+    @Query(value = "select r from RentalRequest r where r.apartment.property.owner.id = :ownerId "
+            + "and (:apartmentId is null or r.apartment.id = :apartmentId) and (:status is null or r.status = :status) "
+            + "order by case when r.status = com.ancu.proptech.model.rental.RentalRequest.Status.PENDING then 0 else 1 end asc, "
+            + "r.createdAt asc, r.id asc",
+            countQuery = "select count(r) from RentalRequest r where r.apartment.property.owner.id = :ownerId "
             + "and (:apartmentId is null or r.apartment.id = :apartmentId) and (:status is null or r.status = :status)")
     Page<RentalRequest> findOwnerInbox(@Param("ownerId") UUID ownerId, @Param("apartmentId") UUID apartmentId,
                                      @Param("status") RentalRequest.Status status, Pageable page);
