@@ -2,6 +2,6 @@ import type { AuthUser } from '@/types/auth';
 import { hasManagementRole } from '@/utils/auth';
 
 export function loginDestination(user: AuthUser, returnTo: unknown) {
-  if (typeof returnTo === 'string' && (/^\/(?:apartments|my\/invoices)\/[0-9a-f-]{36}$/i.test(returnTo) || ['/', '/app', '/my/rental-requests', '/my/invoices', '/account/verification', '/account/profile', '/account/settings'].includes(returnTo))) return returnTo;
+  if (typeof returnTo === 'string' && (/^\/(?:apartments|my\/invoices)\/[0-9a-f-]{36}$/i.test(returnTo) || ['/', '/app', '/my/rental-requests', '/my/invoices', '/account/verification', '/account/profile', '/account/settings', '/account/settings/password', '/account/settings/email', '/account/settings/phone'].includes(returnTo))) return returnTo;
   return hasManagementRole(user) ? '/app' : '/';
 }

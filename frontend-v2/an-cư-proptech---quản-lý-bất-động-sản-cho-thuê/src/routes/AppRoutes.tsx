@@ -14,6 +14,7 @@ import { MyRentalRequestsPage } from '@/pages/customer/MyRentalRequestsPage';
 import { MyInvoicesPage } from '@/pages/customer/MyInvoicesPage';
 import { InvoiceDetailPage } from '@/pages/customer/InvoiceDetailPage';
 import { ProfilePage } from '@/pages/account/ProfilePage';
+import { AccountActionPage } from '@/pages/account/AccountActionPage';
 import { AccountSettingsPage } from '@/pages/account/AccountSettingsPage';
 
 function RequireAccount({ children, role, verified = true }: { children: ReactNode; role?: 'MANAGER' | 'CUSTOMER'; verified?: boolean }) {
@@ -45,6 +46,9 @@ export function AppRoutes() {
     <Route path="/account/verification" element={<RequireAccount verified={false}><AccountVerificationPage /></RequireAccount>} />
     <Route path="/account/profile" element={<RequireAccount verified={false}><ProfilePage /></RequireAccount>} />
     <Route path="/account/settings" element={<RequireAccount verified={false}><AccountSettingsPage /></RequireAccount>} />
+    <Route path="/account/settings/password" element={<RequireAccount verified={false}><AccountActionPage key="password" action="password" /></RequireAccount>} />
+    <Route path="/account/settings/email" element={<RequireAccount verified={false}><AccountActionPage key="email" action="email" /></RequireAccount>} />
+    <Route path="/account/settings/phone" element={<RequireAccount verified={false}><AccountActionPage key="phone" action="phone" /></RequireAccount>} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>;
 }
