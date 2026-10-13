@@ -325,4 +325,33 @@ class DiscoveryRentalIntegrationTests {
                 .content("{\"decision\":\"ACCEPT\",\"version\":99}"))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("STALE_VERSION"));
     }
+
+    @Test void ownerInboxPrioritizesPendingRequestsThenCreatedAt() throws Exception {
+        mvc.perform(post("/api/v1/apartments/" + apartment.getId() + "/rental-requests")
+                .header("Authorization", bearer(customerA)).contentType("application/json").content("{\"message\":\"Yêu cầu cũ\"}"))
+                .andExpect(status().isCreated());
+        var req1 = requests.findByCustomerIdAndApartmentIdAndStatusInOrderByCreatedAtDescIdDesc(
+                customerA.getId(), apartment.getId(), List.of(com.ancu.proptech.model.rental.RentalRequest.Status.PENDING)).getFirst();
+
+        // Owner rejects req1 -> now it is REJECTED
+        mvc.perform(post("/api/v1/owner/rental-requests/" + req1.getId() + "/decisions")
+                .header("Authorization", bearer(ownerA)).contentType("application/json")
+                .content("{\"decision\":\"REJECT\",\"version\":0}"))
+                .andExpect(status().isOk());
+
+        // Customer B sends newer request -> status is PENDING
+        mvc.perform(post("/api/v1/apartments/" + apartment.getId() + "/rental-requests")
+                .header("Authorization", bearer(customerB)).contentType("application/json").content("{\"message\":\"Yêu cầu mới\"}"))
+                .andExpect(status().isCreated());
+        var req2 = requests.findByCustomerIdAndApartmentIdAndStatusInOrderByCreatedAtDescIdDesc(
+                customerB.getId(), apartment.getId(), List.of(com.ancu.proptech.model.rental.RentalRequest.Status.PENDING)).getFirst();
+
+        // Query inbox: req2 (PENDING) must be before req1 (REJECTED), even though req1 was created earlier
+        mvc.perform(get("/api/v1/owner/rental-requests").header("Authorization", bearer(ownerA)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].id").value(req2.getId().toString()))
+                .andExpect(jsonPath("$.items[0].status").value("PENDING"))
+                .andExpect(jsonPath("$.items[1].id").value(req1.getId().toString()))
+                .andExpect(jsonPath("$.items[1].status").value("REJECTED"));
+    }
 }

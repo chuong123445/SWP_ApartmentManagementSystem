@@ -84,7 +84,7 @@ public class RentalRequestService {
         ApartmentService.validatePage(page, size);
         var owner = access.owner(jwt);
         return PageResponse.from(requests.findOwnerInbox(owner.getId(), apartmentId, status,
-                PageRequest.of(page, size, Sort.by("createdAt", "id"))).map(this::response));
+                PageRequest.of(page, size)).map(this::response));
     }
 
     @Transactional
