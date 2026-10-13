@@ -16,9 +16,12 @@ import {
   Sparkles,
   MessageSquare,
 } from 'lucide-react';
-import { ActiveTab, UserRole } from '@/types';
+import { ActiveTab, UserRole, Building } from '@/types';
 
 interface SidebarProps {
+  properties: Building[];
+  propertiesLoading: boolean;
+  propertiesError: boolean;
   canManage: boolean;
   accountRole: string;
   activeTab: ActiveTab;
@@ -32,6 +35,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
+  properties, propertiesLoading, propertiesError,
   canManage,
   accountRole,
   activeTab,
@@ -45,6 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const adminMenuItems = [
     { id: 'dashboard' as ActiveTab, label: 'Tổng quan', icon: LayoutDashboard },
+    { id: 'properties' as ActiveTab, label: 'Tài sản cho thuê', icon: Building2 },
     { id: 'rooms' as ActiveTab, label: 'Quản lý căn hộ', icon: Home },
     { id: 'rental_requests' as ActiveTab, label: 'Yêu cầu thuê', icon: MessageSquare },
     { id: 'tenants' as ActiveTab, label: 'Khách thuê & eKYC', icon: Users },
@@ -103,20 +108,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Building Selector */}
       <div className="p-3 border-b border-slate-800 bg-slate-900/50">
-        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-          Tòa nhà đang chọn
+        <label htmlFor="select-building-sidebar" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+          Tài sản đang chọn
         </label>
         <select
           id="select-building-sidebar"
           value={selectedBuildingId}
+          disabled={propertiesLoading || propertiesError || properties.length === 0}
           onChange={(e) => onSelectBuilding(e.target.value)}
           className="w-full bg-[#1e293b] border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-medium cursor-pointer"
         >
-          <option value="all">🏢 Tất cả tòa nhà (3)</option>
-          <option value="bld-1">Tòa A - Lê Văn Sỹ (Q.3)</option>
-          <option value="bld-2">Tòa B - Điện Biên Phủ</option>
-          <option value="bld-3">Tòa C - Cầu Giấy (HN)</option>
+          <option value="all">{propertiesLoading ? 'Đang tải tài sản...' : propertiesError ? 'Không thể tải tài sản' : `Tất cả tài sản (${properties.length})`}</option>
+          {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
+        <button type="button" onClick={() => onSelectTab('properties')} className="mt-2 text-xs text-emerald-300 underline">Quản lý / thêm tài sản</button>
       </div>
 
       {/* Navigation Links */}

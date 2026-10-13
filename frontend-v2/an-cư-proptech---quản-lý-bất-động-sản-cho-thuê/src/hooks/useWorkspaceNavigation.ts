@@ -12,6 +12,7 @@ export function useWorkspaceNavigation(canManage: boolean) {
 
   // Modals
   const [isAddRoomOpen, setIsAddRoomOpen] = useState(false);
+  const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false);
   const [isCreateInvoiceOpen, setIsCreateInvoiceOpen] = useState(false);
 
 
@@ -42,7 +43,7 @@ export function useWorkspaceNavigation(canManage: boolean) {
   const selectTab = (tab: ActiveTab) => { if (canManage || tab === 'market') setActiveTab(tab); };
   const resetToDashboard = () => setActiveTab('dashboard');
   return { userRole, activeTab, selectedBuildingId, setSelectedBuildingId, searchQuery, setSearchQuery,
-    isAddRoomOpen, setIsAddRoomOpen, isCreateInvoiceOpen, setIsCreateInvoiceOpen,
+    isAddRoomOpen, setIsAddRoomOpen, isAddPropertyOpen, setIsAddPropertyOpen, isCreateInvoiceOpen, setIsCreateInvoiceOpen,
     handleQuickAction, selectTab, resetToDashboard };
 }
 export type WorkspaceNavigation = ReturnType<typeof useWorkspaceNavigation>;

@@ -17,9 +17,10 @@ export function submitRentalRequest(apartmentId: string, message: string): Promi
 export function getMyRentalRequests(page = 0): Promise<PageResult<RentalRequest>> {
   return request(`/api/v1/me/rental-requests?page=${page}&size=10`);
 }
-export function getOwnerRentalRequests(page = 0, status?: RentalRequestStatus): Promise<PageResult<RentalRequest>> {
+export function getOwnerRentalRequests(page = 0, status?: RentalRequestStatus, propertyId?: string): Promise<PageResult<RentalRequest>> {
   const query = new URLSearchParams({ page: String(page), size: '10' });
   if (status) query.set('status', status);
+  if (propertyId) query.set('propertyId', propertyId);
   return request(`/api/v1/owner/rental-requests?${query}`);
 }
 
