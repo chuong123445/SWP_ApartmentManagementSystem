@@ -18,6 +18,7 @@ import {
   Award,
 } from 'lucide-react';
 import { Room, Tenant, Invoice, Contract } from '@/types';
+import { ApartmentImage } from '@/components/apartments/ApartmentImage';
 
 interface RoomDetailModalProps {
   room: Room | null;
@@ -82,9 +83,9 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
           {/* Room Image */}
           {room.image && (
             <div className="relative h-44 w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
-              <img src={room.image} alt={room.roomNumber} className="w-full h-full object-cover" />
+              <ApartmentImage src={room.image} alt={`Ảnh căn hộ ${room.roomNumber}`} className="w-full h-full object-cover" />
               <div className="absolute bottom-2 left-2 bg-slate-900/80 backdrop-blur-xs text-white text-xs px-2.5 py-1 rounded-md font-semibold">
-                Ảnh thực tế 100% không chỉnh sửa
+                Ảnh căn hộ
               </div>
             </div>
           )}
