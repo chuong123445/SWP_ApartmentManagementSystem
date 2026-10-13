@@ -354,4 +354,41 @@ class DiscoveryRentalIntegrationTests {
                 .andExpect(jsonPath("$.items[1].id").value(req1.getId().toString()))
                 .andExpect(jsonPath("$.items[1].status").value("REJECTED"));
     }
+    @Test void decisionRejectsNumericUnknownMissingAndOversizedInputsWithoutChangingState() throws Exception {
+        mvc.perform(post("/api/v1/apartments/"+apartment.getId()+"/rental-requests").header("Authorization",bearer(customerA)).contentType("application/json").content("{}"));
+        var r=requests.findByCustomerIdAndApartmentIdAndStatusInOrderByCreatedAtDescIdDesc(customerA.getId(),apartment.getId(),List.of(com.ancu.proptech.model.rental.RentalRequest.Status.PENDING)).getFirst();
+        String url="/api/v1/owner/rental-requests/"+r.getId()+"/decisions",owner=bearer(ownerA);
+        for(String body:List.of("{\"decision\":0,\"version\":0}","{\"decision\":\"ACCEPT\",\"version\":0,\"customerId\":\"spoof\"}","{\"decision\":\"REJECT\"}","{\"decision\":\"REJECT\",\"version\":null}","{\"decision\":\"REJECT\",\"version\":-1}","{\"decision\":\"REJECT\",\"version\":0,\"reason\":\""+"x".repeat(2001)+"\"}"))
+            mvc.perform(post(url).header("Authorization",owner).contentType("application/json").content(body)).andExpect(status().isBadRequest());
+        assertEquals(com.ancu.proptech.model.rental.RentalRequest.Status.PENDING,requests.findById(r.getId()).orElseThrow().getStatus());
+        assertEquals(Apartment.Availability.VACANT,apartments.findById(apartment.getId()).orElseThrow().getAvailability());
+    }
+    @Test void decisionReasonPersistsAndIsVisibleOnlyInScopedHistoryAndInbox() throws Exception {
+        mvc.perform(post("/api/v1/apartments/"+apartment.getId()+"/rental-requests").header("Authorization",bearer(customerA)).contentType("application/json").content("{}"));
+        var r=requests.findByCustomerIdAndApartmentIdAndStatusInOrderByCreatedAtDescIdDesc(customerA.getId(),apartment.getId(),List.of(com.ancu.proptech.model.rental.RentalRequest.Status.PENDING)).getFirst();
+        mvc.perform(post("/api/v1/owner/rental-requests/"+r.getId()+"/decisions").header("Authorization",bearer(ownerA)).contentType("application/json")
+            .content("{\"decision\":\"REJECT\",\"version\":0,\"reason\":\"  Không phù hợp thời gian thuê  \"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.decisionReason").value("Không phù hợp thời gian thuê"));
+        em.flush();em.clear();
+        assertEquals("Không phù hợp thời gian thuê",requests.findById(r.getId()).orElseThrow().getDecisionReason());
+        mvc.perform(get("/api/v1/me/rental-requests").header("Authorization",bearer(customerA))).andExpect(jsonPath("$.items[0].decisionReason").value("Không phù hợp thời gian thuê"));
+        mvc.perform(get("/api/v1/me/rental-requests").header("Authorization",bearer(customerB))).andExpect(jsonPath("$.items").isEmpty());
+        mvc.perform(get("/api/v1/owner/rental-requests").header("Authorization",bearer(ownerB))).andExpect(jsonPath("$.items").isEmpty());
+    }
+
+    @Test void competingPendingRequestsCannotSelectTheSameApartmentAndOthersStayPending() throws Exception {
+        var ids=new ArrayList<UUID>();
+        for(var c:List.of(customerA,customerB)) {
+            mvc.perform(post("/api/v1/apartments/"+apartment.getId()+"/rental-requests").header("Authorization",bearer(c)).contentType("application/json").content("{}")).andExpect(status().isCreated());
+            ids.add(requests.findByCustomerIdAndApartmentIdAndStatusInOrderByCreatedAtDescIdDesc(c.getId(),apartment.getId(),List.of(com.ancu.proptech.model.rental.RentalRequest.Status.PENDING)).getFirst().getId());
+        }
+        String owner=bearer(ownerA);
+        mvc.perform(post("/api/v1/owner/rental-requests/"+ids.getFirst()+"/decisions").header("Authorization",owner).contentType("application/json").content("{\"decision\":\"ACCEPT\",\"version\":0}"))
+            .andExpect(status().isOk());
+        mvc.perform(post("/api/v1/owner/rental-requests/"+ids.getLast()+"/decisions").header("Authorization",owner).contentType("application/json").content("{\"decision\":\"ACCEPT\",\"version\":0}"))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("APARTMENT_NOT_AVAILABLE"));
+        assertEquals(com.ancu.proptech.model.rental.RentalRequest.Status.PENDING,requests.findById(ids.getLast()).orElseThrow().getStatus());
+        assertEquals(Apartment.Availability.CONTRACT_IN_PROGRESS,apartments.findById(apartment.getId()).orElseThrow().getAvailability());
+    }
+
 }
