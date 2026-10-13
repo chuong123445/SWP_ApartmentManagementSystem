@@ -179,4 +179,48 @@ class DiscoveryRentalIntegrationTests {
         mvc.perform(post("/api/v1/apartments/" + hidden.getId() + "/rental-requests").header("Authorization", bearer).contentType("application/json").content("{}"))
                 .andExpect(status().isNotFound());
     }
+    @Test void duplicateLookupCancelAndResubmitArePersistedAndPrivate() throws Exception {
+        String token = bearer(customerA), url = "/api/v1/apartments/" + apartment.getId() + "/rental-requests";
+        mvc.perform(post(url).header("Authorization", token).contentType("application/json").content("{}"))
+                .andExpect(status().isCreated());
+        em.flush(); em.clear();
+        mvc.perform(post(url).header("Authorization", token).contentType("application/json").content("{}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("RENTAL_REQUEST_EXISTS"));
+        String lookup = "/api/v1/me/apartments/" + apartment.getId() + "/rental-requests";
+        mvc.perform(get(lookup).header("Authorization", token)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
+        mvc.perform(get(lookup).header("Authorization", bearer(customerB))).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        var request = requests.findByCustomerIdAndApartmentIdAndStatusInOrderByCreatedAtDescIdDesc(customerA.getId(), apartment.getId(), List.of(com.ancu.proptech.model.rental.RentalRequest.Status.PENDING)).getFirst();
+        String cancel = "/api/v1/me/rental-requests/" + request.getId() + "/cancel";
+        mvc.perform(post(cancel).header("Authorization", bearer(customerB)).contentType("application/json").content("{\"version\":0}"))
+                .andExpect(status().isNotFound());
+        mvc.perform(post(cancel).header("Authorization", token).contentType("application/json").content("{\"version\":99}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("STALE_VERSION"));
+        mvc.perform(post(cancel).header("Authorization", token).contentType("application/json").content("{}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post(cancel).header("Authorization", token).contentType("application/json").content("{\"version\":0}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CANCELLED")).andExpect(jsonPath("$.version").value(1));
+        em.flush(); em.clear();
+        mvc.perform(get(lookup).header("Authorization", token)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(post(cancel).header("Authorization", token).contentType("application/json").content("{\"version\":1}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("REQUEST_NOT_PENDING"));
+        mvc.perform(post(url).header("Authorization", token).contentType("application/json").content("{}"))
+                .andExpect(status().isCreated());
+        assertEquals(Apartment.Availability.VACANT, apartments.findById(apartment.getId()).orElseThrow().getAvailability());
+    }
+    @Test void acceptedAndRejectedRequestsCannotBeCancelled() throws Exception {
+        String token = bearer(customerA);
+        mvc.perform(post("/api/v1/apartments/" + apartment.getId() + "/rental-requests").header("Authorization", token).contentType("application/json").content("{}"))
+                .andExpect(status().isCreated());
+        var request = requests.findByCustomerIdAndApartmentIdAndStatusInOrderByCreatedAtDescIdDesc(customerA.getId(), apartment.getId(), List.of(com.ancu.proptech.model.rental.RentalRequest.Status.PENDING)).getFirst();
+        for (var state : List.of(com.ancu.proptech.model.rental.RentalRequest.Status.ACCEPTED, com.ancu.proptech.model.rental.RentalRequest.Status.REJECTED)) {
+            request.setStatus(state); requests.saveAndFlush(request);
+            mvc.perform(post("/api/v1/me/rental-requests/" + request.getId() + "/cancel").header("Authorization", token)
+                    .contentType("application/json").content("{\"version\":" + request.getVersion() + "}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("REQUEST_NOT_PENDING"));
+            if (state == com.ancu.proptech.model.rental.RentalRequest.Status.ACCEPTED)
+                mvc.perform(post("/api/v1/apartments/" + apartment.getId() + "/rental-requests").header("Authorization", token).contentType("application/json").content("{}"))
+                        .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("RENTAL_REQUEST_EXISTS"));
+        }
+    }
+
 }
