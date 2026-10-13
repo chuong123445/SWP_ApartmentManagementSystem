@@ -3,12 +3,15 @@ import { RequestList } from '@/components/rental/RequestList';
 import { Pagination } from '@/components/common/Pagination';
 import { useRentalRequests } from '@/hooks/useRentalRequests';
 import { decideRentalRequest } from '@/services/rental/rentalService';
+import { ApiError } from '@/services/http/client';
 import type { RentalRequest, RentalRequestStatus } from '@/types/rental';
 
-export function RentalRequestsPage() {
+export function RentalRequestsPage({ onDecision }: { onDecision: () => void }) {
   const [page, setPage] = useState(0);
   const [status, setStatus] = useState<RentalRequestStatus | ''>('');
   const { data, loading, error, reload } = useRentalRequests(true, page, status || undefined);
+  const [rejecting, setRejecting] = useState<RentalRequest | null>(null);
+  const [reason, setReason] = useState('');
   const [decidingId, setDecidingId] = useState('');
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -23,7 +26,9 @@ export function RentalRequestsPage() {
         text: `Đã chấp nhận yêu cầu thuê của ${request.customerName}. Trạng thái căn hộ chuyển sang "Đang làm hợp đồng".`,
       });
       reload();
+      onDecision();
     } catch (err) {
+      reload();onDecision();
       setActionNotice({
         type: 'error',
         text: err instanceof Error ? err.message : 'Không thể chấp nhận yêu cầu thuê.',
@@ -35,17 +40,21 @@ export function RentalRequestsPage() {
 
   const handleReject = async (request: RentalRequest) => {
     if (decidingId) return;
-    if (!window.confirm(`Bạn có chắc chắn muốn từ chối yêu cầu thuê của ${request.customerName}?`)) return;
+
     setDecidingId(request.id);
     setActionNotice(null);
     try {
-      await decideRentalRequest(request.id, 'REJECT', request.version);
+      await decideRentalRequest(request.id, 'REJECT', request.version, reason);
+      setRejecting(null);setReason('');
       setActionNotice({
         type: 'success',
         text: `Đã từ chối yêu cầu thuê của ${request.customerName}. Trạng thái đã được đồng bộ với người thuê.`,
       });
       reload();
+      onDecision();
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409) setRejecting(null);
+      reload();onDecision();
       setActionNotice({
         type: 'error',
         text: err instanceof Error ? err.message : 'Không thể từ chối yêu cầu thuê.',
@@ -70,7 +79,15 @@ export function RentalRequestsPage() {
         </button>
       </div>
 
-      {actionNotice && (
+      {rejecting && <div role="dialog" aria-modal="true" aria-labelledby="reject-title" className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
+        <form onSubmit={event => { event.preventDefault();void handleReject(rejecting); }} className="bg-white rounded-xl p-6 w-full max-w-lg space-y-4">
+          <h2 id="reject-title" className="text-lg font-bold">Từ chối yêu cầu thuê</h2><p className="text-sm text-slate-600">Yêu cầu của {rejecting.customerName}</p>
+          <label className="block text-sm font-semibold" htmlFor="reject-reason">Lý do từ chối (không bắt buộc)</label><textarea autoFocus id="reject-reason" rows={4} maxLength={2000} value={reason} onChange={event => setReason(event.target.value)} disabled={!!decidingId} className="w-full rounded-lg border border-slate-300 p-3 text-sm" />
+          {actionNotice?.type === 'error' && <p role="alert" className="text-rose-700 text-sm">{actionNotice.text}</p>}
+          <div className="flex flex-wrap justify-end gap-3"><button type="button" disabled={!!decidingId} onClick={() => setRejecting(null)} className="border rounded-lg px-4 py-2">Hủy</button><button type="submit" disabled={!!decidingId} className="bg-rose-600 text-white rounded-lg px-4 py-2 disabled:opacity-50">{decidingId ? 'Đang xử lý...' : 'Xác nhận từ chối'}</button></div>
+        </form>
+      </div>}
+      {!rejecting && actionNotice && (
         <div
           role="alert"
           className={`p-4 rounded-xl text-sm flex items-center justify-between border ${
@@ -122,7 +139,7 @@ export function RentalRequestsPage() {
               items={data.items}
               owner
               onAccept={handleAccept}
-              onReject={handleReject}
+              onReject={request => { setRejecting(request);setReason('');setActionNotice(null); }}
               decidingId={decidingId}
             />
           ) : (
