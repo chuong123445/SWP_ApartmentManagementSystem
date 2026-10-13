@@ -40,7 +40,7 @@ class BillingIntegrationTests {
         contract=new RentalContract();contract.setApartment(apartment);contract.setCustomer(tenant);contract.setStatus(RentalContract.Status.ACTIVE);contract.setStartDate(LocalDate.of(2026,10,1));contract.setEndDate(LocalDate.of(2027,9,30));contract.setBaselineDate(contract.getStartDate());contract.setMonthlyRent(new BigDecimal("5000000"));contract.setElectricityUnitPrice(new BigDecimal("3500"));contract.setWaterUnitPrice(new BigDecimal("15000"));contract.setElectricityBaseline(new BigDecimal("1000"));contract.setWaterBaseline(new BigDecimal("200"));contract=contracts.saveAndFlush(contract);
         ownerToken=token(owner);tenantToken=token(tenant);
     }
-    private AuthAccount account(AuthAccount.Role role){var a=new AuthAccount();a.setEmail("billing-"+UUID.randomUUID()+"@example.invalid");a.setFullName("Billing test account");a.setRole(role);a.setStatus(AuthAccount.Status.ACTIVE);a.setContactVerified(true);a.setPasswordHash(encoder.encode("Billing-test!12345"));return accounts.saveAndFlush(a);}
+    private AuthAccount account(AuthAccount.Role role){var a=new AuthAccount();a.setEmail("billing-"+UUID.randomUUID()+"@example.invalid");a.setFullName("Billing test account");a.setRole(role);a.setStatus(AuthAccount.Status.ACTIVE);a.setContactVerified(true);a.setEmailVerified(true);a.setPasswordHash(encoder.encode("Billing-test!12345"));return accounts.saveAndFlush(a);}
     private String token(AuthAccount a){return auth.login(a.getEmail(),"Billing-test!12345").tokens().accessToken();}
     private String body(String period,long version,String electric,String water){return "{\"period\":\""+period+"\",\"baselineVersion\":"+version+",\"electricityEndReading\":\""+electric+"\",\"waterEndReading\":\""+water+"\",\"dueDate\":\"2027-10-05\"}";}
     private ResultActions create(String token,String body)throws Exception{return mvc.perform(post("/api/v1/owner/contracts/"+contract.getId()+"/invoices").header("Authorization","Bearer "+token).contentType("application/json").content(body));}
@@ -87,6 +87,7 @@ class BillingIntegrationTests {
         create(ownerToken,body("2026-11",2,"1200","212")).andExpect(status().isConflict());
     }
     @Test void addressOptionsAndWardFiltersUseOnlyVisibleCatalog()throws Exception{
+        apartment.setAvailability(Apartment.Availability.VACANT);apartments.saveAndFlush(apartment);
         mvc.perform(get("/api/v1/apartments").param("city","Test city").param("district","District").param("ward","Ward")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1));
         mvc.perform(get("/api/v1/apartments").param("ward","Unknown ward")).andExpect(jsonPath("$.totalElements").value(0));
         mvc.perform(get("/api/v1/apartments/address-options")).andExpect(status().isOk());

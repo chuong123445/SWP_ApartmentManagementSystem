@@ -21,7 +21,7 @@ class LocalDataServiceTests {
     @Test void emptyDatasetSeedsOnceWithoutReplacingExistingOwnerCredentials() {
         var accounts = mock(AuthAccountRepository.class); var properties = mock(PropertyRepository.class);
         var apartments = mock(ApartmentRepository.class); var requests = mock(RentalRequestRepository.class); var passwords = mock(PasswordEncoder.class);
-        var owner = new AuthAccount(); owner.setRole(AuthAccount.Role.OWNER); owner.setStatus(AuthAccount.Status.ACTIVE); owner.setContactVerified(true); owner.setPasswordHash("unchanged-hash");
+        var owner = new AuthAccount(); owner.setRole(AuthAccount.Role.OWNER); owner.setStatus(AuthAccount.Status.ACTIVE); owner.setContactVerified(true);owner.setEmailVerified(true); owner.setPasswordHash("unchanged-hash");
         when(accounts.findByEmail("owner@example.invalid")).thenReturn(Optional.of(owner));
         when(properties.save(any())).thenAnswer(call -> call.getArgument(0));
         when(accounts.save(any())).thenAnswer(call -> call.getArgument(0));

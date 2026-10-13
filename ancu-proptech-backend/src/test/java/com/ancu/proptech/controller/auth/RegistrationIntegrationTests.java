@@ -90,4 +90,17 @@ class RegistrationIntegrationTests {
         assertEquals(AuthAccount.Status.PENDING_VERIFICATION,accounts.findByEmail(email).orElseThrow().getStatus());
         mvc.perform(get("/api/v1/me/rental-requests").header("Authorization","Bearer "+token)).andExpect(status().isForbidden());
     }
+    @Test void customerRequiresSuccessfulEmailOtpAndReloginForRentalAccess()throws Exception{
+        register(body("CUSTOMER")).andExpect(status().isCreated());String token=auth.login(email,password).tokens().accessToken();
+        mvc.perform(get("/api/v1/me/rental-requests").header("Authorization","Bearer "+token)).andExpect(status().isForbidden());
+        String challenge=JsonPath.read(mvc.perform(post("/api/v1/me/email-changes").header("Authorization","Bearer "+token).contentType("application/json")
+            .content("{\"email\":\""+email+"\",\"currentPassword\":\""+password+"\",\"version\":0}"))
+            .andExpect(status().isAccepted()).andExpect(jsonPath("$.code").doesNotExist()).andReturn().getResponse().getContentAsString(),"$.id");
+        mvc.perform(post("/api/v1/me/email-changes/"+challenge+"/confirm").header("Authorization","Bearer "+token).contentType("application/json").content("{\"code\":\""+code+"\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.accountStatus").value("ACTIVE")).andExpect(jsonPath("$.emailVerified").value(true));
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+token)).andExpect(status().isUnauthorized());
+        String verified=auth.login(email,password).tokens().accessToken();
+        mvc.perform(get("/api/v1/me/rental-requests").header("Authorization","Bearer "+verified)).andExpect(status().isOk());
+    }
+
 }

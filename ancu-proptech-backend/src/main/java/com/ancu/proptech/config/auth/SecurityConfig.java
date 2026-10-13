@@ -72,7 +72,7 @@ public class SecurityConfig {
     }
 
     @Bean SecurityFilterChain apiSecurity(HttpSecurity http, AuthService auth,
-                                         CookieCsrfTokenRepository csrf, CorsConfigurationSource cors) throws Exception {
+                                         CookieCsrfTokenRepository csrf, CorsConfigurationSource cors, com.ancu.proptech.service.auth.AccountVerificationPolicy verification) throws Exception {
         http.cors(c -> c.configurationSource(cors))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .requestCache(cache -> cache.disable())
@@ -101,7 +101,7 @@ public class SecurityConfig {
                         .jwt(j -> j.jwtAuthenticationConverter(jwt -> {
                             try {
                                 AuthAccount account = auth.authenticate(jwt);
-                                String role = account.getStatus() == AuthAccount.Status.ACTIVE && account.isContactVerified()
+                                String role = account.getStatus() == AuthAccount.Status.ACTIVE && verification.isVerified(account)
                                         ? account.getRole().name() : "ONBOARDING";
                                 return new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
                             } catch (AuthException error) {
