@@ -30,7 +30,7 @@
             }
           }
         ],
-        "description": "Exact verified Owner property; DRAFT/NEEDS_INFORMATION/REJECTED. Genuine PNG/JPEG, 5MB and 20M pixels, decoded/re-encoded without metadata. Max200 stored uploads/property; no PDF/SVG/public URL.",
+        "description": "Exact verified Owner property; DRAFT/NEEDS_INFORMATION/REJECTED or legacy pending with no dossier. Genuine PNG/JPEG, 5MB and 20M pixels, decoded/re-encoded without metadata. Max200 stored uploads/property; no PDF/SVG/public URL.",
         "requestBody": {
           "required": true,
           "content": {
@@ -148,7 +148,7 @@
             }
           }
         ],
-        "description": "Versioned property lock. At least one own RIGHT_DOCUMENT, at most20 unique files of correct purpose/property. Preserves earlier submissions; owner/applicant/status/time assigned on server. Pending/approved cannot resubmit.",
+        "description": "Versioned property lock. At least one own RIGHT_DOCUMENT, at most20 unique files of correct purpose/property. Preserves earlier submissions; owner/applicant/status/time assigned on server. Pending with any existing dossier/approved cannot resubmit; legacy pending without dossier may submit once without resetting property.",
         "requestBody": {
           "required": true,
           "content": {
