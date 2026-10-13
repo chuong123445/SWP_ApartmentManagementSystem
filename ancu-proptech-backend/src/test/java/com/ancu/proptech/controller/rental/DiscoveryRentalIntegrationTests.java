@@ -244,4 +244,85 @@ class DiscoveryRentalIntegrationTests {
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CONTACT_NOT_VERIFIED"));
     }
 
+    @Test void ownerCanAcceptPendingRentalRequestSettingApartmentToContractInProgress() throws Exception {
+        mvc.perform(post("/api/v1/apartments/" + apartment.getId() + "/rental-requests")
+                .header("Authorization", bearer(customerA)).contentType("application/json").content("{\"message\":\"Thuê ngay\"}"))
+                .andExpect(status().isCreated());
+        var request = requests.findByCustomerIdAndApartmentIdAndStatusInOrderByCreatedAtDescIdDesc(
+                customerA.getId(), apartment.getId(), List.of(com.ancu.proptech.model.rental.RentalRequest.Status.PENDING)).getFirst();
+
+        String decisionUrl = "/api/v1/owner/rental-requests/" + request.getId() + "/decisions";
+        mvc.perform(post(decisionUrl).header("Authorization", bearer(ownerA)).contentType("application/json")
+                .content("{\"decision\":\"ACCEPT\",\"version\":0}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACCEPTED"))
+                .andExpect(jsonPath("$.version").value(1));
+
+        var updatedApartment = apartments.findById(apartment.getId()).orElseThrow();
+        assertEquals(Apartment.Availability.CONTRACT_IN_PROGRESS, updatedApartment.getAvailability());
+
+        // Already accepted request cannot be decided again
+        mvc.perform(post(decisionUrl).header("Authorization", bearer(ownerA)).contentType("application/json")
+                .content("{\"decision\":\"ACCEPT\",\"version\":1}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("REQUEST_NOT_PENDING"));
+
+        // New submission on contract_in_progress apartment is rejected
+        mvc.perform(post("/api/v1/apartments/" + apartment.getId() + "/rental-requests")
+                .header("Authorization", bearer(customerB)).contentType("application/json").content("{}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("APARTMENT_NOT_AVAILABLE"));
+    }
+
+    @Test void ownerCanRejectPendingRentalRequestPreservingVacantAndSyncingWithCustomer() throws Exception {
+        mvc.perform(post("/api/v1/apartments/" + apartment.getId() + "/rental-requests")
+                .header("Authorization", bearer(customerA)).contentType("application/json").content("{\"message\":\"Xin thuê\"}"))
+                .andExpect(status().isCreated());
+        var request = requests.findByCustomerIdAndApartmentIdAndStatusInOrderByCreatedAtDescIdDesc(
+                customerA.getId(), apartment.getId(), List.of(com.ancu.proptech.model.rental.RentalRequest.Status.PENDING)).getFirst();
+
+        String decisionUrl = "/api/v1/owner/rental-requests/" + request.getId() + "/decisions";
+        mvc.perform(post(decisionUrl).header("Authorization", bearer(ownerA)).contentType("application/json")
+                .content("{\"decision\":\"REJECT\",\"version\":0}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("REJECTED"))
+                .andExpect(jsonPath("$.version").value(1));
+
+        // Apartment remains VACANT
+        var updatedApartment = apartments.findById(apartment.getId()).orElseThrow();
+        assertEquals(Apartment.Availability.VACANT, updatedApartment.getAvailability());
+
+        // Customer sees REJECTED in /me/rental-requests
+        mvc.perform(get("/api/v1/me/rental-requests").header("Authorization", bearer(customerA)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].status").value("REJECTED"));
+
+        // Customer can re-submit since previous was rejected
+        mvc.perform(post("/api/v1/apartments/" + apartment.getId() + "/rental-requests")
+                .header("Authorization", bearer(customerA)).contentType("application/json").content("{\"message\":\"Gửi lại\"}"))
+                .andExpect(status().isCreated());
+    }
+
+    @Test void ownerDecisionValidatesPermissionsAndVersion() throws Exception {
+        mvc.perform(post("/api/v1/apartments/" + apartment.getId() + "/rental-requests")
+                .header("Authorization", bearer(customerA)).contentType("application/json").content("{}"))
+                .andExpect(status().isCreated());
+        var request = requests.findByCustomerIdAndApartmentIdAndStatusInOrderByCreatedAtDescIdDesc(
+                customerA.getId(), apartment.getId(), List.of(com.ancu.proptech.model.rental.RentalRequest.Status.PENDING)).getFirst();
+
+        String decisionUrl = "/api/v1/owner/rental-requests/" + request.getId() + "/decisions";
+
+        // Customer cannot decide
+        mvc.perform(post(decisionUrl).header("Authorization", bearer(customerA)).contentType("application/json")
+                .content("{\"decision\":\"ACCEPT\",\"version\":0}"))
+                .andExpect(status().isForbidden());
+
+        // Different owner cannot decide
+        mvc.perform(post(decisionUrl).header("Authorization", bearer(ownerB)).contentType("application/json")
+                .content("{\"decision\":\"ACCEPT\",\"version\":0}"))
+                .andExpect(status().isNotFound());
+
+        // Stale version
+        mvc.perform(post(decisionUrl).header("Authorization", bearer(ownerA)).contentType("application/json")
+                .content("{\"decision\":\"ACCEPT\",\"version\":99}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("STALE_VERSION"));
+    }
 }
