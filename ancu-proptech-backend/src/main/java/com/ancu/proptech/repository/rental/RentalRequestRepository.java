@@ -17,12 +17,14 @@ public interface RentalRequestRepository extends JpaRepository<RentalRequest, UU
     @EntityGraph(attributePaths = {"apartment", "apartment.property", "customer"})
     @Query(value = "select r from RentalRequest r where r.apartment.property.owner.id = :ownerId "
             + "and (:apartmentId is null or r.apartment.id = :apartmentId) and (:status is null or r.status = :status) "
+            + "and (:propertyId is null or r.apartment.property.id = :propertyId) "
             + "order by case when r.status = com.ancu.proptech.model.rental.RentalRequest.Status.PENDING then 0 else 1 end asc, "
             + "r.createdAt asc, r.id asc",
             countQuery = "select count(r) from RentalRequest r where r.apartment.property.owner.id = :ownerId "
-            + "and (:apartmentId is null or r.apartment.id = :apartmentId) and (:status is null or r.status = :status)")
+            + "and (:apartmentId is null or r.apartment.id = :apartmentId) and (:status is null or r.status = :status) "
+            + "and (:propertyId is null or r.apartment.property.id = :propertyId)")
     Page<RentalRequest> findOwnerInbox(@Param("ownerId") UUID ownerId, @Param("apartmentId") UUID apartmentId,
-                                     @Param("status") RentalRequest.Status status, Pageable page);
+                                     @Param("status") RentalRequest.Status status, @Param("propertyId") UUID propertyId, Pageable page);
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from RentalRequest r where r.id = :id and r.apartment.property.owner.id = :ownerId")
     java.util.Optional<RentalRequest> findForOwnerUpdate(@Param("id") UUID id, @Param("ownerId") UUID ownerId);

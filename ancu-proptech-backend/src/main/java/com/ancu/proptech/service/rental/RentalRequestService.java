@@ -81,9 +81,14 @@ public class RentalRequestService {
 
     @Transactional(readOnly = true)
     public PageResponse<RentalRequestResponse> ownerInbox(Jwt jwt, UUID apartmentId, RentalRequest.Status status, int page, int size) {
+        return ownerInbox(jwt, apartmentId, status, page, size, null);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<RentalRequestResponse> ownerInbox(Jwt jwt, UUID apartmentId, RentalRequest.Status status, int page, int size, UUID propertyId) {
         ApartmentService.validatePage(page, size);
         var owner = access.owner(jwt);
-        return PageResponse.from(requests.findOwnerInbox(owner.getId(), apartmentId, status,
+        return PageResponse.from(requests.findOwnerInbox(owner.getId(), apartmentId, status, propertyId,
                 PageRequest.of(page, size)).map(this::response));
     }
 
