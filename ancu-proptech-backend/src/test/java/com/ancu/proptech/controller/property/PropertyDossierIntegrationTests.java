@@ -49,6 +49,14 @@ class PropertyDossierIntegrationTests {
     private ResultActions decision(String token,String id,String choice,String reason,long version)throws Exception{return mvc.perform(post("/api/v1/admin/property-dossiers/"+id+"/decisions").header("Authorization","Bearer "+token).contentType("application/json").content("{\"decision\":\""+choice+"\",\"reason\":\""+reason+"\",\"version\":"+version+"}"));}
     private String createApartment()throws Exception{var result=mvc.perform(post("/api/v1/owner/apartments").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"propertyId\":\""+property.getId()+"\",\"roomNumber\":\"A.1\",\"title\":\"Căn kiểm thử\",\"floor\":1,\"areaM2\":\"30\",\"advertisedMonthlyRent\":\"5000000\"}")).andExpect(status().isCreated()).andReturn();return JsonPath.read(result.getResponse().getContentAsString(),"$.id");}
     private ResultActions publish(String token,String apartment,long version,String publication)throws Exception{return mvc.perform(post("/api/v1/owner/apartments/"+apartment+"/publication").header("Authorization","Bearer "+token).contentType("application/json").content("{\"publicationStatus\":\""+publication+"\",\"version\":"+version+"}"));}
+    @Test void legacyPendingPropertyWithoutDossierCanSubmitRealEvidenceWithoutReset()throws Exception{
+        property.setApprovalStatus(Property.ApprovalStatus.PENDING_APPROVAL);properties.saveAndFlush(property);
+        long before=property.getVersion();String file=uploadRight();String id=send(file);
+        assertNotNull(dossiers.findById(UUID.fromString(id)).orElseThrow());
+        assertEquals(Property.ApprovalStatus.PENDING_APPROVAL,property.getApprovalStatus());assertEquals(before,property.getVersion());
+        submit(ownerToken,property,body(file,before)).andExpect(status().isConflict());
+        upload(ownerToken,property,"RIGHT_DOCUMENT",png).andExpect(status().isConflict());
+    }
     @Test void evidenceIsPrivateCanonicalImageAndAdminOnlyReadsSubmittedFiles()throws Exception{
         String id=uploadRight();mvc.perform(get("/api/v1/property-evidence-files/"+id)).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/v1/property-evidence-files/"+id).header("Authorization","Bearer "+token(other))).andExpect(status().isNotFound());
