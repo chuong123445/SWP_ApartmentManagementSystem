@@ -32,6 +32,8 @@ public class RentalRequestService {
         Apartment apartment = apartments.findForRequest(apartmentId).orElseThrow(RentalRequestService::notFound);
         var p = apartment.getProperty();
         var owner = p.getOwner();
+        if (!activeRequests(customer.getId(), apartmentId).isEmpty())
+            throw new ApiException(HttpStatus.CONFLICT, "RENTAL_REQUEST_EXISTS", "Bạn đã có yêu cầu thuê cho căn hộ này. Hãy xem hoặc hủy yêu cầu đang chờ xử lý.");
         if (apartment.getPublicationStatus() != Apartment.PublicationStatus.PUBLISHED || p.getApprovalStatus() != Property.ApprovalStatus.APPROVED
                 || owner.getStatus() != AuthAccount.Status.ACTIVE || !owner.isContactVerified() || owner.getRole() != AuthAccount.Role.OWNER) throw notFound();
         if (apartment.getAvailability() != Apartment.Availability.VACANT)
@@ -43,6 +45,29 @@ public class RentalRequestService {
         request.setCreatedAt(Instant.now());
         request.setStatus(RentalRequest.Status.PENDING);
         return response(requests.save(request)); // Submission never changes apartment availability.
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<RentalRequestResponse> forApartment(Jwt jwt, UUID apartmentId) {
+        return activeRequests(access.customer(jwt).getId(), apartmentId).stream().map(this::response).toList();
+    }
+
+    private java.util.List<RentalRequest> activeRequests(UUID customerId, UUID apartmentId) {
+        return requests.findByCustomerIdAndApartmentIdAndStatusInOrderByCreatedAtDescIdDesc(customerId, apartmentId,
+                java.util.List.of(RentalRequest.Status.PENDING, RentalRequest.Status.ACCEPTED));
+    }
+
+    @Transactional
+    public RentalRequestResponse cancel(Jwt jwt, UUID id, RentalRequestCancel input) {
+        var customer = access.customer(jwt);
+        var request = requests.findOwnForUpdate(id, customer.getId()).orElseThrow(() ->
+                new ApiException(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Không tìm thấy yêu cầu thuê."));
+        if (request.getVersion() != input.getVersion())
+            throw new ApiException(HttpStatus.CONFLICT, "STALE_VERSION", "Yêu cầu đã thay đổi. Vui lòng tải lại trước khi hủy.");
+        if (request.getStatus() != RentalRequest.Status.PENDING)
+            throw new ApiException(HttpStatus.CONFLICT, "REQUEST_NOT_PENDING", "Chỉ có thể hủy yêu cầu đang chờ chủ nhà xử lý.");
+        request.setStatus(RentalRequest.Status.CANCELLED);
+        return response(requests.saveAndFlush(request));
     }
 
     @Transactional(readOnly = true)
