@@ -58,7 +58,7 @@ class DiscoveryRentalIntegrationTests {
     private AuthAccount account(String label, AuthAccount.Role role) {
         AuthAccount a = new AuthAccount();
         a.setEmail(marker.toLowerCase(Locale.ROOT) + "-" + label + "@example.invalid");
-        a.setFullName(label); a.setPasswordHash(passwordHash); a.setRole(role); a.setStatus(AuthAccount.Status.ACTIVE); a.setContactVerified(true);
+        a.setFullName(label); a.setPasswordHash(passwordHash); a.setRole(role); a.setStatus(AuthAccount.Status.ACTIVE); a.setContactVerified(true);a.setEmailVerified(true);
         return accounts.saveAndFlush(a);
     }
     private Property property(AuthAccount owner) {
@@ -119,15 +119,15 @@ class DiscoveryRentalIntegrationTests {
         property.setApprovalStatus(Property.ApprovalStatus.PENDING_APPROVAL); properties.saveAndFlush(property);
         mvc.perform(get("/api/v1/apartments/" + apartment.getId())).andExpect(status().isNotFound());
         property.setApprovalStatus(Property.ApprovalStatus.APPROVED); properties.saveAndFlush(property);
-        ownerA.setContactVerified(false); accounts.saveAndFlush(ownerA);
+        ownerA.setContactVerified(false);ownerA.setEmailVerified(false); accounts.saveAndFlush(ownerA);
         mvc.perform(get("/api/v1/apartments/" + apartment.getId())).andExpect(status().isNotFound());
-        ownerA.setContactVerified(true); ownerA.setStatus(AuthAccount.Status.LOCKED); accounts.saveAndFlush(ownerA);
+        ownerA.setContactVerified(true);ownerA.setEmailVerified(true); ownerA.setStatus(AuthAccount.Status.LOCKED); accounts.saveAndFlush(ownerA);
         mvc.perform(get("/api/v1/apartments/" + apartment.getId())).andExpect(status().isNotFound());
     }
     @Test void guestsAndUnverifiedCustomersCannotSubmitButCanBrowse() throws Exception {
         mvc.perform(post("/api/v1/apartments/" + apartment.getId() + "/rental-requests").contentType("application/json").content("{}"))
                 .andExpect(status().isUnauthorized());
-        customerA.setStatus(AuthAccount.Status.PENDING_VERIFICATION); customerA.setContactVerified(false); accounts.saveAndFlush(customerA);
+        customerA.setStatus(AuthAccount.Status.PENDING_VERIFICATION); customerA.setContactVerified(false);customerA.setEmailVerified(false); accounts.saveAndFlush(customerA);
         mvc.perform(post("/api/v1/apartments/" + apartment.getId() + "/rental-requests").header("Authorization", bearer(customerA))
                 .contentType("application/json").content("{}"))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CONTACT_NOT_VERIFIED"));
@@ -221,6 +221,27 @@ class DiscoveryRentalIntegrationTests {
                 mvc.perform(post("/api/v1/apartments/" + apartment.getId() + "/rental-requests").header("Authorization", token).contentType("application/json").content("{}"))
                         .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("RENTAL_REQUEST_EXISTS"));
         }
+    }
+
+    @Test void searchExcludesOccupiedAndContractInProgressBeforeCountingAndPaging() throws Exception {
+        apartment.setAvailability(Apartment.Availability.OCCUPIED); apartments.saveAndFlush(apartment);
+        mvc.perform(get("/api/v1/apartments").param("q",marker).param("size","1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(otherApartment.getId().toString()));
+        otherApartment.setAvailability(Apartment.Availability.CONTRACT_IN_PROGRESS);apartments.saveAndFlush(otherApartment);
+        mvc.perform(get("/api/v1/apartments").param("q",marker)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0)).andExpect(jsonPath("$.items").isEmpty());
+        mvc.perform(get("/api/v1/apartments/"+apartment.getId())).andExpect(status().isOk())
+                .andExpect(jsonPath("$.availability").value("OCCUPIED"));
+    }
+    @Test void summaryFlagOrPhoneDoesNotGrantCustomerRentalAccessWithoutVerifiedEmail() throws Exception {
+        customerA.setEmailVerified(false);customerA.setPhoneVerified(true);customerA.setContactVerified(true);accounts.saveAndFlush(customerA);
+        String token=bearer(customerA);
+        mvc.perform(get("/api/v1/me").header("Authorization",token)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.contactVerificationStatus").value("UNVERIFIED"));
+        mvc.perform(post("/api/v1/apartments/"+apartment.getId()+"/rental-requests").header("Authorization",token)
+                .contentType("application/json").content("{}"))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CONTACT_NOT_VERIFIED"));
     }
 
 }

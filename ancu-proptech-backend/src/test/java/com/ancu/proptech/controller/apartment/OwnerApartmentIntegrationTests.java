@@ -38,7 +38,7 @@ class OwnerApartmentIntegrationTests {
     }
     private AuthAccount account(AuthAccount.Role role) {
         AuthAccount a = new AuthAccount(); a.setEmail(UUID.randomUUID()+"@example.invalid");a.setFullName("Owner integration");
-        a.setPasswordHash(passwords.encode("Owner-test!12345"));a.setRole(role);a.setStatus(AuthAccount.Status.ACTIVE);a.setContactVerified(true);
+        a.setPasswordHash(passwords.encode("Owner-test!12345"));a.setRole(role);a.setStatus(AuthAccount.Status.ACTIVE);a.setContactVerified(true);a.setEmailVerified(true);
         return accounts.saveAndFlush(a);
     }
     private Property property(AuthAccount owner, Property.ApprovalStatus approval) {
@@ -91,7 +91,7 @@ class OwnerApartmentIntegrationTests {
     @Test void guestCustomerAndUnverifiedOwnerCannotManageInventory() throws Exception {
         mvc.perform(get("/api/v1/owner/apartments")).andExpect(status().isUnauthorized());
         create(token(customer),body(approved,"DRAFT")).andExpect(status().isForbidden());
-        owner.setContactVerified(false);accounts.saveAndFlush(owner);
+        owner.setContactVerified(false);owner.setEmailVerified(false);accounts.saveAndFlush(owner);
         create(ownerToken,body(approved,"DRAFT")).andExpect(status().isForbidden());
     }
 }
