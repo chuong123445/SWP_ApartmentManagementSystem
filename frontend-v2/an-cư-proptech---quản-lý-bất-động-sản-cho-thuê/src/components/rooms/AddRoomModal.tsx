@@ -3,13 +3,14 @@ import { X, Home } from 'lucide-react';
 import { NewRoom, Building } from '@/types';
 
 interface AddRoomModalProps {
+  initialPropertyId?: string;
   buildings: Building[];
   onClose: () => void;
   onAddRoom: (room: NewRoom) => Promise<void>;
 }
 
-export const AddRoomModal: React.FC<AddRoomModalProps> = ({ buildings, onClose, onAddRoom }) => {
-  const [propertyId, setPropertyId] = useState(buildings[0]?.id ?? '');
+export const AddRoomModal: React.FC<AddRoomModalProps> = ({ buildings, onClose, onAddRoom, initialPropertyId }) => {
+  const [propertyId, setPropertyId] = useState(buildings.find(p => p.id === initialPropertyId)?.id ?? buildings[0]?.id ?? '');
   const [title, setTitle] = useState('');
   const [publish, setPublish] = useState(false);
   const selectedProperty = buildings.find(p => p.id === propertyId);

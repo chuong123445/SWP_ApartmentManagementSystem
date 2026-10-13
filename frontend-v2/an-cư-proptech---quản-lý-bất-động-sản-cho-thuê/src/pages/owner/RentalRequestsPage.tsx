@@ -6,10 +6,10 @@ import { decideRentalRequest } from '@/services/rental/rentalService';
 import { ApiError } from '@/services/http/client';
 import type { RentalRequest, RentalRequestStatus } from '@/types/rental';
 
-export function RentalRequestsPage({ onDecision }: { onDecision: () => void }) {
+export function RentalRequestsPage({ onDecision, propertyId }: { onDecision: () => void; propertyId?: string }) {
   const [page, setPage] = useState(0);
   const [status, setStatus] = useState<RentalRequestStatus | ''>('');
-  const { data, loading, error, reload } = useRentalRequests(true, page, status || undefined);
+  const { data, loading, error, reload } = useRentalRequests(true, page, status || undefined, propertyId);
   const [rejecting, setRejecting] = useState<RentalRequest | null>(null);
   const [reason, setReason] = useState('');
   const [decidingId, setDecidingId] = useState('');
