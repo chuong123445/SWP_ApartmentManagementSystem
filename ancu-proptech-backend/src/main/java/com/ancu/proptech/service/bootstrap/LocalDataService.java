@@ -62,7 +62,7 @@ public class LocalDataService {
         Optional<AuthAccount> existing = accounts.findByEmail(normalized);
         if (existing.isPresent()) {
             AuthAccount a = existing.get();
-            if (a.getRole() != role || a.getStatus() != AuthAccount.Status.ACTIVE || !a.isContactVerified())
+            if (a.getRole() != role || a.getStatus() == AuthAccount.Status.LOCKED || a.getStatus() == AuthAccount.Status.INACTIVE || (role == AuthAccount.Role.OWNER && (a.getStatus() != AuthAccount.Status.ACTIVE || !a.isContactVerified())))
                 throw new IllegalStateException("Existing account is not eligible for local sample data; disable APP_SEED_DATA or configure another local account.");
             return a;
         }
@@ -72,9 +72,10 @@ public class LocalDataService {
         a.setPasswordHash(passwords.encode(password));
         a.setFullName(name);
         a.setRole(role);
-        a.setStatus(AuthAccount.Status.ACTIVE);
-        a.setContactVerified(true); // Local fixture only; not real OTP delivery or identity approval.
-        a.setEmailVerified(true);
+        boolean ownerFixture = role == AuthAccount.Role.OWNER;
+        a.setStatus(ownerFixture ? AuthAccount.Status.ACTIVE : AuthAccount.Status.PENDING_VERIFICATION);
+        a.setContactVerified(ownerFixture); // Only Owner catalog fixture has sample verification.
+        a.setEmailVerified(ownerFixture);
         return accounts.save(a);
     }
 

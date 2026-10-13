@@ -54,7 +54,8 @@ public class ApartmentService {
             if (bedrooms != null) predicates.add(cb.equal(root.get("bedrooms"), bedrooms));
             return cb.and(predicates.toArray(Predicate[]::new));
         };
-        return PageResponse.from(apartments.findAll(visible().and(filters), PageRequest.of(page, size, Sort.by("createdAt", "id"))).map(this::summary));
+        Specification<Apartment> vacant = (root, query, cb) -> cb.equal(root.get("availability"), Apartment.Availability.VACANT);
+        return PageResponse.from(apartments.findAll(visible().and(vacant).and(filters), PageRequest.of(page, size, Sort.by("createdAt", "id"))).map(this::summary));
     }
 
     @Transactional(readOnly = true)
@@ -74,7 +75,7 @@ public class ApartmentService {
     }
     @Transactional(readOnly=true)
     public List<AddressOption> addressOptions() {
-        return apartments.addressOptions(Apartment.PublicationStatus.PUBLISHED,Property.ApprovalStatus.APPROVED,AuthAccount.Status.ACTIVE,AuthAccount.Role.OWNER);
+        return apartments.addressOptions(Apartment.PublicationStatus.PUBLISHED,Apartment.Availability.VACANT,Property.ApprovalStatus.APPROVED,AuthAccount.Status.ACTIVE,AuthAccount.Role.OWNER);
     }
     private ApartmentSummary summary(Apartment a) {
         var p = a.getProperty();
