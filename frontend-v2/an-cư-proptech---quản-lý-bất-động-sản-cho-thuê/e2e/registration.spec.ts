@@ -25,7 +25,7 @@ test('Customer and Owner register with restricted sessions; delivery failure rem
     const response = await responsePromise;expect(response.status()).toBe(201);
     created.push(email);writeFileSync('test-results/registration-created.json', JSON.stringify(created));
     const account = await response.json();expect(account.roles).toEqual([role]);expect(account.accountStatus).toBe('PENDING_VERIFICATION');
-    await expect(page).toHaveURL(/\/account\/settings$/);
+    await expect(page).toHaveURL(/\/account\/settings\/email$/);
     await expect(page.getByRole('status')).toContainText('Đăng ký thành công, email chưa được xác minh.');
     await expect(page.locator('#email-new')).toHaveValue(email);
     await page.reload();await expect(page.locator('#email-new')).toHaveValue(email);
