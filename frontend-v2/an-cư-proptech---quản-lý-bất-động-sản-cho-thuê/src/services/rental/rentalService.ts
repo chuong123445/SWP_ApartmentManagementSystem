@@ -31,3 +31,8 @@ export function cancelRentalRequest(id: string, version: number): Promise<Rental
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version }),
   });
 }
+export function decideRentalRequest(id: string, decision: 'ACCEPT' | 'REJECT', version: number, reason?: string): Promise<RentalRequest> {
+  return request(`/api/v1/owner/rental-requests/${encodeURIComponent(id)}/decisions`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decision, version, reason }),
+  });
+}
