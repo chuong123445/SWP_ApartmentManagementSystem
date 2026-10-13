@@ -17,6 +17,7 @@ public class RentalRequest {
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "customer_id", nullable = false)
     private AuthAccount customer;
     @Nationalized @Column(nullable = false, length = 2000) private String message;
+    @Nationalized @Column(name = "decision_reason", length = 2000) private String decisionReason;
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 24) private Status status;
     @Column(nullable = false, columnDefinition = "datetime2(6)") private Instant createdAt;
     @Version private long version;

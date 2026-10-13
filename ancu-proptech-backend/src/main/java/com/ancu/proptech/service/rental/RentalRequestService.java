@@ -92,12 +92,12 @@ public class RentalRequestService {
         var owner = access.owner(jwt);
         var request = requests.findForOwnerUpdate(id, owner.getId()).orElseThrow(() ->
                 new ApiException(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Không tìm thấy yêu cầu thuê."));
-        if (request.getVersion() != input.version())
+        if (request.getVersion() != input.getVersion())
             throw new ApiException(HttpStatus.CONFLICT, "STALE_VERSION", "Yêu cầu đã thay đổi. Vui lòng tải lại trước khi xử lý.");
         if (request.getStatus() != RentalRequest.Status.PENDING)
             throw new ApiException(HttpStatus.CONFLICT, "REQUEST_NOT_PENDING", "Chỉ có thể xử lý yêu cầu đang chờ xử lý.");
 
-        if (input.decision() == RentalDecision.Decision.ACCEPT) {
+        if (input.getDecision() == RentalDecision.Decision.ACCEPT) {
             var customer = request.getCustomer();
             if (customer.getStatus() != AuthAccount.Status.ACTIVE || !verification.isVerified(customer))
                 throw new ApiException(HttpStatus.CONFLICT, "CUSTOMER_NOT_ELIGIBLE", "Tài khoản người tìm thuê không còn hợp lệ.");
@@ -107,16 +107,17 @@ public class RentalRequestService {
             apartment.setAvailability(Apartment.Availability.CONTRACT_IN_PROGRESS);
             apartments.save(apartment);
             request.setStatus(RentalRequest.Status.ACCEPTED);
-        } else if (input.decision() == RentalDecision.Decision.REJECT) {
+        } else if (input.getDecision() == RentalDecision.Decision.REJECT) {
             request.setStatus(RentalRequest.Status.REJECTED);
         }
+        request.setDecisionReason(input.getReason() == null || input.getReason().isBlank() ? null : input.getReason().strip());
         return response(requests.saveAndFlush(request));
     }
 
     private RentalRequestResponse response(RentalRequest r) {
         return new RentalRequestResponse(r.getId(), r.getApartment().getId(), r.getApartment().getTitle(), r.getApartment().getProperty().getAddress(),
                 r.getApartment().getAdvertisedMonthlyRent().toPlainString(), r.getCustomer().getId(), r.getCustomer().getFullName(), r.getCustomer().getEmail(),
-                r.getMessage(), r.getStatus().name(), r.getCreatedAt(), r.getVersion());
+                r.getMessage(), r.getStatus().name(), r.getCreatedAt(), r.getVersion(), r.getDecisionReason());
     }
     private static ApiException notFound() { return new ApiException(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Không tìm thấy căn hộ đang được đăng công khai."); }
 }
