@@ -11,6 +11,8 @@ public interface RentalInvoiceRepository extends JpaRepository<RentalInvoice,UUI
     Optional<RentalInvoice> findFirstByContractIdAndStatusOrderByPeriodDesc(UUID contractId,RentalInvoice.Status status);
     @EntityGraph(attributePaths={"contract","contract.apartment","contract.apartment.property","contract.apartment.property.owner","contract.customer"})
     Page<RentalInvoice> findByContractApartmentPropertyOwnerId(UUID ownerId,Pageable pageable);
+    @EntityGraph(attributePaths={"contract","contract.apartment","contract.apartment.property","contract.apartment.property.owner","contract.customer"})
+    Page<RentalInvoice> findByContractApartmentPropertyOwnerIdAndContractApartmentPropertyId(UUID ownerId,UUID propertyId,Pageable pageable);
     @EntityGraph(attributePaths={"contract","contract.apartment","contract.apartment.property","contract.customer"})
     Page<RentalInvoice> findByContractCustomerIdAndStatus(UUID customerId,RentalInvoice.Status status,Pageable pageable);
     @EntityGraph(attributePaths={"contract","contract.apartment","contract.apartment.property","contract.apartment.property.owner","contract.customer"})

@@ -14,6 +14,7 @@ public interface ApartmentRepository extends JpaRepository<Apartment, UUID>, Jpa
     @EntityGraph(attributePaths = {"property", "property.owner", "amenities"})
     List<Apartment> findByPropertyOwnerIdOrderByCreatedAtAscIdAsc(UUID ownerId);
     boolean existsByPropertyIdAndRoomNumber(UUID propertyId, String roomNumber);
+    long countByPropertyId(UUID propertyId);
     Optional<Apartment> findByPropertyIdAndRoomNumber(UUID propertyId,String roomNumber);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from Apartment a join fetch a.property p join fetch p.owner where a.id = :id")
