@@ -8,7 +8,7 @@ import java.util.UUID;
 
 @Entity @Table(name = "rental_properties") @Getter @Setter @NoArgsConstructor
 public class Property {
-    public enum ApprovalStatus { DRAFT, PENDING_APPROVAL, APPROVED, REJECTED }
+    public enum ApprovalStatus { DRAFT, PENDING_APPROVAL, NEEDS_INFORMATION, APPROVED, REJECTED }
     public enum RentalMode { SINGLE_UNIT, MULTI_UNIT }
     @Id @GeneratedValue(strategy = GenerationType.UUID) private UUID id;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "owner_id", nullable = false)

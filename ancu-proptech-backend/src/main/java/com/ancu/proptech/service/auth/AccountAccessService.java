@@ -12,6 +12,12 @@ public class AccountAccessService {
     public AuthAccount account(Jwt jwt) { return auth.authenticate(jwt); }
     public AuthAccount customer(Jwt jwt) { return require(jwt, AuthAccount.Role.CUSTOMER); }
     public AuthAccount owner(Jwt jwt) { return require(jwt, AuthAccount.Role.OWNER); }
+    public AuthAccount admin(Jwt jwt) {
+        AuthAccount account = auth.authenticate(jwt);
+        if (account.getRole() != AuthAccount.Role.ADMIN || account.getStatus() != AuthAccount.Status.ACTIVE)
+            throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Chỉ Admin đang hoạt động được kiểm duyệt hồ sơ tài sản.");
+        return account;
+    }
     private AuthAccount require(Jwt jwt, AuthAccount.Role role) {
         AuthAccount account = auth.authenticate(jwt);
         if (account.getRole() != role) throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Tài khoản không có quyền thực hiện thao tác này.");
