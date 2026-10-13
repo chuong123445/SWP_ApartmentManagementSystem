@@ -50,6 +50,7 @@ public class OwnerApartmentService {
                 a.getRoomNumber() == null ? a.getTitle() : a.getRoomNumber(), a.getTitle(), a.getDescription(), a.getFloor(),
                 a.getAreaM2().toPlainString(), a.getAdvertisedMonthlyRent().toPlainString(), a.getDeposit() == null ? null : a.getDeposit().toPlainString(),
                 a.getElectricityIndex(), a.getWaterIndex(), a.getMaxOccupants(), a.getBedrooms(), a.getBathrooms(), List.copyOf(a.getAmenities()),
-                a.getPublicationStatus().name(), a.getAvailability().name(), p.getApprovalStatus().name(), a.getVersion());
+                a.getPublicationStatus().name(), a.getAvailability().name(), p.getApprovalStatus().name(),
+                a.getCoverImagePath() == null || a.getCoverImagePath().isBlank() ? "/images/apartment-placeholder.svg" : a.getCoverImagePath(), a.getVersion());
     }
 }
