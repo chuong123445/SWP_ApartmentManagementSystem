@@ -24,7 +24,7 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
     handleReserveEscrow, handleResetData, handleSaveConfig: setConfig, handleAddTicket, handleSendResidentTicket,
     handleAddTransaction } = workspace;
   return <>
-          {activeTab === 'rental_requests' && <RentalRequestsPage />}
+          {activeTab === 'rental_requests' && <RentalRequestsPage onDecision={workspace.reloadInventory} />}
           {activeTab === 'resident_portal' && (!currentResidentRoom || !currentResidentTenant || !currentResidentContract || !residentInvoices[0]) && <section className="bg-white p-6 rounded-xl border"><h1 className="text-xl font-bold">Cổng cư dân</h1><p className="mt-3 text-slate-500">Chưa có đủ quan hệ thuê và hóa đơn đã gửi để xem màn hình này.</p></section>}
           {activeTab === 'resident_portal' && currentResidentRoom && currentResidentTenant && currentResidentContract && residentInvoices[0] && (
             <ResidentPortalPage

@@ -28,13 +28,23 @@ export function ApartmentDetailPage() {
   const customer = user?.roles.includes('CUSTOMER') && user.accountStatus === 'ACTIVE' && user.contactVerificationStatus === 'VERIFIED';
   useEffect(() => { setNeedsVerification(false); }, [id, user?.id]);
   useEffect(() => {
-    let active = true;
-    setChecking(true); setRequestError(''); setSubmitted(null); setActiveRequests([]);
-    if (!customer) { setChecking(false); return; }
-    getApartmentRentalRequests(id).then(items => { if (active) { setActiveRequests(items); setSubmitted(items[0] ?? null); } })
-      .catch(err => { if (active) setRequestError(err instanceof Error ? err.message : 'Không thể tải trạng thái yêu cầu.'); })
-      .finally(() => { if (active) setChecking(false); });
-    return () => { active = false; };
+    let active = true;let inFlight = false;
+    setChecking(true);setRequestError('');setSubmitted(null);setActiveRequests([]);
+    if (!customer) { setChecking(false);return; }
+    const refresh = async () => {
+      if (!active || inFlight) return;
+      inFlight = true;
+      try {
+        const [items, currentApartment] = await Promise.all([getApartmentRentalRequests(id), getApartment(id)]);
+        if (active) { setActiveRequests(items);setSubmitted(items[0] ?? null);setApartment(currentApartment);setRequestError(''); }
+      } catch (err) { if (active) setRequestError(err instanceof Error ? err.message : 'Không thể tải trạng thái yêu cầu.'); }
+      finally { inFlight = false;if (active) setChecking(false); }
+    };
+    void refresh();
+    const visibleRefresh = () => { if (document.visibilityState === 'visible') void refresh(); };
+    const timer = window.setInterval(visibleRefresh, 10000);
+    window.addEventListener('focus', visibleRefresh);document.addEventListener('visibilitychange', visibleRefresh);
+    return () => { active = false;window.clearInterval(timer);window.removeEventListener('focus', visibleRefresh);document.removeEventListener('visibilitychange', visibleRefresh); };
   }, [id, user?.id, customer, revision]);
   useEffect(() => {
     const controller = new AbortController();
