@@ -16,8 +16,8 @@ test('guest discovery, Customer request persistence and Owner inbox', async ({ p
   const apartmentId = page.url().split('/').at(-1)!;
   await expect(page.getByRole('link', { name: 'Đăng nhập để gửi yêu cầu thuê' })).toBeVisible();
   await page.getByRole('link', { name: 'Đăng nhập để gửi yêu cầu thuê' }).click();
-  await page.getByLabel('Email', { exact: true }).fill(env.get('LOCAL_CUSTOMER_EMAIL')!);
-  await page.getByLabel('Mật khẩu', { exact: true }).fill(env.get('LOCAL_CUSTOMER_PASSWORD')!);
+  await page.getByLabel('Email', { exact: true }).fill(env.get('LOCAL_TENANT_1_EMAIL')!);
+  await page.getByLabel('Mật khẩu', { exact: true }).fill(env.get('LOCAL_TENANT_1_PASSWORD')!);
   await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/apartments/${apartmentId}$`));
   mkdirSync('test-results/visual', { recursive: true });
@@ -51,7 +51,7 @@ test('guest discovery, Customer request persistence and Owner inbox', async ({ p
     await ownerPage.locator('#nav-rental_requests').click();
     await expect(ownerPage.getByRole('heading', { name: 'Yêu cầu thuê căn hộ' })).toBeVisible();
     await expect(ownerPage.getByTestId('rental-request').filter({ hasText: message })).toBeVisible();
-    await expect(ownerPage.getByTestId('rental-request').filter({ hasText: message })).toContainText(env.get('LOCAL_CUSTOMER_EMAIL')!);
+    await expect(ownerPage.getByTestId('rental-request').filter({ hasText: message })).toContainText(env.get('LOCAL_TENANT_1_EMAIL')!);
     await ownerPage.reload();
     await ownerPage.locator('#nav-rental_requests').click();
     await expect(ownerPage.getByTestId('rental-request').filter({ hasText: message })).toBeVisible();

@@ -1,0 +1,48 @@
+import { test, expect } from '@playwright/test';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+const env = new Map(readFileSync(resolve('../../ancu-proptech-backend/.env.local'), 'utf8').split(/\r?\n/).filter(line => line.includes('=') && !line.startsWith('#')).map(line => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)]));
+
+test('vacant-only catalog and reset Customer cannot submit; settings use separate routes', async ({ page }) => {
+  const login = async (email: string, password: string) => {
+    await page.goto('/login');await page.locator('#login-email').fill(email);await page.locator('#login-password').fill(password);
+    const response = page.waitForResponse(r => r.url().endsWith('/api/v1/auth/login') && r.request().method() === 'POST');
+    await page.locator('button[type=submit]').click();return (await (await response).json()).accessToken;
+  };
+  const token = await login(env.get('LOCAL_CUSTOMER_EMAIL')!,env.get('LOCAL_CUSTOMER_PASSWORD')!);
+  const headers = { Authorization: `Bearer ${token}` };
+  const catalog = await (await page.request.get('/api/v1/apartments?size=100')).json();
+  expect(catalog.items.length).toBeGreaterThan(0);expect(catalog.items.every((a: any) => a.availability === 'VACANT')).toBeTruthy();
+  const profile = await (await page.request.get('/api/v1/me/profile',{headers})).json();
+  expect(profile.accountStatus).toBe('PENDING_VERIFICATION');expect(profile.emailVerified).toBe(false);
+  const response = await page.request.post(`/api/v1/apartments/${catalog.items[0].id}/rental-requests`,{ headers,data:{} });expect(response.status()).toBe(403);
+  await page.goto(`/apartments/${catalog.items[0].id}`);await expect(page.getByRole('link',{name:'Xác thực email',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Gửi yêu cầu thuê',exact:true})).toHaveCount(0);
+  await page.goto('/account/settings');await expect(page.getByRole('heading',{name:'Cài đặt tài khoản',exact:true})).toBeVisible();expect(await page.locator('input').count()).toBe(0);
+  await page.getByRole('link',{name:'Đổi mật khẩu',exact:true}).click();await expect(page).toHaveURL(/\/account\/settings\/password$/);
+  await expect(page.locator('input[type=password]')).toHaveCount(3);await page.reload();await expect(page.locator('#password-current')).toBeVisible();
+  await page.getByRole('link',{name:'Quay lại cài đặt tài khoản',exact:true}).click();await page.getByRole('link',{name:'Xác thực email',exact:true}).click();await expect(page).toHaveURL(/\/account\/settings\/email$/);
+  await expect(page.locator('#email-new')).toHaveValue(env.get('LOCAL_CUSTOMER_EMAIL')!);await expect(page.locator('#password-new')).toHaveCount(0);await expect(page.locator('#phone-number')).toHaveCount(0);
+  await page.reload();await expect(page.locator('#email-new')).toBeVisible();
+  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();await page.screenshot({path:'test-results/visual/email-settings-mobile.png',fullPage:true});
+  await page.getByRole('link',{name:'Quay lại cài đặt tài khoản',exact:true}).click();await page.getByRole('link',{name:'Cập nhật số điện thoại',exact:true}).click();await expect(page).toHaveURL(/\/account\/settings\/phone$/);
+  await expect(page.locator('#phone-number')).toBeVisible();await expect(page.locator('#email-new')).toHaveCount(0);await page.reload();await expect(page.locator('#phone-password')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  await page.getByRole('link',{name:'Quay lại cài đặt tài khoản',exact:true}).click();await expect(page.getByRole('link',{name:'Đổi mật khẩu',exact:true})).toBeVisible();await page.screenshot({path:'test-results/visual/settings-hub-mobile.png',fullPage:true});
+});
+
+test('new registration is pending; password and phone changes use real commands on isolated account', async ({ page }) => {
+  test.skip(!process.env.E2E_SETTINGS_MUTATIONS, 'Enable with isolated SQL cleanup for password/phone commands.');
+  const email = `settings-ui-${crypto.randomUUID()}@example.invalid`, password='Settings-ui-test!12345', next='Settings-ui-new!12345';
+  writeFileSync(resolve('../../ancu-proptech-backend/target/settings-ui-email.txt'),email);
+  const csrf=await (await page.request.get('/api/v1/auth/csrf')).json();
+  const registration=await page.request.post('/api/v1/auth/register',{headers:{[csrf.headerName]:csrf.token},data:{email,password,fullName:'Settings UI Test',requestedRole:'CUSTOMER'}});
+  expect(registration.status()).toBe(201);expect((await registration.json()).contactVerificationStatus).toBe('UNVERIFIED');
+  const login=async (secret:string) => {await page.goto('/login');await page.locator('#login-email').fill(email);await page.locator('#login-password').fill(secret);await page.locator('button[type=submit]').click();await expect(page.getByRole('button',{name:'Vai trò và tài khoản'})).toBeVisible();};
+  await login(password);await page.goto('/account/settings/password');await page.locator('#password-current').fill(password);await page.locator('#password-new').fill(next);await page.locator('#password-confirm').fill('Wrong-confirm!12345');await page.getByRole('button',{name:'Đổi mật khẩu',exact:true}).click();await expect(page.getByRole('alert')).toContainText('không khớp');
+  await page.locator('#password-confirm').fill(next);await page.getByRole('button',{name:'Đổi mật khẩu',exact:true}).click();await expect(page).toHaveURL(/\/login$/);
+  await login(next);await page.goto('/account/settings/phone');await page.locator('#phone-number').fill('0977712345');await page.locator('#phone-password').fill(next);await page.getByRole('button',{name:'Cập nhật số điện thoại',exact:true}).click();await expect(page).toHaveURL(/\/login$/);await login(next);await page.goto('/account/settings/phone');await expect(page.locator('#phone-number')).toHaveValue('+84977712345');
+  await page.goto('/account/settings/email');await page.route('**/api/v1/me/email-changes', async route => {if(route.request().method()==='POST')await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({code:'OTP_DELIVERY_UNAVAILABLE',message:'SMTP unavailable test'})});else await route.continue();});
+  await page.locator('#email-password').fill(next);await page.getByRole('button',{name:'Gửi OTP email',exact:true}).click();await expect(page.getByRole('alert')).toContainText('SMTP unavailable test');
+  await page.getByRole('link',{name:'Quay lại cài đặt tài khoản',exact:true}).click();await expect(page.getByText('Chưa xác thực').first()).toBeVisible();
+});

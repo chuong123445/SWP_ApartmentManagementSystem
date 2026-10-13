@@ -7,8 +7,8 @@ test('real request refresh, simultaneous duplicate prevention, cancellation and 
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.goto('/login');
-  await page.getByLabel('Email', { exact: true }).fill(env.get('LOCAL_CUSTOMER_EMAIL')!);
-  await page.getByLabel('Mật khẩu', { exact: true }).fill(env.get('LOCAL_CUSTOMER_PASSWORD')!);
+  await page.getByLabel('Email', { exact: true }).fill(env.get('LOCAL_TENANT_1_EMAIL')!);
+  await page.getByLabel('Mật khẩu', { exact: true }).fill(env.get('LOCAL_TENANT_1_PASSWORD')!);
   const login = page.waitForResponse(r => r.url().endsWith('/api/v1/auth/login') && r.request().method() === 'POST');
   await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
   const token = (await (await login).json()).accessToken;
