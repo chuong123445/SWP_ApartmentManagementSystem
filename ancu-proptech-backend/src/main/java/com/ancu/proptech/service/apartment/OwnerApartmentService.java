@@ -46,6 +46,17 @@ public class OwnerApartmentService {
         a.setCoverImagePath("/images/apartment-placeholder.svg");
         return response(apartments.save(a));
     }
+    @Transactional
+    public OwnerApartmentResponse publication(Jwt jwt, UUID id, ApartmentPublication input) {
+        var owner = access.owner(jwt);
+        var propertyId = apartments.findPropertyId(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy căn hộ."));
+        var property = properties.findById(propertyId).filter(p -> p.getOwner().getId().equals(owner.getId())).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy căn hộ."));
+        var apartment = apartments.findForOwnerUpdate(id,owner.getId()).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy căn hộ."));
+        if (apartment.getVersion() != input.getVersion()) throw new ApiException(HttpStatus.CONFLICT,"STALE_VERSION","Căn hộ đã thay đổi. Hãy tải lại.");
+        if (input.getPublicationStatus() == Apartment.PublicationStatus.PUBLISHED && property.getApprovalStatus() != Property.ApprovalStatus.APPROVED)
+            throw new ApiException(HttpStatus.CONFLICT,"PROPERTY_NOT_APPROVED","Tài sản phải được Admin duyệt trước khi công khai căn hộ.");
+        apartment.setPublicationStatus(input.getPublicationStatus());apartments.flush();return response(apartment);
+    }
     private OwnerApartmentResponse response(Apartment a) {
         var p = a.getProperty();
         return new OwnerApartmentResponse(a.getId(), p.getId(), p.getName(), p.getOwner().getId(),

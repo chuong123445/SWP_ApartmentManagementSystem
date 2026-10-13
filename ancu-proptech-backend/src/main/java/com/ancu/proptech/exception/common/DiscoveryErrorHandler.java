@@ -11,8 +11,12 @@ public class DiscoveryErrorHandler {
     ResponseEntity<?> api(ApiException e) { return error(e.status, e.code, e.getMessage()); }
     @ExceptionHandler(AuthException.class)
     ResponseEntity<?> auth(AuthException e) { return error(e.status, e.code, e.getMessage()); }
-    @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class})
+    @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class,
+        org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class, MissingServletRequestParameterException.class,
+        org.springframework.web.multipart.support.MissingServletRequestPartException.class})
     ResponseEntity<?> validation(Exception e) { return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Dữ liệu không hợp lệ hoặc chứa trường không được phép."); }
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    ResponseEntity<?> tooLarge(Exception e) { return error(HttpStatus.PAYLOAD_TOO_LARGE,"FILE_TOO_LARGE","Ảnh chứng từ tối đa 5 MB."); }
     private ResponseEntity<?> error(HttpStatus status, String code, String message) {
         return ResponseEntity.status(status).cacheControl(CacheControl.noStore()).body(Map.of("code", code, "message", message));
     }
