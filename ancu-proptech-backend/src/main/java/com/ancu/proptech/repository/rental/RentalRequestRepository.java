@@ -19,4 +19,7 @@ public interface RentalRequestRepository extends JpaRepository<RentalRequest, UU
             + "and (:apartmentId is null or r.apartment.id = :apartmentId) and (:status is null or r.status = :status)")
     Page<RentalRequest> findOwnerInbox(@Param("ownerId") UUID ownerId, @Param("apartmentId") UUID apartmentId,
                                      @Param("status") RentalRequest.Status status, Pageable page);
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from RentalRequest r where r.id = :id and r.apartment.property.owner.id = :ownerId")
+    java.util.Optional<RentalRequest> findForOwnerUpdate(@Param("id") UUID id, @Param("ownerId") UUID ownerId);
 }

@@ -11,6 +11,7 @@ import com.ancu.proptech.repository.apartment.ApartmentRepository;
 import com.ancu.proptech.repository.rental.RentalRequestRepository;
 import com.ancu.proptech.service.auth.AccountAccessService;
 import com.ancu.proptech.service.apartment.ApartmentService;
+import com.ancu.proptech.service.auth.AccountVerificationPolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
@@ -25,6 +26,7 @@ public class RentalRequestService {
     private final ApartmentRepository apartments;
     private final RentalRequestRepository requests;
     private final AccountAccessService access;
+    private final AccountVerificationPolicy verification;
 
     @Transactional
     public RentalRequestResponse submit(Jwt jwt, UUID apartmentId, RentalRequestCreate input) {
@@ -83,6 +85,32 @@ public class RentalRequestService {
         var owner = access.owner(jwt);
         return PageResponse.from(requests.findOwnerInbox(owner.getId(), apartmentId, status,
                 PageRequest.of(page, size, Sort.by("createdAt", "id"))).map(this::response));
+    }
+
+    @Transactional
+    public RentalRequestResponse decide(Jwt jwt, UUID id, RentalDecision input) {
+        var owner = access.owner(jwt);
+        var request = requests.findForOwnerUpdate(id, owner.getId()).orElseThrow(() ->
+                new ApiException(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Không tìm thấy yêu cầu thuê."));
+        if (request.getVersion() != input.version())
+            throw new ApiException(HttpStatus.CONFLICT, "STALE_VERSION", "Yêu cầu đã thay đổi. Vui lòng tải lại trước khi xử lý.");
+        if (request.getStatus() != RentalRequest.Status.PENDING)
+            throw new ApiException(HttpStatus.CONFLICT, "REQUEST_NOT_PENDING", "Chỉ có thể xử lý yêu cầu đang chờ xử lý.");
+
+        if (input.decision() == RentalDecision.Decision.ACCEPT) {
+            var customer = request.getCustomer();
+            if (customer.getStatus() != AuthAccount.Status.ACTIVE || !verification.isVerified(customer))
+                throw new ApiException(HttpStatus.CONFLICT, "CUSTOMER_NOT_ELIGIBLE", "Tài khoản người tìm thuê không còn hợp lệ.");
+            Apartment apartment = apartments.findForRequest(request.getApartment().getId()).orElseThrow(RentalRequestService::notFound);
+            if (apartment.getAvailability() != Apartment.Availability.VACANT)
+                throw new ApiException(HttpStatus.CONFLICT, "APARTMENT_NOT_AVAILABLE", "Căn hộ hiện không còn ở trạng thái nhận xử lý yêu cầu hoặc đã có hợp đồng đang thực hiện.");
+            apartment.setAvailability(Apartment.Availability.CONTRACT_IN_PROGRESS);
+            apartments.save(apartment);
+            request.setStatus(RentalRequest.Status.ACCEPTED);
+        } else if (input.decision() == RentalDecision.Decision.REJECT) {
+            request.setStatus(RentalRequest.Status.REJECTED);
+        }
+        return response(requests.saveAndFlush(request));
     }
 
     private RentalRequestResponse response(RentalRequest r) {
