@@ -24,9 +24,9 @@ export function RegisterPage() {
       try { await requestEmailChange(account.email, input.password, account.version); }
       catch (e) { notice = `Đăng ký thành công, email chưa được xác minh. ${e instanceof Error ? e.message : 'Chưa gửi được OTP.'} Bạn có thể gửi lại OTP bên dưới.`; }
       setInput(value => ({ ...value, password: '' }));setConfirmation('');
-      navigate('/account/settings', { replace: true, state: { notice } });
+      navigate('/account/settings/email', { replace: true, state: { notice } });
     } catch (e) {
-      if (created) navigate('/login', { replace: true, state: { notice: 'Tài khoản đã được tạo. Vui lòng đăng nhập để xác minh email.', returnTo: '/account/settings' } });
+      if (created) navigate('/login', { replace: true, state: { notice: 'Tài khoản đã được tạo. Vui lòng đăng nhập để xác minh email.', returnTo: '/account/settings/email' } });
       else setError(e instanceof Error ? e.message : 'Không thể đăng ký. Vui lòng thử lại.');
     } finally { setBusy(false); }
   };
