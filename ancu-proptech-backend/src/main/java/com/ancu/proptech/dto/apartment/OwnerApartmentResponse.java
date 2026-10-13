@@ -4,4 +4,4 @@ public record OwnerApartmentResponse(UUID id, UUID propertyId, String propertyNa
         String roomNumber, String title, String description, Integer floor, String areaM2,
         String advertisedMonthlyRent, String deposit, Integer electricityIndex, Integer waterIndex,
         Integer maxOccupants, Integer bedrooms, Integer bathrooms, List<String> amenities,
-        String publicationStatus, String availability, String propertyApprovalStatus, long version) {}
+        String publicationStatus, String availability, String propertyApprovalStatus, String thumbnail, long version) {}
