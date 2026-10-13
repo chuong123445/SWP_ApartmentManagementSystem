@@ -1,0 +1,751 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "An Cu Owner Apartment Inventory",
+    "version": "1.2.0",
+    "description": "Implemented verified Owner property+private draft units, inventory, scoped property selection, private dossiers/Admin review and versioned explicit publication. Apartment edit/delete and approval revocation remain unimplemented."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/owner/apartments": {
+      "get": {
+        "operationId": "ownerApartments",
+        "responses": {
+          "200": {
+            "description": "Current Owner inventory including drafts, createdAt/id ascending. Same IDs as public apartments and requests.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OwnerApartment"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createOwnerApartment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApartmentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created with server UUID/VACANT/time/version. Property must belong to Owner; PUBLISHED requires APPROVED; duplicate property/roomNumber returns 409.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerApartment"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/owner/properties": {
+      "get": {
+        "operationId": "ownerProperties",
+        "responses": {
+          "200": {
+            "description": "Current Owner properties only, name/id ascending.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OwnerProperty"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createOwnerProperty",
+        "description": "Owner from JWT; creates one property DRAFT with apartments DRAFT/VACANT atomically. SINGLE_UNIT exactly one; normalized duplicate codes rejected; null readings preserved. Never auto-approves.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PropertyCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Private property and apartments persisted together",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyCreated"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/owner/apartments/{id}/publication": {
+      "post": {
+        "operationId": "changeApartmentPublication",
+        "description": "Current Owner only. PUBLISHED requires APPROVED property. Required current apartment version; availability/contracts/requests unchanged.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApartmentPublication"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated publication and version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerApartment"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "JSON code/message; private credentials/evidence never returned.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": [
+                "code",
+                "message"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "ApartmentCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "propertyId",
+          "roomNumber",
+          "title",
+          "floor",
+          "areaM2",
+          "advertisedMonthlyRent"
+        ],
+        "properties": {
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roomNumber": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 3000,
+            "default": ""
+          },
+          "floor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 200
+          },
+          "areaM2": {
+            "type": "string",
+            "description": "Positive decimal string (12,2)."
+          },
+          "advertisedMonthlyRent": {
+            "type": "string",
+            "description": "Nonnegative decimal string (15,2)."
+          },
+          "deposit": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nonnegative decimal string (15,2)."
+          },
+          "electricityIndex": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "waterIndex": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "maxOccupants": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "bedrooms": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "bathrooms": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "amenities": {
+            "type": "array",
+            "maxItems": 50,
+            "default": [],
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          "publicationStatus": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "HIDDEN"
+            ],
+            "default": "DRAFT"
+          }
+        }
+      },
+      "OwnerApartment": {
+        "type": "object",
+        "properties": {
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roomNumber": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 3000,
+            "default": ""
+          },
+          "floor": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "areaM2": {
+            "type": "string",
+            "description": "Positive decimal string (12,2)."
+          },
+          "advertisedMonthlyRent": {
+            "type": "string",
+            "description": "Nonnegative decimal string (15,2)."
+          },
+          "deposit": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nonnegative decimal string (15,2)."
+          },
+          "electricityIndex": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "waterIndex": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "maxOccupants": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "bedrooms": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "bathrooms": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "amenities": {
+            "type": "array",
+            "maxItems": 50,
+            "default": [],
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          "publicationStatus": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "HIDDEN"
+            ],
+            "default": "DRAFT"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "readOnly": true
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid",
+            "readOnly": true
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "VACANT",
+              "CONTRACT_IN_PROGRESS",
+              "OCCUPIED",
+              "MAINTENANCE"
+            ],
+            "readOnly": true
+          },
+          "propertyApprovalStatus": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PENDING_APPROVAL",
+              "NEEDS_INFORMATION",
+              "APPROVED",
+              "REJECTED"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "readOnly": true
+          },
+          "thumbnail": {
+            "type": "string",
+            "readOnly": true,
+            "description": "Persisted Apartment cover image URL. Placeholder URL when missing. Shared with public catalog/detail."
+          }
+        }
+      },
+      "OwnerProperty": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "approvalStatus": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PENDING_APPROVAL",
+              "NEEDS_INFORMATION",
+              "APPROVED",
+              "REJECTED"
+            ]
+          },
+          "rentalMode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "SINGLE_UNIT",
+                  "MULTI_UNIT"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "city": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string"
+          },
+          "ward": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "address",
+          "approvalStatus",
+          "rentalMode",
+          "city",
+          "district",
+          "ward",
+          "version"
+        ]
+      },
+      "PropertyUnit": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "roomNumber",
+          "title",
+          "floor",
+          "areaM2",
+          "advertisedMonthlyRent"
+        ],
+        "properties": {
+          "roomNumber": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 3000,
+            "default": ""
+          },
+          "floor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 200
+          },
+          "areaM2": {
+            "type": "string",
+            "description": "Positive decimal string (12,2)."
+          },
+          "advertisedMonthlyRent": {
+            "type": "string",
+            "pattern": "^(?=.*[1-9])[0-9]+(?:\\.[0-9]{1,2})?$",
+            "maxLength": 16,
+            "description": "Strictly positive decimal (15,2); server BigDecimal."
+          },
+          "deposit": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nonnegative decimal string (15,2)."
+          },
+          "electricityIndex": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "waterIndex": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "maxOccupants": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "bedrooms": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "bathrooms": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "amenities": {
+            "type": "array",
+            "maxItems": 50,
+            "default": [],
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        }
+      },
+      "PropertyCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150
+          },
+          "address": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "city": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "district": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "ward": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 80
+          },
+          "rentalMode": {
+            "type": "string",
+            "enum": [
+              "SINGLE_UNIT",
+              "MULTI_UNIT"
+            ]
+          },
+          "apartments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PropertyUnit"
+            },
+            "minItems": 1,
+            "maxItems": 50
+          }
+        },
+        "required": [
+          "name",
+          "address",
+          "city",
+          "district",
+          "rentalMode",
+          "apartments"
+        ]
+      },
+      "PropertyCreated": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "property": {
+            "$ref": "#/components/schemas/OwnerProperty"
+          },
+          "apartments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwnerApartment"
+            },
+            "minItems": 1,
+            "maxItems": 50
+          }
+        },
+        "required": [
+          "property",
+          "apartments"
+        ]
+      },
+      "ApartmentPublication": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "publicationStatus": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "HIDDEN"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "publicationStatus",
+          "version"
+        ]
+      }
+    }
+  }
+}

@@ -15,8 +15,13 @@ public interface ApartmentRepository extends JpaRepository<Apartment, UUID>, Jpa
     List<Apartment> findByPropertyOwnerIdOrderByCreatedAtAscIdAsc(UUID ownerId);
     boolean existsByPropertyIdAndRoomNumber(UUID propertyId, String roomNumber);
     long countByPropertyId(UUID propertyId);
+    @Query("select a.property.id from Apartment a where a.id=:id")
+    Optional<UUID> findPropertyId(@Param("id") UUID id);
     Optional<Apartment> findByPropertyIdAndRoomNumber(UUID propertyId,String roomNumber);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from Apartment a join fetch a.property p join fetch p.owner where a.id = :id")
     Optional<Apartment> findForRequest(@Param("id") UUID id);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from Apartment a where a.id=:id and a.property.owner.id=:ownerId")
+    Optional<Apartment> findForOwnerUpdate(@Param("id") UUID id,@Param("ownerId") UUID ownerId);
 }

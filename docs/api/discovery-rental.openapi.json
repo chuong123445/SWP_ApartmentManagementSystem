@@ -1,0 +1,867 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "An Cu Discovery and Rental Requests",
+    "version": "1.2.0",
+    "description": "Implemented public discovery, verified-Customer submission/cancellation/history, and Owner inbox with accept/reject decisions. Property approval UI and apartment update/delete are not implemented. Owner list/create is documented separately."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/api/v1/apartments": {
+      "get": {
+        "operationId": "searchApartments",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            }
+          },
+          {
+            "name": "city",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 80
+            }
+          },
+          {
+            "name": "district",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 80
+            }
+          },
+          {
+            "name": "minRent",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
+            }
+          },
+          {
+            "name": "maxRent",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+(\\.[0-9]+)?$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 6
+            }
+          },
+          {
+            "name": "ward",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 80
+            }
+          },
+          {
+            "name": "bedrooms",
+            "in": "query",
+            "required": false,
+            "description": "Exact bedroom count; 0 means Studio. Combined with other filters before pagination.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Only published apartments of approved properties with active, verified Owners; createdAt/id ascending.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApartmentPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "description": "Only VACANT and public-eligible apartments; SQL filters before count/pagination. Direct public detail remains viewable for non-vacant listings."
+      }
+    },
+    "/api/v1/apartments/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ApartmentId"
+        }
+      ],
+      "get": {
+        "operationId": "getApartment",
+        "responses": {
+          "200": {
+            "description": "Public detail. No receiving-account, dossiers, owner email or password hash.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApartmentDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/apartments/{id}/rental-requests": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/ApartmentId"
+        }
+      ],
+      "post": {
+        "operationId": "submitRentalRequest",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "description": "Serializes submission on apartment lock; rejects same Customer/Apartment PENDING or ACCEPTED with 409 RENTAL_REQUEST_EXISTS. CANCELLED/REJECTED history does not block a new request. Never reserves apartment. Customer must be ACTIVE with verified email evidence through AccountVerificationPolicy; legacy summary or phone flag alone cannot grant access.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "message": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 2000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Saved request; Location points to own request history.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RentalRequest"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/me/rental-requests": {
+      "get": {
+        "operationId": "myRentalRequests",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/Size"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current verified Customer only, newest first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/owner/rental-requests": {
+      "get": {
+        "operationId": "ownerInbox",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/Size"
+          },
+          {
+            "name": "apartmentId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/RequestStatus"
+            }
+          },
+          {
+            "name": "propertyId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Intersect exact property with current Owner scope before count/pagination; another Owner or absent property yields empty page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current verified Owner's apartments only; createdAt/id ascending; includes request sender contact for the authorized Owner.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/owner/rental-requests/{id}/decisions": {
+      "post": {
+        "operationId": "decideOwnerRentalRequest",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RentalDecision"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated rental request with status ACCEPTED or REJECTED and new optimistic version. Acceptance transitions apartment to CONTRACT_IN_PROGRESS atomically.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RentalRequest"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "description": "Current verified Owner only. Strict enum string/unknown-field/version validation. PENDING transitions to ACCEPTED + CONTRACT_IN_PROGRESS atomically, or REJECTED without changing apartment availability. Optional reason is persisted and private. No contract creation/signature/activation."
+      }
+    },
+    "/api/v1/apartments/address-options": {
+      "get": {
+        "operationId": "publicAddressOptions",
+        "responses": {
+          "200": {
+            "description": "Distinct visible catalog addresses, not a national directory.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "city",
+                      "district",
+                      "ward"
+                    ],
+                    "properties": {
+                      "city": {
+                        "type": "string"
+                      },
+                      "district": {
+                        "type": "string"
+                      },
+                      "ward": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "Address tuples only from VACANT public-eligible apartments."
+      }
+    },
+    "/api/v1/me/apartments/{id}/rental-requests": {
+      "get": {
+        "operationId": "myActiveApartmentRequests",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Private current Customer PENDING/ACCEPTED requests, newest first. Includes legacy duplicates without rewriting them.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RentalRequest"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/me/rental-requests/{id}/cancel": {
+      "post": {
+        "operationId": "cancelMyRentalRequest",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RentalRequestCancel"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Own PENDING -> CANCELLED with incremented version. No apartment availability change.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RentalRequest"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "parameters": {
+      "ApartmentId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "Page": {
+        "name": "page",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        }
+      },
+      "Size": {
+        "name": "size",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 10
+        }
+      }
+    },
+    "schemas": {
+      "Availability": {
+        "type": "string",
+        "enum": [
+          "VACANT",
+          "CONTRACT_IN_PROGRESS",
+          "OCCUPIED",
+          "MAINTENANCE"
+        ]
+      },
+      "RequestStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "ACCEPTED",
+          "REJECTED",
+          "CANCELLED"
+        ]
+      },
+      "PageMetadata": {
+        "type": "object",
+        "required": [
+          "items",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ],
+        "properties": {
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "ApartmentSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string"
+          },
+          "areaM2": {
+            "type": "string"
+          },
+          "advertisedMonthlyRent": {
+            "type": "string"
+          },
+          "thumbnail": {
+            "type": "string"
+          },
+          "availability": {
+            "$ref": "#/components/schemas/Availability"
+          },
+          "bedrooms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "bathrooms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        }
+      },
+      "ApartmentDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "areaM2": {
+            "type": "string"
+          },
+          "advertisedMonthlyRent": {
+            "type": "string"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "amenities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "availability": {
+            "$ref": "#/components/schemas/Availability"
+          },
+          "publicationStatus": {
+            "type": "string"
+          },
+          "bedrooms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "bathrooms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "integer"
+          },
+          "publicOwner": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "displayName": {
+                "type": "string"
+              },
+              "contactVerified": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "RentalRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "apartmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "apartmentTitle": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "advertisedMonthlyRent": {
+            "type": "string"
+          },
+          "customerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "customerEmail": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RequestStatus"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "decisionReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000,
+            "readOnly": true
+          }
+        }
+      },
+      "ApartmentPage": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PageMetadata"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ApartmentSummary"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "RequestPage": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PageMetadata"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/RentalRequest"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "RentalRequestCancel": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "RentalDecision": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "decision",
+          "version"
+        ],
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "ACCEPT",
+              "REJECT"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000,
+            "description": "Optional decision reason; whitespace trimmed, blank stored null. Returned as decisionReason in private history/inbox."
+          }
+        }
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Validation/auth/availability error. CONTACT_NOT_VERIFIED=403; APARTMENT_NOT_AVAILABLE=409; hidden/missing=404.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    }
+  }
+}

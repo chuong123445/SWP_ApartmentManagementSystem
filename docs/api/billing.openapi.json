@@ -1,0 +1,749 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "An Cu Tenant Billing",
+    "version": "1.0.0",
+    "description": "Implemented Owner monthly draft/send and Customer-as-Tenant private invoice receipt. Contract activation/signing/payment are not implemented. Local ACTIVE contracts are fixtures only. Billing rules are in docs/decisions/billing-v1.md."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/owner/tenancies": {
+      "get": {
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current verified Owner's contract relationships, latest start date first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Tenancy"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/me/tenancies": {
+      "get": {
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current verified Customer's contract relationships, including history.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Tenancy"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/owner/contracts/{id}/billing-context": {
+      "get": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Next full-month period, source readings and agreed prices. Missing baseline/draft predecessor/ended contract return 409; this GET never changes readings.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingContext"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/owner/contracts/{id}/invoices": {
+      "post": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Immutable DRAFT, totals calculated in BigDecimal from contract. Advances chain version; one invoice per contract/period.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/owner/invoices/{id}/send": {
+      "post": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceSend"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Atomically SENT + unique tenant notification. Retry of already SENT is idempotent. Never marks paid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/owner/invoices": {
+      "get": {
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "propertyId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Intersect exact property with current Owner scope before count/pagination; another Owner or absent property yields empty page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Own apartments only; drafts and sent; createdAt/id descending.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoicePage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/me/invoices": {
+      "get": {
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Only current Customer's SENT invoices, including ended-contract history; createdAt/id descending.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoicePage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/invoices/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owning verified Owner, or exact verified tenant for SENT only. No other-party access.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Validation/ownership/state/chain error; no private evidence or token data.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": [
+                "code",
+                "message"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Invoice": {
+        "type": "object",
+        "required": [
+          "id",
+          "contractId",
+          "apartmentId",
+          "customerId",
+          "roomNumber",
+          "apartmentTitle",
+          "tenantName",
+          "period",
+          "dueDate",
+          "monthlyRent",
+          "electricityStartReading",
+          "electricityEndReading",
+          "electricityQuantity",
+          "electricityUnitPrice",
+          "electricityAmount",
+          "waterStartReading",
+          "waterEndReading",
+          "waterQuantity",
+          "waterUnitPrice",
+          "waterAmount",
+          "totalAmount",
+          "status",
+          "createdAt",
+          "sentAt",
+          "version"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contractId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "apartmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roomNumber": {
+            "type": "string"
+          },
+          "apartmentTitle": {
+            "type": "string"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "period": {
+            "type": "string"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "monthlyRent": {
+            "type": "string",
+            "description": "Exact decimal string; no client totals/prices accepted."
+          },
+          "electricityStartReading": {
+            "type": "string",
+            "description": "Exact decimal string; no client totals/prices accepted."
+          },
+          "electricityEndReading": {
+            "type": "string",
+            "description": "Exact decimal string; no client totals/prices accepted."
+          },
+          "electricityQuantity": {
+            "type": "string",
+            "description": "Exact decimal string; no client totals/prices accepted."
+          },
+          "electricityUnitPrice": {
+            "type": "string",
+            "description": "Exact decimal string; no client totals/prices accepted."
+          },
+          "electricityAmount": {
+            "type": "string",
+            "description": "Exact decimal string; no client totals/prices accepted."
+          },
+          "waterStartReading": {
+            "type": "string",
+            "description": "Exact decimal string; no client totals/prices accepted."
+          },
+          "waterEndReading": {
+            "type": "string",
+            "description": "Exact decimal string; no client totals/prices accepted."
+          },
+          "waterQuantity": {
+            "type": "string",
+            "description": "Exact decimal string; no client totals/prices accepted."
+          },
+          "waterUnitPrice": {
+            "type": "string",
+            "description": "Exact decimal string; no client totals/prices accepted."
+          },
+          "waterAmount": {
+            "type": "string",
+            "description": "Exact decimal string; no client totals/prices accepted."
+          },
+          "totalAmount": {
+            "type": "string",
+            "description": "Exact decimal string; no client totals/prices accepted."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "SENT"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sentAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "InvoicePage": {
+        "type": "object",
+        "required": [
+          "items",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Invoice"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "BillingContext": {
+        "type": "object",
+        "required": [
+          "contractId",
+          "apartmentId",
+          "roomNumber",
+          "tenantName",
+          "period",
+          "baselineVersion",
+          "monthlyRent",
+          "electricityStartReading",
+          "electricityUnitPrice",
+          "waterStartReading",
+          "waterUnitPrice"
+        ],
+        "properties": {
+          "contractId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "apartmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roomNumber": {
+            "type": "string"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "period": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}$"
+          },
+          "baselineVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "monthlyRent": {
+            "type": "string",
+            "description": "Exact decimal string; no client totals/prices accepted."
+          },
+          "electricityStartReading": {
+            "type": "string",
+            "description": "Exact decimal string; no client totals/prices accepted."
+          },
+          "electricityUnitPrice": {
+            "type": "string",
+            "description": "Exact decimal string; no client totals/prices accepted."
+          },
+          "waterStartReading": {
+            "type": "string",
+            "description": "Exact decimal string; no client totals/prices accepted."
+          },
+          "waterUnitPrice": {
+            "type": "string",
+            "description": "Exact decimal string; no client totals/prices accepted."
+          }
+        }
+      },
+      "Tenancy": {
+        "type": "object",
+        "required": [
+          "id",
+          "apartmentId",
+          "customerId",
+          "roomNumber",
+          "apartmentTitle",
+          "propertyName",
+          "customerName",
+          "customerEmail",
+          "status",
+          "startDate",
+          "endDate",
+          "monthlyRent",
+          "version"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "apartmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roomNumber": {
+            "type": "string"
+          },
+          "apartmentTitle": {
+            "type": "string"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "customerEmail": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "ACTIVE",
+              "ENDED"
+            ]
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "monthlyRent": {
+            "type": "string",
+            "description": "Exact decimal string; no client totals/prices accepted."
+          },
+          "version": {
+            "type": "integer"
+          }
+        }
+      },
+      "InvoiceCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "period",
+          "dueDate",
+          "electricityEndReading",
+          "waterEndReading",
+          "baselineVersion"
+        ],
+        "properties": {
+          "period": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}$"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "electricityEndReading": {
+            "type": "string",
+            "description": "Nonnegative decimal (15,2), >= server start."
+          },
+          "waterEndReading": {
+            "type": "string",
+            "description": "Nonnegative decimal (15,2), >= server start."
+          },
+          "baselineVersion": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "InvoiceSend": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}
