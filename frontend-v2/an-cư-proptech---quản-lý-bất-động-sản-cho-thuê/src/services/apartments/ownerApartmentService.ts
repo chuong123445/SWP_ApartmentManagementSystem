@@ -4,6 +4,7 @@ import { apiFetch, readApiError } from '@/services/http/client';
 import type { OwnerProperty } from '@/types/property';
 export type { OwnerProperty } from '@/types/property';
 interface OwnerApartment {
+  version: number;
   id: string; propertyId: string; propertyName: string; ownerId: string;
   roomNumber: string; title: string; floor: number | null; areaM2: string;
   advertisedMonthlyRent: string; deposit: string | null;
@@ -17,7 +18,7 @@ const statuses: Record<string, RoomStatus> = {
 export function fromOwnerApartment(data: OwnerApartment): Room {
   if (!data.id || !data.propertyId || !statuses[data.availability]) throw new Error('Dữ liệu căn hộ không hợp lệ.');
   return {
-    id: data.id, buildingId: data.propertyId, propertyName: data.propertyName, title: data.title,
+    id: data.id, version: data.version, buildingId: data.propertyId, propertyName: data.propertyName, title: data.title,
     image: data.thumbnail || '/images/apartment-placeholder.svg',
     roomNumber: data.roomNumber, floor: data.floor ?? 0, area: Number(data.areaM2), price: Number(data.advertisedMonthlyRent),
     deposit: data.deposit === null ? undefined : Number(data.deposit), status: statuses[data.availability],
@@ -52,5 +53,10 @@ export async function getOwnerProperties(): Promise<OwnerProperty[]> {
 export async function createOwnerApartment(room: NewRoom): Promise<Room> {
   return fromOwnerApartment(await ownerRequest('/api/v1/owner/apartments', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toOwnerApartmentCreate(room)),
+  }));
+}
+export async function setApartmentPublication(id: string, publicationStatus: 'PUBLISHED' | 'HIDDEN', version: number): Promise<Room> {
+  return fromOwnerApartment(await ownerRequest(`/api/v1/owner/apartments/${id}/publication`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ publicationStatus, version }),
   }));
 }

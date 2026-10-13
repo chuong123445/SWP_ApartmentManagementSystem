@@ -19,8 +19,8 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ buildings, onClose, 
   const [area, setArea] = useState('28');
   const [price, setPrice] = useState('5000000');
   const [deposit, setDeposit] = useState('5000000');
-  const [electric, setElectric] = useState('1200');
-  const [water, setWater] = useState('110');
+  const [electric, setElectric] = useState('');
+  const [water, setWater] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
@@ -42,8 +42,8 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ buildings, onClose, 
       price: Number(price),
       status: 'available',
       deposit: Number(deposit),
-      electricityIndex: Number(electric) || 0,
-      waterIndex: Number(water) || 0,
+      electricityIndex: electric.trim() === '' ? null : Number(electric),
+      waterIndex: water.trim() === '' ? null : Number(water),
       amenities: ['Máy lạnh', 'Tủ lạnh', 'Bình nóng lạnh', 'Gác lửng cao cấp'],
       maxOccupants: 2,
     };

@@ -12,6 +12,7 @@ export interface Building {
 }
 
 export interface Room {
+  version?: number;
   title?: string;
   propertyName?: string;
   publicationStatus?: string;
@@ -37,7 +38,7 @@ export interface Room {
   depositEscrowLocked?: boolean;
 }
 
-export type NewRoom = Omit<Room, 'id'>;
+export type NewRoom = Omit<Room, 'id' | 'electricityIndex' | 'waterIndex'> & { electricityIndex: number | null; waterIndex: number | null };
 
 export interface Tenant {
   id: string;
