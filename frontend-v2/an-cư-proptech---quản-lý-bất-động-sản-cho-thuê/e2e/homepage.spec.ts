@@ -33,8 +33,13 @@ test('supplied Home design filters real catalog by city, budget and bedrooms', a
   await page.getByLabel('Giá tối thiểu / tháng').fill('');await page.getByLabel('Giá tối đa / tháng').fill('');
   const absent = page.waitForResponse(response => response.url().includes('/api/v1/apartments?') && new URL(response.url()).searchParams.get('city')?.includes('Đà Nẵng') === true);
   await page.getByRole('button', { name: 'Tìm căn hộ tại Đà Nẵng', exact: true }).click();
-  const absentData = await (await absent).json();
-  await expect(page.getByLabel('Tỉnh / Thành phố', { exact: true })).toHaveValue('TP. Đà Nẵng');
+  const absentDataResponse = await absent;
+  const absentData = await absentDataResponse.json();
+  // VACANT-only address options can lose a city after its last unit is selected.
+  // The tile then uses its fallback name; keep the selector aligned with the actual query.
+  const queriedCity = new URL(absentDataResponse.url()).searchParams.get('city')!;
+  expect(['TP. Đà Nẵng', 'Đà Nẵng']).toContain(queriedCity);
+  await expect(page.getByLabel('Tỉnh / Thành phố', { exact: true })).toHaveValue(queriedCity);
   if (absentData.totalElements === 0) await expect(page.getByRole('heading', { name: 'Chưa có căn hộ phù hợp' })).toBeVisible();
   const missingCity = page.waitForResponse(response => response.url().includes('/api/v1/apartments?') && new URL(response.url()).searchParams.get('city') === 'Bình Dương');
   await page.getByRole('button', { name: 'Tìm căn hộ tại Bình Dương', exact: true }).click();expect((await missingCity).status()).toBe(200);
@@ -43,11 +48,18 @@ test('supplied Home design filters real catalog by city, budget and bedrooms', a
   await expect(page.getByLabel('Số phòng ngủ')).toHaveValue('');await expect(page.getByLabel('Tỉnh / Thành phố', { exact: true })).toHaveValue('');
   await expect(page.getByTestId('apartment-card').first()).toBeVisible();
   const options = await (await page.request.get('/api/v1/apartments/address-options')).json();
-  const address = options.find((o: { city: string; ward: string | null }) => o.city === 'TP. Hồ Chí Minh' && o.ward);
+  const address = options.find((o: { city: string; ward: string | null }) => o.city === 'TP. Hồ Chí Minh' && o.ward)
+    ?? options.find((o: { city: string }) => o.city === 'TP. Hồ Chí Minh');
   expect(address).toBeTruthy();await page.getByLabel('Tỉnh / Thành phố', { exact: true }).selectOption(address.city);
-  await page.getByLabel('Quận / Huyện / Khu vực').selectOption(address.district);await page.getByLabel('Phường / Xã').selectOption(address.ward);
-  const wardResponse = page.waitForResponse(response => response.url().includes('/api/v1/apartments?') && new URL(response.url()).searchParams.get('ward') === address.ward);
-  await page.getByRole('button', { name: 'Tìm kiếm', exact: true }).click();expect((await wardResponse).status()).toBe(200);
+  await page.getByLabel('Quận / Huyện / Khu vực').selectOption(address.district);
+  if (address.ward) {
+    await page.getByLabel('Phường / Xã').selectOption(address.ward);
+    const wardResponse = page.waitForResponse(response => response.url().includes('/api/v1/apartments?') && new URL(response.url()).searchParams.get('ward') === address.ward);
+    await page.getByRole('button', { name: 'Tìm kiếm', exact: true }).click();expect((await wardResponse).status()).toBe(200);
+  } else {
+    await expect(page.getByLabel('Phường / Xã').locator('option')).toHaveCount(1);
+    await expect(page.getByLabel('Phường / Xã')).toHaveValue('');
+  }
   await page.getByRole('button', { name: 'Tìm căn hộ tại Đà Nẵng', exact: true }).click();
   await expect(page.getByLabel('Quận / Huyện / Khu vực')).toHaveValue('');await expect(page.getByLabel('Phường / Xã')).toHaveValue('');
   await page.getByRole('button', { name: 'Xóa bộ lọc', exact: true }).first().click();await expect(page.getByTestId('apartment-card').first()).toBeVisible();
