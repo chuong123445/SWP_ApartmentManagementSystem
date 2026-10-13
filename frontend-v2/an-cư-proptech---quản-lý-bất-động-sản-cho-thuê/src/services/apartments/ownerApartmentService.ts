@@ -10,6 +10,7 @@ interface OwnerApartment {
   advertisedMonthlyRent: string; deposit: string | null;
   electricityIndex: number | null; waterIndex: number | null; maxOccupants: number | null;
   amenities: string[]; publicationStatus: string; availability: string; propertyApprovalStatus: string;
+  thumbnail?: string;
 }
 const statuses: Record<string, RoomStatus> = {
   VACANT: 'available', OCCUPIED: 'rented', CONTRACT_IN_PROGRESS: 'contract_in_progress', MAINTENANCE: 'maintenance',
@@ -18,6 +19,7 @@ export function fromOwnerApartment(data: OwnerApartment): Room {
   if (!data.id || !data.propertyId || !statuses[data.availability]) throw new Error('Dữ liệu căn hộ không hợp lệ.');
   return {
     id: data.id, buildingId: data.propertyId, propertyName: data.propertyName, title: data.title,
+    image: data.thumbnail || '/images/apartment-placeholder.svg',
     roomNumber: data.roomNumber, floor: data.floor ?? 0, area: Number(data.areaM2), price: Number(data.advertisedMonthlyRent),
     deposit: data.deposit === null ? undefined : Number(data.deposit), status: statuses[data.availability],
     electricityIndex: data.electricityIndex ?? 0, waterIndex: data.waterIndex ?? 0,
