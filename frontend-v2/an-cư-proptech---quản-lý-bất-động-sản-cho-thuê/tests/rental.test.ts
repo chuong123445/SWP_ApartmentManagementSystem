@@ -52,3 +52,23 @@ test('login redirects only to supported local pages', () => {
   assert.equal(loginDestination(user, '//external.example'), '/');
   assert.equal(loginDestination(user, '/my/rental-requests'), '/my/rental-requests');
 });
+test('owner decision sends decision, version and optional reason with bearer token', async () => {
+  const { decideRentalRequest } = await import('@/services/rental/rentalService');
+  setAccessToken('owner-jwt');
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, '/api/v1/owner/rental-requests/req-123/decisions');
+    assert.equal(options?.method, 'POST');
+    assert.equal(new Headers(options?.headers).get('Authorization'), 'Bearer owner-jwt');
+    assert.deepEqual(JSON.parse(options!.body as string), { decision: 'ACCEPT', version: 0 });
+    return Response.json({ id: 'req-123', status: 'ACCEPTED', version: 1 }, { status: 200 });
+  };
+  const res = await decideRentalRequest('req-123', 'ACCEPT', 0);
+  assert.equal(res.status, 'ACCEPTED');
+  assert.equal(res.version, 1);
+});
+test('owner decision surfaces backend conflict error', async () => {
+  const { decideRentalRequest } = await import('@/services/rental/rentalService');
+  setAccessToken('owner-jwt');
+  globalThis.fetch = async () => Response.json({ code: 'APARTMENT_NOT_AVAILABLE', message: 'Căn hộ hiện không còn nhận yêu cầu' }, { status: 409 });
+  await assert.rejects(decideRentalRequest('req-123', 'ACCEPT', 0), (error: ApiError) => error.status === 409 && error.code === 'APARTMENT_NOT_AVAILABLE');
+});
