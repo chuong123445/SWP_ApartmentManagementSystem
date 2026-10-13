@@ -8,6 +8,7 @@ import { submitRentalRequest, getApartmentRentalRequests, cancelRentalRequest } 
 import type { ApartmentDetail } from '@/types/apartment';
 import type { RentalRequest } from '@/types/rental';
 import { availabilityLabel, formatRent, requestStatusLabel } from '@/utils/format';
+import { ApiError } from '@/services/http/client';
 
 export function ApartmentDetailPage() {
   const { id = '' } = useParams();
@@ -18,12 +19,14 @@ export function ApartmentDetailPage() {
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [needsVerification, setNeedsVerification] = useState(false);
   const [submitted, setSubmitted] = useState<RentalRequest | null>(null);
   const [activeRequests, setActiveRequests] = useState<RentalRequest[]>([]);
   const [checking, setChecking] = useState(true);
   const [requestError, setRequestError] = useState('');
   const [revision, setRevision] = useState(0);
   const customer = user?.roles.includes('CUSTOMER') && user.accountStatus === 'ACTIVE' && user.contactVerificationStatus === 'VERIFIED';
+  useEffect(() => { setNeedsVerification(false); }, [id, user?.id]);
   useEffect(() => {
     let active = true;
     setChecking(true); setRequestError(''); setSubmitted(null); setActiveRequests([]);
@@ -43,9 +46,13 @@ export function ApartmentDetailPage() {
   const send = async (event: React.FormEvent) => {
     event.preventDefault();
     if (saving || submitted || checking || requestError) return;
+    if (!customer) { setError(''); setNeedsVerification(true); return; }
     setSaving(true); setError('');
     try { const item = await submitRentalRequest(id, message); setSubmitted(item); setActiveRequests([item]); }
-    catch (err) { setError(err instanceof Error ? err.message : 'Không thể gửi yêu cầu thuê.'); setRevision(value => value + 1); }
+    catch (err) {
+      if (err instanceof ApiError && err.code === 'CONTACT_NOT_VERIFIED') setNeedsVerification(true);
+      else { setError(err instanceof Error ? err.message : 'Không thể gửi yêu cầu thuê.'); setRevision(value => value + 1); }
+    }
     finally { setSaving(false); }
   };
   const cancel = async (request: RentalRequest) => {
@@ -55,7 +62,6 @@ export function ApartmentDetailPage() {
     catch (err) { setError(err instanceof Error ? err.message : 'Không thể hủy yêu cầu.'); setRevision(value => value + 1); }
     finally { setSaving(false); }
   };
-  const verifiedCustomer = user?.roles.includes('CUSTOMER') && user.accountStatus === 'ACTIVE' && user.contactVerificationStatus === 'VERIFIED';
   return <CustomerLayout><main className="max-w-7xl mx-auto px-5 py-8">
     <Link to="/" className="inline-flex items-center gap-2 text-sm text-slate-500 mb-6"><ArrowLeft className="w-4 h-4" />Danh sách căn hộ</Link>
     {loading && <p role="status" className="py-16 text-center text-slate-500">Đang tải thông tin căn hộ...</p>}
@@ -76,9 +82,10 @@ export function ApartmentDetailPage() {
           : apartment.availability !== 'VACANT' ? <p className="text-sm text-amber-700 bg-amber-50 rounded-lg p-4">Căn hộ hiện không còn nhận yêu cầu thuê.</p>
           : !user ? <Link to="/login" state={{ returnTo: `/apartments/${id}` }} className="block text-center bg-emerald-600 text-white rounded-lg px-4 py-3 text-sm font-semibold">Đăng nhập để gửi yêu cầu thuê</Link>
           : !user.roles.includes('CUSTOMER') ? <p className="text-sm text-slate-500">Gửi yêu cầu thuê bằng tài khoản người tìm thuê.</p>
-          : !verifiedCustomer ? <div className="text-sm text-amber-800 bg-amber-50 rounded-lg p-4">Cần xác thực tài khoản bằng email trước khi gửi yêu cầu thuê.<Link to="/account/settings/email" className="block underline mt-2">Xác thực email</Link></div>
           : <form onSubmit={send} className="space-y-3"><label htmlFor="rental-message" className="text-sm font-semibold block">Lời nhắn cho chủ nhà</label><textarea id="rental-message" rows={5} maxLength={2000} value={message} disabled={saving} onChange={e => setMessage(e.target.value)} placeholder="Giới thiệu nhu cầu thuê, thời gian dự kiến chuyển vào..." className="w-full border border-slate-300 rounded-lg p-3 text-sm" />
-            <button type="submit" disabled={saving} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg py-3 text-sm font-semibold disabled:opacity-50">{saving ? 'Đang gửi...' : 'Gửi yêu cầu thuê'}</button><p className="text-xs text-slate-500 leading-5">Gửi yêu cầu chưa giữ chỗ căn hộ. Chủ nhà sẽ xem xét và liên hệ với bạn.</p></form>}
+            <button type="submit" disabled={saving} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg py-3 text-sm font-semibold disabled:opacity-50">{saving ? 'Đang gửi...' : 'Gửi yêu cầu thuê'}</button>
+            {needsVerification && <div role="alert" className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-4"><p>Bạn cần xác thực tài khoản trước khi gửi yêu cầu thuê.</p><Link to="/account/settings/email" className="inline-block bg-emerald-600 text-white font-semibold rounded-lg px-4 py-2 mt-3">Xác thực email</Link></div>}
+            <p className="text-xs text-slate-500 leading-5">Gửi yêu cầu chưa giữ chỗ căn hộ. Chủ nhà sẽ xem xét và liên hệ với bạn.</p></form>}
       </div></aside>
     </div>}
   </main></CustomerLayout>;
