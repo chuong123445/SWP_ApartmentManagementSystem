@@ -60,11 +60,14 @@ class OwnerApartmentIntegrationTests {
         var result = create(ownerToken,body(approved,"PUBLISHED")).andExpect(status().isCreated())
             .andExpect(jsonPath("$.ownerId").value(owner.getId().toString())).andExpect(jsonPath("$.propertyId").value(approved.getId().toString()))
             .andExpect(jsonPath("$.electricityIndex").value(1200)).andExpect(jsonPath("$.waterIndex").value(110))
-            .andExpect(jsonPath("$.areaM2").value("28.50")).andExpect(jsonPath("$.availability").value("VACANT")).andReturn();
+            .andExpect(jsonPath("$.areaM2").value("28.50")).andExpect(jsonPath("$.availability").value("VACANT"))
+            .andExpect(jsonPath("$.thumbnail").value("/images/apartment-placeholder.svg")).andReturn();
         String id = JsonPath.read(result.getResponse().getContentAsString(),"$.id");
-        apartments.flush();assertNotNull(apartments.findById(UUID.fromString(id)).orElseThrow().getProperty());
+        var saved = apartments.findById(UUID.fromString(id)).orElseThrow();assertNotNull(saved.getProperty());
+        saved.setCoverImagePath("/apartment/images/apartment1.jpg");apartments.saveAndFlush(saved);
         mvc.perform(get("/api/v1/owner/apartments").header("Authorization","Bearer "+ownerToken))
-            .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(id));
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(id))
+            .andExpect(jsonPath("$[0].thumbnail").value("/apartment/images/apartment1.jpg"));
         mvc.perform(get("/api/v1/apartments/"+id)).andExpect(status().isOk()).andExpect(jsonPath("$.publicOwner.id").value(owner.getId().toString()));
     }
     @Test void ownerCannotReadOrCreateApartmentsInAnotherOwnersProperty() throws Exception {
