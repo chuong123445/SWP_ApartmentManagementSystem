@@ -1,9 +1,8 @@
 import type { NewRoom, Room, RoomStatus } from '@/types';
 import { apiFetch, readApiError } from '@/services/http/client';
 
-export interface OwnerProperty {
-  id: string; name: string; address: string; approvalStatus: string;
-}
+import type { OwnerProperty } from '@/types/property';
+export type { OwnerProperty } from '@/types/property';
 interface OwnerApartment {
   id: string; propertyId: string; propertyName: string; ownerId: string;
   roomNumber: string; title: string; floor: number | null; areaM2: string;
