@@ -22,3 +22,12 @@ export function getOwnerRentalRequests(page = 0, status?: RentalRequestStatus): 
   if (status) query.set('status', status);
   return request(`/api/v1/owner/rental-requests?${query}`);
 }
+
+export function getApartmentRentalRequests(apartmentId: string): Promise<RentalRequest[]> {
+  return request(`/api/v1/me/apartments/${encodeURIComponent(apartmentId)}/rental-requests`);
+}
+export function cancelRentalRequest(id: string, version: number): Promise<RentalRequest> {
+  return request(`/api/v1/me/rental-requests/${encodeURIComponent(id)}/cancel`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version }),
+  });
+}
