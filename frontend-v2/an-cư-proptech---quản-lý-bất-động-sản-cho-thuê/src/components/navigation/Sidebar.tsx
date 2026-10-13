@@ -45,7 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const adminMenuItems = [
     { id: 'dashboard' as ActiveTab, label: 'Tổng quan', icon: LayoutDashboard },
-    { id: 'rooms' as ActiveTab, label: 'Quản lý Phòng', icon: Home },
+    { id: 'rooms' as ActiveTab, label: 'Quản lý căn hộ', icon: Home },
     { id: 'rental_requests' as ActiveTab, label: 'Yêu cầu thuê', icon: MessageSquare },
     { id: 'tenants' as ActiveTab, label: 'Khách thuê & eKYC', icon: Users },
     {
