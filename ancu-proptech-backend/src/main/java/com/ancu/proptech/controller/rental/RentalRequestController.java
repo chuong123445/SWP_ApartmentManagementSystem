@@ -36,4 +36,8 @@ public class RentalRequestController {
         @RequestParam(required = false) RentalRequest.Status status, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         return requests.ownerInbox(jwt, apartmentId, status, page, size);
     }
+    @PostMapping("/api/v1/owner/rental-requests/{id}/decisions")
+    public RentalRequestResponse decide(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @Valid @RequestBody RentalDecision input) {
+        return requests.decide(jwt, id, input);
+    }
 }
