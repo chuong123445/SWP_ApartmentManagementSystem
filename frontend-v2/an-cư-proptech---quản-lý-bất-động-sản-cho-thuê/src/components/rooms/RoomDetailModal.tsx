@@ -62,7 +62,7 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
               <h3 className="text-xl font-bold">Căn Hộ {room.roomNumber}</h3>
               <span className="text-xs bg-emerald-500/20 text-emerald-300 font-semibold px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                {room.propertyApprovalStatus === 'APPROVED' ? 'Tài sản đã được duyệt' : room.propertyApprovalStatus === 'REJECTED' ? 'Tài sản bị từ chối' : 'Tài sản chờ duyệt'}
+                {room.propertyApprovalStatus === 'APPROVED' ? 'Tài sản đã được duyệt' : room.propertyApprovalStatus === 'DRAFT' ? 'Tài sản nháp – chưa gửi hồ sơ' : room.propertyApprovalStatus === 'REJECTED' ? 'Tài sản bị từ chối' : 'Tài sản chờ duyệt'}
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
@@ -128,7 +128,7 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
                 Tài sản: {room.propertyName}
               </span>
               <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
-                {room.propertyApprovalStatus === 'APPROVED' ? 'Đã duyệt' : room.propertyApprovalStatus === 'REJECTED' ? 'Từ chối' : 'Chờ duyệt'}
+                {room.propertyApprovalStatus === 'APPROVED' ? 'Đã duyệt' : room.propertyApprovalStatus === 'DRAFT' ? 'Nháp' : room.propertyApprovalStatus === 'REJECTED' ? 'Từ chối' : 'Chờ duyệt'}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2 text-slate-700 text-[11px]">
