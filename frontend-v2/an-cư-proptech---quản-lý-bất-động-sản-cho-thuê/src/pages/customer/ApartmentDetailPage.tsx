@@ -4,10 +4,10 @@ import { MapPin, BedDouble, Bath, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { CustomerLayout } from '@/layouts/CustomerLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { getApartment } from '@/services/apartments/apartmentService';
-import { submitRentalRequest } from '@/services/rental/rentalService';
+import { submitRentalRequest, getApartmentRentalRequests, cancelRentalRequest } from '@/services/rental/rentalService';
 import type { ApartmentDetail } from '@/types/apartment';
 import type { RentalRequest } from '@/types/rental';
-import { availabilityLabel, formatRent } from '@/utils/format';
+import { availabilityLabel, formatRent, requestStatusLabel } from '@/utils/format';
 
 export function ApartmentDetailPage() {
   const { id = '' } = useParams();
@@ -19,6 +19,20 @@ export function ApartmentDetailPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState<RentalRequest | null>(null);
+  const [activeRequests, setActiveRequests] = useState<RentalRequest[]>([]);
+  const [checking, setChecking] = useState(true);
+  const [requestError, setRequestError] = useState('');
+  const [revision, setRevision] = useState(0);
+  const customer = user?.roles.includes('CUSTOMER') && user.accountStatus === 'ACTIVE' && user.contactVerificationStatus === 'VERIFIED';
+  useEffect(() => {
+    let active = true;
+    setChecking(true); setRequestError(''); setSubmitted(null); setActiveRequests([]);
+    if (!customer) { setChecking(false); return; }
+    getApartmentRentalRequests(id).then(items => { if (active) { setActiveRequests(items); setSubmitted(items[0] ?? null); } })
+      .catch(err => { if (active) setRequestError(err instanceof Error ? err.message : 'Không thể tải trạng thái yêu cầu.'); })
+      .finally(() => { if (active) setChecking(false); });
+    return () => { active = false; };
+  }, [id, user?.id, customer, revision]);
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true); setLoadError(''); setApartment(null); setSubmitted(null); setMessage(''); setError('');
@@ -28,10 +42,17 @@ export function ApartmentDetailPage() {
   }, [id]);
   const send = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (saving || submitted) return;
+    if (saving || submitted || checking || requestError) return;
     setSaving(true); setError('');
-    try { setSubmitted(await submitRentalRequest(id, message)); }
-    catch (err) { setError(err instanceof Error ? err.message : 'Không thể gửi yêu cầu thuê.'); }
+    try { const item = await submitRentalRequest(id, message); setSubmitted(item); setActiveRequests([item]); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Không thể gửi yêu cầu thuê.'); setRevision(value => value + 1); }
+    finally { setSaving(false); }
+  };
+  const cancel = async (request: RentalRequest) => {
+    if (saving) return;
+    setSaving(true); setError('');
+    try { await cancelRentalRequest(request.id, request.version); setRevision(value => value + 1); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Không thể hủy yêu cầu.'); setRevision(value => value + 1); }
     finally { setSaving(false); }
   };
   const verifiedCustomer = user?.roles.includes('CUSTOMER') && user.accountStatus === 'ACTIVE' && user.contactVerificationStatus === 'VERIFIED';
@@ -50,13 +71,14 @@ export function ApartmentDetailPage() {
       <aside className="space-y-5"><div className="bg-white border border-slate-200 rounded-2xl p-6 lg:sticky lg:top-24">
         <p className="text-sm text-slate-500">Giá niêm yết / tháng</p><p className="text-3xl font-bold text-emerald-700 mt-2">{formatRent(apartment.advertisedMonthlyRent)}</p>
         <div className="my-5 border-y border-slate-100 py-4"><p className="text-xs text-slate-500 mb-1">Chủ nhà</p><p className="font-semibold">{apartment.publicOwner.displayName}</p><p className="text-xs text-slate-500 mt-1">{apartment.propertyName}</p></div>
-        {submitted ? <div role="status" className="bg-emerald-50 border border-emerald-200 rounded-xl p-4"><CheckCircle2 className="w-6 h-6 text-emerald-600 mb-2" /><p className="font-semibold text-emerald-800">Đã gửi yêu cầu thuê</p><p className="text-sm text-emerald-700 mt-2">Yêu cầu đang chờ chủ nhà xử lý.</p><Link to="/my/rental-requests" className="inline-block text-sm text-emerald-800 underline mt-3">Xem yêu cầu của tôi</Link></div>
+        {error && <p role="alert" className="text-sm text-rose-700 mb-3">{error}</p>}
+        {checking ? <p role="status">Đang tải trạng thái yêu cầu...</p> : requestError ? <div role="alert"><p>{requestError}</p><button onClick={() => setRevision(value => value + 1)} className="underline mt-2">Thử lại</button></div> : submitted ? <div role="status" className="bg-emerald-50 border border-emerald-200 rounded-xl p-4"><CheckCircle2 className="w-6 h-6 text-emerald-600 mb-2" /><p className="font-semibold text-emerald-800">Đã gửi yêu cầu thuê</p><p className="text-sm text-emerald-700 mt-2">{submitted.status === 'ACCEPTED' ? 'Chủ nhà đã chấp nhận yêu cầu thuê.' : 'Yêu cầu đang chờ chủ nhà xử lý.'}</p>{activeRequests.map(request => <div key={request.id} className="mt-3"><p className="text-sm">{requestStatusLabel[request.status]}</p>{request.status === 'PENDING' && <button type="button" disabled={saving} onClick={() => cancel(request)} className="border border-rose-300 text-rose-700 rounded-lg px-4 py-2 mt-2 text-sm disabled:opacity-50">{saving ? 'Đang hủy...' : 'Hủy yêu cầu thuê'}</button>}</div>)}<Link to="/my/rental-requests" className="inline-block text-sm text-emerald-800 underline mt-3">Xem yêu cầu của tôi</Link></div>
           : apartment.availability !== 'VACANT' ? <p className="text-sm text-amber-700 bg-amber-50 rounded-lg p-4">Căn hộ hiện không còn nhận yêu cầu thuê.</p>
           : !user ? <Link to="/login" state={{ returnTo: `/apartments/${id}` }} className="block text-center bg-emerald-600 text-white rounded-lg px-4 py-3 text-sm font-semibold">Đăng nhập để gửi yêu cầu thuê</Link>
           : !user.roles.includes('CUSTOMER') ? <p className="text-sm text-slate-500">Gửi yêu cầu thuê bằng tài khoản người tìm thuê.</p>
           : !verifiedCustomer ? <div className="text-sm text-amber-800 bg-amber-50 rounded-lg p-4">Cần xác minh email hoặc số điện thoại trước khi gửi yêu cầu.<Link to="/account/verification" className="block underline mt-2">Xem trạng thái tài khoản</Link></div>
           : <form onSubmit={send} className="space-y-3"><label htmlFor="rental-message" className="text-sm font-semibold block">Lời nhắn cho chủ nhà</label><textarea id="rental-message" rows={5} maxLength={2000} value={message} disabled={saving} onChange={e => setMessage(e.target.value)} placeholder="Giới thiệu nhu cầu thuê, thời gian dự kiến chuyển vào..." className="w-full border border-slate-300 rounded-lg p-3 text-sm" />
-            {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}<button type="submit" disabled={saving} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg py-3 text-sm font-semibold disabled:opacity-50">{saving ? 'Đang gửi...' : 'Gửi yêu cầu thuê'}</button><p className="text-xs text-slate-500 leading-5">Gửi yêu cầu chưa giữ chỗ căn hộ. Chủ nhà sẽ xem xét và liên hệ với bạn.</p></form>}
+            <button type="submit" disabled={saving} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg py-3 text-sm font-semibold disabled:opacity-50">{saving ? 'Đang gửi...' : 'Gửi yêu cầu thuê'}</button><p className="text-xs text-slate-500 leading-5">Gửi yêu cầu chưa giữ chỗ căn hộ. Chủ nhà sẽ xem xét và liên hệ với bạn.</p></form>}
       </div></aside>
     </div>}
   </main></CustomerLayout>;
