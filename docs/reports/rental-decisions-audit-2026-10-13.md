@@ -34,3 +34,12 @@ Source reviewed: `C:/Users/chuong nguyen/.gemini/antigravity-cli/brain/f3d43d91-
 - The old E2E acceptance/cancellation workflow was deliberately not rerun because of finding1. Existing screenshots/test claims were not treated as proof of current behavior.
 
 Recommended next step: fix fixture isolation, strict request DTO handling and shared inventory invalidation before accepting this feature as complete; clarify reason/live-refresh scope and the pending business policy separately.
+
+
+## Resolution — user-authorized rework
+
+The findings above describe the pre-rework code. They have now been addressed: numeric/unknown command input is rejected; bounded optional reason persists through V7 and private DTOs; successful/conflicting decisions refresh mounted inventory; E2E uses new UUID-tagged accounts/property and guarded cleanup instead of canceling demo requests. Customer foreground views poll every10seconds and refresh on focus/visibility return; unavailable contract creation is explicitly disabled. No contract provider/signing flow or FIFO selection rule was added.
+
+Validation:21 SQL rollback integration cases,32 frontend unit cases, TypeScript/final build; isolated real Playwright workflow passed3times with fresh fixtures, including reason visibility, open Customer history/detail updates, pending-first order, Owner inventory without reload and mobile modal/cards. Cleanup leaves zero rental-e2e accounts/properties and Customer demo remains pending/version1. See WORK_PROGRESS for final run/commit details.
+
+Automatic approval review rejected an attempted additional concurrency test because its proposed committed cleanup was judged a shared-data deletion risk. That command did not run and its source was not applied. The rejected approach was dropped. Validation instead uses rollback-only competing-request state tests plus the guarded isolated E2E workflow. The earlier audit's concurrent200/409 result remains historical evidence; it was not claimed as a new concurrency rerun in this rework.
