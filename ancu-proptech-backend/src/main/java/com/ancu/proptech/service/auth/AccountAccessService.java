@@ -7,6 +7,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 @Service @RequiredArgsConstructor
 public class AccountAccessService {
+    private final AccountVerificationPolicy verification;
     private final AuthService auth;
     public AuthAccount account(Jwt jwt) { return auth.authenticate(jwt); }
     public AuthAccount customer(Jwt jwt) { return require(jwt, AuthAccount.Role.CUSTOMER); }
@@ -14,7 +15,7 @@ public class AccountAccessService {
     private AuthAccount require(Jwt jwt, AuthAccount.Role role) {
         AuthAccount account = auth.authenticate(jwt);
         if (account.getRole() != role) throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Tài khoản không có quyền thực hiện thao tác này.");
-        if (account.getStatus() != AuthAccount.Status.ACTIVE || !account.isContactVerified())
+        if (account.getStatus() != AuthAccount.Status.ACTIVE || !verification.isVerified(account))
             throw new ApiException(HttpStatus.FORBIDDEN, "CONTACT_NOT_VERIFIED", "Cần xác minh email hoặc số điện thoại để thực hiện thao tác này.");
         return account;
     }

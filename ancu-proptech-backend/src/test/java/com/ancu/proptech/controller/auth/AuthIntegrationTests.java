@@ -43,7 +43,7 @@ class AuthIntegrationTests {
         owner.setPasswordHash(passwords.encode(password));
         owner.setRole(AuthAccount.Role.OWNER);
         owner.setStatus(AuthAccount.Status.ACTIVE);
-        owner.setContactVerified(true);
+        owner.setContactVerified(true);owner.setEmailVerified(true);
         accounts.saveAndFlush(owner);
     }
 
@@ -121,13 +121,13 @@ class AuthIntegrationTests {
 
     @Test void pendingOwnerAndCustomerCannotAcquireManagerAuthority() throws Exception {
         owner.setStatus(AuthAccount.Status.PENDING_VERIFICATION);
-        owner.setContactVerified(false);
+        owner.setContactVerified(false);owner.setEmailVerified(false);
         accounts.saveAndFlush(owner);
         Login pending = login(owner.getEmail(), password);
         mvc.perform(get("/api/v1/me").header("Authorization", "Bearer " + pending.accessToken())).andExpect(status().isOk());
         mvc.perform(get("/api/v1/owner/apartments").header("Authorization", "Bearer " + pending.accessToken())).andExpect(status().isForbidden());
         owner.setStatus(AuthAccount.Status.ACTIVE);
-        owner.setContactVerified(true);
+        owner.setContactVerified(true);owner.setEmailVerified(true);
         owner.setRole(AuthAccount.Role.CUSTOMER);
         accounts.saveAndFlush(owner);
         Login customer = login(owner.getEmail(), password);

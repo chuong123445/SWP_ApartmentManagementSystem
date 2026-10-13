@@ -26,6 +26,7 @@ import java.util.*;
 
 @Service @RequiredArgsConstructor
 public class AuthService {
+    private final AccountVerificationPolicy verification;
     public static final String ISSUER = "ancu-proptech";
     public static final String AUDIENCE = "ancu-react";
     public record LoginResult(TokenResponse tokens, String refreshToken, long refreshMaxAge) {}
@@ -99,7 +100,7 @@ public class AuthService {
     public AuthUserResponse user(AuthAccount account) {
         return new AuthUserResponse(account.getId(), account.getEmail(), account.getFullName(),
                 List.of(account.getRole().name()), account.getStatus().name(),
-                account.isContactVerified() ? "VERIFIED" : "UNVERIFIED", account.getVersion());
+                verification.isVerified(account) ? "VERIFIED" : "UNVERIFIED", account.getVersion());
     }
 
     private LoginResult issue(AuthSession session) {
