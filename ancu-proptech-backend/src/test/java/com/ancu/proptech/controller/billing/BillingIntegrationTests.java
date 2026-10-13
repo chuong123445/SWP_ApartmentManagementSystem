@@ -46,6 +46,22 @@ class BillingIntegrationTests {
     private ResultActions create(String token,String body)throws Exception{return mvc.perform(post("/api/v1/owner/contracts/"+contract.getId()+"/invoices").header("Authorization","Bearer "+token).contentType("application/json").content(body));}
     private String createDraft()throws Exception{return JsonPath.read(create(ownerToken,body("2026-10",0,"1120","208")).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(),"$.id");}
     private ResultActions send(String token,String id,long version)throws Exception{return mvc.perform(post("/api/v1/owner/invoices/"+id+"/send").header("Authorization","Bearer "+token).contentType("application/json").content("{\"version\":"+version+"}"));}
+    @Test void propertyFilterControlsInvoiceCountBeforePaginationAndKeepsOwnerScope()throws Exception{
+        String firstId=createDraft();
+        send(ownerToken,firstId,0).andExpect(status().isOk());
+        create(ownerToken,body("2026-11",2,"1200","212")).andExpect(status().isCreated());
+        var second=new Property();second.setOwner(owner);second.setName("Empty second property");second.setAddress("Test");
+        second.setCity("City");second.setDistrict("District");second.setApprovalStatus(Property.ApprovalStatus.DRAFT);properties.saveAndFlush(second);
+        mvc.perform(get("/api/v1/owner/invoices").header("Authorization","Bearer "+ownerToken)
+                .param("propertyId",property.getId().toString()).param("size","1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2)).andExpect(jsonPath("$.totalPages").value(2));
+        mvc.perform(get("/api/v1/owner/invoices").header("Authorization","Bearer "+ownerToken)
+                .param("propertyId",second.getId().toString()).param("size","1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get("/api/v1/owner/invoices").header("Authorization","Bearer "+token(otherOwner))
+                .param("propertyId",property.getId().toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items").isEmpty()).andExpect(jsonPath("$.totalElements").value(0));
+    }
     @Test void serverCalculatesFromContractAndTenantReceivesOnlySentInvoice()throws Exception{
         var result=create(ownerToken,body("2026-10",0,"1120","208")).andExpect(status().isCreated()).andReturn();
         var json=result.getResponse().getContentAsString();String id=JsonPath.read(json,"$.id");

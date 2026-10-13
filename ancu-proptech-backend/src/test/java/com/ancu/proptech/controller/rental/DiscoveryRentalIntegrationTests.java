@@ -76,6 +76,28 @@ class DiscoveryRentalIntegrationTests {
     private String token(AuthAccount a) { return auth.login(a.getEmail(), PASSWORD).tokens().accessToken(); }
     private String bearer(AuthAccount a) { return "Bearer " + token(a); }
 
+    @Test void ownerPropertyFilterRunsBeforePaginationAndNeverExpandsOwnership() throws Exception {
+        var secondProperty = property(ownerA);
+        var second = apartment(secondProperty, "Second property", "6000000", Apartment.PublicationStatus.PUBLISHED);
+        String customerToken = bearer(customerA);
+        for (var a : List.of(apartment, second, otherApartment))
+            mvc.perform(post("/api/v1/apartments/" + a.getId() + "/rental-requests").header("Authorization", customerToken)
+                    .contentType("application/json").content("{\"message\":\"Property filter test\"}"))
+                    .andExpect(status().isCreated());
+        String ownerToken = bearer(ownerA);
+        mvc.perform(get("/api/v1/owner/rental-requests").header("Authorization", ownerToken).param("size", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2));
+        mvc.perform(get("/api/v1/owner/rental-requests").header("Authorization", ownerToken)
+                .param("propertyId", secondProperty.getId().toString()).param("size", "1").param("status", "PENDING"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1)).andExpect(jsonPath("$.items[0].apartmentId").value(second.getId().toString()));
+        for (var id : List.of(otherApartment.getProperty().getId(), UUID.randomUUID()))
+            mvc.perform(get("/api/v1/owner/rental-requests").header("Authorization", ownerToken).param("propertyId", id.toString()))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get("/api/v1/owner/rental-requests").header("Authorization", ownerToken)
+                .param("propertyId", secondProperty.getId().toString()).param("apartmentId", apartment.getId().toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+    }
     @Test void publicSearchFiltersAndPaginationExcludeUnpublishedData() throws Exception {
         mvc.perform(get("/api/v1/apartments").param("q", marker).param("size", "1"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2))
