@@ -10,6 +10,7 @@ const room: NewRoom = {
   electricityIndex: 1200, waterIndex: 110, maxOccupants: 2, amenities: ['AC'],
 };
 const savedApi = {
+  version: 0,
   id: 'apartment-uuid', propertyId: 'property-uuid', propertyName: 'My property', ownerId: 'owner-uuid',
   roomNumber: 'P.303', title: 'Apartment', floor: 3, areaM2: '28.00', advertisedMonthlyRent: '5000000.00',
   deposit: '5000000.00', electricityIndex: 1200, waterIndex: 110, maxOccupants: 2,

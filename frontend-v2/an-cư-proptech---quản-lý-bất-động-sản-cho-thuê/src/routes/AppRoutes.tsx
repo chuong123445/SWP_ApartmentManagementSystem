@@ -16,12 +16,15 @@ import { InvoiceDetailPage } from '@/pages/customer/InvoiceDetailPage';
 import { ProfilePage } from '@/pages/account/ProfilePage';
 import { AccountActionPage } from '@/pages/account/AccountActionPage';
 import { AccountSettingsPage } from '@/pages/account/AccountSettingsPage';
+import { PropertyDossiersPage } from '@/pages/admin/PropertyDossiersPage';
 
-function RequireAccount({ children, role, verified = true }: { children: ReactNode; role?: 'MANAGER' | 'CUSTOMER'; verified?: boolean }) {
+function RequireAccount({ children, role, verified = true }: { children: ReactNode; role?: 'MANAGER' | 'CUSTOMER' | 'ADMIN'; verified?: boolean }) {
   const { user, loading } = useAuth();
   const location = useLocation();
   if (loading) return <SessionLoading />;
   if (!user) return <Navigate to="/login" state={{ returnTo: location.pathname }} replace />;
+  if (role === 'ADMIN' && !user.roles.includes('ADMIN')) return <Navigate to="/" replace />;
+  if (role === 'MANAGER' && user.roles.includes('ADMIN')) return <Navigate to="/admin/property-dossiers" replace />;
   if (role === 'MANAGER' && !hasManagementRole(user)) return <Navigate to="/" replace />;
   if (role === 'CUSTOMER' && !user.roles.includes('CUSTOMER')) return <Navigate to="/app" replace />;
   if (verified && (user.accountStatus !== 'ACTIVE' || user.contactVerificationStatus !== 'VERIFIED')) return <AccountVerificationPage />;
@@ -40,6 +43,7 @@ export function AppRoutes() {
     <Route path="/login" element={<LoginRoute />} />
     <Route path="/register" element={<RegisterPage />} />
     <Route path="/app" element={<RequireAccount role="MANAGER"><WorkspacePage /></RequireAccount>} />
+    <Route path="/admin/property-dossiers" element={<RequireAccount role="ADMIN" verified={false}><PropertyDossiersPage /></RequireAccount>} />
     <Route path="/my/rental-requests" element={<RequireAccount role="CUSTOMER"><MyRentalRequestsPage /></RequireAccount>} />
     <Route path="/my/invoices" element={<RequireAccount role="CUSTOMER"><MyInvoicesPage /></RequireAccount>} />
     <Route path="/my/invoices/:id" element={<RequireAccount role="CUSTOMER"><InvoiceDetailPage /></RequireAccount>} />
