@@ -98,3 +98,5 @@ Quan hệ ownership chuẩn: `rental_apartments.property_id → rental_propertie
 Owner chọn Property thật khi thêm căn hộ. DRAFT mặc định; chỉ Property APPROVED được PUBLISHED, frontend và backend đều chặn. Các chỉ số chưa có giữ NULL; UI hiển thị chưa nhập và không tính công tơ từ baseline giả. Xem OpenAPI `docs/api/owner-apartments.openapi.json` ở workspace.
 
 Public discovery filters: q/city/district/ward, inclusive minRent/maxRent and exact nonnegative bedrooms (0 = Studio), combined in SQL before pagination. Invalid numeric values/ranges return 400.
+
+Rental requests (13/10/2026): private GET /api/v1/me/apartments/{id}/rental-requests trả own PENDING/ACCEPTED. POST /api/v1/me/rental-requests/{id}/cancel chỉ own PENDING với version; giữ CANCELLED history, không đổi availability. Submit khóa Apartment và chặn trùng PENDING/ACCEPTED; hủy/từ chối cho phép gửi lại nếu còn eligible. Không sửa/xóa legacy duplicates. Backend 12 DiscoveryRentalIntegrationTests đạt; accept/reject vẫn task riêng.

@@ -7,6 +7,11 @@ import org.springframework.data.repository.query.Param;
 import java.util.UUID;
 
 public interface RentalRequestRepository extends JpaRepository<RentalRequest, UUID> {
+    java.util.List<RentalRequest> findByCustomerIdAndApartmentIdAndStatusInOrderByCreatedAtDescIdDesc(
+            UUID customerId, UUID apartmentId, java.util.Collection<RentalRequest.Status> statuses);
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from RentalRequest r where r.id = :id and r.customer.id = :customerId")
+    java.util.Optional<RentalRequest> findOwnForUpdate(@Param("id") UUID id, @Param("customerId") UUID customerId);
     @EntityGraph(attributePaths = {"apartment", "apartment.property", "customer"})
     Page<RentalRequest> findByCustomerId(UUID customerId, Pageable page);
     @EntityGraph(attributePaths = {"apartment", "apartment.property", "customer"})
