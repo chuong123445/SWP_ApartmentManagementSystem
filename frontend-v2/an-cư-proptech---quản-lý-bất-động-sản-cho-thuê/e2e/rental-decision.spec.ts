@@ -44,9 +44,15 @@ test('Owner can accept and reject rental requests with contract option and custo
   let targetApartmentId = '';
   for (const apt of apartments.filter((a: any) => a.availability === 'VACANT' && ownerAptIds.has(a.id))) {
     const active = await (await page.request.get(`/api/v1/me/apartments/${apt.id}/rental-requests`, { headers })).json();
-    if (!active.length) {
+    for (const req of active.filter((r: any) => r.status === 'PENDING')) {
+      await page.request.post(`/api/v1/me/rental-requests/${req.id}/cancel`, {
+        headers,
+        data: { version: req.version }
+      });
+    }
+    const refreshed = await (await page.request.get(`/api/v1/me/apartments/${apt.id}/rental-requests`, { headers })).json();
+    if (!refreshed.length && !targetApartmentId) {
       targetApartmentId = apt.id;
-      break;
     }
   }
   expect(targetApartmentId).toBeTruthy();
@@ -159,4 +165,37 @@ async function findRentalRequest(ownerPage: any, message: string) {
   }
 
   expect(errors).toEqual([]);
+});
+
+test('Owner inbox displays unprocessed requests before processed requests', async ({ browser }) => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  try {
+    await page.goto('/login');
+    await page.getByLabel('Email', { exact: true }).fill(env.get('LOCAL_OWNER_EMAIL')!);
+    await page.getByLabel('Mật khẩu', { exact: true }).fill(env.get('LOCAL_OWNER_PASSWORD')!);
+    await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
+    await expect(page).toHaveURL(/\/app/);
+
+    await page.locator('#nav-rental_requests').click();
+    await expect(page.getByRole('heading', { name: 'Yêu cầu thuê căn hộ' })).toBeVisible();
+    await expect(page.getByTestId('rental-request').first()).toBeVisible();
+
+    const items = page.getByTestId('rental-request');
+    const count = await items.count();
+    expect(count).toBeGreaterThan(0);
+
+    let seenProcessed = false;
+    for (let i = 0; i < count; i++) {
+      const text = await items.nth(i).innerText();
+      const isPending = text.includes('Chờ xử lý') || text.includes('Đồng ý');
+      if (seenProcessed) {
+        expect(isPending).toBe(false);
+      } else if (!isPending) {
+        seenProcessed = true;
+      }
+    }
+  } finally {
+    await context.close();
+  }
 });
