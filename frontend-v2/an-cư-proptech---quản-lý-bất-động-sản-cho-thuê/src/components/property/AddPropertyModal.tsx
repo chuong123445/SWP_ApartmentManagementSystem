@@ -89,7 +89,7 @@ export function AddPropertyModal({ onClose, onCreate }: {
           </fieldset>)}
           {mode === 'MULTI_UNIT' && <button type="button" disabled={units.length >= 50} onClick={() => setUnits(prev => [...prev, blankUnit()])} className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 disabled:opacity-50"><Plus className="w-4 h-4" />Thêm căn/phòng</button>}
         </fieldset>
-        <p className="text-sm bg-amber-50 text-amber-900 rounded-lg p-3">Tài sản và các căn được lưu nháp, chưa xuất hiện trên Trang chủ. Cần hồ sơ và Admin duyệt tài sản trước khi công khai. Chức năng gửi hồ sơ kiểm duyệt hiện chưa khả dụng.</p>
+        <p className="text-sm bg-amber-50 text-amber-900 rounded-lg p-3">Tài sản và các căn được lưu nháp, chưa xuất hiện trên Trang chủ. Sau khi lưu, chọn Chuẩn bị hồ sơ kiểm duyệt trong Tài sản cho thuê. Cần Admin duyệt tài sản trước khi công khai từng căn.</p>
         {error && <p role="alert" className="text-sm text-rose-700 bg-rose-50 p-3 rounded-lg">{error}</p>}
         <div className="flex justify-end gap-2"><button type="button" disabled={saving} onClick={onClose} className="border rounded-lg px-4 py-2 text-sm">Hủy</button><button type="submit" disabled={saving} className="bg-emerald-600 text-white rounded-lg px-4 py-2 font-semibold text-sm disabled:opacity-50">{saving ? 'Đang lưu...' : 'Lưu tài sản nháp'}</button></div>
       </form>

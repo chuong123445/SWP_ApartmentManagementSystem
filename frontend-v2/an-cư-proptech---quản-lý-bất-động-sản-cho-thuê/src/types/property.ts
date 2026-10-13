@@ -1,7 +1,7 @@
 export type RentalMode = 'SINGLE_UNIT' | 'MULTI_UNIT';
 export interface OwnerProperty {
   id: string; name: string; address: string; city: string; district: string; ward: string | null;
-  approvalStatus: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
+  approvalStatus: 'DRAFT' | 'PENDING_APPROVAL' | 'NEEDS_INFORMATION' | 'APPROVED' | 'REJECTED';
   rentalMode: RentalMode | null; version: number;
 }
 export interface PropertyUnitInput {

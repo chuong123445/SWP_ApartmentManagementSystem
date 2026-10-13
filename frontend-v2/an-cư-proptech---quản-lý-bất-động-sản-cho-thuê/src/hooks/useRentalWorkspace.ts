@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Building, Room, NewRoom, Tenant, Contract, Invoice, MaintenanceTicket, Transaction, SystemConfig, TrustGuardAudit, EscrowDeposit } from '@/types';
 import { initialMaintenance, initialTransactions, initialConfig, initialTrustAudits, initialEscrows } from '@/data/mockData';
-import { createOwnerApartment, getOwnerApartments, getOwnerProperties } from '@/services/apartments/ownerApartmentService';
+import { createOwnerApartment, getOwnerApartments, getOwnerProperties, setApartmentPublication } from '@/services/apartments/ownerApartmentService';
 import { ownerTenancies, ownerInvoices, tenancyViews, invoiceView, sendInvoice } from '@/services/billing/billingService';
 import type { Tenancy } from '@/types/billing';
 import { createOwnerProperty } from '@/services/property/ownerPropertyService';
@@ -39,7 +39,8 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
       if (!active) return;
       setTenancies(leases);
       const views = tenancyViews(leases);setTenants(views.tenants);setContracts(views.contracts);
-      setRooms(apartments.map(a => ({ ...a, currentTenantId: leases.find(c => c.apartmentId === a.id && c.status === 'ACTIVE')?.customerId })));
+      const inventory = apartments.map(a => ({ ...a, currentTenantId: leases.find(c => c.apartmentId === a.id && c.status === 'ACTIVE')?.customerId }));
+      setRooms(inventory);setSelectedRoom(prev => prev ? inventory.find(a => a.id === prev.id) ?? null : null);
       setBuildings(properties.map(p => ({ id: p.id, name: p.name, address: p.address,
         rentalMode: p.rentalMode, totalRooms: apartments.filter(a => a.buildingId === p.id).length, pcccCertified: false, legalStatus: p.approvalStatus })));
     }).catch(error => { if (active) { setRooms([]); setBuildings([]); setInventoryError(error instanceof Error ? error.message : 'Không thể tải căn hộ.'); } })
@@ -79,6 +80,14 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
       rentalMode: saved.property.rentalMode, legalStatus: saved.property.approvalStatus, pcccCertified: false, totalRooms: saved.apartments.length }]);
     setRooms(prev => [...saved.apartments, ...prev]);
     return saved.property.id;
+  };
+  const handlePublication = async (room: Room, status: 'PUBLISHED' | 'HIDDEN') => {
+    if (room.version === undefined) throw new Error('Cần tải lại căn hộ trước khi thay đổi đăng tin.');
+    try {
+      const saved = await setApartmentPublication(room.id, status, room.version);
+      setRooms(prev => prev.map(r => r.id === saved.id ? { ...r, ...saved } : r));
+      setSelectedRoom(prev => prev?.id === saved.id ? { ...prev, ...saved } : prev);
+    } catch (error) { setInventoryRevision(n => n + 1);throw error; }
   };
   // ==========================================
 
@@ -248,7 +257,7 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
     reloadBilling: () => setBillingRevision(value => value + 1), handleSendInvoice,
     buildings, inventoryError, inventoryLoading, reloadInventory: () => setInventoryRevision(value => value + 1),
     selectedRoom, setSelectedRoom, selectedInvoice, setSelectedInvoice,
-    handleMarkPaid, handleAddTenant, handleAddContract, handleAddRoom, handleAddProperty, handleCheckOut,
+    handleMarkPaid, handleAddTenant, handleAddContract, handleAddRoom, handleAddProperty, handlePublication, handleCheckOut,
     handleUpdateIndices, handleUpdateTicketStatus, handleResetData, handleApproveAudit,
     handleReleaseEscrow, handleCreateEscrow, handleReserveEscrow, handleAddTicket,
     handleSendResidentTicket, handleCreateInvoice, handleAddTransaction, handleSaveConfig: setConfig,
