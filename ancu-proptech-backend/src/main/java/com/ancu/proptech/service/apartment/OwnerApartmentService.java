@@ -31,6 +31,8 @@ public class OwnerApartmentService {
         if (input.getPublicationStatus() == Apartment.PublicationStatus.PUBLISHED && property.getApprovalStatus() != Property.ApprovalStatus.APPROVED)
             throw new ApiException(HttpStatus.CONFLICT, "PROPERTY_NOT_APPROVED", "Tài sản phải được duyệt trước khi đăng căn hộ công khai.");
         String number = input.getRoomNumber().strip();
+        if (property.getRentalMode() == Property.RentalMode.SINGLE_UNIT && apartments.countByPropertyId(property.getId()) > 0)
+            throw new ApiException(HttpStatus.CONFLICT, "SINGLE_UNIT_LIMIT", "Tài sản cho thuê nguyên căn đã có một căn cho thuê.");
         if (apartments.existsByPropertyIdAndRoomNumber(property.getId(), number))
             throw new ApiException(HttpStatus.CONFLICT, "APARTMENT_NUMBER_EXISTS", "Mã căn hộ đã tồn tại trong tài sản này.");
         Apartment a = new Apartment();

@@ -56,7 +56,13 @@ public class InvoiceService {
         var n=new InvoiceNotification();n.setInvoice(i);n.setCustomer(c.getCustomer());n.setCreatedAt(i.getSentAt());notifications.save(n);
         c.setBillingVersion(c.getBillingVersion()+1);invoices.flush();return response(i);
     }
-    @Transactional(readOnly=true) public PageResponse<InvoiceResponse> owner(Jwt jwt,int page,int size){ApartmentService.validatePage(page,size);return PageResponse.from(invoices.findByContractApartmentPropertyOwnerId(access.owner(jwt).getId(),paging(page,size)).map(this::response));}
+    @Transactional(readOnly=true) public PageResponse<InvoiceResponse> owner(Jwt jwt,int page,int size){return owner(jwt,page,size,null);}
+    @Transactional(readOnly=true) public PageResponse<InvoiceResponse> owner(Jwt jwt,int page,int size,UUID propertyId){
+        ApartmentService.validatePage(page,size);var ownerId=access.owner(jwt).getId();
+        var result=propertyId==null ? invoices.findByContractApartmentPropertyOwnerId(ownerId,paging(page,size))
+                : invoices.findByContractApartmentPropertyOwnerIdAndContractApartmentPropertyId(ownerId,propertyId,paging(page,size));
+        return PageResponse.from(result.map(this::response));
+    }
     @Transactional(readOnly=true) public PageResponse<InvoiceResponse> mine(Jwt jwt,int page,int size){ApartmentService.validatePage(page,size);return PageResponse.from(invoices.findByContractCustomerIdAndStatus(access.customer(jwt).getId(),RentalInvoice.Status.SENT,paging(page,size)).map(this::response));}
     @Transactional(readOnly=true) public InvoiceResponse detail(Jwt jwt,UUID id){
         var u=access.account(jwt);var i=invoices.findWithContractById(id).orElseThrow(InvoiceService::missing);var c=i.getContract();
