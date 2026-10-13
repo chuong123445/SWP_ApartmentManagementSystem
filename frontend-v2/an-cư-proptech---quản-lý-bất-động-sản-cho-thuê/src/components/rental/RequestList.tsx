@@ -61,6 +61,7 @@ export function RequestList({
             {request.message || 'Không có lời nhắn.'}
           </p>
 
+          {request.decisionReason && <p className="mt-3 text-sm text-slate-700 whitespace-pre-wrap break-words"><span className="font-semibold">{request.status === 'REJECTED' ? 'Lý do từ chối: ' : 'Lý do xử lý: '}</span>{request.decisionReason}</p>}
           {/* Owner actions */}
           {owner && request.status === 'PENDING' && (
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-3">
@@ -93,14 +94,13 @@ export function RequestList({
               </span>
               <button
                 type="button"
-                onClick={() => {
-                  alert('Tính năng tạo hợp đồng sẽ được cập nhật trong phiên bản tiếp theo.');
-                }}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 text-sm font-semibold inline-flex items-center gap-2 shadow-sm transition-colors cursor-pointer"
+                disabled
+                title="Chức năng tạo hợp đồng hiện chưa khả dụng."
+                className="bg-slate-100 text-slate-500 border border-slate-200 rounded-lg px-4 py-2 text-sm font-semibold inline-flex items-center gap-2 cursor-not-allowed"
               >
                 <FileText className="w-4 h-4" />
                 Tạo hợp đồng
-              </button>
+              </button><p className="w-full text-xs text-slate-500">Chức năng tạo hợp đồng hiện chưa khả dụng.</p>
             </div>
           )}
 
@@ -125,7 +125,7 @@ export function RequestList({
           {!owner && request.status === 'ACCEPTED' && (
             <div className="mt-3 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 inline-flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Chủ nhà đã chấp nhận yêu cầu thuê của bạn. Hợp đồng đang được chuẩn bị.</span>
+              <span>Chủ nhà đã chấp nhận yêu cầu thuê của bạn. Vui lòng liên hệ chủ nhà để thực hiện bước hợp đồng.</span>
             </div>
           )}
 
