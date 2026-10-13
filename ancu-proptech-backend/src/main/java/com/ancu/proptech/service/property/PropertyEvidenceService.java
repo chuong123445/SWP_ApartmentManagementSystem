@@ -25,7 +25,7 @@ public class PropertyEvidenceService {
     public record Download(String filename,String contentType,byte[] content) {}
     @Transactional public PropertyEvidenceResponse upload(Jwt jwt,UUID propertyId,PropertyEvidenceFile.Purpose purpose,MultipartFile input){
         var owner=access.owner(jwt);var property=properties.findOwnedForCreation(propertyId,owner.getId()).orElseThrow(PropertyEvidenceService::missing);
-        if(property.getApprovalStatus()==Property.ApprovalStatus.PENDING_APPROVAL||property.getApprovalStatus()==Property.ApprovalStatus.APPROVED)
+        if((property.getApprovalStatus()==Property.ApprovalStatus.PENDING_APPROVAL&&dossiers.existsByPropertyId(propertyId))||property.getApprovalStatus()==Property.ApprovalStatus.APPROVED)
             throw error(HttpStatus.CONFLICT,"PROPERTY_NOT_EDITABLE","Chỉ bổ sung chứng từ cho tài sản nháp, bị từ chối hoặc cần bổ sung.");
         if(files.countByPropertyId(propertyId)>=200)throw error(HttpStatus.CONFLICT,"FILE_LIMIT","Tài sản đã đạt giới hạn 200 chứng từ.");
         if(input.isEmpty()||input.getSize()>5*1024*1024)throw error(HttpStatus.BAD_REQUEST,"INVALID_FILE","Ảnh chứng từ phải có dung lượng từ 1 byte đến 5 MB.");

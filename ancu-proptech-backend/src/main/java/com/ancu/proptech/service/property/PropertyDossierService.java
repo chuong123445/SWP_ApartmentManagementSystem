@@ -23,7 +23,7 @@ public class PropertyDossierService {
     @Transactional public PropertyDossierResponse submit(Jwt jwt,UUID propertyId,PropertyDossierSubmit input){
         var owner=access.owner(jwt);var p=properties.findOwnedForCreation(propertyId,owner.getId()).orElseThrow(PropertyDossierService::missing);
         if(p.getVersion()!=input.getPropertyVersion())throw conflict("STALE_VERSION","Tài sản đã thay đổi. Hãy tải lại trước khi gửi hồ sơ.");
-        if(p.getApprovalStatus()==Property.ApprovalStatus.PENDING_APPROVAL||p.getApprovalStatus()==Property.ApprovalStatus.APPROVED)
+        if((p.getApprovalStatus()==Property.ApprovalStatus.PENDING_APPROVAL&&dossiers.existsByPropertyId(propertyId))||p.getApprovalStatus()==Property.ApprovalStatus.APPROVED)
             throw conflict("DOSSIER_NOT_EDITABLE","Tài sản đang chờ duyệt hoặc đã được duyệt.");
         var all=new ArrayList<PropertyEvidenceFile>();var seen=new HashSet<UUID>();
         collect(p,input.getDocumentFileIds(),PropertyEvidenceFile.Purpose.RIGHT_DOCUMENT,seen,all);
