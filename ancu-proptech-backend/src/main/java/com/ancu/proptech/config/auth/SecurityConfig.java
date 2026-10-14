@@ -83,6 +83,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/api/v1/auth/csrf", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout", "/error").permitAll()
                         .requestMatchers("/api/v1/me").authenticated()
+                        .requestMatchers("/api/v1/me/identity", "/api/v1/me/identity/documents/*").authenticated()
                         .requestMatchers("/api/v1/me/profile", "/api/v1/me/password", "/api/v1/me/phone", "/api/v1/me/email-change", "/api/v1/me/email-changes", "/api/v1/me/email-changes/*/confirm").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/apartments", "/api/v1/apartments/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/apartment/images/**").permitAll()
