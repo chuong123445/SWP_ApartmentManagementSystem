@@ -39,6 +39,7 @@ export function AccountMenu({ account, onLogout, isLoggingOut, authError, hasInv
       <div className="px-3 py-2 mb-1 border-b border-slate-100"><p className="font-semibold text-slate-900">{roleLabel}</p><p className="text-xs text-slate-500 truncate">{account.email}</p></div>
       {manager && <Link to="/app" onClick={() => setOpen(false)} className={linkClass}><LayoutDashboard className="w-4 h-4" />Trang quản lý</Link>}
       {account.roles.includes('CUSTOMER') && <Link to="/my/rental-requests" onClick={() => setOpen(false)} className={linkClass}><ClipboardList className="w-4 h-4" />Yêu cầu của tôi</Link>}
+      {account.roles.includes('CUSTOMER') && <Link to="/my/contracts" onClick={() => setOpen(false)} className={linkClass}><ClipboardList className="w-4 h-4" />Hợp đồng của tôi</Link>}
       {account.roles.includes('CUSTOMER') && hasInvoiceHistory && <Link to="/my/invoices" onClick={() => setOpen(false)} className={linkClass}><ReceiptText className="w-4 h-4" />Hóa đơn của tôi</Link>}
       <Link to="/account/profile" onClick={() => setOpen(false)} className={linkClass}><UserRound className="w-4 h-4" />Hồ sơ cá nhân</Link>
       <Link to="/account/settings" onClick={() => setOpen(false)} className={linkClass}><Settings className="w-4 h-4" />Cài đặt tài khoản</Link>

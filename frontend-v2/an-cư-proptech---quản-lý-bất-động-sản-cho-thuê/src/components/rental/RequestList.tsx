@@ -18,6 +18,7 @@ export function RequestList({
   onAccept,
   onReject,
   decidingId,
+  onCreateContract,
 }: {
   items: RentalRequest[];
   owner?: boolean;
@@ -26,6 +27,7 @@ export function RequestList({
   onAccept?: (request: RentalRequest) => void;
   onReject?: (request: RentalRequest) => void;
   decidingId?: string;
+  onCreateContract?: (request: RentalRequest) => void;
 }) {
   return (
     <div className="space-y-4">
@@ -94,13 +96,13 @@ export function RequestList({
               </span>
               <button
                 type="button"
-                disabled
-                title="Chức năng tạo hợp đồng hiện chưa khả dụng."
-                className="bg-slate-100 text-slate-500 border border-slate-200 rounded-lg px-4 py-2 text-sm font-semibold inline-flex items-center gap-2 cursor-not-allowed"
+                disabled={!onCreateContract}
+                onClick={() => onCreateContract?.(request)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-50"
               >
                 <FileText className="w-4 h-4" />
                 Tạo hợp đồng
-              </button><p className="w-full text-xs text-slate-500">Chức năng tạo hợp đồng hiện chưa khả dụng.</p>
+              </button>
             </div>
           )}
 

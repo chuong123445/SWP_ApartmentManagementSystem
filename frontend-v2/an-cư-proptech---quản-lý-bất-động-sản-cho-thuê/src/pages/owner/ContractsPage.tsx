@@ -13,31 +13,28 @@ import {
   Lock,
   Award,
 } from 'lucide-react';
-import { Contract, Room, Tenant } from '@/types';
+import { Contract } from '@/types';
+import { ContractDraftList } from '@/components/contract/ContractDraftList';
 
 interface ContractsPageProps {
-  readOnly?: boolean;
+  propertyId?: string;
+  onChooseRequest?: () => void;
   contracts: Contract[];
-  rooms: Room[];
-  tenants: Tenant[];
-  onAddContract: (contract: Omit<Contract, 'id'>) => void;
 }
 
 export const ContractsPage: React.FC<ContractsPageProps> = ({
   contracts,
-  rooms,
-  tenants,
-  onAddContract,
-  readOnly = false,
+  propertyId,
+  onChooseRequest,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [previewContract, setPreviewContract] = useState<Contract | null>(null);
 
   const filteredContracts = contracts.filter(
     (c) =>
-      c.contractNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.status !== 'draft' && (c.contractNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.tenantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.roomNumber.toLowerCase().includes(searchTerm.toLowerCase())
+      c.roomNumber.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -52,7 +49,7 @@ export const ContractsPage: React.FC<ContractsPageProps> = ({
             </span>
           </div>
           <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <span>Hợp Đồng Thuê Căn Hộ Cao Cấp Pháp Lý</span>
+            <span>Hợp đồng thuê căn hộ</span>
             <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full font-semibold">
               {contracts.length} hợp đồng
             </span>
@@ -63,40 +60,18 @@ export const ContractsPage: React.FC<ContractsPageProps> = ({
         </div>
 
         <button
-          onClick={() => {
-            const firstRoom = rooms.find((r) => r.status === 'available') || rooms[0];
-            const firstTenant = tenants[0];
-            onAddContract({
-              contractNumber: `HD-ANCU-2026/${firstRoom.roomNumber.replace('P.', '')}`,
-              tenantId: firstTenant.id,
-              tenantName: firstTenant.name,
-              roomId: firstRoom.id,
-              roomNumber: firstRoom.roomNumber,
-              buildingName: 'Tòa A - Lê Văn Sỹ (Q.3)',
-              startDate: '01/10/2026',
-              endDate: '01/10/2027',
-              monthlyRent: firstRoom.price,
-              deposit: firstRoom.price,
-              paymentCycle: 1,
-              status: 'active',
-              note: 'Ký số điện tử VNPT SmartCA & Ký quỹ An Cư Escrow MBBank',
-              signingMethod: 'VNPT SmartCA',
-              signedDate: '01/10/2026 10:00:00',
-              escrowCertified: true,
-              escrowCode: `ESC-2026-${firstRoom.roomNumber.replace('P.', '')}-MB`,
-              trustGuardAuditCode: 'TG-AUD-2026-VERIFIED',
-            });
-          }}
+          onClick={onChooseRequest}
           id="btn-add-contract"
-          disabled={readOnly}
-          title={readOnly ? 'Luồng tạo và ký hợp đồng chưa được triển khai.' : undefined}
+          disabled={!onChooseRequest}
+          title="Tạo hợp đồng từ yêu cầu đã chấp nhận"
           className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
         >
           <Plus className="w-4 h-4" />
-          <span>Lập Hợp Đồng Điện Tử Mới</span>
+          <span>Chọn yêu cầu đã chấp nhận</span>
         </button>
       </div>
 
+      <ContractDraftList owner propertyId={propertyId} />
       {/* Search */}
       <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
         <div className="relative">
