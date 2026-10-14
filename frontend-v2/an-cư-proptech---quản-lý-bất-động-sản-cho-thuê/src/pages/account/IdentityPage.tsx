@@ -38,6 +38,7 @@ export function IdentityPage() {
     <h1 className="text-2xl font-bold mt-4 mb-3">Xác thực danh tính</h1>
     <p className="text-slate-600 mb-4">Cung cấp thông tin căn cước và địa chỉ để chuẩn bị thông tin cá nhân khi thuê nhà. Hãy nhập đúng nội dung trên giấy tờ.</p>
     <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5">
+      {saved?.localFixture && <p className="font-bold mb-2">Dữ liệu mẫu — không có giá trị xác minh hoặc làm giấy tờ pháp lý.</p>}
       <p className="font-semibold">{saved ? 'Đã cung cấp hồ sơ · Chưa xác minh danh tính' : 'Chưa cung cấp hồ sơ danh tính'}</p>
       <p className="text-sm mt-1">Hiện hệ thống chỉ lưu hồ sơ, chưa hỗ trợ kiểm tra eKYC. Tải giấy tờ lên không đồng nghĩa đã xác minh danh tính. Xác thực email được thực hiện riêng.</p>
     </div>
