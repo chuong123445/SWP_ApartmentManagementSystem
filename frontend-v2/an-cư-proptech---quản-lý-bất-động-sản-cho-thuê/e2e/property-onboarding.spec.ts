@@ -111,6 +111,10 @@ test('Owner drafts, private dossiers, Admin review and explicit publication foll
     await dossierDialog.locator('input[type=file]').first().setInputFiles({ name: 'rights.png', mimeType: 'image/png', buffer: imageBuffer });
     const uploaded = await evidenceUpload;expect(uploaded.status()).toBe(201);const file = await uploaded.json();
     await expect(dossierDialog.getByRole('button', { name: 'Gửi hồ sơ kiểm duyệt', exact: true })).toBeEnabled();
+    await dossierDialog.getByLabel('Số giấy chứng nhận', { exact: true }).fill('MAU-PROP-E2E-001');
+    await dossierDialog.getByLabel('Ngày cấp giấy chứng nhận', { exact: true }).fill('2020-01-15');
+    await dossierDialog.getByLabel('Nơi cấp giấy chứng nhận', { exact: true }).fill('Cơ quan mẫu kiểm thử');
+    await dossierDialog.getByLabel('Căn cứ quyền khai thác', { exact: true }).fill('Quyền cho thuê căn hộ trong bài kiểm thử');
     const firstSubmit = page.waitForResponse(r => r.url().includes('/verification-dossiers') && r.request().method() === 'POST');
     await dossierDialog.getByRole('button', { name: 'Gửi hồ sơ kiểm duyệt', exact: true }).click();
     expect((await firstSubmit).status()).toBe(201);await expect(dossierDialog.getByText('Chờ duyệt', { exact: true })).toBeVisible();
@@ -125,6 +129,7 @@ test('Owner drafts, private dossiers, Admin review and explicit publication foll
     await expect(adminPage.getByRole('heading', { name: 'Kiểm duyệt tài sản', exact: true })).toBeVisible();
     await adminPage.getByTestId('admin-dossier-card').filter({ hasText: `${name} single` }).click();
     await expect(adminPage.getByRole('region', { name: 'Chi tiết hồ sơ kiểm duyệt' })).toContainText('1234567890');
+    await expect(adminPage.getByRole('region', { name: 'Chi tiết hồ sơ kiểm duyệt' })).toContainText('MAU-PROP-E2E-001');
     await adminPage.getByLabel('Ý kiến kiểm duyệt', { exact: true }).fill('Bổ sung chứng từ cùng địa chỉ');
     await adminPage.getByRole('button', { name: 'Yêu cầu bổ sung', exact: true }).click();
     await expect(adminPage.getByRole('status').filter({ hasText: 'Đã cập nhật hồ sơ:' })).toContainText('Cần bổ sung hồ sơ');
