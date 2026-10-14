@@ -35,8 +35,8 @@ test('Owner sends persisted invoices to two real tenants, with private drafts an
     mkdirSync('test-results/visual', { recursive: true });await one.screenshot({ path: 'test-results/visual/tenant-invoice.png', fullPage: true });await owner.screenshot({ path: 'test-results/visual/owner-invoices.png', fullPage: true });
   } finally { await ownerContext.close();await firstContext.close();await secondContext.close(); }
 });
-test('Home filters address hierarchically and non-tenant Customer has no invoice navigation', async ({ page }) => {
-  await login(page, 'LOCAL_CUSTOMER');await page.waitForURL('/');await expect(page.getByRole('link', { name: 'Hóa đơn của tôi', exact: true })).toHaveCount(0);
+test('Home filters address hierarchically and Customer can open invoice navigation', async ({ page }) => {
+  await login(page, 'LOCAL_CUSTOMER');await page.waitForURL('/');await page.getByRole('button', { name: 'Vai trò và tài khoản' }).click();await expect(page.getByRole('link', { name: 'Hóa đơn của tôi', exact: true })).toBeVisible();await page.keyboard.press('Escape');
   await expect(page.locator('#address-city option', { hasText: 'TP. Đà Nẵng' })).toHaveCount(1);await page.locator('#address-city').selectOption('TP. Đà Nẵng');await page.locator('#address-district').selectOption('Khu vực Hải Châu');await page.locator('#address-ward').selectOption('Phường Hải Châu');
   await page.getByRole('button', { name: 'Tìm kiếm', exact: true }).click();await expect(page.getByRole('heading', { name: 'Căn hộ thuê local — T.102', exact: true })).toBeVisible();
   await page.locator('#address-city').selectOption('TP. Hồ Chí Minh');await expect(page.locator('#address-district')).toHaveValue('');await expect(page.locator('#address-ward')).toHaveValue('');

@@ -9,11 +9,10 @@ interface AccountMenuProps {
   onLogout: () => Promise<void>;
   isLoggingOut: boolean;
   authError: string;
-  hasInvoiceHistory?: boolean;
   isTenant?: boolean;
 }
 
-export function AccountMenu({ account, onLogout, isLoggingOut, authError, hasInvoiceHistory = false, isTenant = false }: AccountMenuProps) {
+export function AccountMenu({ account, onLogout, isLoggingOut, authError, isTenant = false }: AccountMenuProps) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);const trigger = useRef<HTMLButtonElement>(null);
   const menuId = useId();const location = useLocation();
@@ -40,7 +39,7 @@ export function AccountMenu({ account, onLogout, isLoggingOut, authError, hasInv
       {manager && <Link to="/app" onClick={() => setOpen(false)} className={linkClass}><LayoutDashboard className="w-4 h-4" />Trang quản lý</Link>}
       {account.roles.includes('CUSTOMER') && <Link to="/my/rental-requests" onClick={() => setOpen(false)} className={linkClass}><ClipboardList className="w-4 h-4" />Yêu cầu của tôi</Link>}
       {account.roles.includes('CUSTOMER') && <Link to="/my/contracts" onClick={() => setOpen(false)} className={linkClass}><ClipboardList className="w-4 h-4" />Hợp đồng của tôi</Link>}
-      {account.roles.includes('CUSTOMER') && hasInvoiceHistory && <Link to="/my/invoices" onClick={() => setOpen(false)} className={linkClass}><ReceiptText className="w-4 h-4" />Hóa đơn của tôi</Link>}
+      {account.roles.includes('CUSTOMER') && <Link to="/my/invoices" onClick={() => setOpen(false)} className={linkClass}><ReceiptText className="w-4 h-4" />Hóa đơn của tôi</Link>}
       <Link to="/account/profile" onClick={() => setOpen(false)} className={linkClass}><UserRound className="w-4 h-4" />Hồ sơ cá nhân</Link>
       <Link to="/account/settings" onClick={() => setOpen(false)} className={linkClass}><Settings className="w-4 h-4" />Cài đặt tài khoản</Link>
       <div className="border-t border-slate-100 mt-1 pt-1">
