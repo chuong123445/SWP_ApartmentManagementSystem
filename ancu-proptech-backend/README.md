@@ -125,3 +125,7 @@ Idempotent additive V10 + Controller–Service–Repository contract domain impl
 ### Private identity collection — 14 October 2026
 
 GET/PUT `/api/v1/me/identity` and GET `/api/v1/me/identity/documents/{front|back}` store/read only the authenticated account's structured identity and private PNG/JPEG bytes. V11 adds separate profile/content tables; each image ≤5 MB/20 Mpixels, combined multipart limit 11 MB. Pending accounts may provide a dossier. All saved identity remains NOT_VERIFIED; email/account status and rental policy are unchanged. No eKYC or Admin review is implemented. See [decision](../docs/decisions/account-identity-v1.md) and [OpenAPI](../docs/api/identity.openapi.json). `IdentityProfileIntegrationTests` uses rollback-only SQL fixtures.
+
+### Legal metadata and explicit local samples — 14 October 2026
+
+V12 adds optional grouped certificate metadata and server-only sample markers. Contract snapshots now derive private structured identity and approved-dossier certificate/right fields; images remain private, existing snapshots stay frozen/readable, stale source data is rejected. Self identity APIs stay self-only. See [ADR](../docs/decisions/legal-profile-samples-v1.md). Local fixture helper previews by default and requires explicit `-Apply`; it targets inspected accounts/properties, preserves customer@ancu.local/VC01/credentials/verification/contracts, marks all evidence synthetic, and is not called at startup.

@@ -802,6 +802,26 @@
             },
             "minItems": 0,
             "maxItems": 20
+          },
+          "certificateNumber": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true
+          },
+          "certificateIssueDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "certificateIssuePlace": {
+            "type": "string",
+            "maxLength": 200,
+            "nullable": true
+          },
+          "exploitationRightDescription": {
+            "type": "string",
+            "maxLength": 1000,
+            "nullable": true
           }
         },
         "required": [
@@ -809,7 +829,8 @@
           "rightType",
           "receivingAccount",
           "documentFileIds"
-        ]
+        ],
+        "description": "Optional certificate group: provide all number/date/place or none. Issue date must not be in the future. localFixture is server-only and rejected as input."
       },
       "DossierDecision": {
         "type": "object",
@@ -915,6 +936,31 @@
           "version": {
             "type": "integer",
             "minimum": 0
+          },
+          "certificateNumber": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true
+          },
+          "certificateIssueDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "certificateIssuePlace": {
+            "type": "string",
+            "maxLength": 200,
+            "nullable": true
+          },
+          "exploitationRightDescription": {
+            "type": "string",
+            "maxLength": 1000,
+            "nullable": true
+          },
+          "localFixture": {
+            "type": "boolean",
+            "readOnly": true,
+            "description": "Explicit local illustrative dossier; not a real Admin evidence review."
           }
         },
         "required": [
