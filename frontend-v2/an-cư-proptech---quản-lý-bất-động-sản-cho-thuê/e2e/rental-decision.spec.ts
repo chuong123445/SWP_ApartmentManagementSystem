@@ -48,7 +48,7 @@ test('isolated decisions persist reasons, refresh Owner inventory and update ope
     await ownerPage.locator('#nav-rental_requests').click();const ownerAccepted=ownerPage.getByTestId('rental-request').filter({hasText:'Second isolated request'});await expect(ownerAccepted).toBeVisible();
     await expect(ownerPage.getByTestId('rental-request').first()).toContainText('Second isolated request');
     await page.goto(`/apartments/${apartment.id}`);await expect(page.getByText('Đã gửi yêu cầu thuê',{exact:true})).toBeVisible();
-    await ownerAccepted.getByRole('button',{name:'Đồng ý',exact:true}).click();await expect(ownerAccepted).toContainText('Đã chấp nhận');await expect(ownerAccepted.getByRole('button',{name:'Tạo hợp đồng',exact:true})).toBeDisabled();
+    await ownerAccepted.getByRole('button',{name:'Đồng ý',exact:true}).click();await expect(ownerAccepted).toContainText('Đã chấp nhận');await expect(ownerAccepted.getByRole('button',{name:'Tạo hợp đồng',exact:true})).toBeEnabled();
     await expect(page.getByText('Chủ nhà đã chấp nhận yêu cầu thuê.',{exact:true})).toBeVisible({timeout:16000});await expect(page.getByRole('button',{name:'Hủy yêu cầu thuê',exact:true})).toHaveCount(0);
     await ownerPage.locator('#nav-rooms').click();await expect(card).toContainText('Đang làm hợp đồng');
     await page.goto('/my/rental-requests');await expect(page.getByTestId('rental-request').filter({hasText:'First isolated request'})).toContainText('Không phù hợp thời gian thuê');

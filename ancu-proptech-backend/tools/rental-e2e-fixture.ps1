@@ -1,9 +1,10 @@
-param(
+﻿param(
     [Parameter(Mandatory)][ValidateSet('prepare','cleanup')][string]$Mode,
     [Parameter(Mandatory)][Guid]$TestKey,
     [Parameter(Mandatory)][Guid]$OwnerId,
     [Parameter(Mandatory)][Guid]$CustomerId,
-    [Parameter(Mandatory)][Guid]$PropertyId
+    [Parameter(Mandatory)][Guid]$PropertyId,
+    [switch]$AllowContractDrafts
 )
 $ErrorActionPreference = 'Stop'
 # Local-only fixtures created by the public register API; never reset demo data.
@@ -33,6 +34,7 @@ try {
     [void]$taskCommand.Parameters.AddWithValue('@owner',$OwnerId)
     [void]$taskCommand.Parameters.AddWithValue('@customer',$CustomerId)
     [void]$taskCommand.Parameters.AddWithValue('@property',$PropertyId)
+    [void]$taskCommand.Parameters.AddWithValue('@allowDrafts',[bool]$AllowContractDrafts)
     [void]$taskCommand.Parameters.AddWithValue('@ownerEmail',"rental-e2e-$TestKey-owner@example.invalid")
     [void]$taskCommand.Parameters.AddWithValue('@customerEmail',"rental-e2e-$TestKey-customer@example.invalid")
     [void]$taskCommand.Parameters.AddWithValue('@name',"Rental E2E $TestKey")
@@ -57,6 +59,8 @@ IF EXISTS(SELECT 1 FROM rental_properties WHERE owner_id=@owner)
  THROW 51000, 'Fixture is not fresh.', 1;
 UPDATE auth_accounts SET status='ACTIVE',email_verified=1,contact_verified=1,version=version+1
  WHERE id IN(@owner,@customer);
+IF @allowDrafts=1 UPDATE auth_accounts SET phone='0912345678',address=N'Địa chỉ hồ sơ thử riêng',date_of_birth='1995-06-15'
+ WHERE id IN(@owner,@customer);
 INSERT INTO rental_properties(id,owner_id,name,address,city,district,approval_status,version)
  VALUES(@property,@owner,@name,@name,'E2E city','E2E district','APPROVED',0);
 COMMIT;
@@ -69,8 +73,17 @@ COMMIT;
 IF EXISTS(SELECT 1 FROM rental_requests r JOIN rental_apartments a ON a.id=r.apartment_id
  WHERE (a.property_id=@property AND r.customer_id<>@customer) OR (r.customer_id=@customer AND a.property_id<>@property))
  OR EXISTS(SELECT 1 FROM rental_properties WHERE owner_id=@owner AND id<>@property)
- OR EXISTS(SELECT 1 FROM rental_contracts c JOIN rental_apartments a ON a.id=c.apartment_id WHERE a.property_id=@property OR c.customer_id IN(@owner,@customer))
+ OR EXISTS(SELECT 1 FROM rental_contracts c JOIN rental_apartments a ON a.id=c.apartment_id WHERE (a.property_id=@property OR c.customer_id IN(@owner,@customer))
+  AND (@allowDrafts=0 OR a.property_id<>@property OR c.customer_id<>@customer OR c.status<>'DRAFT' OR c.local_fixture<>0
+   OR c.electricity_baseline IS NOT NULL OR c.water_baseline IS NOT NULL
+   OR EXISTS(SELECT 1 FROM rental_invoices i WHERE i.contract_id=c.id)
+   OR NOT EXISTS(SELECT 1 FROM contract_drafts d JOIN rental_requests r ON r.id=d.rental_request_id WHERE d.contract_id=c.id AND r.apartment_id=c.apartment_id AND r.customer_id=@customer AND r.status='ACCEPTED')))
  THROW 51000, 'Fixture gained unrelated business data; cleanup stopped.', 1;
+IF @allowDrafts=1
+BEGIN
+ DELETE d FROM contract_drafts d JOIN rental_contracts c ON c.id=d.contract_id JOIN rental_apartments a ON a.id=c.apartment_id WHERE a.property_id=@property AND c.customer_id=@customer AND c.status='DRAFT';
+ DELETE c FROM rental_contracts c JOIN rental_apartments a ON a.id=c.apartment_id WHERE a.property_id=@property AND c.customer_id=@customer AND c.status='DRAFT';
+END;
 DELETE FROM rental_requests WHERE customer_id=@customer AND apartment_id IN(SELECT id FROM rental_apartments WHERE property_id=@property);
 DELETE FROM rental_apartment_amenities WHERE apartment_id IN(SELECT id FROM rental_apartments WHERE property_id=@property);
 DELETE FROM rental_apartments WHERE property_id=@property;
