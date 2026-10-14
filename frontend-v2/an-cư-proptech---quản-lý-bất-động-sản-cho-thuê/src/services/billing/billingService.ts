@@ -42,7 +42,7 @@ export function tenancyViews(items: Tenancy[]): { tenants: Tenant[]; contracts: 
     contracts: items.map(c => ({ id: c.id, contractNumber: `HD-${c.id.slice(0, 8)}`, tenantId: c.customerId,
       tenantName: c.customerName, roomId: c.apartmentId, roomNumber: c.roomNumber, buildingName: c.propertyName,
       startDate: c.startDate, endDate: c.endDate, monthlyRent: Number(c.monthlyRent), deposit: 0, paymentCycle: 1,
-      status: c.status === 'ACTIVE' ? 'active' : 'terminated' })),
+      status: c.status === 'ACTIVE' ? 'active' : c.status === 'DRAFT' ? 'draft' : 'terminated' })),
   };
 }
 export function billingMoney(value: string) {
