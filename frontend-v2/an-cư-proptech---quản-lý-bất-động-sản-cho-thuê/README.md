@@ -106,3 +106,7 @@ Owner: accepted rental request → Tạo hợp đồng → six-step template/par
 ### Identity settings — 14 October 2026
 
 Settings links to `/account/settings/identity`: legal identity fields, distinct document/living addresses and both private images, save/reload/update with version conflicts. Uploaded evidence is explicitly **not verified**; email is separate. API uses authenticated blobs and temporary object URLs. `e2e/identity.spec.ts` creates one fresh pending Customer and synthetic images, then exact-ID guarded cleanup with an IDs-only recovery manifest. The public catalog test compares live VACANT API results with cards; counts are not hardcoded.
+
+### Structured contract identity/certificate — 14 October 2026
+
+Contract reviews render saved identity number/issue date/place/document address and approved-dossier certificate/exploitation-right fields, including sample/unverified labels. No hardcoded missing-data rows, identity images or editable party/asset snapshot inputs. Property dossier forms accept the optional complete certificate group and right description; Owner/Admin details show persisted metadata. Local sample profiles are explicitly marked. Existing snapshots remain immutable; old snapshots gracefully show missing fields. Browser checks cover the scoped contract wizard, pending identity edits, complete property submission/Admin review and read-only real sample profiles.

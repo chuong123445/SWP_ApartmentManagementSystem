@@ -4,7 +4,8 @@
     [Parameter(Mandatory)][Guid]$OwnerId,
     [Parameter(Mandatory)][Guid]$CustomerId,
     [Parameter(Mandatory)][Guid]$PropertyId,
-    [switch]$AllowContractDrafts
+    [switch]$AllowContractDrafts,
+    [switch]$IncludeLegalProfiles
 )
 $ErrorActionPreference = 'Stop'
 # Local-only fixtures created by the public register API; never reset demo data.
@@ -35,6 +36,7 @@ try {
     [void]$taskCommand.Parameters.AddWithValue('@customer',$CustomerId)
     [void]$taskCommand.Parameters.AddWithValue('@property',$PropertyId)
     [void]$taskCommand.Parameters.AddWithValue('@allowDrafts',[bool]$AllowContractDrafts)
+    [void]$taskCommand.Parameters.AddWithValue('@legalProfiles',[bool]$IncludeLegalProfiles)
     [void]$taskCommand.Parameters.AddWithValue('@ownerEmail',"rental-e2e-$TestKey-owner@example.invalid")
     [void]$taskCommand.Parameters.AddWithValue('@customerEmail',"rental-e2e-$TestKey-customer@example.invalid")
     [void]$taskCommand.Parameters.AddWithValue('@name',"Rental E2E $TestKey")
@@ -63,6 +65,13 @@ IF @allowDrafts=1 UPDATE auth_accounts SET phone='0912345678',address=N'Địa c
  WHERE id IN(@owner,@customer);
 INSERT INTO rental_properties(id,owner_id,name,address,city,district,approval_status,version)
  VALUES(@property,@owner,@name,@name,'E2E city','E2E district','APPROVED',0);
+IF @legalProfiles=1
+BEGIN
+ INSERT INTO account_identity_profiles(account_id,legal_name,document_number,date_of_birth,issue_date,issue_place,permanent_address,current_address,verification_status,updated_at,version,local_fixture)
+ SELECT id,full_name,CASE WHEN id=@owner THEN '999000000101' ELSE '999000000102' END,'1995-06-15','2022-05-01',N'Cơ quan căn cước mẫu',N'Địa chỉ giấy tờ mẫu',address,'NOT_VERIFIED',SYSUTCDATETIME(),0,1 FROM auth_accounts WHERE id IN(@owner,@customer);
+ INSERT INTO property_dossiers(id,property_id,right_type,applicant_name,bank,account_number,account_holder_name,status,submitted_at,version,certificate_number,certificate_issue_date,certificate_issue_place,exploitation_right_description,local_fixture)
+ VALUES(NEWID(),@property,'OWNERSHIP',@name,N'Ngân hàng mẫu','00000001',@name,'APPROVED',SYSUTCDATETIME(),0,'MAU-E2E-001','2020-01-15',N'Cơ quan giấy chứng nhận mẫu',N'Quyền cho thuê minh họa',1);
+END;
 COMMIT;
 '@
         [void]$taskCommand.ExecuteNonQuery()
@@ -85,6 +94,15 @@ BEGIN
  DELETE c FROM rental_contracts c JOIN rental_apartments a ON a.id=c.apartment_id WHERE a.property_id=@property AND c.customer_id=@customer AND c.status='DRAFT';
 END;
 DELETE FROM rental_requests WHERE customer_id=@customer AND apartment_id IN(SELECT id FROM rental_apartments WHERE property_id=@property);
+IF @legalProfiles=1
+BEGIN
+ IF EXISTS(SELECT 1 FROM property_dossiers WHERE property_id=@property AND (local_fixture<>1 OR reviewer_id IS NOT NULL))
+  OR EXISTS(SELECT 1 FROM account_identity_profiles WHERE account_id IN(@owner,@customer) AND local_fixture<>1)
+  THROW 51000,'Legal test fixture guard failed.',1;
+ DELETE FROM property_dossiers WHERE property_id=@property AND local_fixture=1;
+ DELETE FROM account_identity_documents WHERE account_id IN(@owner,@customer);
+ DELETE FROM account_identity_profiles WHERE account_id IN(@owner,@customer) AND local_fixture=1;
+END;
 DELETE FROM rental_apartment_amenities WHERE apartment_id IN(SELECT id FROM rental_apartments WHERE property_id=@property);
 DELETE FROM rental_apartments WHERE property_id=@property;
 DELETE FROM rental_properties WHERE id=@property AND owner_id=@owner;

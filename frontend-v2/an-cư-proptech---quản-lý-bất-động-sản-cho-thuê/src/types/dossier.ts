@@ -7,10 +7,12 @@ export interface Dossier {
   id: string; propertyId: string; propertyName: string; propertyAddress: string; applicantName: string;
   rightType: 'OWNERSHIP' | 'AUTHORIZATION'; bank: string; accountNumber: string; accountHolderName: string;
   status: DossierStatus; files: EvidenceFile[]; submittedAt: string; reviewedAt: string | null; reviewReason: string | null; version: number;
+  certificateNumber?: string | null; certificateIssueDate?: string | null; certificateIssuePlace?: string | null; exploitationRightDescription?: string | null; localFixture?: boolean;
 }
 export interface DossierSubmit {
   propertyVersion: number; rightType: Dossier['rightType']; receivingAccount: { bank: string; accountNumber: string; accountHolderName: string };
   documentFileIds: string[]; supportingFileIds: string[]; ownerEvidenceFileIds: string[];
+  certificateNumber?: string | null; certificateIssueDate?: string | null; certificateIssuePlace?: string | null; exploitationRightDescription?: string | null;
 }
 export const dossierStatusLabels: Record<DossierStatus, string> = {
   PENDING_APPROVAL: 'Chờ duyệt', NEEDS_INFORMATION: 'Cần bổ sung hồ sơ', APPROVED: 'Đã duyệt', REJECTED: 'Bị từ chối',

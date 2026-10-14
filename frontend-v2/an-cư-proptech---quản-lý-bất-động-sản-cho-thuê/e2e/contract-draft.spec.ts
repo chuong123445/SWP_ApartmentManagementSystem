@@ -12,9 +12,9 @@ test('isolated accepted-request wizard reuses stored parties/assets, persists ed
   const ownerContext = await browser.newContext({ baseURL: test.info().project.use.baseURL });const ownerPage = await ownerContext.newPage();
   const pageErrors: string[] = [];page.on('pageerror', e => pageErrors.push(e.message));ownerPage.on('pageerror', e => pageErrors.push(e.message));
   const manifestDirectory = resolve('../../ancu-proptech-backend/target/rental-e2e-fixtures');mkdirSync(manifestDirectory, { recursive: true });
-  const manifest = resolve(manifestDirectory, `${key}.json`);const persist = () => writeFileSync(manifest, JSON.stringify({ key, ownerId, customerId, propertyId, allowContractDrafts: true }));persist();
+  const manifest = resolve(manifestDirectory, `${key}.json`);const persist = () => writeFileSync(manifest, JSON.stringify({ key, ownerId, customerId, propertyId, allowContractDrafts: true, includeLegalProfiles: true }));persist();
   const fixture = (mode: 'prepare' | 'cleanup') => {
-    const result = spawnSync('powershell.exe', ['-NoProfile', '-File', resolve('../../ancu-proptech-backend/tools/rental-e2e-fixture.ps1'), '-Mode', mode, '-TestKey', key, '-OwnerId', ownerId, '-CustomerId', customerId, '-PropertyId', propertyId, '-AllowContractDrafts'], { encoding: 'utf8' });
+    const result = spawnSync('powershell.exe', ['-NoProfile', '-File', resolve('../../ancu-proptech-backend/tools/rental-e2e-fixture.ps1'), '-Mode', mode, '-TestKey', key, '-OwnerId', ownerId, '-CustomerId', customerId, '-PropertyId', propertyId, '-AllowContractDrafts', '-IncludeLegalProfiles'], { encoding: 'utf8' });
     if (result.status !== 0) throw new Error(`Contract fixture ${mode} failed: ${result.stderr}`);return JSON.parse(result.stdout.trim());
   };
   const register = async (role: 'OWNER' | 'CUSTOMER', email: string) => {
@@ -43,8 +43,10 @@ test('isolated accepted-request wizard reuses stored parties/assets, persists ed
     await ownerPage.getByTestId('rental-request').filter({ hasText: 'Wizard accepted selection' }).getByRole('button', { name: 'Tạo hợp đồng', exact: true }).click();
     const dialog = ownerPage.getByRole('dialog');await expect(dialog).toBeVisible();await expect(dialog).toContainText('Chung cư / Căn hộ');
     await dialog.getByRole('button', { name: 'Tiếp theo →', exact: true }).click();await expect(dialog).toContainText(ownerEmail);await expect(dialog).toContainText('0912345678');await expect(dialog).toContainText('Địa chỉ hồ sơ thử riêng');await expect(dialog).toContainText('1995-06-15');expect(await dialog.locator('input,textarea').count()).toBe(0);
+    await expect(dialog).toContainText('999000000101');await expect(dialog).toContainText('Chưa xác minh danh tính');await expect(dialog).toContainText('Thông tin căn cước mẫu');
     await dialog.getByRole('button', { name: 'Tiếp theo →', exact: true }).click();await expect(dialog).toContainText(customerEmail);await expect(dialog).toContainText('0912345678');expect(await dialog.locator('input,textarea').count()).toBe(0);
     await dialog.getByRole('button', { name: 'Tiếp theo →', exact: true }).click();await expect(dialog).toContainText('45.50');await expect(dialog).toContainText('Máy lạnh');
+    await expect(dialog).toContainText('MAU-E2E-001');await expect(dialog).toContainText('Cơ quan giấy chứng nhận mẫu');await expect(dialog).toContainText('Quyền cho thuê minh họa');
     await dialog.getByRole('button', { name: 'Tiếp theo →', exact: true }).click();await expect(dialog.getByRole('alert')).toContainText('Ngày kết thúc phải sau ngày bắt đầu');
     await dialog.getByLabel('Ngày bắt đầu', { exact: true }).fill('2026-11-01');await dialog.getByLabel('Ngày kết thúc', { exact: true }).fill('2027-11-01');
     await dialog.getByLabel('Tiền thuê mỗi tháng (VND)', { exact: true }).fill('5500000.50');await dialog.getByLabel('Tiền đặt cọc (VND)', { exact: true }).fill('10000000');
@@ -71,6 +73,7 @@ test('isolated accepted-request wizard reuses stored parties/assets, persists ed
     await page.setViewportSize({ width: 390, height: 844 });await page.screenshot({ path: 'test-results/visual/contract-customer-review-mobile.png', fullPage: true });expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     const read = await ownerPage.request.get(`/api/v1/contracts/${saved.id}`, { headers: ownerHeaders });expect(read.status()).toBe(200);expect(read.headers()['cache-control']).toBe('no-store');
     const current = await read.json();expect(current.version).toBe(1);expect(current.clauses).toHaveLength(1);expect(current.snapshot.customer.id).toBe(customerId);
+    expect(current.snapshot.customer.documentNumber).toBe('999000000102');expect(current.snapshot.customer.localFixture).toBe(true);expect(current.snapshot.asset.certificateNumber).toBe('MAU-E2E-001');expect(current.snapshot.asset.localFixture).toBe(true);
     const core = await (await ownerPage.request.get('/api/v1/owner/apartments', { headers: ownerHeaders })).json();expect(core.find((a: any) => a.id === apartment.id).availability).toBe('CONTRACT_IN_PROGRESS');
     // Actual two concurrent create commands on a fresh accepted selection.
     const second = await createApartment('Contract.102');const secondRequest = await select(second.id, 'Concurrent contract selection');
