@@ -121,3 +121,7 @@ Rental decisions rework: V7 adds nullable NVARCHAR(2000) decision_reason, no exi
 
 ### Contract draft API — 14 October 2026
 Idempotent additive V10 + Controller–Service–Repository contract domain implement selection-bound private DRAFT create/context/party-read/Owner-update. Request/apartment locks and unique request foreign key protect creation. Independent contentVersion protects all term/clause edits without changing billingVersion or immutable saved snapshots. Exact API: ../docs/api/contract-drafts.openapi.json; decisions: ../docs/decisions/contract-drafts-v1.md. No activation/signing/payment/release/baseline defaults and no reset of local fixtures. ContractDraftIntegrationTests covers SQL invariants/privacy/version/schema.
+
+### Private identity collection — 14 October 2026
+
+GET/PUT `/api/v1/me/identity` and GET `/api/v1/me/identity/documents/{front|back}` store/read only the authenticated account's structured identity and private PNG/JPEG bytes. V11 adds separate profile/content tables; each image ≤5 MB/20 Mpixels, combined multipart limit 11 MB. Pending accounts may provide a dossier. All saved identity remains NOT_VERIFIED; email/account status and rental policy are unchanged. No eKYC or Admin review is implemented. See [decision](../docs/decisions/account-identity-v1.md) and [OpenAPI](../docs/api/identity.openapi.json). `IdentityProfileIntegrationTests` uses rollback-only SQL fixtures.
