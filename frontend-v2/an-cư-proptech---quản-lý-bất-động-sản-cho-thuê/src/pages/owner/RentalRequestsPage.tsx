@@ -5,12 +5,14 @@ import { useRentalRequests } from '@/hooks/useRentalRequests';
 import { decideRentalRequest } from '@/services/rental/rentalService';
 import { ApiError } from '@/services/http/client';
 import type { RentalRequest, RentalRequestStatus } from '@/types/rental';
+import { ContractWizard } from '@/components/contract/ContractWizard';
 
 export function RentalRequestsPage({ onDecision, propertyId }: { onDecision: () => void; propertyId?: string }) {
   const [page, setPage] = useState(0);
   const [status, setStatus] = useState<RentalRequestStatus | ''>('');
   const { data, loading, error, reload } = useRentalRequests(true, page, status || undefined, propertyId);
   const [rejecting, setRejecting] = useState<RentalRequest | null>(null);
+  const [contractRequestId, setContractRequestId] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const [decidingId, setDecidingId] = useState('');
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -66,6 +68,7 @@ export function RentalRequestsPage({ onDecision, propertyId }: { onDecision: () 
 
   return (
     <section className="space-y-6">
+      {contractRequestId && <ContractWizard key={contractRequestId} requestId={contractRequestId} onClose={() => setContractRequestId(null)} onSaved={onDecision} />}
       <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-wrap justify-between items-center gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Yêu cầu thuê căn hộ</h1>
@@ -141,6 +144,7 @@ export function RentalRequestsPage({ onDecision, propertyId }: { onDecision: () 
               onAccept={handleAccept}
               onReject={request => { setRejecting(request);setReason('');setActionNotice(null); }}
               decidingId={decidingId}
+              onCreateContract={request => setContractRequestId(request.id)}
             />
           ) : (
             <p className="bg-white border border-slate-200 rounded-xl p-10 text-center text-slate-500">
