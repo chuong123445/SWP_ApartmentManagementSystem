@@ -102,3 +102,7 @@ E2E `property-onboarding.spec.ts` dùng real SQL/API, Owner/Admin mới có UUID
 
 ### Contract drafts — 14 October 2026
 Owner: accepted rental request → Tạo hợp đồng → six-step template/party/asset/terms/review wizard. Saved identity/asset fields are read-only, missing structured identity fields are displayed honestly. Seven clauses can be edited/added/deleted/reordered/replaced. Save/reopen/edit real DRAFT; Customer account menu → Hợp đồng của tôi for exact-party review. Owner contracts tab links authoring to accepted requests. No signature/provider/activation flows. See ../../docs/decisions/contract-drafts-v1.md and ../../docs/api/contract-drafts.openapi.json. Isolated e2e/contract-draft.spec.ts covers real SQL persistence/concurrency and mobile; it creates fresh UUID accounts/property and uses guarded local-only cleanup with optional AllowContractDrafts. Verification in this fixture is simulated, not a Gmail inbox check.
+
+### Identity settings — 14 October 2026
+
+Settings links to `/account/settings/identity`: legal identity fields, distinct document/living addresses and both private images, save/reload/update with version conflicts. Uploaded evidence is explicitly **not verified**; email is separate. API uses authenticated blobs and temporary object URLs. `e2e/identity.spec.ts` creates one fresh pending Customer and synthetic images, then exact-ID guarded cleanup with an IDs-only recovery manifest. The public catalog test compares live VACANT API results with cards; counts are not hardcoded.
