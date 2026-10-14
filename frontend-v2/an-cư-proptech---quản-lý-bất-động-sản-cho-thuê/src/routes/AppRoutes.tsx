@@ -17,6 +17,8 @@ import { ProfilePage } from '@/pages/account/ProfilePage';
 import { AccountActionPage } from '@/pages/account/AccountActionPage';
 import { AccountSettingsPage } from '@/pages/account/AccountSettingsPage';
 import { PropertyDossiersPage } from '@/pages/admin/PropertyDossiersPage';
+import { MyContractsPage } from '@/pages/customer/MyContractsPage';
+import { ContractDetailPage } from '@/pages/customer/ContractDetailPage';
 
 function RequireAccount({ children, role, verified = true }: { children: ReactNode; role?: 'MANAGER' | 'CUSTOMER' | 'ADMIN'; verified?: boolean }) {
   const { user, loading } = useAuth();
@@ -46,6 +48,8 @@ export function AppRoutes() {
     <Route path="/admin/property-dossiers" element={<RequireAccount role="ADMIN" verified={false}><PropertyDossiersPage /></RequireAccount>} />
     <Route path="/my/rental-requests" element={<RequireAccount role="CUSTOMER"><MyRentalRequestsPage /></RequireAccount>} />
     <Route path="/my/invoices" element={<RequireAccount role="CUSTOMER"><MyInvoicesPage /></RequireAccount>} />
+    <Route path="/my/contracts" element={<RequireAccount role="CUSTOMER"><MyContractsPage /></RequireAccount>} />
+    <Route path="/my/contracts/:id" element={<RequireAccount role="CUSTOMER"><ContractDetailPage /></RequireAccount>} />
     <Route path="/my/invoices/:id" element={<RequireAccount role="CUSTOMER"><InvoiceDetailPage /></RequireAccount>} />
     <Route path="/account/verification" element={<RequireAccount verified={false}><AccountVerificationPage /></RequireAccount>} />
     <Route path="/account/profile" element={<RequireAccount verified={false}><ProfilePage /></RequireAccount>} />

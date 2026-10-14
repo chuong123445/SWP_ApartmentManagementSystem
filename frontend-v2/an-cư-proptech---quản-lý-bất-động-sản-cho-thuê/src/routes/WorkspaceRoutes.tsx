@@ -85,11 +85,9 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
 
           {activeTab === 'contracts' && (
             <ContractsPage
-              readOnly
               contracts={contracts}
-              rooms={rooms}
-              tenants={tenants}
-              onAddContract={handleAddContract}
+              propertyId={navigation.selectedBuildingId === 'all' ? undefined : navigation.selectedBuildingId}
+              onChooseRequest={() => setActiveTab('rental_requests')}
             />
           )}
 
