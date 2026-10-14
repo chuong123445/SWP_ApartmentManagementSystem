@@ -48,6 +48,8 @@ public class IdentityProfileService {
         profile.setDateOfBirth(input.getDateOfBirth());profile.setIssueDate(input.getIssueDate());profile.setIssuePlace(input.getIssuePlace().strip());
         profile.setPermanentAddress(input.getPermanentAddress().strip());profile.setCurrentAddress(input.getCurrentAddress().strip());
         profile.setVerificationStatus(IdentityProfile.VerificationStatus.NOT_VERIFIED);profile.setUpdatedAt(Instant.now());
+        // Editing text alone does not turn synthetic evidence into real documents.
+        if(previous.isEmpty() || (frontImage!=null && backImage!=null))profile.setLocalFixture(false);
         images.setAccountId(account.getId());
         if(frontImage!=null){images.setFrontContent(frontImage.content());images.setFrontContentType(frontImage.contentType());}
         if(backImage!=null){images.setBackContent(backImage.content());images.setBackContentType(backImage.contentType());}
@@ -77,7 +79,7 @@ public class IdentityProfileService {
             }finally{reader.dispose();}
         }catch(IOException e){throw invalidImage();}
     }
-    private static IdentityProfileResponse response(IdentityProfile p){return new IdentityProfileResponse(p.getLegalName(),p.getDocumentNumber(),p.getDateOfBirth(),p.getIssueDate(),p.getIssuePlace(),p.getPermanentAddress(),p.getCurrentAddress(),p.getVerificationStatus().name(),p.getUpdatedAt(),p.getVersion());}
+    private static IdentityProfileResponse response(IdentityProfile p){return new IdentityProfileResponse(p.getLegalName(),p.getDocumentNumber(),p.getDateOfBirth(),p.getIssueDate(),p.getIssuePlace(),p.getPermanentAddress(),p.getCurrentAddress(),p.getVerificationStatus().name(),p.getUpdatedAt(),p.getVersion(),p.isLocalFixture());}
     private static ApiException invalidImage(){return error(HttpStatus.BAD_REQUEST,"INVALID_FILE","Chỉ nhận ảnh PNG/JPEG hợp lệ, tối đa 5 MB mỗi ảnh và 20 triệu điểm ảnh.");}
     private static ApiException missing(){return error(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy ảnh căn cước của bạn.");}
     private static ApiException error(HttpStatus status,String code,String message){return new ApiException(status,code,message);}
