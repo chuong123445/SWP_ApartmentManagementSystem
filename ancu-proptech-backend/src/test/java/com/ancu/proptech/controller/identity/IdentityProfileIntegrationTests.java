@@ -85,4 +85,9 @@ class IdentityProfileIntegrationTests {
         assertEquals("NOT_VERIFIED",profiles.findById(other.getId()).orElseThrow().getVerificationStatus().name());
         mvc.perform(get("/api/v1/me/profile").header("Authorization","Bearer "+token(other))).andExpect(status().isOk()).andExpect(jsonPath("$.documentNumber").doesNotExist());
     }
+    @Test void sampleFlagSurvivesTextOrOneImageEditsUntilBothImagesAreReplaced()throws Exception{
+        save(token,input("null"),png,png).andExpect(status().isOk());var profile=profiles.findById(customer.getId()).orElseThrow();profile.setLocalFixture(true);profiles.saveAndFlush(profile);
+        save(token,input(Long.toString(profile.getVersion())),png,null).andExpect(status().isOk()).andExpect(jsonPath("$.localFixture").value(true));
+        save(token,input(Long.toString(profile.getVersion())),png,png).andExpect(status().isOk()).andExpect(jsonPath("$.localFixture").value(false)).andExpect(jsonPath("$.verificationStatus").value("NOT_VERIFIED"));
+    }
 }

@@ -20,5 +20,6 @@ public class IdentityProfile {
     @Nationalized @Column(nullable=false,length=500) private String currentAddress;
     @Enumerated(EnumType.STRING) @Column(nullable=false,length=24) private VerificationStatus verificationStatus=VerificationStatus.NOT_VERIFIED;
     @Column(nullable=false,columnDefinition="datetime2(6)") private Instant updatedAt;
+    @Column(nullable=false) private boolean localFixture;
     @Version private long version;
 }

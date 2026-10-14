@@ -36,6 +36,7 @@ class ContractDraftIntegrationTests {
     @Autowired RentalRequestRepository requests;
     @Autowired RentalContractRepository contracts;
     @Autowired ContractDraftRepository drafts;
+    @Autowired com.ancu.proptech.repository.identity.IdentityProfileRepository identities;
     @Autowired AuthService auth;
     @Autowired PasswordEncoder passwords;
     private AuthAccount owner,customer,other;
@@ -124,5 +125,19 @@ class ContractDraftIntegrationTests {
     @Test void approvedDossierReceivingAccountIsReusedWithoutPrivateEvidence() throws Exception {
         var d=new PropertyDossier();d.setProperty(request.getApartment().getProperty());d.setApplicantName(owner.getFullName());d.setRightType(PropertyDossier.RightType.AUTHORIZATION);d.setBank("Ngân hàng đã lưu");d.setAccountNumber("123456789");d.setAccountHolderName(owner.getFullName());d.setStatus(PropertyDossier.Status.APPROVED);d.setSubmittedAt(Instant.now());dossiers.saveAndFlush(d);
         mvc.perform(get("/api/v1/owner/rental-requests/"+request.getId()+"/contract-context").header("Authorization",token)).andExpect(status().isOk()).andExpect(jsonPath("$.snapshot.receivingAccount.accountNumber").value("123456789")).andExpect(jsonPath("$.snapshot.asset.exploitationRight").value("AUTHORIZATION"));
+    }
+    @Test void identityAndCertificateAreServerDerivedStaleCheckedAndFrozenWithoutImages() throws Exception {
+        var identity=new com.ancu.proptech.model.identity.IdentityProfile();identity.setAccountId(customer.getId());identity.setLegalName("Tên trên căn cước mẫu");identity.setDocumentNumber("999000000001");identity.setDateOfBirth(LocalDate.of(1995,6,15));identity.setIssueDate(LocalDate.of(2022,5,1));identity.setIssuePlace("Cơ quan mẫu");identity.setPermanentAddress("Địa chỉ trên giấy tờ");identity.setCurrentAddress("Địa chỉ sinh sống mẫu");identity.setUpdatedAt(Instant.now());identity.setLocalFixture(true);identity=identities.saveAndFlush(identity);
+        var d=new PropertyDossier();d.setProperty(request.getApartment().getProperty());d.setApplicantName(owner.getFullName());d.setRightType(PropertyDossier.RightType.OWNERSHIP);d.setBank("Ngân hàng mẫu");d.setAccountNumber("00000001");d.setAccountHolderName(owner.getFullName());d.setStatus(PropertyDossier.Status.APPROVED);d.setSubmittedAt(Instant.now());d.setCertificateNumber("MAU-GCN-001");d.setCertificateIssueDate(LocalDate.of(2020,1,15));d.setCertificateIssuePlace("Cơ quan cấp mẫu");d.setExploitationRightDescription("Quyền cho thuê minh họa");d.setLocalFixture(true);d=dossiers.saveAndFlush(d);
+        String ctx=context();assertEquals("999000000001",JsonPath.read(ctx,"$.snapshot.customer.documentNumber"));assertEquals("Tên trên căn cước mẫu",JsonPath.read(ctx,"$.snapshot.customer.fullName"));assertEquals("NOT_VERIFIED",JsonPath.read(ctx,"$.snapshot.customer.identityVerificationStatus"));assertEquals(true,JsonPath.read(ctx,"$.snapshot.customer.localFixture"));assertEquals("MAU-GCN-001",JsonPath.read(ctx,"$.snapshot.asset.certificateNumber"));assertFalse(ctx.contains("frontContent"));assertFalse(ctx.contains("backContent"));
+        identity.setIssuePlace("Nơi cấp mới");identities.saveAndFlush(identity);create(token,body(ctx)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("SOURCE_CHANGED"));
+        String result=create();identity.setDocumentNumber("999000000002");identities.saveAndFlush(identity);d.setCertificateNumber("MAU-GCN-002");dossiers.saveAndFlush(d);
+        mvc.perform(get("/api/v1/contracts/"+id(result)).header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.snapshot.customer.documentNumber").value("999000000001")).andExpect(jsonPath("$.snapshot.asset.certificateNumber").value("MAU-GCN-001"));
+        mvc.perform(get("/api/v1/contracts/"+id(result)).header("Authorization",otherToken)).andExpect(status().isNotFound());
+    }
+    @Test void legacyStoredSnapshotsWithoutNewLegalFieldsRemainReadable() throws Exception {
+        String result=create();var draft=drafts.findByContractId(UUID.fromString(id(result))).orElseThrow();
+        draft.setSnapshotJson(draft.getSnapshotJson().replaceAll(",\"(?:documentNumber|documentIssueDate|documentIssuePlace|permanentAddress|identityVerificationStatus|localFixture|certificateNumber|certificateIssueDate|certificateIssuePlace|exploitationRightDescription)\":null",""));drafts.saveAndFlush(draft);
+        mvc.perform(get("/api/v1/contracts/"+id(result)).header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.snapshot.owner.fullName").value(owner.getFullName())).andExpect(jsonPath("$.snapshot.asset.certificateNumber").isEmpty());
     }
 }

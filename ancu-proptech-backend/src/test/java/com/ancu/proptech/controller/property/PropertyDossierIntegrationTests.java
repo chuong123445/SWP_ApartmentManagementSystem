@@ -49,6 +49,14 @@ class PropertyDossierIntegrationTests {
     private ResultActions decision(String token,String id,String choice,String reason,long version)throws Exception{return mvc.perform(post("/api/v1/admin/property-dossiers/"+id+"/decisions").header("Authorization","Bearer "+token).contentType("application/json").content("{\"decision\":\""+choice+"\",\"reason\":\""+reason+"\",\"version\":"+version+"}"));}
     private String createApartment()throws Exception{var result=mvc.perform(post("/api/v1/owner/apartments").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"propertyId\":\""+property.getId()+"\",\"roomNumber\":\"A.1\",\"title\":\"Căn kiểm thử\",\"floor\":1,\"areaM2\":\"30\",\"advertisedMonthlyRent\":\"5000000\"}")).andExpect(status().isCreated()).andReturn();return JsonPath.read(result.getResponse().getContentAsString(),"$.id");}
     private ResultActions publish(String token,String apartment,long version,String publication)throws Exception{return mvc.perform(post("/api/v1/owner/apartments/"+apartment+"/publication").header("Authorization","Bearer "+token).contentType("application/json").content("{\"publicationStatus\":\""+publication+"\",\"version\":"+version+"}"));}
+    @Test void optionalCertificateRequiresWholeGroupAndCannotForgeFixtureFlag()throws Exception{
+        String file=uploadRight(),base=body(file,property.getVersion());
+        submit(ownerToken,property,base.replace("\"rightType\"","\"certificateNumber\":\"MAU-001\",\"rightType\"")).andExpect(status().isBadRequest());
+        submit(ownerToken,property,base.replace("\"rightType\"","\"localFixture\":true,\"rightType\"")).andExpect(status().isBadRequest());
+        String valid=base.replace("\"rightType\"","\"certificateNumber\":\" MAU-001 \",\"certificateIssueDate\":\"2020-01-15\",\"certificateIssuePlace\":\" Cơ quan mẫu \",\"exploitationRightDescription\":\" Quyền khai thác mẫu \",\"rightType\"");
+        submit(ownerToken,property,valid.replace("2020-01-15","2099-01-01")).andExpect(status().isBadRequest());
+        submit(ownerToken,property,valid).andExpect(status().isCreated()).andExpect(jsonPath("$.certificateNumber").value("MAU-001")).andExpect(jsonPath("$.certificateIssuePlace").value("Cơ quan mẫu")).andExpect(jsonPath("$.localFixture").value(false));
+    }
     @Test void legacyPendingPropertyWithoutDossierCanSubmitRealEvidenceWithoutReset()throws Exception{
         property.setApprovalStatus(Property.ApprovalStatus.PENDING_APPROVAL);properties.saveAndFlush(property);
         long before=property.getVersion();String file=uploadRight();String id=send(file);
