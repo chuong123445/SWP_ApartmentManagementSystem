@@ -16,6 +16,7 @@ import { InvoiceDetailPage } from '@/pages/customer/InvoiceDetailPage';
 import { ProfilePage } from '@/pages/account/ProfilePage';
 import { AccountActionPage } from '@/pages/account/AccountActionPage';
 import { AccountSettingsPage } from '@/pages/account/AccountSettingsPage';
+import { IdentityPage } from '@/pages/account/IdentityPage';
 import { PropertyDossiersPage } from '@/pages/admin/PropertyDossiersPage';
 import { MyContractsPage } from '@/pages/customer/MyContractsPage';
 import { ContractDetailPage } from '@/pages/customer/ContractDetailPage';
@@ -54,6 +55,7 @@ export function AppRoutes() {
     <Route path="/account/verification" element={<RequireAccount verified={false}><AccountVerificationPage /></RequireAccount>} />
     <Route path="/account/profile" element={<RequireAccount verified={false}><ProfilePage /></RequireAccount>} />
     <Route path="/account/settings" element={<RequireAccount verified={false}><AccountSettingsPage /></RequireAccount>} />
+    <Route path="/account/settings/identity" element={<RequireAccount verified={false}><IdentityPage /></RequireAccount>} />
     <Route path="/account/settings/password" element={<RequireAccount verified={false}><AccountActionPage key="password" action="password" /></RequireAccount>} />
     <Route path="/account/settings/email" element={<RequireAccount verified={false}><AccountActionPage key="email" action="email" /></RequireAccount>} />
     <Route path="/account/settings/phone" element={<RequireAccount verified={false}><AccountActionPage key="phone" action="phone" /></RequireAccount>} />
