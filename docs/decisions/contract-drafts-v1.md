@@ -1,6 +1,6 @@
 # Contract drafts v1 — 14 October 2026
 
-User authorization: Owner chooses **Tạo hợp đồng** after an ACCEPTED rental request; follow the nine images in `Sample_Contract_progress/SWTi_AHC [14-10-2026 09_33]`. Six steps: apartment template, Owner review, Customer review, asset review/commercial conditions, editable clauses, complete preview. User corrected “5 pages” to **at least five clauses**. No new account roles, signing provider, payment integration or release rules were authorized.
+User authorization: Owner chooses **Tạo hợp đồng** after an ACCEPTED rental request; follow the nine images in `Sample_Contract_progress/SWTi_AHC [14-10-2026 09_33]`. Six steps: apartment template, Owner review, Customer review, asset review/commercial conditions, editable clauses, complete preview. User corrected “5 pages” to **at least five clauses**. User subsequently confirmed “Hoàn thiện tạo và rà soát bản nháp trước” in the async question. No new account roles, signing provider, payment integration or release rules were authorized.
 
 ## Stored data and privacy
 
