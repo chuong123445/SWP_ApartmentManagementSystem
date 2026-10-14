@@ -8,6 +8,7 @@ export function PropertyDossierModal({ propertyId, onClose, onSaved }: { propert
   const [property, setProperty] = useState<OwnerProperty | null>(null);const [history, setHistory] = useState<Dossier[]>([]);
   const [files, setFiles] = useState<EvidenceFile[]>([]);const [loading, setLoading] = useState(true);const [busy, setBusy] = useState(false);const [error, setError] = useState('');
   const [rightType, setRightType] = useState<Dossier['rightType']>('OWNERSHIP');const [bank, setBank] = useState('');const [accountNumber, setAccountNumber] = useState('');const [holder, setHolder] = useState('');
+  const [certificateNumber, setCertificateNumber] = useState('');const [certificateDate, setCertificateDate] = useState('');const [certificatePlace, setCertificatePlace] = useState('');const [rightDescription, setRightDescription] = useState('');
   const [revision, setRevision] = useState(0);
   useEffect(() => {
     let active = true;setLoading(true);setError('');
@@ -15,6 +16,7 @@ export function PropertyDossierModal({ propertyId, onClose, onSaved }: { propert
       if (!active) return;const found = properties.find(p => p.id === propertyId);if (!found) throw new Error('Không tìm thấy tài sản.');
       setProperty(found);setHistory(dossiers);const latest = dossiers[0];
       if (latest) { setFiles(latest.files);setRightType(latest.rightType);setBank(latest.bank);setAccountNumber(latest.accountNumber);setHolder(latest.accountHolderName); }
+      setCertificateNumber(latest?.certificateNumber ?? '');setCertificateDate(latest?.certificateIssueDate ?? '');setCertificatePlace(latest?.certificateIssuePlace ?? '');setRightDescription(latest?.exploitationRightDescription ?? '');
     }).catch(e => { if (active) setError(e.message); }).finally(() => { if (active) setLoading(false); });return () => { active = false; };
   }, [propertyId, revision]);
   const editable = property && (['DRAFT', 'NEEDS_INFORMATION', 'REJECTED'].includes(property.approvalStatus) || (property.approvalStatus === 'PENDING_APPROVAL' && history.length === 0));
@@ -23,6 +25,7 @@ export function PropertyDossierModal({ propertyId, onClose, onSaved }: { propert
     if (!files.some(f => f.purpose === 'RIGHT_DOCUMENT')) { setError('Cần ít nhất một giấy tờ chứng minh sở hữu hoặc quyền khai thác.');return; }
     setBusy(true);
     try { await submitDossier(property.id, { propertyVersion: property.version, rightType, receivingAccount: { bank: bank.trim(), accountNumber, accountHolderName: holder.trim() },
+      certificateNumber: certificateNumber.trim() || null, certificateIssueDate: certificateDate || null, certificateIssuePlace: certificatePlace.trim() || null, exploitationRightDescription: rightDescription.trim() || null,
       documentFileIds: files.filter(f => f.purpose === 'RIGHT_DOCUMENT').map(f => f.id), supportingFileIds: files.filter(f => f.purpose === 'SUPPORTING').map(f => f.id), ownerEvidenceFileIds: files.filter(f => f.purpose === 'OWNER_IDENTITY').map(f => f.id) });
       onSaved();setRevision(n => n + 1);
     } catch (e) { setError(e instanceof Error ? e.message : 'Không gửi được hồ sơ.'); } finally { setBusy(false); }
@@ -38,6 +41,12 @@ export function PropertyDossierModal({ propertyId, onClose, onSaved }: { propert
         {property?.approvalStatus === 'PENDING_APPROVAL' && history.length === 0 && <p className="text-sm text-amber-900 bg-amber-50 p-3 rounded-lg">Tài sản đang ở trạng thái chờ duyệt cũ nhưng chưa có hồ sơ. Hãy gửi chứng từ để Admin kiểm duyệt; dữ liệu căn hộ hiện có được giữ nguyên.</p>}
         {editable && <form onSubmit={submit} className="space-y-4"><fieldset disabled={busy} className="space-y-4 disabled:opacity-60">
           <label className="block text-sm font-semibold">Quyền cho thuê<select value={rightType} onChange={e => setRightType(e.target.value as Dossier['rightType'])} className={field}><option value="OWNERSHIP">Chủ sở hữu</option><option value="AUTHORIZATION">Được ủy quyền / có quyền khai thác</option></select></label>
+          <label className="block text-sm">Căn cứ quyền khai thác<textarea maxLength={1000} value={rightDescription} onChange={e => setRightDescription(e.target.value)} className={field} rows={2} /></label>
+          <div className="border rounded-xl p-3 space-y-3"><h3 className="font-semibold text-sm">Thông tin giấy chứng nhận</h3><p className="text-xs text-slate-500">Nếu cung cấp, hãy điền đủ số, ngày cấp và nơi cấp theo giấy tờ.</p>
+            <label className="block text-sm">Số giấy chứng nhận<input required={!!(certificateDate || certificatePlace)} maxLength={100} value={certificateNumber} onChange={e => setCertificateNumber(e.target.value)} className={field} /></label>
+            <label className="block text-sm">Ngày cấp giấy chứng nhận<input type="date" required={!!(certificateNumber || certificatePlace)} max={new Date().toLocaleDateString('en-CA')} value={certificateDate} onChange={e => setCertificateDate(e.target.value)} className={field} /></label>
+            <label className="block text-sm">Nơi cấp giấy chứng nhận<input required={!!(certificateNumber || certificateDate)} maxLength={200} value={certificatePlace} onChange={e => setCertificatePlace(e.target.value)} className={field} /></label>
+          </div>
           <div className="grid sm:grid-cols-2 gap-3"><label className="text-sm">Ngân hàng *<input required maxLength={100} value={bank} onChange={e => setBank(e.target.value)} className={field} /></label><label className="text-sm">Số tài khoản *<input required inputMode="numeric" pattern="[0-9]{4,40}" maxLength={40} value={accountNumber} onChange={e => setAccountNumber(e.target.value)} className={field} /></label><label className="text-sm sm:col-span-2">Tên chủ tài khoản *<input required maxLength={100} value={holder} onChange={e => setHolder(e.target.value)} className={field} /></label></div>
           <p className="text-sm text-slate-600">{rightType === 'OWNERSHIP' ? 'Đính kèm ảnh Sổ đỏ/Sổ hồng hoặc giấy tờ sở hữu tương đương.' : 'Đính kèm hợp đồng ủy quyền, thuê/cho thuê lại hoặc giấy tờ chứng minh quyền khai thác.'} Chứng từ bổ sung có thể gồm hóa đơn điện/nước/internet cùng địa chỉ. Giấy tờ người nộp chỉ phục vụ hồ sơ tài sản.</p>
           <p className="text-xs text-slate-500">Nhận ảnh PNG/JPEG, tối đa 5 MB/ảnh, tối đa 20 ảnh/hồ sơ. PDF chưa được hỗ trợ; hãy dùng ảnh chụp hoặc bản scan.</p>

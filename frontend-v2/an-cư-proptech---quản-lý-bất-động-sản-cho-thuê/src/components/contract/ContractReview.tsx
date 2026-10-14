@@ -6,15 +6,18 @@ export function ReviewFields({ fields }: { fields: [string, string | number | nu
 }
 export function PartyReview({ party, title }: { party: ContractParty; title: string }) {
   return <section className="rounded-xl border border-slate-200 p-4 space-y-4"><h3 className="font-bold">{title}</h3><ReviewFields fields={[
-    ['Họ và tên', party.fullName], ['Email', party.email], ['Số điện thoại', party.phone], ['Ngày sinh', party.dateOfBirth], ['Địa chỉ hồ sơ', party.address], ['Xác thực email', party.emailVerified ? 'Đã xác thực email' : 'Chưa xác thực email'], ['Số CCCD / ngày cấp / nơi cấp', null],
-  ]} /><p className="text-xs text-slate-500">Thông tin được lấy từ hồ sơ đã lưu. Xác thực email xác nhận quyền sử dụng email; dữ liệu CCCD có cấu trúc chưa được lưu trong hệ thống.</p></section>;
+    ['Họ và tên', party.fullName], ['Email', party.email], ['Số điện thoại', party.phone], ['Ngày sinh', party.dateOfBirth], ['Địa chỉ sinh sống / liên hệ', party.address], ['Xác thực email', party.emailVerified ? 'Đã xác thực email' : 'Chưa xác thực email'],
+    ['Số căn cước công dân', party.documentNumber], ['Ngày cấp căn cước', party.documentIssueDate], ['Nơi cấp căn cước', party.documentIssuePlace], ['Địa chỉ trên căn cước', party.permanentAddress],
+    ['Danh tính', party.identityVerificationStatus === 'NOT_VERIFIED' ? 'Chưa xác minh danh tính' : null],
+  ]} />{party.localFixture && <p className="text-sm text-amber-900 bg-amber-50 rounded-lg p-3">Thông tin căn cước mẫu — chỉ dùng minh họa, không có giá trị xác minh hoặc ký kết thực tế.</p>}<p className="text-xs text-slate-500">Thông tin lấy từ hồ sơ đã lưu tại thời điểm tạo bản nháp. Xác thực email xác nhận quyền sử dụng email; thông tin căn cước do người dùng cung cấp chưa được kiểm tra eKYC. Ảnh giấy tờ không được đưa vào hợp đồng.</p></section>;
 }
 export function AssetReview({ snapshot }: { snapshot: ContractSnapshot }) {
   const a = snapshot.asset;
   return <section className="rounded-xl border border-slate-200 p-4 space-y-4"><h3 className="font-bold">Tài sản cho thuê</h3><ReviewFields fields={[
     ['Tài sản', a.propertyName], ['Căn hộ', a.title], ['Số căn hộ', a.roomNumber], ['Địa chỉ', a.address], ['Tỉnh / thành phố', a.city], ['Quận / huyện', a.district], ['Phường / xã', a.ward], ['Diện tích (m²)', a.areaM2], ['Tầng', a.floor], ['Phòng ngủ', a.bedrooms], ['Phòng tắm', a.bathrooms], ['Tiện nghi đã lưu', a.amenities.join(', ') || null],
-    ['Duyệt tài sản', a.approvalStatus === 'APPROVED' ? 'Đã được duyệt' : a.approvalStatus], ['Quyền khai thác trong hồ sơ', a.exploitationRight === 'OWNERSHIP' ? 'Sở hữu' : a.exploitationRight === 'AUTHORIZATION' ? 'Ủy quyền / khai thác' : null], ['Số giấy chứng nhận / ngày cấp / nơi cấp', null],
-  ]} /><p className="text-xs text-slate-500">Các thông tin được lấy từ căn hộ và hồ sơ tài sản. Chứng từ hồ sơ vẫn được giữ riêng tư; số giấy chứng nhận chưa có trường dữ liệu có cấu trúc.</p></section>;
+    ['Duyệt tài sản', a.approvalStatus === 'APPROVED' ? 'Đã được duyệt' : a.approvalStatus], ['Quyền khai thác trong hồ sơ', a.exploitationRight === 'OWNERSHIP' ? 'Sở hữu' : a.exploitationRight === 'AUTHORIZATION' ? 'Ủy quyền / khai thác' : null],
+    ['Căn cứ quyền khai thác', a.exploitationRightDescription], ['Số giấy chứng nhận', a.certificateNumber], ['Ngày cấp giấy chứng nhận', a.certificateIssueDate], ['Nơi cấp giấy chứng nhận', a.certificateIssuePlace],
+  ]} />{a.localFixture && <p className="text-sm text-amber-900 bg-amber-50 rounded-lg p-3">Giấy chứng nhận và quyền khai thác mẫu — chỉ dùng minh họa; không phải bằng chứng sở hữu đã được kiểm tra.</p>}<p className="text-xs text-slate-500">Các thông tin lấy từ căn hộ và hồ sơ tài sản được duyệt tại thời điểm tạo bản nháp. Ảnh chứng từ vẫn được giữ riêng tư.</p></section>;
 }
 export function ReceivingAccountReview({ snapshot }: { snapshot: ContractSnapshot }) {
   const bank = snapshot.receivingAccount;

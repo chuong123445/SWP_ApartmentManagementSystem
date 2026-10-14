@@ -45,7 +45,9 @@ test('pending Customer stores private identity, edits and reloads without becomi
     await expect(page.getByRole('img', { name: 'Ảnh căn cước mặt sau', exact: true })).toBeVisible();
     const image = await page.request.get('/api/v1/me/identity/documents/front', { headers });expect(image.status()).toBe(200);expect(image.headers()['cache-control']).toBe('no-store');
     await page.locator('#identity-current').fill('Địa chỉ sinh sống đã cập nhật');
-    await page.getByRole('button', { name: 'Lưu hồ sơ danh tính', exact: true }).click();await expect(page.getByRole('status')).toContainText('Đã lưu hồ sơ.');
+    const updatedResponse = page.waitForResponse(r => r.url().endsWith('/api/v1/me/identity') && r.request().method() === 'PUT');
+    await page.getByRole('button', { name: 'Lưu hồ sơ danh tính', exact: true }).click();expect((await updatedResponse).status()).toBe(200);
+    await expect(page.getByRole('button', { name: 'Lưu hồ sơ danh tính', exact: true })).toBeEnabled();await expect(page.getByRole('status')).toContainText('Đã lưu hồ sơ.');
     await page.reload();await expect(page.locator('#identity-current')).toHaveValue('Địa chỉ sinh sống đã cập nhật');
     // Competing tab writes: the old version cannot silently overwrite it.
     const stale = await page.request.put('/api/v1/me/identity', { headers, multipart: { profile: { name: 'profile.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ legalName: metadata.legalName, documentNumber: metadata.documentNumber, dateOfBirth: metadata.dateOfBirth, issueDate: metadata.issueDate, issuePlace: metadata.issuePlace, permanentAddress: metadata.permanentAddress, currentAddress: 'Stale overwrite', version: metadata.version })) } } });

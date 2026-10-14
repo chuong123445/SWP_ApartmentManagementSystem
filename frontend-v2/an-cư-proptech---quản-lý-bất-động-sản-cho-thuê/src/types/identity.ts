@@ -11,4 +11,5 @@ export interface IdentityProfile extends IdentityFields {
   verificationStatus: 'NOT_VERIFIED';
   updatedAt: string;
   version: number;
+  localFixture?: boolean;
 }
