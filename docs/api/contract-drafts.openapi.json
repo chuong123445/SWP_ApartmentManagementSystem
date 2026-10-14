@@ -1,0 +1,1444 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "An Cư — selection-bound contract drafts",
+    "version": "1.0.0",
+    "description": "Implemented 14 October 2026. Private DRAFT authoring/review; no signing, activation, payment or release endpoints. Snapshots are server-derived and immutable. Monthly rent must be positive; all other money nonnegative. Existing legacy ACTIVE fixtures are not backfilled into these authoring routes."
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "paths": {
+    "/owner/rental-requests/{id}/contract-context": {
+      "get": {
+        "summary": "Owner reviews accepted request; existingDraft allows reopening.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owner reviews accepted request; existingDraft allows reopening.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Context"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/owner/rental-requests/{id}/contract": {
+      "post": {
+        "summary": "Create exactly one DRAFT from this accepted request.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Create"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create exactly one DRAFT from this accepted request.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/owner/contracts/{id}/draft": {
+      "put": {
+        "summary": "Owner replaces all commercial terms/clauses of DRAFT; integer content version required.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Update"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owner replaces all commercial terms/clauses of DRAFT; integer content version required.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contracts/{id}": {
+      "get": {
+        "summary": "Exact Owner/assigned Customer reads authored contract snapshot.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Exact Owner/assigned Customer reads authored contract snapshot.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/owner/contract-drafts": {
+      "get": {
+        "summary": "Only authored contracts of authenticated Owner, optionally exact property.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "propertyId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Only authored contracts of authenticated Owner, optionally exact property.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Draft"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/contract-drafts": {
+      "get": {
+        "summary": "Only authored contracts assigned to authenticated Customer.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Only authored contracts assigned to authenticated Customer.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Draft"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Clause": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          }
+        },
+        "required": [
+          "title",
+          "body"
+        ],
+        "additionalProperties": false
+      },
+      "Create": {
+        "type": "object",
+        "properties": {
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Strictly after startDate."
+          },
+          "monthlyRent": {
+            "type": "string",
+            "pattern": "^\\d{1,13}(\\.\\d{1,2})?$",
+            "description": "VND/reading decimal; max DECIMAL(15,2)."
+          },
+          "electricityUnitPrice": {
+            "type": "string",
+            "pattern": "^\\d{1,13}(\\.\\d{1,2})?$",
+            "description": "VND/reading decimal; max DECIMAL(15,2)."
+          },
+          "waterUnitPrice": {
+            "type": "string",
+            "pattern": "^\\d{1,13}(\\.\\d{1,2})?$",
+            "description": "VND/reading decimal; max DECIMAL(15,2)."
+          },
+          "deposit": {
+            "type": "string",
+            "pattern": "^\\d{1,13}(\\.\\d{1,2})?$",
+            "description": "VND/reading decimal; max DECIMAL(15,2)."
+          },
+          "paymentDay": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 28
+          },
+          "paymentMethod": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "usagePurpose": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "clauses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Clause"
+            },
+            "minItems": 1,
+            "maxItems": 30
+          },
+          "requestVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "sourceVersion": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "startDate",
+          "endDate",
+          "monthlyRent",
+          "electricityUnitPrice",
+          "waterUnitPrice",
+          "deposit",
+          "paymentDay",
+          "paymentMethod",
+          "usagePurpose",
+          "clauses",
+          "requestVersion",
+          "sourceVersion"
+        ],
+        "additionalProperties": false
+      },
+      "Update": {
+        "type": "object",
+        "properties": {
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Strictly after startDate."
+          },
+          "monthlyRent": {
+            "type": "string",
+            "pattern": "^\\d{1,13}(\\.\\d{1,2})?$",
+            "description": "VND/reading decimal; max DECIMAL(15,2)."
+          },
+          "electricityUnitPrice": {
+            "type": "string",
+            "pattern": "^\\d{1,13}(\\.\\d{1,2})?$",
+            "description": "VND/reading decimal; max DECIMAL(15,2)."
+          },
+          "waterUnitPrice": {
+            "type": "string",
+            "pattern": "^\\d{1,13}(\\.\\d{1,2})?$",
+            "description": "VND/reading decimal; max DECIMAL(15,2)."
+          },
+          "deposit": {
+            "type": "string",
+            "pattern": "^\\d{1,13}(\\.\\d{1,2})?$",
+            "description": "VND/reading decimal; max DECIMAL(15,2)."
+          },
+          "paymentDay": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 28
+          },
+          "paymentMethod": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "usagePurpose": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "clauses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Clause"
+            },
+            "minItems": 1,
+            "maxItems": 30
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "startDate",
+          "endDate",
+          "monthlyRent",
+          "electricityUnitPrice",
+          "waterUnitPrice",
+          "deposit",
+          "paymentDay",
+          "paymentMethod",
+          "usagePurpose",
+          "clauses",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "Party": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "emailVerified": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "email",
+          "phone",
+          "address",
+          "dateOfBirth",
+          "emailVerified"
+        ],
+        "additionalProperties": false
+      },
+      "Asset": {
+        "type": "object",
+        "properties": {
+          "apartmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "roomNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string"
+          },
+          "ward": {
+            "type": "string",
+            "nullable": true
+          },
+          "areaM2": {
+            "type": "string",
+            "pattern": "^\\d{1,13}(\\.\\d{1,2})?$",
+            "description": "VND/reading decimal; max DECIMAL(15,2)."
+          },
+          "floor": {
+            "type": "integer",
+            "nullable": true
+          },
+          "bedrooms": {
+            "type": "integer",
+            "nullable": true
+          },
+          "bathrooms": {
+            "type": "integer",
+            "nullable": true
+          },
+          "amenities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "approvalStatus": {
+            "type": "string"
+          },
+          "approvedDossierId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "exploitationRight": {
+            "type": "string",
+            "enum": [
+              "OWNERSHIP",
+              "AUTHORIZATION"
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "apartmentId",
+          "propertyId",
+          "propertyName",
+          "title",
+          "roomNumber",
+          "address",
+          "city",
+          "district",
+          "ward",
+          "areaM2",
+          "floor",
+          "bedrooms",
+          "bathrooms",
+          "amenities",
+          "approvalStatus",
+          "approvedDossierId",
+          "exploitationRight"
+        ],
+        "additionalProperties": false
+      },
+      "ReceivingAccount": {
+        "type": "object",
+        "properties": {
+          "bank": {
+            "type": "string"
+          },
+          "accountNumber": {
+            "type": "string"
+          },
+          "accountHolderName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bank",
+          "accountNumber",
+          "accountHolderName"
+        ],
+        "additionalProperties": false
+      },
+      "Snapshot": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "$ref": "#/components/schemas/Party"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/Party"
+          },
+          "asset": {
+            "$ref": "#/components/schemas/Asset"
+          },
+          "receivingAccount": {
+            "type": "object",
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReceivingAccount"
+              }
+            ]
+          }
+        },
+        "required": [
+          "owner",
+          "customer",
+          "asset",
+          "receivingAccount"
+        ],
+        "additionalProperties": false
+      },
+      "Draft": {
+        "type": "object",
+        "properties": {
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Strictly after startDate."
+          },
+          "monthlyRent": {
+            "type": "string",
+            "pattern": "^\\d{1,13}(\\.\\d{1,2})?$",
+            "description": "VND/reading decimal; max DECIMAL(15,2)."
+          },
+          "electricityUnitPrice": {
+            "type": "string",
+            "pattern": "^\\d{1,13}(\\.\\d{1,2})?$",
+            "description": "VND/reading decimal; max DECIMAL(15,2)."
+          },
+          "waterUnitPrice": {
+            "type": "string",
+            "pattern": "^\\d{1,13}(\\.\\d{1,2})?$",
+            "description": "VND/reading decimal; max DECIMAL(15,2)."
+          },
+          "deposit": {
+            "type": "string",
+            "pattern": "^\\d{1,13}(\\.\\d{1,2})?$",
+            "description": "VND/reading decimal; max DECIMAL(15,2)."
+          },
+          "paymentDay": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 28
+          },
+          "paymentMethod": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "usagePurpose": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "clauses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Clause"
+            },
+            "minItems": 1,
+            "maxItems": 30
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "rentalRequestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contractNumber": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "ACTIVE",
+              "ENDED"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/Snapshot"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "startDate",
+          "endDate",
+          "monthlyRent",
+          "electricityUnitPrice",
+          "waterUnitPrice",
+          "deposit",
+          "paymentDay",
+          "paymentMethod",
+          "usagePurpose",
+          "clauses",
+          "id",
+          "rentalRequestId",
+          "contractNumber",
+          "status",
+          "version",
+          "snapshot",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "Context": {
+        "type": "object",
+        "properties": {
+          "rentalRequestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requestVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "sourceVersion": {
+            "type": "string"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/Snapshot"
+          },
+          "advertisedMonthlyRent": {
+            "type": "string",
+            "pattern": "^\\d{1,13}(\\.\\d{1,2})?$",
+            "description": "VND/reading decimal; max DECIMAL(15,2)."
+          },
+          "suggestedDeposit": {
+            "type": "string",
+            "pattern": "^\\d{1,13}(\\.\\d{1,2})?$",
+            "description": "VND/reading decimal; max DECIMAL(15,2).",
+            "nullable": true
+          },
+          "templateClauses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Clause"
+            }
+          },
+          "existingDraft": {
+            "type": "object",
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Draft"
+              }
+            ]
+          }
+        },
+        "required": [
+          "rentalRequestId",
+          "requestVersion",
+          "sourceVersion",
+          "snapshot",
+          "advertisedMonthlyRent",
+          "suggestedDeposit",
+          "templateClauses",
+          "existingDraft"
+        ],
+        "additionalProperties": false
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}
