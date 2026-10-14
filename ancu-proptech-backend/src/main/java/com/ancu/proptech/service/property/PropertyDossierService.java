@@ -31,6 +31,8 @@ public class PropertyDossierService {
         collect(p,input.getOwnerEvidenceFileIds(),PropertyEvidenceFile.Purpose.OWNER_IDENTITY,seen,all);
         if(all.size()>20)throw bad("Hồ sơ tối đa 20 chứng từ.");
         var d=new PropertyDossier();d.setProperty(p);d.setRightType(input.getRightType());d.setApplicantName(owner.getFullName());
+        d.setCertificateNumber(clean(input.getCertificateNumber()));d.setCertificateIssueDate(input.getCertificateIssueDate());
+        d.setCertificateIssuePlace(clean(input.getCertificateIssuePlace()));d.setExploitationRightDescription(clean(input.getExploitationRightDescription()));
         var bank=input.getReceivingAccount();d.setBank(bank.getBank().strip());d.setAccountNumber(bank.getAccountNumber());d.setAccountHolderName(bank.getAccountHolderName().strip());
         d.setStatus(PropertyDossier.Status.PENDING_APPROVAL);d.setSubmittedAt(Instant.now());d.setFiles(all);
         p.setApprovalStatus(Property.ApprovalStatus.PENDING_APPROVAL);dossiers.saveAndFlush(d);return response(d);
@@ -63,7 +65,8 @@ public class PropertyDossierService {
         }
         d.setReviewer(reviewer);d.setReviewedAt(Instant.now());d.setReviewReason(reason==null||reason.isBlank()?null:reason);dossiers.flush();return response(d);
     }
-    private PropertyDossierResponse response(PropertyDossier d){var p=d.getProperty();return new PropertyDossierResponse(d.getId(),p.getId(),p.getName(),p.getAddress(),d.getApplicantName(),d.getRightType().name(),d.getBank(),d.getAccountNumber(),d.getAccountHolderName(),d.getStatus().name(),d.getFiles().stream().map(PropertyEvidenceService::response).toList(),d.getSubmittedAt(),d.getReviewedAt(),d.getReviewReason(),d.getVersion());}
+    private PropertyDossierResponse response(PropertyDossier d){var p=d.getProperty();return new PropertyDossierResponse(d.getId(),p.getId(),p.getName(),p.getAddress(),d.getApplicantName(),d.getRightType().name(),d.getBank(),d.getAccountNumber(),d.getAccountHolderName(),d.getStatus().name(),d.getFiles().stream().map(PropertyEvidenceService::response).toList(),d.getSubmittedAt(),d.getReviewedAt(),d.getReviewReason(),d.getVersion(),d.getCertificateNumber(),d.getCertificateIssueDate(),d.getCertificateIssuePlace(),d.getExploitationRightDescription(),d.isLocalFixture());}
+    private static String clean(String text){return text==null||text.isBlank()?null:text.strip();}
     private static ApiException missing(){return new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy hồ sơ hoặc chứng từ thuộc quyền truy cập.");}
     private static ApiException conflict(String code,String text){return new ApiException(HttpStatus.CONFLICT,code,text);}
     private static ApiException bad(String text){return new ApiException(HttpStatus.BAD_REQUEST,"VALIDATION_ERROR",text);}

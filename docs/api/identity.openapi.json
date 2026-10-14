@@ -281,6 +281,11 @@
             "type": "integer",
             "format": "int64",
             "readOnly": true
+          },
+          "localFixture": {
+            "type": "boolean",
+            "readOnly": true,
+            "description": "True only for explicitly provisioned sample identity. A sample stays NOT_VERIFIED. Editing text alone or replacing one image retains the sample marker; replacing both images clears it, without verifying identity."
           }
         }
       }

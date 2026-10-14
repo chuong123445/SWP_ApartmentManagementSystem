@@ -12,6 +12,7 @@ import com.ancu.proptech.repository.contract.*;
 import com.ancu.proptech.repository.property.PropertyDossierRepository;
 import com.ancu.proptech.repository.rental.RentalRequestRepository;
 import com.ancu.proptech.service.auth.*;
+import com.ancu.proptech.repository.identity.IdentityProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -32,6 +33,7 @@ public class ContractDraftService {
     private final PropertyDossierRepository dossiers;
     private final AccountAccessService access;
     private final AccountVerificationPolicy verification;
+    private final IdentityProfileRepository identities;
     private final ObjectMapper json;
 
     // The parent request row serializes create/reopen for the same accepted selection.
@@ -122,10 +124,18 @@ public class ContractDraftService {
         return new ContractSnapshot(party(p.getOwner()),party(r.getCustomer()),
             new ContractSnapshot.Asset(a.getId(),p.getId(),p.getName(),a.getTitle(),a.getRoomNumber(),p.getAddress(),p.getCity(),p.getDistrict(),p.getWard(),
                 a.getAreaM2().toPlainString(),a.getFloor(),a.getBedrooms(),a.getBathrooms(),List.copyOf(a.getAmenities()),p.getApprovalStatus().name(),
-                approved==null?null:approved.getId(),approved==null?null:approved.getRightType().name()),
+                approved==null?null:approved.getId(),approved==null?null:approved.getRightType().name(),
+                approved==null?null:approved.getCertificateNumber(),approved==null?null:approved.getCertificateIssueDate(),
+                approved==null?null:approved.getCertificateIssuePlace(),approved==null?null:approved.getExploitationRightDescription(),approved==null?null:approved.isLocalFixture()),
             approved==null?null:new ContractSnapshot.ReceivingAccount(approved.getBank(),approved.getAccountNumber(),approved.getAccountHolderName()));
     }
-    private ContractSnapshot.Party party(AuthAccount a) { return new ContractSnapshot.Party(a.getId(),a.getFullName(),a.getEmail(),a.getPhone(),a.getAddress(),a.getDateOfBirth(),a.isEmailVerified()); }
+    private ContractSnapshot.Party party(AuthAccount a) {
+        var identity=identities.findById(a.getId()).orElse(null);
+        return new ContractSnapshot.Party(a.getId(),identity==null?a.getFullName():identity.getLegalName(),a.getEmail(),a.getPhone(),
+            identity==null?a.getAddress():identity.getCurrentAddress(),identity==null?a.getDateOfBirth():identity.getDateOfBirth(),a.isEmailVerified(),
+            identity==null?null:identity.getDocumentNumber(),identity==null?null:identity.getIssueDate(),identity==null?null:identity.getIssuePlace(),
+            identity==null?null:identity.getPermanentAddress(),identity==null?null:identity.getVerificationStatus().name(),identity==null?null:identity.isLocalFixture());
+    }
     private String sourceVersion(RentalRequest r,ContractSnapshot s) {
         String data=json.writeValueAsString(s)+":"+r.getVersion()+":"+r.getApartment().getVersion()+":"+r.getApartment().getProperty().getVersion()
             +":"+r.getCustomer().getVersion()+":"+r.getApartment().getProperty().getOwner().getVersion();

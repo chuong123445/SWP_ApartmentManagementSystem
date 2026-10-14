@@ -3,7 +3,7 @@
   "info": {
     "title": "An Cư — selection-bound contract drafts",
     "version": "1.0.0",
-    "description": "Implemented 14 October 2026. Private DRAFT authoring/review; no signing, activation, payment or release endpoints. Snapshots are server-derived and immutable. Monthly rent must be positive; all other money nonnegative. Existing legacy ACTIVE fixtures are not backfilled into these authoring routes."
+    "description": "Implemented 14 October 2026. Private DRAFT authoring/review; no signing, activation, payment or release endpoints. Snapshots are server-derived and immutable. Monthly rent must be positive; all other money nonnegative. Existing legacy ACTIVE fixtures are not backfilled into these authoring routes. Legal identity/certificate fields are server-derived and frozen at creation; old snapshots remain unchanged and readable. Explicit local samples are marked; no eKYC or legal evidence proof."
   },
   "servers": [
     {
@@ -1100,6 +1100,31 @@
           },
           "emailVerified": {
             "type": "boolean"
+          },
+          "documentNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "documentIssueDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "documentIssuePlace": {
+            "type": "string",
+            "nullable": true
+          },
+          "permanentAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "identityVerificationStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "localFixture": {
+            "type": "boolean",
+            "nullable": true
           }
         },
         "required": [
@@ -1111,7 +1136,8 @@
           "dateOfBirth",
           "emailVerified"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Private exact-contract-party fields derived from saved identity, falling back to display profile when absent. Never includes identity images. Old snapshots can lack new fields. Email possession and legal identity remain separate."
       },
       "Asset": {
         "type": "object",
@@ -1184,6 +1210,30 @@
               "OWNERSHIP",
               "AUTHORIZATION"
             ],
+            "nullable": true
+          },
+          "certificateNumber": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true
+          },
+          "certificateIssueDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "certificateIssuePlace": {
+            "type": "string",
+            "maxLength": 200,
+            "nullable": true
+          },
+          "exploitationRightDescription": {
+            "type": "string",
+            "maxLength": 1000,
+            "nullable": true
+          },
+          "localFixture": {
+            "type": "boolean",
             "nullable": true
           }
         },

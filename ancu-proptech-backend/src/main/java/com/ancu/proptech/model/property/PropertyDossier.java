@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.Nationalized;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.*;
 @Entity @Table(name="property_dossiers") @Getter @Setter @NoArgsConstructor
 public class PropertyDossier {
@@ -21,6 +22,11 @@ public class PropertyDossier {
     @Column(columnDefinition="datetime2(6)") private Instant reviewedAt;
     @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="reviewer_id") private AuthAccount reviewer;
     @Nationalized @Column(length=2000) private String reviewReason;
+    @Nationalized @Column(length=100) private String certificateNumber;
+    private LocalDate certificateIssueDate;
+    @Nationalized @Column(length=200) private String certificateIssuePlace;
+    @Nationalized @Column(length=1000) private String exploitationRightDescription;
+    @Column(nullable=false) private boolean localFixture;
     @ManyToMany @JoinTable(name="property_dossier_files",joinColumns=@JoinColumn(name="dossier_id"),inverseJoinColumns=@JoinColumn(name="file_id"))
     private List<PropertyEvidenceFile> files=new ArrayList<>();
     @Version private long version;
