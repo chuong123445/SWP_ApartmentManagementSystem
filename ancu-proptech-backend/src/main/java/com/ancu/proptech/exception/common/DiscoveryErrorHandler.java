@@ -5,7 +5,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.*;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
-@RestControllerAdvice(basePackages = {"com.ancu.proptech.controller.apartment", "com.ancu.proptech.controller.rental", "com.ancu.proptech.controller.property", "com.ancu.proptech.controller.billing", "com.ancu.proptech.controller.contract"})
+@RestControllerAdvice(basePackages = {"com.ancu.proptech.controller.identity", "com.ancu.proptech.controller.apartment", "com.ancu.proptech.controller.rental", "com.ancu.proptech.controller.property", "com.ancu.proptech.controller.billing", "com.ancu.proptech.controller.contract"})
 public class DiscoveryErrorHandler {
     @ExceptionHandler(ApiException.class)
     ResponseEntity<?> api(ApiException e) { return error(e.status, e.code, e.getMessage()); }

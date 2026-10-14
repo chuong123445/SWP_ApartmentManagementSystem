@@ -1,0 +1,289 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "An Cư — private identity collection",
+    "version": "1.0.0",
+    "description": "Implemented 14 October 2026. Store self-declared identity only; no eKYC/review/verified success. Email verification remains independent. No cross-account Owner/Admin access."
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/me/identity": {
+      "get": {
+        "summary": "Read own identity, including for pending accounts",
+        "responses": {
+          "200": {
+            "description": "Own stored profile; no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityProfile"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No profile yet"
+          },
+          "401": {
+            "description": "Invalid or unusable session"
+          }
+        }
+      },
+      "put": {
+        "summary": "Atomically create or update own profile and private images",
+        "description": "Two real JPEG/PNG images required on first save; omitted files retain existing images on update. Each image at most 5 MB and 20 million pixels; request at most 11 MB. Account identity inferred from live Bearer session. Strict metadata fields and integer version. Serializes creation and rejects stale updates. Never changes email/account or identity verification success.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "profile"
+                ],
+                "properties": {
+                  "profile": {
+                    "$ref": "#/components/schemas/IdentityProfileInput"
+                  },
+                  "front": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "back": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              },
+              "encoding": {
+                "profile": {
+                  "contentType": "application/json"
+                },
+                "front": {
+                  "contentType": "image/png, image/jpeg"
+                },
+                "back": {
+                  "contentType": "image/png, image/jpeg"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stored; always NOT_VERIFIED; no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityProfile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid/unknown fields, dates or images; missing images on creation"
+          },
+          "401": {
+            "description": "Invalid or unusable session"
+          },
+          "409": {
+            "description": "STALE_VERSION; reload before saving"
+          },
+          "413": {
+            "description": "Multipart size exceeded"
+          }
+        }
+      }
+    },
+    "/me/identity/documents/{side}": {
+      "get": {
+        "summary": "Read own private canonical image bytes",
+        "parameters": [
+          {
+            "name": "side",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "front",
+                "back"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authenticated image; no-store, nosniff, attachment; never a public URL",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or unusable session"
+          },
+          "404": {
+            "description": "No own image or unsupported side"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "IdentityProfileInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "legalName",
+          "documentNumber",
+          "dateOfBirth",
+          "issueDate",
+          "issuePlace",
+          "permanentAddress",
+          "currentAddress"
+        ],
+        "properties": {
+          "legalName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "documentNumber": {
+            "type": "string",
+            "pattern": "^[0-9]{12}$"
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date",
+            "description": "Must be in the past."
+          },
+          "issueDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Not in the future or before dateOfBirth."
+          },
+          "issuePlace": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "permanentAddress": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "Address on identity document."
+          },
+          "currentAddress": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "nullable": true,
+            "description": "Null/omitted for creation, current version required for update."
+          }
+        }
+      },
+      "IdentityProfile": {
+        "type": "object",
+        "required": [
+          "legalName",
+          "documentNumber",
+          "dateOfBirth",
+          "issueDate",
+          "issuePlace",
+          "permanentAddress",
+          "currentAddress",
+          "verificationStatus",
+          "updatedAt",
+          "version"
+        ],
+        "properties": {
+          "legalName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "documentNumber": {
+            "type": "string",
+            "pattern": "^[0-9]{12}$"
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date",
+            "description": "Must be in the past."
+          },
+          "issueDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Not in the future or before dateOfBirth."
+          },
+          "issuePlace": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "permanentAddress": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "Address on identity document."
+          },
+          "currentAddress": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "verificationStatus": {
+            "type": "string",
+            "enum": [
+              "NOT_VERIFIED"
+            ],
+            "readOnly": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "readOnly": true
+          }
+        }
+      }
+    }
+  }
+}
