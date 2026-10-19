@@ -197,7 +197,7 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
                       </p>
                     )}
                     <span className="text-[11px] text-slate-400">
-                      Tầng {room.floor} • {room.area}m²
+                      {room.roomNumber.toLowerCase().includes('nguyên căn') ? `${room.floor} tầng` : `Tầng ${room.floor}`} • {room.area}m²
                     </span>
                     <p className="text-[11px] text-slate-500 mt-1">{room.propertyName}</p>
                     <p className="text-[11px] text-slate-500">{room.publicationStatus === 'PUBLISHED' ? 'Đã đăng' : room.publicationStatus === 'HIDDEN' ? 'Đã ẩn' : 'Bản nháp'}</p>

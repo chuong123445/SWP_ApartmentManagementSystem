@@ -73,7 +73,7 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Phòng {room.roomNumber} • Tầng {room.floor} • Diện tích: {room.area}m² • Tối đa: {room.maxOccupants} người • {room.propertyName}
+              {room.roomNumber.toLowerCase().includes('nguyên căn') ? 'Nhà nguyên căn' : `Phòng ${room.roomNumber}`} • {room.roomNumber.toLowerCase().includes('nguyên căn') ? `${room.floor} tầng` : `Tầng ${room.floor}`} • Diện tích: {room.area}m² • Tối đa: {room.maxOccupants} người • {room.propertyName}
             </p>
           </div>
           <div className="flex items-center gap-2">

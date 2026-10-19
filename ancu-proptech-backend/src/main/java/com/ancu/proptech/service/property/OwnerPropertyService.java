@@ -38,7 +38,7 @@ public class OwnerPropertyService {
         }
         var property = new Property();
         property.setOwner(owner); property.setName(input.getName().strip()); property.setAddress(input.getAddress().strip());
-        property.setCity(input.getCity().strip()); property.setDistrict(input.getDistrict().strip());
+        property.setCity(input.getCity().strip()); property.setDistrict(input.getDistrict() == null ? "" : input.getDistrict().strip());
         property.setWard(input.getWard() == null || input.getWard().isBlank() ? null : input.getWard().strip());
         property.setRentalMode(input.getRentalMode()); property.setApprovalStatus(Property.ApprovalStatus.DRAFT);
         properties.saveAndFlush(property);
