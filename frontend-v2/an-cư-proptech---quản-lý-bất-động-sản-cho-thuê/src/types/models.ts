@@ -31,11 +31,23 @@ export interface Room {
   waterIndex: number;
   amenities: string[];
   maxOccupants: number;
+  description?: string;
+  bedrooms?: number;
+  bathrooms?: number;
   image?: string;
   trustGuardVerified?: boolean;
   legalDocType?: 'Sổ hồng lâu dài' | 'HĐMB Chủ đầu tư' | 'Sổ hồng sở hữu có thời hạn';
   legalDocNumber?: string;
   depositEscrowLocked?: boolean;
+  editApprovalStatus?: 'NONE' | 'PENDING';
+  pendingEdit?: {
+    advertisedMonthlyRent: string | null;
+    deposit: string | null;
+    electricityIndex: number | null;
+    waterIndex: number | null;
+    areaM2: string | null;
+    requestedAt: string;
+  } | null;
 }
 
 export type NewRoom = Omit<Room, 'id' | 'electricityIndex' | 'waterIndex'> & { electricityIndex: number | null; waterIndex: number | null };

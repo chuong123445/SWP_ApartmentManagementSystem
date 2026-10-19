@@ -191,6 +191,11 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
                       </span>
                       {room.propertyApprovalStatus === 'APPROVED' && <span title="Tài sản đã được duyệt"><ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /></span>}
                     </div>
+                    {room.title && (
+                      <p className="text-xs font-medium text-slate-700 mt-0.5 line-clamp-1" title={room.title}>
+                        {room.title}
+                      </p>
+                    )}
                     <span className="text-[11px] text-slate-400">
                       Tầng {room.floor} • {room.area}m²
                     </span>

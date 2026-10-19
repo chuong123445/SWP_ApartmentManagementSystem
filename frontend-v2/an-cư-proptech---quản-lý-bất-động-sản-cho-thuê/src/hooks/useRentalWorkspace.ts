@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Building, Room, NewRoom, Tenant, Contract, Invoice, MaintenanceTicket, Transaction, SystemConfig, TrustGuardAudit, EscrowDeposit } from '@/types';
 import { initialMaintenance, initialTransactions, initialConfig, initialTrustAudits, initialEscrows } from '@/data/mockData';
-import { createOwnerApartment, getOwnerApartments, getOwnerProperties, setApartmentPublication } from '@/services/apartments/ownerApartmentService';
+import { createOwnerApartment, getOwnerApartments, getOwnerProperties, setApartmentPublication, updateApartmentBasic, updateApartmentSensitive, type ApartmentBasicUpdatePayload, type ApartmentSensitiveUpdatePayload } from '@/services/apartments/ownerApartmentService';
 import { ownerTenancies, ownerInvoices, tenancyViews, invoiceView, sendInvoice } from '@/services/billing/billingService';
 import type { Tenancy } from '@/types/billing';
 import { createOwnerProperty } from '@/services/property/ownerPropertyService';
@@ -88,6 +88,22 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
       setRooms(prev => prev.map(r => r.id === saved.id ? { ...r, ...saved } : r));
       setSelectedRoom(prev => prev?.id === saved.id ? { ...prev, ...saved } : prev);
     } catch (error) { setInventoryRevision(n => n + 1);throw error; }
+  };
+  const handleUpdateBasic = async (roomId: string, payload: ApartmentBasicUpdatePayload) => {
+    try {
+      const saved = await updateApartmentBasic(roomId, payload);
+      setRooms(prev => prev.map(r => r.id === saved.id ? { ...r, ...saved } : r));
+      setSelectedRoom(prev => prev?.id === saved.id ? { ...prev, ...saved } : prev);
+      return saved;
+    } catch (error) { setInventoryRevision(n => n + 1); throw error; }
+  };
+  const handleUpdateSensitive = async (roomId: string, payload: ApartmentSensitiveUpdatePayload) => {
+    try {
+      const saved = await updateApartmentSensitive(roomId, payload);
+      setRooms(prev => prev.map(r => r.id === saved.id ? { ...r, ...saved } : r));
+      setSelectedRoom(prev => prev?.id === saved.id ? { ...prev, ...saved } : prev);
+      return saved;
+    } catch (error) { setInventoryRevision(n => n + 1); throw error; }
   };
   // ==========================================
 
@@ -258,6 +274,7 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
     buildings, inventoryError, inventoryLoading, reloadInventory: () => setInventoryRevision(value => value + 1),
     selectedRoom, setSelectedRoom, selectedInvoice, setSelectedInvoice,
     handleMarkPaid, handleAddTenant, handleAddContract, handleAddRoom, handleAddProperty, handlePublication, handleCheckOut,
+    handleUpdateBasic, handleUpdateSensitive,
     handleUpdateIndices, handleUpdateTicketStatus, handleResetData, handleApproveAudit,
     handleReleaseEscrow, handleCreateEscrow, handleReserveEscrow, handleAddTicket,
     handleSendResidentTicket, handleCreateInvoice, handleAddTransaction, handleSaveConfig: setConfig,

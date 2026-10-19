@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import type { RentalWorkspace } from '@/hooks/useRentalWorkspace';
 import type { WorkspaceNavigation } from '@/hooks/useWorkspaceNavigation';
+import type { Room } from '@/types';
 import { RoomDetailModal } from '@/components/rooms/RoomDetailModal';
+import { EditRoomModal } from '@/components/rooms/EditRoomModal';
 import { AddRoomModal } from '@/components/rooms/AddRoomModal';
 import { InvoiceDetailModal } from '@/components/billing/InvoiceDetailModal';
 import { CreateInvoiceModal } from '@/components/billing/CreateInvoiceModal';
@@ -8,6 +11,7 @@ import { AddPropertyModal } from '@/components/property/AddPropertyModal';
 import { PropertyDossierModal } from '@/components/property/PropertyDossierModal';
 
 export function WorkspaceModals({ workspace, navigation }: { workspace: RentalWorkspace; navigation: WorkspaceNavigation }) {
+  const [roomToEdit, setRoomToEdit] = useState<Room | null>(null);
   const { selectedRoom, selectedInvoice, setSelectedRoom, setSelectedInvoice, rooms, tenants, contracts, invoices,
     config, handleCheckOut, handleReserveEscrow, handleMarkPaid, handleCreateInvoice, handleAddRoom } = workspace;
   const { isAddRoomOpen, setIsAddRoomOpen, isCreateInvoiceOpen, setIsCreateInvoiceOpen } = navigation;
@@ -32,6 +36,19 @@ export function WorkspaceModals({ workspace, navigation }: { workspace: RentalWo
           onCheckOut={handleCheckOut}
           onReserveEscrow={handleReserveEscrow}
           onPublication={workspace.handlePublication}
+          onOpenEdit={(r) => {
+            setSelectedRoom(null);
+            setRoomToEdit(r);
+          }}
+        />
+      )}
+
+      {roomToEdit && (
+        <EditRoomModal
+          room={roomToEdit}
+          onClose={() => setRoomToEdit(null)}
+          onUpdateBasic={workspace.handleUpdateBasic}
+          onUpdateSensitive={workspace.handleUpdateSensitive}
         />
       )}
 
