@@ -92,6 +92,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/me/rental-requests", "/api/v1/me/rental-requests/*/cancel", "/api/v1/me/apartments/*/rental-requests", "/api/v1/owner/rental-requests", "/api/v1/owner/rental-requests/*/decisions").authenticated()
                         .requestMatchers("/api/v1/owner/apartments", "/api/v1/owner/properties").authenticated()
                         .requestMatchers("/api/v1/owner/properties/*/evidence-files", "/api/v1/owner/properties/*/verification-dossiers", "/api/v1/property-evidence-files/*", "/api/v1/admin/property-dossiers", "/api/v1/admin/property-dossiers/*", "/api/v1/admin/property-dossiers/*/decisions", "/api/v1/owner/apartments/*/publication").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/owner/apartments/*/basic", "/api/v1/owner/apartments/*/sensitive").authenticated()
+                        .requestMatchers("/api/v1/admin/apartments/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/owner/tenancies", "/api/v1/me/tenancies", "/api/v1/owner/contracts/*/billing-context", "/api/v1/owner/contracts/*/invoices", "/api/v1/owner/invoices", "/api/v1/owner/invoices/*/send", "/api/v1/me/invoices", "/api/v1/invoices/*").authenticated()
                         .requestMatchers("/api/v1/owner/rental-requests/*/contract-context", "/api/v1/owner/rental-requests/*/contract", "/api/v1/owner/contract-drafts", "/api/v1/me/contract-drafts", "/api/v1/contracts/*", "/api/v1/owner/contracts/*/draft").authenticated()
                         .requestMatchers("/api/trustguard/**").hasAnyRole("OWNER", "ADMIN")

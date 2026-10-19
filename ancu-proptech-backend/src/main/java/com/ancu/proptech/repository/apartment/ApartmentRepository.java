@@ -24,4 +24,10 @@ public interface ApartmentRepository extends JpaRepository<Apartment, UUID>, Jpa
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from Apartment a where a.id=:id and a.property.owner.id=:ownerId")
     Optional<Apartment> findForOwnerUpdate(@Param("id") UUID id,@Param("ownerId") UUID ownerId);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"property", "property.owner"})
+    @Query("select a from Apartment a where a.id=:id")
+    Optional<Apartment> findForAdminUpdate(@Param("id") UUID id);
+    @EntityGraph(attributePaths = {"property", "property.owner", "amenities"})
+    List<Apartment> findByEditApprovalStatus(Apartment.EditApprovalStatus status);
 }
