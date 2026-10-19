@@ -2,6 +2,8 @@
 -- Snapshot existing id/room_number/cover_image_path/version before applying.
 -- Image filenames match src/main/resources/static/apartment/images exactly.
 SET XACT_ABORT ON;
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
 BEGIN TRANSACTION;
 
 ;WITH numbered AS (
