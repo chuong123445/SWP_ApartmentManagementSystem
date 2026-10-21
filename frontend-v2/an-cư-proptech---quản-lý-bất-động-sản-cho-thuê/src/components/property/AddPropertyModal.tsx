@@ -134,9 +134,7 @@ export function AddPropertyModal({
             <h2 id="add-property-title" className="text-lg font-bold text-slate-900">
               Thêm tài sản cho thuê
             </h2>
-            <p className="text-xs text-slate-500">
-              Khởi tạo hồ sơ tài sản và căn/nhà cho thuê để gửi kiểm duyệt
-            </p>
+
           </div>
           <button
             type="button"
@@ -156,11 +154,10 @@ export function AddPropertyModal({
               <legend className="text-sm font-bold text-slate-900">Hình thức cho thuê *</legend>
               <div className="grid sm:grid-cols-2 gap-3">
                 <label
-                  className={`flex items-start gap-3 border rounded-xl p-3.5 text-sm cursor-pointer transition-all ${
-                    mode === 'SINGLE_UNIT'
-                      ? 'border-emerald-600 bg-emerald-50/70 shadow-xs'
-                      : 'border-slate-200 hover:border-slate-300 bg-white'
-                  }`}
+                  className={`flex items-start gap-3 border rounded-xl p-3.5 text-sm cursor-pointer transition-all ${mode === 'SINGLE_UNIT'
+                    ? 'border-emerald-600 bg-emerald-50/70 shadow-xs'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
                 >
                   <input
                     type="radio"
@@ -176,20 +173,17 @@ export function AddPropertyModal({
                   <div>
                     <span className="font-semibold text-slate-900 flex items-center gap-1.5">
                       <Home className="w-4 h-4 text-emerald-600" />
-                      Một căn / Nhà cho thuê nguyên căn
+                      Nhà cho thuê nguyên căn
                     </span>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Cho thuê độc lập toàn bộ căn nhà hoặc một căn hộ riêng biệt. Không cần quản lý cả tòa nhà.
-                    </p>
+
                   </div>
                 </label>
 
                 <label
-                  className={`flex items-start gap-3 border rounded-xl p-3.5 text-sm cursor-pointer transition-all ${
-                    mode === 'MULTI_UNIT'
-                      ? 'border-emerald-600 bg-emerald-50/70 shadow-xs'
-                      : 'border-slate-200 hover:border-slate-300 bg-white'
-                  }`}
+                  className={`flex items-start gap-3 border rounded-xl p-3.5 text-sm cursor-pointer transition-all ${mode === 'MULTI_UNIT'
+                    ? 'border-emerald-600 bg-emerald-50/70 shadow-xs'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
                 >
                   <input
                     type="radio"
@@ -207,9 +201,7 @@ export function AddPropertyModal({
                       <Building2 className="w-4 h-4 text-emerald-600" />
                       Tài sản gồm nhiều căn / phòng
                     </span>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Tòa nhà căn hộ dịch vụ, chung cư mini, dãy nhà trọ gồm nhiều phòng cho thuê riêng rẽ.
-                    </p>
+
                   </div>
                 </label>
               </div>
