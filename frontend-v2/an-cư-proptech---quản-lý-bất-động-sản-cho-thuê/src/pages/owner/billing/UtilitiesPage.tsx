@@ -1,18 +1,16 @@
 import React, { useState } from 'react';
-import { Zap, Droplets, Save, CheckCircle2, FileText, ArrowRight, ShieldCheck, CreditCard } from 'lucide-react';
-import { Room, Tenant, SystemConfig, Invoice } from '@/types';
+import { Zap, Droplets, Save, CheckCircle2, FileText, ShieldCheck } from 'lucide-react';
+import { Room, Tenant, SystemConfig } from '@/types';
 import type { Tenancy } from '@/types/billing';
 
 interface UtilitiesPageProps {
   rooms: Room[];
   tenants: Tenant[];
   tenancies?: Tenancy[];
-  invoices?: Invoice[];
   config: SystemConfig;
   utilityReadings?: Record<string, { newElectric: string; newWater: string }>;
   onUpdateReading?: (roomId: string, field: 'newElectric' | 'newWater', value: string) => void;
   onUpdateIndices: (updates: { roomId: string; electric: number; water: number }[]) => void;
-  onConfirmPayment?: (roomId: string, invoiceId?: string) => void;
   onOpenCreateInvoice?: (contractId?: string, roomId?: string) => void;
 }
 
@@ -20,12 +18,10 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
   rooms,
   tenants,
   tenancies = [],
-  invoices = [],
   config,
   utilityReadings,
   onUpdateReading,
   onUpdateIndices,
-  onConfirmPayment,
   onOpenCreateInvoice,
 }) => {
   // Local state for fast responsive typing, synced with workspace utilityReadings
@@ -44,7 +40,6 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
   });
 
   const [savedSuccess, setSavedSuccess] = useState(false);
-  const [paymentSuccessMsg, setPaymentSuccessMsg] = useState<string | null>(null);
 
   const handleElectricChange = (roomId: string, val: string) => {
     setLocalReadings((prev) => ({
@@ -78,27 +73,6 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
     onUpdateIndices(updates);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3500);
-  };
-
-  const handleSinglePayment = (room: Room) => {
-    if (!onConfirmPayment) return;
-    const current = utilityReadings?.[room.id] ?? localReadings[room.id];
-    const newE = Number(current?.newElectric) || room.electricityIndex;
-    const newW = Number(current?.newWater) || room.waterIndex;
-
-    onConfirmPayment(room.id);
-
-    // Update local inputs to match new old readings
-    setLocalReadings((prev) => ({
-      ...prev,
-      [room.id]: {
-        newElectric: newE.toString(),
-        newWater: newW.toString(),
-      },
-    }));
-
-    setPaymentSuccessMsg(`Phòng ${room.roomNumber}: Đã thanh toán thành công! Chỉ số điện (${newE} kWh) và nước (${newW} m³) đã được gán thành chỉ số cũ.`);
-    setTimeout(() => setPaymentSuccessMsg(null), 5000);
   };
 
   const handleOpenInvoiceForRoom = (room: Room) => {
@@ -149,18 +123,6 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
         </div>
       </div>
 
-      {paymentSuccessMsg && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl text-xs font-semibold flex items-center justify-between shadow-xs animate-in fade-in">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-            <span>{paymentSuccessMsg}</span>
-          </div>
-          <button onClick={() => setPaymentSuccessMsg(null)} className="text-emerald-700 hover:underline">
-            Đóng
-          </button>
-        </div>
-      )}
-
       {/* Info bar & Workflow Guidance */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-amber-50/60 border border-amber-200 p-4 rounded-xl flex items-center gap-3">
@@ -188,8 +150,8 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs font-bold text-emerald-900">Liên kết tự động Lập Hóa Đơn</div>
-            <div className="text-[11px] text-emerald-700">Thanh toán xong: Chỉ số mới → Chỉ số cũ</div>
+            <div className="text-xs font-bold text-emerald-900">Đồng bộ sang Lập Hóa Đơn</div>
+            <div className="text-[11px] text-emerald-700">Khi thanh toán xong: Điện mới → Điện cũ</div>
           </div>
         </div>
       </div>
@@ -231,10 +193,6 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
                 const eCost = eUsage * config.electricPrice;
                 const wCost = wUsage * config.waterPrice;
                 const totalCost = eCost + wCost;
-
-                // Check invoice status for this room
-                const roomInvoice = invoices.find(i => i.roomId === room.id);
-                const isPaid = roomInvoice?.status === 'paid' || (eUsage === 0 && wUsage === 0 && room.electricityIndex > 0);
 
                 return (
                   <tr key={room.id} className="hover:bg-slate-50/80 transition-colors">
@@ -300,34 +258,20 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
                       {totalCost.toLocaleString('vi-VN')} đ
                     </td>
 
-                    {/* Action buttons */}
+                    {/* Action buttons: Only Lập hóa đơn */}
                     <td className="px-3.5 py-2.5 text-center">
                       {!tenant ? (
                         <span className="text-[11px] text-slate-400 italic">Chưa thuê</span>
                       ) : (
-                        <div className="flex items-center justify-center gap-1.5">
+                        <div className="flex items-center justify-center">
                           {onOpenCreateInvoice && (
                             <button
                               onClick={() => handleOpenInvoiceForRoom(room)}
                               title="Chuyển dữ liệu tính sẵn sang Lập Hóa Đơn"
-                              className="px-2 py-1 bg-white hover:bg-slate-50 border border-emerald-600 text-emerald-700 rounded text-[11px] font-semibold flex items-center gap-1 transition-colors shadow-2xs"
+                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold flex items-center gap-1 transition-colors shadow-2xs"
                             >
                               <FileText className="w-3 h-3" />
                               <span>Lập hóa đơn</span>
-                            </button>
-                          )}
-                          {onConfirmPayment && (
-                            <button
-                              onClick={() => handleSinglePayment(room)}
-                              title="Xác nhận thanh toán: Gán Điện/Nước mới thành Điện/Nước cũ"
-                              className={`px-2 py-1 rounded text-[11px] font-semibold flex items-center gap-1 transition-colors shadow-2xs ${
-                                eUsage > 0 || wUsage > 0
-                                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                              }`}
-                            >
-                              <CheckCircle2 className="w-3 h-3" />
-                              <span>{eUsage > 0 || wUsage > 0 ? 'Thanh toán' : 'Đã khớp'}</span>
                             </button>
                           )}
                         </div>
