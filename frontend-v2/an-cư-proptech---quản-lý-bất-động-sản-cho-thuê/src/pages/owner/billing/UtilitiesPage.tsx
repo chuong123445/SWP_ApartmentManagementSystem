@@ -41,6 +41,22 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
 
   const [savedSuccess, setSavedSuccess] = useState(false);
 
+  React.useEffect(() => {
+    if (!utilityReadings) return;
+    setLocalReadings(prev => {
+      let changed = false;
+      const next = { ...prev };
+      rooms.forEach(r => {
+        const u = utilityReadings[r.id];
+        if (u && (u.newElectric !== next[r.id]?.newElectric || u.newWater !== next[r.id]?.newWater)) {
+          next[r.id] = { newElectric: u.newElectric, newWater: u.newWater };
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [utilityReadings, rooms]);
+
   const handleElectricChange = (roomId: string, val: string) => {
     setLocalReadings((prev) => ({
       ...prev,
@@ -63,7 +79,7 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
 
   const handleSaveAll = () => {
     const updates = rooms.filter(r => r.meterBaselineKnown !== false).map((r) => {
-      const current = utilityReadings?.[r.id] ?? localReadings[r.id];
+      const current = localReadings[r.id] ?? utilityReadings?.[r.id];
       return {
         roomId: r.id,
         electric: Number(current?.newElectric) || r.electricityIndex,
@@ -179,7 +195,7 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
                 const tenant = tenants.find((t) => t.id === room.currentTenantId);
                 const missingBaseline = room.meterBaselineKnown === false;
                 const storedRecord = utilityReadings?.[room.id];
-                const currentRecord = storedRecord ?? localReadings[room.id] ?? {
+                const currentRecord = localReadings[room.id] ?? storedRecord ?? {
                   newElectric: missingBaseline ? '' : room.electricityIndex.toString(),
                   newWater: missingBaseline ? '' : room.waterIndex.toString(),
                 };

@@ -337,21 +337,23 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
   // Do not release a real Apartment through a preview action.
   const handleCheckOut = (_roomId: string) => setInventoryError('Chưa hỗ trợ kết thúc hợp đồng và bàn giao qua màn hình này.');
 
-  // Update meter indices
+  // Update meter indices: CHỈ lưu và đồng bộ vào utilityReadings cho Lập Hóa Đơn, KHÔNG đổi điện cũ thành điện mới!
   const handleUpdateIndices = (updates: { roomId: string; electric: number; water: number }[]) => {
-    setRooms((prev) =>
-      prev.map((r) => {
-        const u = updates.find((item) => item.roomId === r.id);
-        if (u) {
-          return {
-            ...r,
-            electricityIndex: u.electric,
-            waterIndex: u.water,
-          };
-        }
-        return r;
-      })
-    );
+    setUtilityReadings((prev) => {
+      const next = { ...prev };
+      updates.forEach((u) => {
+        next[u.roomId] = {
+          newElectric: u.electric.toString(),
+          newWater: u.water.toString(),
+        };
+      });
+      try {
+        localStorage.setItem('ancu_utility_readings', JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
   };
 
   // Update ticket status
@@ -394,6 +396,11 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
 
   // Reset all data
   const handleResetData = () => {
+    try {
+      localStorage.removeItem('ancu_room_baselines');
+      localStorage.removeItem('ancu_utility_readings');
+      localStorage.removeItem('ancu_paid_invoices');
+    } catch { /* ignore */ }
     setInventoryRevision(value => value + 1);
     setBillingRevision(value => value + 1);
     setTickets(initialMaintenance);
