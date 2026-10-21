@@ -35,8 +35,15 @@ export function AccountMenu({ account, onLogout, isLoggingOut, authError, isTena
       <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`} />
     </button>
     {open && <nav id={menuId} aria-label="Điều hướng tài khoản" className="absolute right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-xl border border-slate-200 p-2 z-50 text-sm">
-      <div className="px-3 py-2 mb-1 border-b border-slate-100"><p className="font-semibold text-slate-900">{roleLabel}</p><p className="text-xs text-slate-500 truncate">{account.email}</p></div>
-      {manager && <Link to="/app" onClick={() => setOpen(false)} className={linkClass}><LayoutDashboard className="w-4 h-4" />Trang quản lý</Link>}
+      {account.roles.includes('ADMIN') ? (
+        <Link to="/admin" onClick={() => setOpen(false)} className={linkClass}>
+          <LayoutDashboard className="w-4 h-4 text-emerald-600" />Bảng điều khiển Admin
+        </Link>
+      ) : manager ? (
+        <Link to="/app" onClick={() => setOpen(false)} className={linkClass}>
+          <LayoutDashboard className="w-4 h-4" />Trang quản lý
+        </Link>
+      ) : null}
       {account.roles.includes('CUSTOMER') && <Link to="/my/rental-requests" onClick={() => setOpen(false)} className={linkClass}><ClipboardList className="w-4 h-4" />Yêu cầu của tôi</Link>}
       {account.roles.includes('CUSTOMER') && <Link to="/my/contracts" onClick={() => setOpen(false)} className={linkClass}><ClipboardList className="w-4 h-4" />Hợp đồng của tôi</Link>}
       {account.roles.includes('CUSTOMER') && <Link to="/my/invoices" onClick={() => setOpen(false)} className={linkClass}><ReceiptText className="w-4 h-4" />Hóa đơn của tôi</Link>}

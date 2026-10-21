@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { useAuth } from '@/hooks/useAuth';
 import { AccountMenu } from '@/components/navigation/AccountMenu';
 import { Pagination } from '@/components/common/Pagination';
@@ -11,13 +11,27 @@ import type { PageResult } from '@/types/apartment';
 import type { Room } from '@/types';
 import { ShieldCheck, FileEdit, CheckCircle2, XCircle, Clock } from 'lucide-react';
 
+import { AdminLayout } from '@/layouts/AdminLayout';
+
 export function PropertyDossiersPage() {
   const { user, logout, isLoggingOut, error: authError } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<'dossiers' | 'apartment_edits'>('dossiers');
 
-  // Dossiers state
+  // Dossiers state: read initial status from search params if present
+  const queryStatus = searchParams.get('status');
+  const getInitialStatus = (): DossierStatus | '' => {
+    if (queryStatus === 'APPROVED' || queryStatus === 'PENDING_APPROVAL' || queryStatus === 'NEEDS_INFORMATION' || queryStatus === 'REJECTED') {
+      return queryStatus;
+    }
+    if (queryStatus === '' || queryStatus === 'ALL') {
+      return '';
+    }
+    return 'PENDING_APPROVAL';
+  };
+
   const [data, setData] = useState<PageResult<Dossier> | null>(null);
-  const [status, setStatus] = useState<DossierStatus | ''>('PENDING_APPROVAL');
+  const [status, setStatus] = useState<DossierStatus | ''>(getInitialStatus);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -32,6 +46,23 @@ export function PropertyDossiersPage() {
   const [pendingApartments, setPendingApartments] = useState<Room[]>([]);
   const [pendingAptLoading, setPendingAptLoading] = useState(false);
   const [aptActionBusy, setAptActionBusy] = useState<string | null>(null);
+
+  useEffect(() => {
+    const s = searchParams.get('status');
+    if (s === 'APPROVED' || s === 'PENDING_APPROVAL' || s === 'NEEDS_INFORMATION' || s === 'REJECTED') {
+      setStatus(s);
+      setPage(0);
+      setSelected(null);
+    } else if (s === '' || s === 'ALL') {
+      setStatus('');
+      setPage(0);
+      setSelected(null);
+    }
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'apartment_edits' || tabParam === 'dossiers') {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     let active = true;
@@ -132,26 +163,13 @@ export function PropertyDossiersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800">
-      <header className="bg-white border-b px-4 md:px-8 py-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Link to="/" className="font-bold text-emerald-700 text-lg">
-            An Cư PropTech
-          </Link>
-          <span className="text-xs bg-slate-100 text-slate-600 font-semibold px-2.5 py-0.5 rounded-full">
-            Admin Portal
-          </span>
-        </div>
-        <AccountMenu account={user!} onLogout={logout} isLoggingOut={isLoggingOut} authError={authError} />
-      </header>
-
-      <main className="max-w-7xl mx-auto p-4 md:p-8 space-y-5">
-        <div>
-          <h1 className="text-2xl font-bold">Kiểm duyệt & Quản trị</h1>
-          <p className="text-sm text-slate-600 mt-1">
-            Đối chiếu hồ sơ pháp lý bất động sản và thẩm định các thay đổi thông tin nhạy cảm của căn hộ.
-          </p>
-        </div>
+    <AdminLayout
+      title="Duyệt hồ sơ & Kiểm định tài sản"
+      subtitle="Đối chiếu hồ sơ pháp lý bất động sản và thẩm định các thay đổi thông tin nhạy cảm của căn hộ"
+      pendingDossierCount={data?.totalElements}
+      pendingEditCount={pendingApartments.length}
+    >
+      <div className="space-y-5">
 
         {/* Tab selection */}
         <div className="flex border-b border-slate-200 gap-3">
@@ -221,9 +239,11 @@ export function PropertyDossiersPage() {
                   className="ml-2 border rounded-lg px-3 py-2 bg-white"
                   value={status}
                   onChange={(e) => {
-                    setStatus(e.target.value as DossierStatus | '');
+                    const newStatus = e.target.value as DossierStatus | '';
+                    setStatus(newStatus);
                     setPage(0);
                     setSelected(null);
+                    setSearchParams(newStatus ? { status: newStatus } : {});
                   }}
                 >
                   <option value="">Tất cả</option>
@@ -476,8 +496,8 @@ export function PropertyDossiersPage() {
             )}
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </AdminLayout>
   );
 }
 

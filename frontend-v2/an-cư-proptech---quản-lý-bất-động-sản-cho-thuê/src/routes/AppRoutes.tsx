@@ -18,6 +18,8 @@ import { AccountActionPage } from '@/pages/account/AccountActionPage';
 import { AccountSettingsPage } from '@/pages/account/AccountSettingsPage';
 import { IdentityPage } from '@/pages/account/IdentityPage';
 import { PropertyDossiersPage } from '@/pages/admin/PropertyDossiersPage';
+import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage';
+import { ApartmentEditsPage } from '@/pages/admin/ApartmentEditsPage';
 import { MyContractsPage } from '@/pages/customer/MyContractsPage';
 import { ContractDetailPage } from '@/pages/customer/ContractDetailPage';
 
@@ -27,7 +29,7 @@ function RequireAccount({ children, role, verified = true }: { children: ReactNo
   if (loading) return <SessionLoading />;
   if (!user) return <Navigate to="/login" state={{ returnTo: location.pathname }} replace />;
   if (role === 'ADMIN' && !user.roles.includes('ADMIN')) return <Navigate to="/" replace />;
-  if (role === 'MANAGER' && user.roles.includes('ADMIN')) return <Navigate to="/admin/property-dossiers" replace />;
+  if (role === 'MANAGER' && user.roles.includes('ADMIN')) return <Navigate to="/admin" replace />;
   if (role === 'MANAGER' && !hasManagementRole(user)) return <Navigate to="/" replace />;
   if (role === 'CUSTOMER' && !user.roles.includes('CUSTOMER')) return <Navigate to="/app" replace />;
   if (verified && (user.accountStatus !== 'ACTIVE' || user.contactVerificationStatus !== 'VERIFIED')) return <AccountVerificationPage />;
@@ -46,7 +48,10 @@ export function AppRoutes() {
     <Route path="/login" element={<LoginRoute />} />
     <Route path="/register" element={<RegisterPage />} />
     <Route path="/app" element={<RequireAccount role="MANAGER"><WorkspacePage /></RequireAccount>} />
+    <Route path="/admin" element={<RequireAccount role="ADMIN" verified={false}><AdminDashboardPage /></RequireAccount>} />
+    <Route path="/admin/dashboard" element={<RequireAccount role="ADMIN" verified={false}><AdminDashboardPage /></RequireAccount>} />
     <Route path="/admin/property-dossiers" element={<RequireAccount role="ADMIN" verified={false}><PropertyDossiersPage /></RequireAccount>} />
+    <Route path="/admin/apartment-edits" element={<RequireAccount role="ADMIN" verified={false}><ApartmentEditsPage /></RequireAccount>} />
     <Route path="/my/rental-requests" element={<RequireAccount role="CUSTOMER"><MyRentalRequestsPage /></RequireAccount>} />
     <Route path="/my/invoices" element={<RequireAccount role="CUSTOMER"><MyInvoicesPage /></RequireAccount>} />
     <Route path="/my/contracts" element={<RequireAccount role="CUSTOMER"><MyContractsPage /></RequireAccount>} />
