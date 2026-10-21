@@ -16,11 +16,14 @@ export function WorkspacePage() {
   const propertyId = navigation.selectedBuildingId;
   const rooms = propertyId === 'all' ? workspace.rooms : workspace.rooms.filter(r => r.buildingId === propertyId);
   const roomIds = new Set(rooms.map(r => r.id));
+  const scopedInvoices = workspace.invoices.filter(i => roomIds.has(i.roomId));
+  const scopedUnpaidCount = scopedInvoices.filter(i => i.status !== 'paid' && (i.apiInvoice ? i.apiInvoice.status === 'SENT' : true)).length;
   const scoped = { ...workspace, rooms,
     tenants: workspace.tenants.filter(t => roomIds.has(t.roomId)),
     contracts: workspace.contracts.filter(c => roomIds.has(c.roomId)),
     tenancies: workspace.tenancies.filter(c => roomIds.has(c.apartmentId)),
-    invoices: workspace.invoices.filter(i => roomIds.has(i.roomId)),
+    invoices: scopedInvoices,
+    unpaidCount: scopedUnpaidCount,
   };
   const empty = !workspace.inventoryLoading && !workspace.inventoryError && workspace.buildings.length === 0;
   useEffect(() => {
@@ -39,7 +42,7 @@ export function WorkspacePage() {
       propertiesLoading={workspace.inventoryLoading}
       propertiesError={!!workspace.inventoryError}
       navigation={navigation}
-      counters={{ unpaidCount: scoped.invoices.filter(i => i.apiInvoice?.status === 'SENT').length,
+      counters={{ unpaidCount: scopedUnpaidCount,
         maintenanceCount: workspace.maintenanceCount, expiringCount: scoped.contracts.filter(c => c.status === 'expiring').length }}
       onLogout={logout}
       isLoggingOut={isLoggingOut}

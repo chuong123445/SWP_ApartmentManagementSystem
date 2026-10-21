@@ -110,9 +110,7 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
               Kỳ chốt: Tháng 09/2026
             </span>
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Đơn giá quy định: Điện {config.electricPrice.toLocaleString('vi-VN')} đ/kWh • Nước {config.waterPrice.toLocaleString('vi-VN')} đ/m³
-          </p>
+
         </div>
 
         <div className="flex items-center gap-2">
@@ -140,7 +138,6 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
           </div>
           <div>
             <div className="text-xs font-bold text-amber-900">Đơn giá điện: {config.electricPrice.toLocaleString('vi-VN')} đ / kWh</div>
-            <div className="text-[11px] text-amber-700">Công tơ điện riêng từng phòng tử tế</div>
           </div>
         </div>
 
@@ -150,7 +147,6 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
           </div>
           <div>
             <div className="text-xs font-bold text-sky-900">Đơn giá nước: {config.waterPrice.toLocaleString('vi-VN')} đ / m³</div>
-            <div className="text-[11px] text-sky-700">Đồng hồ nước kiểm định định kỳ</div>
           </div>
         </div>
 
@@ -160,7 +156,6 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
           </div>
           <div>
             <div className="text-xs font-bold text-emerald-900">Nhấn "Lưu & đồng bộ" để chuyển dữ liệu</div>
-            <div className="text-[11px] text-emerald-700">Chỉ số mới sẽ chuyển thành chỉ số cũ khi thanh toán xong</div>
           </div>
         </div>
       </div>

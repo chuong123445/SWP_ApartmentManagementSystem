@@ -96,9 +96,7 @@ export const TenantsPage: React.FC<TenantsPageProps> = ({
               {tenants.filter((t) => t.status === 'active').length} cư dân
             </span>
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Quản lý định danh điện tử, đăng ký tạm trú cơ quan công an phường, tiền cọc bảo chứng Escrow.
-          </p>
+    
         </div>
 
         <button

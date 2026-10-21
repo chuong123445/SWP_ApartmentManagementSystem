@@ -51,9 +51,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             <span>Cài Đặt Hệ Thống & Đơn Giá Tiện Ích</span>
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Cấu hình đơn giá điện, nước, internet và tài khoản ngân hàng thụ hưởng mã VietQR.
-          </p>
+
         </div>
 
         <button

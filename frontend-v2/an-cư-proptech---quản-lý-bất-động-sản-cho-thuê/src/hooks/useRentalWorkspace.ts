@@ -476,11 +476,11 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
   const currentResidentTenant = tenants.find((t) => t.roomNumber === 'P.101') || tenants[0];
   const currentResidentRoom = rooms.find((r) => r.id === currentResidentTenant?.roomId) || rooms[0];
   const currentResidentContract = contracts.find((c) => c.tenantId === currentResidentTenant?.id) || contracts[0];
-  const residentInvoices = invoices.filter((i) => i.roomId === currentResidentRoom?.id && i.apiInvoice?.status === 'SENT');
+  const residentInvoices = invoices.filter((i) => i.roomId === currentResidentRoom?.id);
   const residentTickets = tickets.filter((t) => t.roomNumber === currentResidentRoom?.roomNumber);
 
-  // Counters for sidebar badges
-  const unpaidCount = invoices.filter((i) => i.apiInvoice?.status === 'SENT').length;
+  // Counters for sidebar badges: chỉ tính hóa đơn nợ chưa thanh toán
+  const unpaidCount = invoices.filter((i) => i.status !== 'paid' && (i.apiInvoice ? i.apiInvoice.status === 'SENT' : true)).length;
   const maintenanceCount = tickets.filter((t) => t.status !== 'resolved').length;
   const expiringCount = contracts.filter((c) => c.status === 'expiring').length;
 

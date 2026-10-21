@@ -70,7 +70,7 @@ export function InvoicesPage({
       <div className="bg-white p-5 border rounded-xl flex flex-wrap justify-between gap-4 shadow-xs">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Hóa đơn người thuê</h1>
-          <p className="text-sm text-slate-500 mt-1">Lập từ chỉ số công tơ và giá hợp đồng; gửi đến tài khoản thuê của căn hộ.</p>
+
         </div>
         <div className="flex gap-3">
           <button onClick={onReload} className="border border-slate-300 rounded-lg px-4 py-2 text-xs font-semibold hover:bg-slate-50 transition-colors">
@@ -109,9 +109,8 @@ export function InvoicesPage({
             <button
               key={v}
               onClick={() => setFilter(v)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                filter === v ? 'bg-slate-900 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-              }`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filter === v ? 'bg-slate-900 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                }`}
             >
               {label}
             </button>

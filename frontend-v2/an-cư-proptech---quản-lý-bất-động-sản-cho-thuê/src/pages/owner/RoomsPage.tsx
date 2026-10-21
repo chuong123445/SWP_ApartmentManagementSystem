@@ -93,9 +93,7 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
               {filteredRooms.length}/{rooms.length} căn hộ
             </span>
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Quản lý cùng nguồn căn hộ với Home; bản nháp và tài sản chưa duyệt chỉ hiển thị tại đây.
-          </p>
+          
         </div>
 
         <button
