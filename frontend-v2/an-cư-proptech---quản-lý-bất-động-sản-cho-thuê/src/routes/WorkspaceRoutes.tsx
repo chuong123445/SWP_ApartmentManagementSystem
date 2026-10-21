@@ -110,7 +110,6 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
               tenancies={workspace.tenancies}
               config={config}
               utilityReadings={workspace.utilityReadings}
-              onUpdateReading={workspace.handleUpdateSingleReading}
               onUpdateIndices={handleUpdateIndices}
               onOpenCreateInvoice={(contractId, roomId) => navigation.openCreateInvoice(contractId, roomId)}
             />

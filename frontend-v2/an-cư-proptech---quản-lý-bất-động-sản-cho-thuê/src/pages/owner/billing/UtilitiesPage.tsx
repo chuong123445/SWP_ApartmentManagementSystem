@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Zap, Droplets, Save, CheckCircle2, FileText, ShieldCheck } from 'lucide-react';
 import { Room, Tenant, SystemConfig } from '@/types';
 import type { Tenancy } from '@/types/billing';
@@ -9,7 +9,6 @@ interface UtilitiesPageProps {
   tenancies?: Tenancy[];
   config: SystemConfig;
   utilityReadings?: Record<string, { newElectric: string; newWater: string }>;
-  onUpdateReading?: (roomId: string, field: 'newElectric' | 'newWater', value: string) => void;
   onUpdateIndices: (updates: { roomId: string; electric: number; water: number }[]) => void;
   onOpenCreateInvoice?: (contractId?: string, roomId?: string) => void;
 }
@@ -20,66 +19,69 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
   tenancies = [],
   config,
   utilityReadings,
-  onUpdateReading,
   onUpdateIndices,
   onOpenCreateInvoice,
 }) => {
-  // Local state for fast responsive typing, synced with workspace utilityReadings
-  const [localReadings, setLocalReadings] = useState<{
+  // Helper to get saved/initial reading for a room
+  const getInitialReading = (room: Room) => {
+    const saved = utilityReadings?.[room.id];
+    if (saved && saved.newElectric !== '' && saved.newWater !== '') {
+      return {
+        newElectric: saved.newElectric,
+        newWater: saved.newWater,
+      };
+    }
+    return {
+      newElectric: room.meterBaselineKnown === false ? '' : room.electricityIndex.toString(),
+      newWater: room.meterBaselineKnown === false ? '' : room.waterIndex.toString(),
+    };
+  };
+
+  // Draft readings: ONLY local form state while typing!
+  // Will NOT be saved or synced until owner clicks "Lưu & Đồng Bộ Toàn Bộ"
+  const [draftReadings, setDraftReadings] = useState<{
     [roomId: string]: { newElectric: string; newWater: string };
   }>(() => {
     const init: { [roomId: string]: { newElectric: string; newWater: string } } = {};
     rooms.forEach((r) => {
-      const stored = utilityReadings?.[r.id];
-      init[r.id] = {
-        newElectric: stored?.newElectric ?? (r.meterBaselineKnown === false ? '' : r.electricityIndex.toString()),
-        newWater: stored?.newWater ?? (r.meterBaselineKnown === false ? '' : r.waterIndex.toString()),
-      };
+      init[r.id] = getInitialReading(r);
     });
     return init;
   });
 
   const [savedSuccess, setSavedSuccess] = useState(false);
 
-  React.useEffect(() => {
-    if (!utilityReadings) return;
-    setLocalReadings(prev => {
-      let changed = false;
-      const next = { ...prev };
-      rooms.forEach(r => {
-        const u = utilityReadings[r.id];
-        if (u && (u.newElectric !== next[r.id]?.newElectric || u.newWater !== next[r.id]?.newWater)) {
-          next[r.id] = { newElectric: u.newElectric, newWater: u.newWater };
-          changed = true;
-        }
+  // Sync draft state with saved utilityReadings only on initial mount or when external utilityReadings/rooms change
+  useEffect(() => {
+    setDraftReadings(() => {
+      const init: { [roomId: string]: { newElectric: string; newWater: string } } = {};
+      rooms.forEach((r) => {
+        init[r.id] = getInitialReading(r);
       });
-      return changed ? next : prev;
+      return init;
     });
   }, [utilityReadings, rooms]);
 
   const handleElectricChange = (roomId: string, val: string) => {
-    setLocalReadings((prev) => ({
+    // Only update local draft state, DO NOT auto-save!
+    setDraftReadings((prev) => ({
       ...prev,
       [roomId]: { ...(prev[roomId] ?? { newElectric: '', newWater: '' }), newElectric: val },
     }));
-    if (onUpdateReading) {
-      onUpdateReading(roomId, 'newElectric', val);
-    }
   };
 
   const handleWaterChange = (roomId: string, val: string) => {
-    setLocalReadings((prev) => ({
+    // Only update local draft state, DO NOT auto-save!
+    setDraftReadings((prev) => ({
       ...prev,
       [roomId]: { ...(prev[roomId] ?? { newElectric: '', newWater: '' }), newWater: val },
     }));
-    if (onUpdateReading) {
-      onUpdateReading(roomId, 'newWater', val);
-    }
   };
 
+  // Only perform save and synchronization when owner explicitly clicks this button!
   const handleSaveAll = () => {
     const updates = rooms.filter(r => r.meterBaselineKnown !== false).map((r) => {
-      const current = localReadings[r.id] ?? utilityReadings?.[r.id];
+      const current = draftReadings[r.id];
       return {
         roomId: r.id,
         electric: Number(current?.newElectric) || r.electricityIndex,
@@ -99,7 +101,7 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Header */}
+      {/* Header - Bỏ nút Lập Hóa Đơn Mới theo yêu cầu */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
         <div>
           <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -122,20 +124,11 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
           <button
             onClick={handleSaveAll}
             id="btn-save-utilities"
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+            className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
           >
             <Save className="w-4 h-4" />
             <span>Lưu & Đồng Bộ Toàn Bộ</span>
           </button>
-          {onOpenCreateInvoice && (
-            <button
-              onClick={() => onOpenCreateInvoice()}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
-            >
-              <FileText className="w-4 h-4" />
-              <span>Lập Hóa Đơn Mới</span>
-            </button>
-          )}
         </div>
       </div>
 
@@ -166,8 +159,8 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs font-bold text-emerald-900">Đồng bộ sang Lập Hóa Đơn</div>
-            <div className="text-[11px] text-emerald-700">Khi thanh toán xong: Điện mới → Điện cũ</div>
+            <div className="text-xs font-bold text-emerald-900">Nhấn "Lưu & đồng bộ" để chuyển dữ liệu</div>
+            <div className="text-[11px] text-emerald-700">Chỉ số mới sẽ chuyển thành chỉ số cũ khi thanh toán xong</div>
           </div>
         </div>
       </div>
@@ -194,8 +187,7 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
               {rooms.map((room) => {
                 const tenant = tenants.find((t) => t.id === room.currentTenantId);
                 const missingBaseline = room.meterBaselineKnown === false;
-                const storedRecord = utilityReadings?.[room.id];
-                const currentRecord = localReadings[room.id] ?? storedRecord ?? {
+                const currentRecord = draftReadings[room.id] ?? {
                   newElectric: missingBaseline ? '' : room.electricityIndex.toString(),
                   newWater: missingBaseline ? '' : room.waterIndex.toString(),
                 };

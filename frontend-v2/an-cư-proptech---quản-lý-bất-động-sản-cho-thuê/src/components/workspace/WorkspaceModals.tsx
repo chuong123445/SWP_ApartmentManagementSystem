@@ -72,10 +72,6 @@ export function WorkspaceModals({ workspace, navigation }: { workspace: RentalWo
             navigation.setTargetInvoiceRoomId(null);
           }}
           onCreateInvoice={handleCreateInvoice}
-          onSyncUtilityReading={(roomId, electric, water) => {
-            workspace.handleUpdateSingleReading(roomId, 'newElectric', electric);
-            workspace.handleUpdateSingleReading(roomId, 'newWater', water);
-          }}
         />
       )}
 

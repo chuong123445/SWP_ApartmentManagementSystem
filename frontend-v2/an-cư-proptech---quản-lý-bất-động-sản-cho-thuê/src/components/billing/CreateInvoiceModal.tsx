@@ -11,7 +11,6 @@ export function CreateInvoiceModal({
   initialRoomId,
   onClose,
   onCreateInvoice,
-  onSyncUtilityReading,
 }: {
   tenancies: Tenancy[];
   utilityReadings?: Record<string, { newElectric: string; newWater: string }>;
@@ -19,7 +18,6 @@ export function CreateInvoiceModal({
   initialRoomId?: string | null;
   onClose: () => void;
   onCreateInvoice: (invoice: Invoice) => void;
-  onSyncUtilityReading?: (roomId: string, electric: string, water: string) => void;
 }) {
   const active = tenancies.filter(c => c.status === 'ACTIVE');
   const defaultContractId = initialContractId
@@ -89,16 +87,10 @@ export function CreateInvoiceModal({
 
   const handleElectricityChange = (val: string) => {
     setElectricity(val);
-    if (context && onSyncUtilityReading) {
-      onSyncUtilityReading(context.apartmentId, val, water);
-    }
   };
 
   const handleWaterChange = (val: string) => {
     setWater(val);
-    if (context && onSyncUtilityReading) {
-      onSyncUtilityReading(context.apartmentId, electricity, val);
-    }
   };
 
   const save = async (send: boolean) => {
