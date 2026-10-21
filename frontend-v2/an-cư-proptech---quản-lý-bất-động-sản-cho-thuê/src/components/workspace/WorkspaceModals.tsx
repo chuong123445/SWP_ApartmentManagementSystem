@@ -56,14 +56,26 @@ export function WorkspaceModals({ workspace, navigation }: { workspace: RentalWo
         <InvoiceDetailModal
           invoice={selectedInvoice}
           onClose={() => setSelectedInvoice(null)}
+          onMarkPaid={workspace.handleMarkPaid}
         />
       )}
 
       {isCreateInvoiceOpen && (
         <CreateInvoiceModal
           tenancies={workspace.tenancies}
-          onClose={() => setIsCreateInvoiceOpen(false)}
+          utilityReadings={workspace.utilityReadings}
+          initialContractId={navigation.targetInvoiceContractId}
+          initialRoomId={navigation.targetInvoiceRoomId}
+          onClose={() => {
+            setIsCreateInvoiceOpen(false);
+            navigation.setTargetInvoiceContractId(null);
+            navigation.setTargetInvoiceRoomId(null);
+          }}
           onCreateInvoice={handleCreateInvoice}
+          onSyncUtilityReading={(roomId, electric, water) => {
+            workspace.handleUpdateSingleReading(roomId, 'newElectric', electric);
+            workspace.handleUpdateSingleReading(roomId, 'newWater', water);
+          }}
         />
       )}
 
