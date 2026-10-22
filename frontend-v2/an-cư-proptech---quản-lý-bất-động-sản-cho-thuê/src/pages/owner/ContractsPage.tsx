@@ -6,6 +6,10 @@ import {
   Calendar,
   FileText,
   Printer,
+  Download,
+  Loader2,
+  ZoomIn,
+  ZoomOut,
   CheckCircle2,
   AlertCircle,
   Clock,
@@ -15,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Contract } from '@/types';
 import { ContractDraftList } from '@/components/contract/ContractDraftList';
+import { printContractDocument, downloadContractPdfFile, downloadContractHtmlFile } from '@/utils/contractPdf';
 
 interface ContractsPageProps {
   propertyId?: string;
@@ -29,6 +34,8 @@ export const ContractsPage: React.FC<ContractsPageProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [previewContract, setPreviewContract] = useState<Contract | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [zoom, setZoom] = useState(100);
 
   const filteredContracts = contracts.filter(
     (c) =>
@@ -169,103 +176,281 @@ export const ContractsPage: React.FC<ContractsPageProps> = ({
         </div>
       </div>
 
-      {/* Contract Preview Modal */}
+      {/* Professional PDF Document Viewer Modal */}
       {previewContract && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-2xl w-full border border-slate-200 shadow-2xl overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-150">
-            {/* Header */}
-            <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold">Hợp Đồng Thuê Căn Hộ Điện Tử An Cư TrustGuard™</h3>
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30">
-                    Chứng Thư Số VNPT
-                  </span>
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-5xl h-[94vh] flex flex-col shadow-2xl overflow-hidden">
+            {/* PDF Viewer Top Toolbar */}
+            <header className="bg-slate-900 border-b border-slate-800 px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-white shrink-0">
+              {/* File Info */}
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center justify-center font-bold text-xs font-mono shrink-0">
+                  PDF
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">Số: {previewContract.contractNumber}</p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold truncate text-slate-100">
+                      Hop_Dong_Thue_Can_Ho_{previewContract.contractNumber}.pdf
+                    </h3>
+                    <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                      <ShieldCheck className="w-3 h-3 text-emerald-400" /> Bản ký số (PAdES)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                    Mã xác thực: {previewContract.trustGuardAuditCode || `TG-AUD-${previewContract.contractNumber}`}
+                  </p>
+                </div>
               </div>
+
+              {/* Center Viewer Controls (Zoom & Page) */}
+              <div className="flex items-center gap-1.5 bg-slate-800/90 border border-slate-700/80 px-2.5 py-1 rounded-xl text-xs">
+                <button
+                  type="button"
+                  onClick={() => setZoom((z) => Math.max(z - 10, 60))}
+                  className="p-1 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700/80 transition-colors"
+                  title="Thu nhỏ (-10%)"
+                >
+                  <ZoomOut className="w-3.5 h-3.5" />
+                </button>
+                <span className="font-mono text-slate-300 w-11 text-center font-medium select-none text-[11px]">
+                  {zoom}%
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setZoom((z) => Math.min(z + 10, 150))}
+                  className="p-1 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700/80 transition-colors"
+                  title="Phóng to (+10%)"
+                >
+                  <ZoomIn className="w-3.5 h-3.5" />
+                </button>
+                <div className="h-3.5 w-px bg-slate-700 mx-1"></div>
+                <span className="text-[11px] text-slate-400 font-medium select-none">
+                  Trang 1 / 1
+                </span>
+              </div>
+
+              {/* Action Buttons */}
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => alert('Đã gửi lệnh in hợp đồng và chứng thư số!')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-semibold"
+                  type="button"
+                  disabled={isExportingPdf}
+                  onClick={async () => {
+                    try {
+                      setIsExportingPdf(true);
+                      await downloadContractPdfFile(previewContract);
+                    } catch (err) {
+                      console.error('Lỗi khi tải file PDF:', err);
+                      printContractDocument(previewContract);
+                    } finally {
+                      setIsExportingPdf(false);
+                    }
+                  }}
+                  title="Tải trực tiếp file PDF về máy tính"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors disabled:opacity-60"
+                >
+                  {isExportingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  <span>{isExportingPdf ? 'Đang tạo PDF...' : 'Tải File PDF (.pdf)'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => printContractDocument(previewContract)}
+                  title="Mở hộp thoại in văn bản hợp đồng"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-xs font-semibold border border-slate-700 transition-colors"
                 >
                   <Printer className="w-3.5 h-3.5" /> In Bản Ký
                 </button>
                 <button
+                  type="button"
                   onClick={() => setPreviewContract(null)}
-                  className="w-7 h-7 rounded-lg bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center"
+                  className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center border border-slate-700 transition-colors"
+                  aria-label="Đóng"
                 >
                   ✕
                 </button>
               </div>
-            </div>
+            </header>
 
-            {/* Legal content */}
-            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto text-xs text-slate-700 leading-relaxed font-serif">
-              <div className="text-center font-sans space-y-1 mb-6">
-                <h4 className="font-bold text-sm text-slate-900 uppercase">
-                  CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
-                </h4>
-                <p className="text-xs text-slate-600 font-medium">Độc lập - Tự do - Hạnh phúc</p>
-                <div className="w-24 h-0.5 bg-slate-300 mx-auto my-2"></div>
-                <h3 className="font-bold text-base text-slate-900 pt-2">
-                  HỢP ĐỒNG CHO THUÊ CĂN HỘ CAO CẤP & BẢO CHỨNG KÝ QUỸ ESCROW
-                </h3>
-                <p className="text-[11px] font-sans text-emerald-700 font-bold">
-                  (Mã xác thực pháp lý TrustGuard: {previewContract.trustGuardAuditCode || 'TG-AUD-2025-08912'})
-                </p>
-              </div>
-
-              <div className="space-y-1.5 border-b border-slate-200 pb-3 font-sans">
-                <p><strong>BÊN CHO THUÊ (BÊN A):</strong> BQL TÒA NHÀ AN CƯ PROPTECH - LÊ VĂN SỸ</p>
-                <p>Địa chỉ: 284/12 Lê Văn Sỹ, Phường 14, Quận 3, TP. Hồ Chí Minh</p>
-                <p>Đại diện: Quản Lý Tòa Nhà • Tài khoản bảo chứng Escrow: MBBANK-ESCROW-88899977</p>
-              </div>
-
-              <div className="space-y-1.5 border-b border-slate-200 pb-3 font-sans">
-                <p><strong>BÊN THUÊ (BÊN B):</strong> Ông/Bà <strong>{previewContract.tenantName}</strong></p>
-                <p>Căn hộ số: <strong>{previewContract.roomNumber}</strong> - Tòa A Lê Văn Sỹ</p>
-                <p>Thời hạn thuê: Từ ngày <strong>{previewContract.startDate}</strong> đến hết ngày <strong>{previewContract.endDate}</strong>.</p>
-              </div>
-
-              <div className="space-y-2 border-b border-slate-200 pb-4 font-sans">
-                <p><strong>ĐIỀU KHOẢN TÀI CHÍNH & KÝ QUỸ AN CƯ TRUSTGUARD™:</strong></p>
-                <p>1. Giá thuê căn hộ cố định: <strong>{previewContract.monthlyRent.toLocaleString('vi-VN')} đ/tháng</strong> (Chưa gồm điện nước sinh hoạt EVN & Sawaco).</p>
-                <p>2. Tiền ký quỹ cọc bảo đảm: <strong>{previewContract.deposit.toLocaleString('vi-VN')} đ</strong>, được phong tỏa tại Ngân hàng Quân Đội MBBank theo mã ký quỹ <strong>{previewContract.escrowCode}</strong>. Tiền cọc được giải tỏa bảo đảm 100% khi hai bên ký biên bản bàn giao phòng hoàn tất.</p>
-                <p>3. Chu kỳ thanh toán: Định kỳ hàng tháng từ ngày 01 đến 05 qua hệ thống VietQR Napas247.</p>
-                <p>4. Tòa nhà đạt chuẩn PCCC Quốc Gia số 112/TD-PCCC-PC07. Khách thuê cam kết tuân thủ quy định an ninh trật tự.</p>
-              </div>
-
-              {/* Digital Signature Stamps */}
-              <div className="grid grid-cols-2 pt-4 text-center font-sans gap-4">
-                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
-                  <p className="font-bold text-slate-900 text-xs">CHỮ KÝ SỐ BÊN A</p>
-                  <p className="text-emerald-800 text-[10px] mt-0.5">Ký bởi: BAN QUAN LY AN CU</p>
-                  <div className="mt-2 p-2 bg-white rounded-lg border border-emerald-300 text-emerald-900 font-mono text-[10px]">
-                    ✓ VNPT-CA Timestamped<br />
-                    {previewContract.signedDate || '15/01/2025 09:32:15'}
-                  </div>
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                  <p className="font-bold text-slate-900 text-xs">CHỮ KÝ SỐ BÊN B</p>
-                  <p className="text-slate-700 text-[10px] mt-0.5">Ký bởi: {previewContract.tenantName}</p>
-                  <div className="mt-2 p-2 bg-white rounded-lg border border-slate-300 text-slate-800 font-mono text-[10px]">
-                    ✓ eKYC Chip Verified<br />
-                    {previewContract.signedDate || '15/01/2025 09:32:15'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
-              <button
-                onClick={() => setPreviewContract(null)}
-                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-xs font-semibold"
+            {/* Document Canvas Viewport (Simulating Adobe Acrobat / Drive PDF view) */}
+            <main className="flex-1 bg-slate-950/60 overflow-y-auto overflow-x-auto p-4 sm:p-8 flex justify-center items-start">
+              <div
+                style={{
+                  transform: `scale(${zoom / 100})`,
+                  transformOrigin: 'top center',
+                  transition: 'transform 0.15s ease-out',
+                }}
+                className="w-full flex justify-center shrink-0"
               >
-                Đóng Văn Bản
-              </button>
-            </div>
+                {/* The A4 Paper Sheet */}
+                <article className="bg-white w-full max-w-[794px] min-h-[1050px] shadow-2xl shadow-black/60 border border-slate-300/80 rounded-xs p-8 sm:p-14 relative text-slate-800 font-serif leading-relaxed my-2 select-text">
+                  {/* Subtle Background Watermark */}
+                  <div
+                    aria-hidden="true"
+                    className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.035] select-none"
+                  >
+                    <span className="text-7xl font-extrabold uppercase -rotate-45 tracking-widest text-slate-900 font-sans">
+                      AN CƯ TRUSTGUARD
+                    </span>
+                  </div>
+
+                  {/* Header Quốc hiệu */}
+                  <div className="text-center font-sans space-y-1 mb-8">
+                    <h4 className="font-bold text-sm tracking-wide text-slate-900 uppercase">
+                      CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+                    </h4>
+                    <p className="text-xs text-slate-700 font-semibold italic">Độc lập - Tự do - Hạnh phúc</p>
+                    <div className="w-32 h-[1.5px] bg-slate-600 mx-auto my-2"></div>
+                  </div>
+
+                  {/* Contract Title */}
+                  <div className="text-center font-sans space-y-1.5 mb-8">
+                    <h2 className="font-extrabold text-base sm:text-lg text-emerald-800 uppercase tracking-tight">
+                      HỢP ĐỒNG CHO THUÊ CĂN HỘ CAO CẤP & BẢO CHỨNG KÝ QUỸ ESCROW
+                    </h2>
+                    <p className="text-xs text-slate-500 italic">
+                      Số văn bản điện tử: <strong className="text-slate-800 font-mono">{previewContract.contractNumber}</strong>
+                    </p>
+                    <div className="pt-1">
+                      <span className="inline-block bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-0.5 rounded-full text-[11px] font-bold font-mono">
+                        Mã xác thực TrustGuard: {previewContract.trustGuardAuditCode || `TG-AUD-${previewContract.contractNumber}`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Body Content */}
+                  <div className="space-y-5 text-xs text-slate-700 leading-relaxed font-sans">
+                    {/* Section I */}
+                    <div>
+                      <h3 className="font-bold text-xs uppercase text-slate-900 border-b border-slate-200 pb-1.5 mb-2">
+                        I. CĂN CỨ PHÁP LÝ
+                      </h3>
+                      <p className="text-justify text-slate-600 space-y-1">
+                        - Căn cứ Bộ luật Dân sự số 91/2015/QH13 ban hành ngày 24/11/2015;<br />
+                        - Căn cứ Luật Giao dịch điện tử số 20/2023/QH15 của Quốc hội khóa XV có hiệu lực từ ngày 01/07/2024;<br />
+                        - Căn cứ thỏa thuận tự nguyện và chứng thực định danh số hợp pháp của hai bên.
+                      </p>
+                    </div>
+
+                    {/* Section II */}
+                    <div>
+                      <h3 className="font-bold text-xs uppercase text-slate-900 border-b border-slate-200 pb-1.5 mb-2">
+                        II. CÁC BÊN THAM GIA HỢP ĐỒNG
+                      </h3>
+                      <div className="space-y-3">
+                        <div className="p-3 bg-slate-50/70 rounded-lg border border-slate-200/80">
+                          <p className="font-bold text-slate-900">BÊN CHO THUÊ (BÊN A):</p>
+                          <p className="mt-0.5">Tên đơn vị: <strong>BQL TÒA NHÀ AN CƯ PROPTECH - LÊ VĂN SỸ</strong></p>
+                          <p>Địa chỉ: 284/12 Lê Văn Sỹ, Phường 14, Quận 3, TP. Hồ Chí Minh</p>
+                          <p>Đại diện: Ban Quản Lý Tòa Nhà • Tài khoản bảo chứng Escrow: <strong>MBBANK-ESCROW-88899977</strong></p>
+                        </div>
+                        <div className="p-3 bg-slate-50/70 rounded-lg border border-slate-200/80">
+                          <p className="font-bold text-slate-900">BÊN THUÊ (BÊN B):</p>
+                          <p className="mt-0.5">Ông/Bà: <strong>{previewContract.tenantName}</strong></p>
+                          <p>Căn hộ thuê: <strong>Căn số {previewContract.roomNumber}</strong> - Tòa A Lê Văn Sỹ</p>
+                          <p>Thời hạn thuê: Từ ngày <strong>{previewContract.startDate}</strong> đến hết ngày <strong>{previewContract.endDate}</strong></p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section III */}
+                    <div>
+                      <h3 className="font-bold text-xs uppercase text-slate-900 border-b border-slate-200 pb-1.5 mb-2">
+                        III. ĐIỀU KHOẢN TÀI CHÍNH & KÝ QUỸ AN CƯ TRUSTGUARD™
+                      </h3>
+                      <ol className="list-decimal pl-4 space-y-1.5 text-slate-700 text-justify">
+                        <li>
+                          <strong>Giá thuê căn hộ cố định:</strong> <strong>{previewContract.monthlyRent.toLocaleString('vi-VN')} đ/tháng</strong> (Chưa bao gồm dịch vụ điện nước theo chỉ số công tơ niêm phong).
+                        </li>
+                        <li>
+                          <strong>Tiền ký quỹ cọc bảo đảm:</strong> <strong>{previewContract.deposit.toLocaleString('vi-VN')} đ</strong>, được phong tỏa tại Ngân hàng Quân Đội MBBank theo mã ký quỹ <strong>{previewContract.escrowCode}</strong>. Tiền cọc được giải tỏa bảo đảm 100% khi hai bên nghiệm thu biên bản bàn giao hoàn tất.
+                        </li>
+                        <li>
+                          <strong>Chu kỳ thanh toán:</strong> Định kỳ hàng tháng từ ngày 01 đến 05 qua hệ thống cổng thanh toán Napas247 / VietQR tự động.
+                        </li>
+                        <li>
+                          <strong>Quy định an toàn & PCCC:</strong> Căn hộ đạt tiêu chuẩn Thẩm duyệt PCCC số 112/TD-PCCC-PC07. Khách thuê cam kết tuân thủ nghiêm ngặt nội quy an ninh trật tự.
+                        </li>
+                      </ol>
+                    </div>
+
+                    {/* Section IV - Digital Signature Seals */}
+                    <div className="pt-2">
+                      <h3 className="font-bold text-xs uppercase text-slate-900 border-b border-slate-200 pb-1.5 mb-2">
+                        IV. XÁC THỰC VÀ CHỮ KÝ SỐ ĐIỆN TỬ CỦA HAI BÊN
+                      </h3>
+                      <p className="text-slate-500 text-[11px] mb-3">
+                        Hai bên xác nhận đã đọc kỹ, đồng ý toàn bộ điều khoản và hoàn tất ký số điện tử. Văn bản có giá trị pháp lý tương đương bản gốc giấy.
+                      </p>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                        {/* Seal Bên A */}
+                        <div className="p-3.5 bg-emerald-50/70 rounded-xl border border-emerald-300 text-center relative overflow-hidden">
+                          <div className="text-[11px] font-bold text-slate-900 uppercase">CHỮ KÝ SỐ BÊN A</div>
+                          <p className="text-[11px] text-emerald-800 font-medium mt-0.5">Ký bởi: BAN QUẢN LÝ AN CƯ</p>
+                          <div className="mt-2.5 p-2 bg-white rounded-lg border border-emerald-400 text-emerald-950 font-mono text-[10px] space-y-0.5 shadow-2xs">
+                            <span className="font-bold text-emerald-700 block">✓ VNPT-CA Timestamped</span>
+                            <span>{previewContract.signedDate || '15/01/2026 09:32:15'}</span>
+                            <span className="block text-[9px] text-emerald-600">Serial: VNPT-CA-CORP-2026</span>
+                          </div>
+                        </div>
+
+                        {/* Seal Bên B */}
+                        <div className="p-3.5 bg-blue-50/70 rounded-xl border border-blue-300 text-center relative overflow-hidden">
+                          <div className="text-[11px] font-bold text-slate-900 uppercase">CHỮ KÝ SỐ BÊN B</div>
+                          <p className="text-[11px] text-blue-800 font-medium mt-0.5">Ký bởi: {previewContract.tenantName}</p>
+                          <div className="mt-2.5 p-2 bg-white rounded-lg border border-blue-400 text-blue-950 font-mono text-[10px] space-y-0.5 shadow-2xs">
+                            <span className="font-bold text-blue-700 block">✓ eKYC Chip & Digital OTP</span>
+                            <span>{previewContract.signedDate || '15/01/2026 09:32:15'}</span>
+                            <span className="block text-[9px] text-blue-600">Phương thức: {previewContract.signingMethod || 'Ký số eKYC Chip'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Paper Footer Security Hash */}
+                    <div className="pt-6 mt-6 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500 font-mono">
+                      <span>An Cư TrustGuard™ Cryptographic Seal</span>
+                      <span>SHA-256: 7f83b165...{previewContract.id.slice(-8)}</span>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </main>
+
+            {/* Bottom Status Bar */}
+            <footer className="bg-slate-900 border-t border-slate-800 px-5 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400 shrink-0">
+              <span className="flex items-center gap-1.5 text-[11px]">
+                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                Văn bản điện tử đã được chứng thực số và niêm phong bảo mật theo Luật Giao dịch điện tử.
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={isExportingPdf}
+                  onClick={async () => {
+                    try {
+                      setIsExportingPdf(true);
+                      await downloadContractPdfFile(previewContract);
+                    } catch (err) {
+                      console.error('Lỗi khi tải file PDF:', err);
+                      printContractDocument(previewContract);
+                    } finally {
+                      setIsExportingPdf(false);
+                    }
+                  }}
+                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors disabled:opacity-60"
+                >
+                  {isExportingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  <span>{isExportingPdf ? 'Đang tạo PDF...' : 'Tải File PDF'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewContract(null)}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-medium border border-slate-700 transition-colors"
+                >
+                  Đóng xem trước
+                </button>
+              </div>
+            </footer>
           </div>
         </div>
       )}
