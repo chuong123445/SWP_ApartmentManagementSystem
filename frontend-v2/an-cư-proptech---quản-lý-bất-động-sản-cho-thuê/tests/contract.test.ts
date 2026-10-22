@@ -27,3 +27,32 @@ test('Contract validation prevents incomplete/decreasing dates and implicit zero
 test('DRAFT cannot be mapped as ended or create an active Tenant relationship', () => {
   const result = tenancyViews([{ id: 'draft', status: 'DRAFT' } as never]);assert.equal(result.contracts[0].status, 'draft');assert.equal(result.tenants.length, 0);
 });
+test('Contract PDF export generates valid legal document containing audit code, parties, and digital signatures', async () => {
+  const { generateContractHtml } = await import('../src/utils/contractPdf.ts');
+  const sampleContract = {
+    id: 'test-contract-id',
+    contractNumber: 'HD-9bbb5425',
+    roomId: 'room-1',
+    roomNumber: 'T.102',
+    tenantId: 'tenant-1',
+    tenantName: 'Khách thuê Hai',
+    startDate: '2026-10-01',
+    endDate: '2027-09-30',
+    monthlyRent: 6500000,
+    deposit: 0,
+    status: 'active' as const,
+    signingMethod: 'eKYC Chip Verified',
+    escrowCode: 'MBBANK-ESCROW-88899977',
+    trustGuardAuditCode: 'TG-AUD-2025-08912',
+    signedDate: '15/01/2025 09:32:15'
+  };
+  const html = generateContractHtml(sampleContract);
+  assert.ok(html.includes('HD-9bbb5425'));
+  assert.ok(html.includes('TG-AUD-2025-08912'));
+  assert.ok(html.includes('Khách thuê Hai'));
+  assert.ok(html.includes('T.102'));
+  assert.ok(html.includes('6.500.000'));
+  assert.ok(html.includes('CHỨNG THƯ SỐ VNPT-CA'));
+  assert.ok(html.includes('eKYC CHIP & DIGITAL OTP'));
+});
+
