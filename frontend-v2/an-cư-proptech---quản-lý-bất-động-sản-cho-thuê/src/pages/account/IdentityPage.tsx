@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { AccountLayout } from '@/layouts/AccountLayout';
 import { IdentityImage } from '@/components/identity/IdentityImage';
 import { getIdentity, saveIdentity } from '@/services/identity/identityService';
@@ -8,6 +8,19 @@ import type { IdentityFields, IdentityProfile } from '@/types/identity';
 
 const empty: IdentityFields = { legalName: '', documentNumber: '', dateOfBirth: '', issueDate: '', issuePlace: '', permanentAddress: '', currentAddress: '' };
 export function IdentityPage() {
+  const location = useLocation();
+  const returnTo = typeof location.state?.returnTo === 'string' ? location.state.returnTo : '/account/settings';
+  const isFromApartment = typeof location.state?.returnTo === 'string' && location.state.returnTo.startsWith('/apartments');
+  const isFromManagement = typeof location.state?.returnTo === 'string' && (location.state.returnTo === '/app' || location.state.returnTo.startsWith('/app/'));
+  const returnLabel = typeof location.state?.returnLabel === 'string'
+    ? location.state.returnLabel
+    : isFromApartment
+      ? 'Quay lại xem căn hộ'
+      : isFromManagement
+        ? 'Quay lại trang quản lý'
+        : typeof location.state?.returnTo === 'string'
+          ? 'Quay lại'
+          : 'Quay lại cài đặt tài khoản';
   const [saved, setSaved] = useState<IdentityProfile | null>(null);const [fields, setFields] = useState<IdentityFields>(empty);
   const [front, setFront] = useState<File | null>(null);const [back, setBack] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);const [saving, setSaving] = useState(false);const [stale, setStale] = useState(false);
@@ -34,7 +47,7 @@ export function IdentityPage() {
     setError('');(side === 'front' ? setFront : setBack)(file ?? null);return true;
   };
   return <AccountLayout>
-    <Link to="/account/settings" className="text-emerald-700 underline text-sm">Quay lại cài đặt tài khoản</Link>
+    <Link to={returnTo} className="text-emerald-700 underline text-sm">{returnLabel}</Link>
     <h1 className="text-2xl font-bold mt-4 mb-3">Xác thực danh tính</h1>
     <p className="text-slate-600 mb-4">Cung cấp thông tin căn cước và địa chỉ để chuẩn bị thông tin cá nhân khi thuê nhà. Hãy nhập đúng nội dung trên giấy tờ.</p>
     <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5">
@@ -44,7 +57,20 @@ export function IdentityPage() {
     </div>
     {loading && <p role="status">Đang tải hồ sơ danh tính...</p>}
     {error && <p role="alert" className="text-rose-700 bg-rose-50 p-3 rounded-lg mb-4">{error}<button type="button" disabled={saving} onClick={() => setRevision(v => v + 1)} className="ml-3 underline">Tải lại hồ sơ đã lưu</button></p>}
-    {notice && <p role="status" className="bg-emerald-50 text-emerald-800 p-3 rounded-lg mb-4">{notice}</p>}
+    {notice && (
+      <div role="status" className="bg-emerald-50 text-emerald-800 p-3.5 rounded-lg mb-4 space-y-1">
+        <p>{notice}</p>
+        {typeof location.state?.returnTo === 'string' && (
+          <Link to={location.state.returnTo} className="inline-block text-xs font-semibold text-emerald-800 underline">
+            {isFromApartment
+              ? 'Quay lại căn hộ để tiếp tục gửi yêu cầu thuê →'
+              : isFromManagement
+                ? 'Quay lại trang quản lý để tiếp tục thêm tài sản →'
+                : 'Quay lại trang trước →'}
+          </Link>
+        )}
+      </div>
+    )}
     {!loading && ready && <form ref={form} className="bg-white border rounded-xl p-4 sm:p-6" onSubmit={async e => {
       e.preventDefault();if (saving || stale) return;setError('');setNotice('');
       if (!saved && (!front || !back)) { setError('Cần ảnh mặt trước và mặt sau căn cước.');return; }
