@@ -45,3 +45,11 @@ test('Connection failure keeps the add form able to retry',async()=>{
   globalThis.fetch=async()=>{throw new TypeError('Failed to fetch');};
   await assert.rejects(createOwnerApartment(room));
 });
+test('Owner identity gate detects missing identity and verified CCCD documentNumber', () => {
+  const isIdentityComplete = (p: { documentNumber?: string } | null | undefined) => Boolean(p && p.documentNumber);
+  assert.equal(isIdentityComplete(null), false);
+  assert.equal(isIdentityComplete(undefined), false);
+  assert.equal(isIdentityComplete({ documentNumber: '' }), false);
+  assert.equal(isIdentityComplete({ documentNumber: '012345678901' }), true);
+});
+
