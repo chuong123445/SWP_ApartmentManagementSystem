@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { MapPin, BedDouble, Bath, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { MapPin, BedDouble, Bath, CheckCircle2, ArrowLeft, ShieldCheck, X, Check } from 'lucide-react';
 import { CustomerLayout } from '@/layouts/CustomerLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { getApartment } from '@/services/apartments/apartmentService';
 import { submitRentalRequest, getApartmentRentalRequests, cancelRentalRequest } from '@/services/rental/rentalService';
+import { getIdentity } from '@/services/identity/identityService';
 import type { ApartmentDetail } from '@/types/apartment';
 import type { RentalRequest } from '@/types/rental';
+import type { IdentityProfile } from '@/types/identity';
 import { availabilityLabel, formatRent, requestStatusLabel } from '@/utils/format';
 import { ApiError } from '@/services/http/client';
 
@@ -20,13 +22,26 @@ export function ApartmentDetailPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [needsVerification, setNeedsVerification] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [identityProfile, setIdentityProfile] = useState<IdentityProfile | null | undefined>(undefined);
   const [submitted, setSubmitted] = useState<RentalRequest | null>(null);
   const [activeRequests, setActiveRequests] = useState<RentalRequest[]>([]);
   const [checking, setChecking] = useState(true);
   const [requestError, setRequestError] = useState('');
   const [revision, setRevision] = useState(0);
-  const customer = user?.roles.includes('CUSTOMER') && user.accountStatus === 'ACTIVE' && user.contactVerificationStatus === 'VERIFIED';
-  useEffect(() => { setNeedsVerification(false); }, [id, user?.id]);
+  const isEmailVerified = Boolean(user && user.roles.includes('CUSTOMER') && user.accountStatus === 'ACTIVE' && user.contactVerificationStatus === 'VERIFIED');
+  const hasIdentity = Boolean(identityProfile && identityProfile.documentNumber);
+  const customer = isEmailVerified && hasIdentity;
+  useEffect(() => { setNeedsVerification(false); setShowVerificationModal(false); }, [id, user?.id]);
+  useEffect(() => {
+    let active = true;
+    if (user?.roles.includes('CUSTOMER')) {
+      getIdentity().then(profile => { if (active) setIdentityProfile(profile); }).catch(() => { if (active) setIdentityProfile(null); });
+    } else {
+      setIdentityProfile(null);
+    }
+    return () => { active = false; };
+  }, [user?.id, revision]);
   useEffect(() => {
     let active = true;let inFlight = false;
     setChecking(true);setRequestError('');setSubmitted(null);setActiveRequests([]);
@@ -56,12 +71,32 @@ export function ApartmentDetailPage() {
   const send = async (event: React.FormEvent) => {
     event.preventDefault();
     if (saving || submitted || checking || requestError) return;
-    if (!customer) { setError(''); setNeedsVerification(true); return; }
+    let currentId = identityProfile;
+    if (currentId === undefined && user?.roles.includes('CUSTOMER')) {
+      try {
+        currentId = await getIdentity();
+        setIdentityProfile(currentId);
+      } catch {
+        currentId = null;
+      }
+    }
+    const idPresent = Boolean(currentId && currentId.documentNumber);
+    if (!isEmailVerified || !idPresent) {
+      setError('');
+      setNeedsVerification(true);
+      setShowVerificationModal(true);
+      return;
+    }
     setSaving(true); setError('');
     try { const item = await submitRentalRequest(id, message); setSubmitted(item); setActiveRequests([item]); }
     catch (err) {
-      if (err instanceof ApiError && err.code === 'CONTACT_NOT_VERIFIED') setNeedsVerification(true);
-      else { setError(err instanceof Error ? err.message : 'Không thể gửi yêu cầu thuê.'); setRevision(value => value + 1); }
+      if (err instanceof ApiError && err.code === 'CONTACT_NOT_VERIFIED') {
+        setNeedsVerification(true);
+        setShowVerificationModal(true);
+      } else {
+        setError(err instanceof Error ? err.message : 'Không thể gửi yêu cầu thuê.');
+        setRevision(value => value + 1);
+      }
     }
     finally { setSaving(false); }
   };
@@ -94,9 +129,146 @@ export function ApartmentDetailPage() {
           : !user.roles.includes('CUSTOMER') ? <p className="text-sm text-slate-500">Gửi yêu cầu thuê bằng tài khoản người tìm thuê.</p>
           : <form onSubmit={send} className="space-y-3"><label htmlFor="rental-message" className="text-sm font-semibold block">Lời nhắn cho chủ nhà</label><textarea id="rental-message" rows={5} maxLength={2000} value={message} disabled={saving} onChange={e => setMessage(e.target.value)} placeholder="Giới thiệu nhu cầu thuê, thời gian dự kiến chuyển vào..." className="w-full border border-slate-300 rounded-lg p-3 text-sm" />
             <button type="submit" disabled={saving} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg py-3 text-sm font-semibold disabled:opacity-50">{saving ? 'Đang gửi...' : 'Gửi yêu cầu thuê'}</button>
-            {needsVerification && <div role="alert" className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-4"><p>Bạn cần xác thực tài khoản trước khi gửi yêu cầu thuê.</p><Link to="/account/settings/email" className="inline-block bg-emerald-600 text-white font-semibold rounded-lg px-4 py-2 mt-3">Xác thực email</Link></div>}
+            {needsVerification && !showVerificationModal && (
+              <div role="alert" className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
+                <p>Bạn cần xác thực tài khoản trước khi gửi yêu cầu thuê.</p>
+                <div className="flex flex-wrap gap-2 pt-1 items-center">
+                  {!isEmailVerified && (
+                    <Link to="/account/settings/email" state={{ returnTo: `/apartments/${id}` }} className="inline-block bg-emerald-600 text-white font-semibold rounded-lg px-3 py-1.5 text-xs">
+                      Xác thực email
+                    </Link>
+                  )}
+                  {!hasIdentity && (
+                    <Link to="/account/settings/identity" state={{ returnTo: `/apartments/${id}` }} className="inline-block border border-emerald-600 text-emerald-700 font-semibold rounded-lg px-3 py-1.5 text-xs bg-white">
+                      Cập nhật CCCD
+                    </Link>
+                  )}
+                  <button type="button" onClick={() => setShowVerificationModal(true)} className="text-xs text-slate-600 underline ml-auto">
+                    Chi tiết yêu cầu
+                  </button>
+                </div>
+              </div>
+            )}
             <p className="text-xs text-slate-500 leading-5">Gửi yêu cầu chưa giữ chỗ căn hộ. Chủ nhà sẽ xem xét và liên hệ với bạn.</p></form>}
       </div></aside>
     </div>}
+    {showVerificationModal && (
+      <div role="dialog" aria-modal="true" aria-labelledby="verification-modal-title" className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl p-6 sm:p-7 max-w-lg w-full relative space-y-5 animate-in fade-in zoom-in-95">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 id="verification-modal-title" className="text-lg sm:text-xl font-bold text-slate-900">
+                  {!isEmailVerified && !hasIdentity
+                    ? 'Xác thực tài khoản & danh tính'
+                    : !isEmailVerified
+                    ? 'Xác thực email tài khoản'
+                    : 'Bổ sung xác thực danh tính'}
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {!isEmailVerified && !hasIdentity
+                    ? 'Cần hoàn tất cả 2 bước xác thực trước khi gửi yêu cầu thuê'
+                    : !isEmailVerified
+                    ? 'Cần xác thực email để kích hoạt quyền gửi yêu cầu thuê'
+                    : 'Email đã xác minh, vui lòng bổ sung thông tin CCCD'}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowVerificationModal(false)}
+              className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+              aria-label="Đóng"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div role="alert" className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-xl p-3.5 space-y-1">
+            <p className="font-semibold text-xs uppercase tracking-wider text-amber-800">Yêu cầu xác thực</p>
+            <p className="text-xs leading-5">
+              {!isEmailVerified && !hasIdentity
+                ? 'Bạn cần xác thực tài khoản trước khi gửi yêu cầu thuê. Vui lòng xác thực email và hoàn thiện thông tin căn cước công dân.'
+                : !isEmailVerified
+                ? 'Bạn cần xác thực tài khoản trước khi gửi yêu cầu thuê. Vui lòng hoàn tất xác thực email qua mã OTP.'
+                : 'Bạn cần xác thực tài khoản trước khi gửi yêu cầu thuê. Vui lòng bổ sung hồ sơ căn cước công dân để chủ nhà có đủ căn cứ pháp lý xem xét yêu cầu thuê.'}
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className={`p-4 rounded-xl border transition-all ${isEmailVerified ? 'bg-emerald-50/60 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${isEmailVerified ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                    {isEmailVerified ? <Check className="w-4 h-4" /> : '1'}
+                  </span>
+                  <div>
+                    <p className="font-semibold text-sm text-slate-900">1. Xác thực email</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {isEmailVerified ? `Đã xác thực: ${user?.email}` : 'Nhận mã OTP qua email để xác nhận'}
+                    </p>
+                  </div>
+                </div>
+                {isEmailVerified ? (
+                  <span className="text-xs font-semibold text-emerald-700 bg-emerald-100/80 px-2.5 py-1 rounded-full flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" /> Đã xác thực
+                  </span>
+                ) : (
+                  <Link
+                    to="/account/settings/email"
+                    state={{ returnTo: `/apartments/${id}` }}
+                    className="inline-flex items-center gap-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg shadow-xs transition-colors shrink-0"
+                  >
+                    Xác thực email
+                  </Link>
+                )}
+              </div>
+            </div>
+
+            <div className={`p-4 rounded-xl border transition-all ${hasIdentity ? 'bg-emerald-50/60 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${hasIdentity ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                    {hasIdentity ? <Check className="w-4 h-4" /> : '2'}
+                  </span>
+                  <div>
+                    <p className="font-semibold text-sm text-slate-900">2. Xác thực danh tính (CCCD)</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {hasIdentity ? `Đã có hồ sơ CCCD: ${identityProfile?.documentNumber}` : 'Cung cấp số CCCD và ảnh 2 mặt'}
+                    </p>
+                  </div>
+                </div>
+                {hasIdentity ? (
+                  <span className="text-xs font-semibold text-emerald-700 bg-emerald-100/80 px-2.5 py-1 rounded-full flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" /> Đã hoàn tất
+                  </span>
+                ) : (
+                  <Link
+                    to="/account/settings/identity"
+                    state={{ returnTo: `/apartments/${id}` }}
+                    className="inline-flex items-center gap-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg shadow-xs transition-colors shrink-0"
+                  >
+                    Cập nhật CCCD
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-2 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setShowVerificationModal(false)}
+              className="border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   </main></CustomerLayout>;
 }
