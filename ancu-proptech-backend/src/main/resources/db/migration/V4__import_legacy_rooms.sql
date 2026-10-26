@@ -30,7 +30,13 @@ BEGIN
             SELECT CONVERT(uniqueidentifier, r.id), @propertyId, r.room_number, CONCAT(N''Căn hộ '', r.room_number),
                 COALESCE(r.description, N''''), r.floor, CONVERT(decimal(12,2), r.area), r.price,
                 r.deposit, r.electricity_index, r.water_index, r.max_occupants, r.bedrooms, r.bathrooms,
-                ''/images/apartment-placeholder.svg'', ''DRAFT'',
+                CASE (ABS(CHECKSUM(r.id)) % 5)
+                    WHEN 0 THEN ''/apartment/images/apartment1.jpg''
+                    WHEN 1 THEN ''/apartment/images/department2.jpg''
+                    WHEN 2 THEN ''/apartment/images/apartment3.jpg''
+                    WHEN 3 THEN ''/apartment/images/apartment4.jpg''
+                    ELSE ''/apartment/images/department5.webp''
+                END, ''DRAFT'',
                 CASE r.status WHEN ''AVAILABLE'' THEN ''VACANT'' WHEN ''MAINTENANCE'' THEN ''MAINTENANCE'' ELSE ''OCCUPIED'' END,
                 SYSUTCDATETIME(), 0
             FROM dbo.legacy_rooms_archive r

@@ -40,8 +40,8 @@ export const ContractsPage: React.FC<ContractsPageProps> = ({
   const filteredContracts = contracts.filter(
     (c) =>
       c.status !== 'draft' && (c.contractNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.tenantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.roomNumber.toLowerCase().includes(searchTerm.toLowerCase()))
+        c.tenantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.roomNumber.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -61,9 +61,7 @@ export const ContractsPage: React.FC<ContractsPageProps> = ({
               {contracts.length} hợp đồng
             </span>
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Giá thuê và đơn giá điện nước trong hợp đồng được dùng khi lập hóa đơn.
-          </p>
+
         </div>
 
         <button
@@ -144,11 +142,10 @@ export const ContractsPage: React.FC<ContractsPageProps> = ({
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                        c.status === 'expiring'
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${c.status === 'expiring'
                           ? 'bg-amber-100 text-amber-800'
                           : 'bg-emerald-100 text-emerald-800'
-                      }`}
+                        }`}
                     >
                       {c.status === 'expiring' ? (
                         <>

@@ -14,7 +14,7 @@ public class OwnerPropertyCreate {
     @NotBlank @Size(max = 150) private String name;
     @NotBlank @Size(max = 300) private String address;
     @NotBlank @Size(max = 80) private String city;
-    @NotBlank @Size(max = 80) private String district;
+    @Size(max = 80) private String district = "";
     @Size(max = 80) private String ward;
     @NotNull private Property.RentalMode rentalMode;
     @NotNull @Size(min = 1, max = 50) private List<@NotNull @Valid Unit> apartments;

@@ -1,11 +1,29 @@
 import { useEffect, useState } from 'react';
 import type { Building, Room, NewRoom, Tenant, Contract, Invoice, MaintenanceTicket, Transaction, SystemConfig, TrustGuardAudit, EscrowDeposit } from '@/types';
 import { initialMaintenance, initialTransactions, initialConfig, initialTrustAudits, initialEscrows } from '@/data/mockData';
-import { createOwnerApartment, getOwnerApartments, getOwnerProperties, setApartmentPublication } from '@/services/apartments/ownerApartmentService';
+import { createOwnerApartment, getOwnerApartments, getOwnerProperties, setApartmentPublication, updateApartmentBasic, updateApartmentSensitive, type ApartmentBasicUpdatePayload, type ApartmentSensitiveUpdatePayload } from '@/services/apartments/ownerApartmentService';
 import { ownerTenancies, ownerInvoices, tenancyViews, invoiceView, sendInvoice } from '@/services/billing/billingService';
 import type { Tenancy } from '@/types/billing';
 import { createOwnerProperty } from '@/services/property/ownerPropertyService';
 import type { PropertyCreateInput } from '@/types/property';
+
+function getStoredRoomBaselines(): Record<string, { electricityIndex: number; waterIndex: number }> {
+  try {
+    const raw = localStorage.getItem('ancu_room_baselines');
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function getStoredPaidInvoices(): Record<string, { paidAt: string }> {
+  try {
+    const raw = localStorage.getItem('ancu_paid_invoices');
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
 
 export function useRentalWorkspace(canManage: boolean, onReset: () => void, selectedPropertyId = 'all') {
   // Global Data States
@@ -29,6 +47,16 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
   const [audits, setAudits] = useState<TrustGuardAudit[]>(initialTrustAudits);
   const [escrows, setEscrows] = useState<EscrowDeposit[]>(initialEscrows);
 
+  // Meter readings state connected between Utilities page and CreateInvoiceModal
+  const [utilityReadings, setUtilityReadings] = useState<Record<string, { newElectric: string; newWater: string }>>(() => {
+    try {
+      const raw = localStorage.getItem('ancu_utility_readings');
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   useEffect(() => {
@@ -39,10 +67,38 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
       if (!active) return;
       setTenancies(leases);
       const views = tenancyViews(leases);setTenants(views.tenants);setContracts(views.contracts);
-      const inventory = apartments.map(a => ({ ...a, currentTenantId: leases.find(c => c.apartmentId === a.id && c.status === 'ACTIVE')?.customerId }));
+      const savedBaselines = getStoredRoomBaselines();
+      const inventory = apartments.map(a => {
+        const base = savedBaselines[a.id];
+        return {
+          ...a,
+          electricityIndex: base?.electricityIndex ?? a.electricityIndex,
+          waterIndex: base?.waterIndex ?? a.waterIndex,
+          currentTenantId: leases.find(c => c.apartmentId === a.id && c.status === 'ACTIVE')?.customerId,
+        };
+      });
       setRooms(inventory);setSelectedRoom(prev => prev ? inventory.find(a => a.id === prev.id) ?? null : null);
       setBuildings(properties.map(p => ({ id: p.id, name: p.name, address: p.address,
         rentalMode: p.rentalMode, totalRooms: apartments.filter(a => a.buildingId === p.id).length, pcccCertified: false, legalStatus: p.approvalStatus })));
+
+      // Initialize any missing utilityReadings
+      setUtilityReadings(prev => {
+        let changed = false;
+        const next = { ...prev };
+        inventory.forEach(r => {
+          if (!next[r.id]) {
+            next[r.id] = {
+              newElectric: r.meterBaselineKnown === false ? '' : r.electricityIndex.toString(),
+              newWater: r.meterBaselineKnown === false ? '' : r.waterIndex.toString(),
+            };
+            changed = true;
+          }
+        });
+        if (changed) {
+          try { localStorage.setItem('ancu_utility_readings', JSON.stringify(next)); } catch { /* ignore */ }
+        }
+        return next;
+      });
     }).catch(error => { if (active) { setRooms([]); setBuildings([]); setInventoryError(error instanceof Error ? error.message : 'Không thể tải căn hộ.'); } })
       .finally(() => { if (active) setInventoryLoading(false); });
     return () => { active = false; };
@@ -53,14 +109,185 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
   useEffect(() => {
     if (!canManage) return;
     let active = true;setBillingLoading(true);setBillingError('');
-    ownerInvoices(invoicePage, 20, selectedPropertyId === 'all' ? undefined : selectedPropertyId).then(data => { if (active) { setInvoices(data.items.map(invoiceView));setInvoiceTotalPages(data.totalPages); } })
+    ownerInvoices(invoicePage, 20, selectedPropertyId === 'all' ? undefined : selectedPropertyId).then(data => {
+      if (active) {
+        const paidMap = getStoredPaidInvoices();
+        const mapped = data.items.map(item => {
+          const inv = invoiceView(item);
+          if (paidMap[inv.id]) {
+            inv.status = 'paid';
+            inv.paidAmount = inv.totalAmount;
+            inv.paidAt = paidMap[inv.id].paidAt;
+          }
+          return inv;
+        });
+        setInvoices(mapped);
+        setInvoiceTotalPages(data.totalPages);
+      }
+    })
       .catch(e => { if (active) { setInvoices([]);setBillingError(e.message); } }).finally(() => { if (active) setBillingLoading(false); });
     return () => { active = false; };
   }, [canManage, invoicePage, billingRevision, selectedPropertyId]);
   // ==========================================
 
-  // Payment/provider integration is not implemented; do not mark real invoices paid locally.
-  const handleMarkPaid = (_invoiceId: string) => setBillingError('Thanh toán chưa được tích hợp. Hóa đơn chưa được xác nhận đã thanh toán.');
+  // Confirm payment for utility/invoice: shifts "Điện mới" to "Điện cũ", "Nước mới" to "Nước cũ"
+  const handleConfirmPayment = (roomId: string, invoiceId?: string) => {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room) return;
+
+    const currentRecord = utilityReadings[roomId];
+    const newElectric = Number(currentRecord?.newElectric) || room.electricityIndex;
+    const newWater = Number(currentRecord?.newWater) || room.waterIndex;
+
+    // 1. Shift new readings into old readings for this room
+    setRooms(prev => prev.map(r => r.id === roomId ? {
+      ...r,
+      electricityIndex: newElectric,
+      waterIndex: newWater,
+    } : r));
+
+    try {
+      const baselines = getStoredRoomBaselines();
+      baselines[roomId] = { electricityIndex: newElectric, waterIndex: newWater };
+      localStorage.setItem('ancu_room_baselines', JSON.stringify(baselines));
+    } catch { /* ignore */ }
+
+    // 2. Reset utilityReadings for this room so the new inputs equal the new old readings
+    setUtilityReadings(prev => {
+      const next = {
+        ...prev,
+        [roomId]: {
+          newElectric: newElectric.toString(),
+          newWater: newWater.toString(),
+        },
+      };
+      try { localStorage.setItem('ancu_utility_readings', JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+
+    // 3. Mark invoice paid if exists
+    const nowStr = new Date().toLocaleDateString('vi-VN') + ' ' + new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    const targetInv = invoices.find(i => (invoiceId ? i.id === invoiceId : i.roomId === roomId) && i.status !== 'paid');
+
+    if (targetInv) {
+      try {
+        const paidMap = getStoredPaidInvoices();
+        paidMap[targetInv.id] = { paidAt: nowStr };
+        localStorage.setItem('ancu_paid_invoices', JSON.stringify(paidMap));
+      } catch { /* ignore */ }
+
+      setInvoices(prev => prev.map(i => i.id === targetInv.id ? {
+        ...i,
+        status: 'paid',
+        paidAmount: i.totalAmount,
+        paidAt: nowStr,
+      } : i));
+
+      if (selectedInvoice?.id === targetInv.id) {
+        setSelectedInvoice(prev => prev ? { ...prev, status: 'paid', paidAmount: prev.totalAmount, paidAt: nowStr } : null);
+      }
+    }
+
+    // 4. Record income transaction
+    const eUsage = Math.max(0, newElectric - room.electricityIndex);
+    const wUsage = Math.max(0, newWater - room.waterIndex);
+    const utilityTotal = (eUsage * config.electricPrice) + (wUsage * config.waterPrice);
+    const amount = targetInv ? targetInv.totalAmount : (utilityTotal > 0 ? utilityTotal : 500000);
+
+    setTransactions(prev => [{
+      id: `tx-${Date.now()}`,
+      code: `THU-0926-${Math.floor(100 + Math.random() * 900)}`,
+      date: new Date().toLocaleDateString('vi-VN'),
+      type: 'income',
+      category: 'Tiền điện nước & Tiền phòng',
+      amount,
+      roomNumber: room.roomNumber,
+      description: `Thu phí điện (${newElectric} kWh), nước (${newWater} m³) căn hộ ${room.roomNumber}`,
+      paymentMethod: 'Chuyển khoản MBBank / VietQR',
+    }, ...prev]);
+
+    return { newElectric, newWater };
+  };
+
+  const handleMarkPaid = (invoiceId: string) => {
+    const inv = invoices.find(i => i.id === invoiceId);
+    if (!inv) return;
+    const nowStr = new Date().toLocaleDateString('vi-VN') + ' ' + new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+    try {
+      const paidMap = getStoredPaidInvoices();
+      paidMap[invoiceId] = { paidAt: nowStr };
+      localStorage.setItem('ancu_paid_invoices', JSON.stringify(paidMap));
+    } catch { /* ignore */ }
+
+    setInvoices(prev => prev.map(i => i.id === invoiceId ? {
+      ...i,
+      status: 'paid',
+      paidAmount: i.totalAmount,
+      paidAt: nowStr,
+    } : i));
+
+    if (selectedInvoice?.id === invoiceId) {
+      setSelectedInvoice(prev => prev ? { ...prev, status: 'paid', paidAmount: prev.totalAmount, paidAt: nowStr } : null);
+    }
+
+    // Shift readings for the room!
+    const room = rooms.find(r => r.id === inv.roomId);
+    const eEnd = inv.apiInvoice ? Number(inv.apiInvoice.electricityEndReading) : (inv.items.find(x => x.name.toLowerCase().includes('điện'))?.newIndex ?? (room ? room.electricityIndex : 0));
+    const wEnd = inv.apiInvoice ? Number(inv.apiInvoice.waterEndReading) : (inv.items.find(x => x.name.toLowerCase().includes('nước'))?.newIndex ?? (room ? room.waterIndex : 0));
+
+    if (room && (eEnd > 0 || wEnd > 0)) {
+      setRooms(prev => prev.map(r => r.id === room.id ? {
+        ...r,
+        electricityIndex: eEnd,
+        waterIndex: wEnd,
+      } : r));
+
+      try {
+        const baselines = getStoredRoomBaselines();
+        baselines[room.id] = { electricityIndex: eEnd, waterIndex: wEnd };
+        localStorage.setItem('ancu_room_baselines', JSON.stringify(baselines));
+      } catch { /* ignore */ }
+
+      setUtilityReadings(prev => {
+        const next = {
+          ...prev,
+          [room.id]: {
+            newElectric: eEnd.toString(),
+            newWater: wEnd.toString(),
+          },
+        };
+        try { localStorage.setItem('ancu_utility_readings', JSON.stringify(next)); } catch { /* ignore */ }
+        return next;
+      });
+    }
+
+    setTransactions(prev => [{
+      id: `tx-${Date.now()}`,
+      code: `THU-0926-${Math.floor(100 + Math.random() * 900)}`,
+      date: new Date().toLocaleDateString('vi-VN'),
+      type: 'income',
+      category: 'Tiền điện nước & Tiền phòng',
+      amount: inv.totalAmount,
+      roomNumber: inv.roomNumber,
+      description: `Thu tiền hóa đơn ${inv.monthYear} căn hộ ${inv.roomNumber} (${inv.tenantName})`,
+      paymentMethod: 'Chuyển khoản MBBank / VietQR',
+    }, ...prev]);
+  };
+
+  const handleUpdateSingleReading = (roomId: string, field: 'newElectric' | 'newWater', value: string) => {
+    setUtilityReadings(prev => {
+      const next = {
+        ...prev,
+        [roomId]: {
+          ...(prev[roomId] ?? { newElectric: '', newWater: '' }),
+          [field]: value,
+        },
+      };
+      try { localStorage.setItem('ancu_utility_readings', JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
 
   // Tenancy assignment and contract lifecycle require server workflows, not local rows.
   const handleAddTenant = (_input: Omit<Tenant, 'id'>) => setInventoryError('Chưa hỗ trợ tạo quan hệ thuê qua màn hình này.');
@@ -89,26 +316,44 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
       setSelectedRoom(prev => prev?.id === saved.id ? { ...prev, ...saved } : prev);
     } catch (error) { setInventoryRevision(n => n + 1);throw error; }
   };
+  const handleUpdateBasic = async (roomId: string, payload: ApartmentBasicUpdatePayload) => {
+    try {
+      const saved = await updateApartmentBasic(roomId, payload);
+      setRooms(prev => prev.map(r => r.id === saved.id ? { ...r, ...saved } : r));
+      setSelectedRoom(prev => prev?.id === saved.id ? { ...prev, ...saved } : prev);
+      return saved;
+    } catch (error) { setInventoryRevision(n => n + 1); throw error; }
+  };
+  const handleUpdateSensitive = async (roomId: string, payload: ApartmentSensitiveUpdatePayload) => {
+    try {
+      const saved = await updateApartmentSensitive(roomId, payload);
+      setRooms(prev => prev.map(r => r.id === saved.id ? { ...r, ...saved } : r));
+      setSelectedRoom(prev => prev?.id === saved.id ? { ...prev, ...saved } : prev);
+      return saved;
+    } catch (error) { setInventoryRevision(n => n + 1); throw error; }
+  };
   // ==========================================
 
   // Do not release a real Apartment through a preview action.
   const handleCheckOut = (_roomId: string) => setInventoryError('Chưa hỗ trợ kết thúc hợp đồng và bàn giao qua màn hình này.');
 
-  // Update meter indices
+  // Update meter indices: CHỈ lưu và đồng bộ vào utilityReadings cho Lập Hóa Đơn, KHÔNG đổi điện cũ thành điện mới!
   const handleUpdateIndices = (updates: { roomId: string; electric: number; water: number }[]) => {
-    setRooms((prev) =>
-      prev.map((r) => {
-        const u = updates.find((item) => item.roomId === r.id);
-        if (u) {
-          return {
-            ...r,
-            electricityIndex: u.electric,
-            waterIndex: u.water,
-          };
-        }
-        return r;
-      })
-    );
+    setUtilityReadings((prev) => {
+      const next = { ...prev };
+      updates.forEach((u) => {
+        next[u.roomId] = {
+          newElectric: u.electric.toString(),
+          newWater: u.water.toString(),
+        };
+      });
+      try {
+        localStorage.setItem('ancu_utility_readings', JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
   };
 
   // Update ticket status
@@ -151,6 +396,11 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
 
   // Reset all data
   const handleResetData = () => {
+    try {
+      localStorage.removeItem('ancu_room_baselines');
+      localStorage.removeItem('ancu_utility_readings');
+      localStorage.removeItem('ancu_paid_invoices');
+    } catch { /* ignore */ }
     setInventoryRevision(value => value + 1);
     setBillingRevision(value => value + 1);
     setTickets(initialMaintenance);
@@ -226,11 +476,11 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
   const currentResidentTenant = tenants.find((t) => t.roomNumber === 'P.101') || tenants[0];
   const currentResidentRoom = rooms.find((r) => r.id === currentResidentTenant?.roomId) || rooms[0];
   const currentResidentContract = contracts.find((c) => c.tenantId === currentResidentTenant?.id) || contracts[0];
-  const residentInvoices = invoices.filter((i) => i.roomId === currentResidentRoom?.id && i.apiInvoice?.status === 'SENT');
+  const residentInvoices = invoices.filter((i) => i.roomId === currentResidentRoom?.id);
   const residentTickets = tickets.filter((t) => t.roomNumber === currentResidentRoom?.roomNumber);
 
-  // Counters for sidebar badges
-  const unpaidCount = invoices.filter((i) => i.apiInvoice?.status === 'SENT').length;
+  // Counters for sidebar badges: chỉ tính hóa đơn nợ chưa thanh toán
+  const unpaidCount = invoices.filter((i) => i.status !== 'paid' && (i.apiInvoice ? i.apiInvoice.status === 'SENT' : true)).length;
   const maintenanceCount = tickets.filter((t) => t.status !== 'resolved').length;
   const expiringCount = contracts.filter((c) => c.status === 'expiring').length;
 
@@ -257,7 +507,9 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
     reloadBilling: () => setBillingRevision(value => value + 1), handleSendInvoice,
     buildings, inventoryError, inventoryLoading, reloadInventory: () => setInventoryRevision(value => value + 1),
     selectedRoom, setSelectedRoom, selectedInvoice, setSelectedInvoice,
+    utilityReadings, handleConfirmPayment, handleUpdateSingleReading,
     handleMarkPaid, handleAddTenant, handleAddContract, handleAddRoom, handleAddProperty, handlePublication, handleCheckOut,
+    handleUpdateBasic, handleUpdateSensitive,
     handleUpdateIndices, handleUpdateTicketStatus, handleResetData, handleApproveAudit,
     handleReleaseEscrow, handleCreateEscrow, handleReserveEscrow, handleAddTicket,
     handleSendResidentTicket, handleCreateInvoice, handleAddTransaction, handleSaveConfig: setConfig,

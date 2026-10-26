@@ -93,9 +93,7 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
               {filteredRooms.length}/{rooms.length} căn hộ
             </span>
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Quản lý cùng nguồn căn hộ với Home; bản nháp và tài sản chưa duyệt chỉ hiển thị tại đây.
-          </p>
+          
         </div>
 
         <button
@@ -191,8 +189,13 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
                       </span>
                       {room.propertyApprovalStatus === 'APPROVED' && <span title="Tài sản đã được duyệt"><ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /></span>}
                     </div>
+                    {room.title && (
+                      <p className="text-xs font-medium text-slate-700 mt-0.5 line-clamp-1" title={room.title}>
+                        {room.title}
+                      </p>
+                    )}
                     <span className="text-[11px] text-slate-400">
-                      Tầng {room.floor} • {room.area}m²
+                      {room.roomNumber.toLowerCase().includes('nguyên căn') ? `${room.floor} tầng` : `Tầng ${room.floor}`} • {room.area}m²
                     </span>
                     <p className="text-[11px] text-slate-500 mt-1">{room.propertyName}</p>
                     <p className="text-[11px] text-slate-500">{room.publicationStatus === 'PUBLISHED' ? 'Đã đăng' : room.publicationStatus === 'HIDDEN' ? 'Đã ẩn' : 'Bản nháp'}</p>

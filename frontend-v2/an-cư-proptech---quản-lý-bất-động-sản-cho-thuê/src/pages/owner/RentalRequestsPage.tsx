@@ -72,7 +72,6 @@ export function RentalRequestsPage({ onDecision, propertyId }: { onDecision: () 
       <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-wrap justify-between items-center gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Yêu cầu thuê căn hộ</h1>
-          <p className="text-sm text-slate-500 mt-2">Ưu tiên yêu cầu chờ xử lý trước, sau đó sắp xếp theo thời gian gửi.</p>
         </div>
         <button
           onClick={reload}

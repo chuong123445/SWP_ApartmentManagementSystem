@@ -1,64 +1,107 @@
-import React, { useState } from 'react';
-import { Zap, Droplets, Save, Calculator, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Zap, Droplets, Save, CheckCircle2, FileText, ShieldCheck } from 'lucide-react';
 import { Room, Tenant, SystemConfig } from '@/types';
+import type { Tenancy } from '@/types/billing';
 
 interface UtilitiesPageProps {
   rooms: Room[];
   tenants: Tenant[];
+  tenancies?: Tenancy[];
   config: SystemConfig;
+  utilityReadings?: Record<string, { newElectric: string; newWater: string }>;
   onUpdateIndices: (updates: { roomId: string; electric: number; water: number }[]) => void;
+  onOpenCreateInvoice?: (contractId?: string, roomId?: string) => void;
 }
 
 export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
   rooms,
   tenants,
+  tenancies = [],
   config,
+  utilityReadings,
   onUpdateIndices,
+  onOpenCreateInvoice,
 }) => {
-  // Local state for meter readings
-  const [readings, setReadings] = useState<{
+  // Helper to get saved/initial reading for a room
+  const getInitialReading = (room: Room) => {
+    const saved = utilityReadings?.[room.id];
+    if (saved && saved.newElectric !== '' && saved.newWater !== '') {
+      return {
+        newElectric: saved.newElectric,
+        newWater: saved.newWater,
+      };
+    }
+    return {
+      newElectric: room.meterBaselineKnown === false ? '' : room.electricityIndex.toString(),
+      newWater: room.meterBaselineKnown === false ? '' : room.waterIndex.toString(),
+    };
+  };
+
+  // Draft readings: ONLY local form state while typing!
+  // Will NOT be saved or synced until owner clicks "Lưu & Đồng Bộ Toàn Bộ"
+  const [draftReadings, setDraftReadings] = useState<{
     [roomId: string]: { newElectric: string; newWater: string };
   }>(() => {
     const init: { [roomId: string]: { newElectric: string; newWater: string } } = {};
     rooms.forEach((r) => {
-      init[r.id] = {
-        newElectric: r.meterBaselineKnown === false ? '' : r.electricityIndex.toString(),
-        newWater: r.meterBaselineKnown === false ? '' : r.waterIndex.toString(),
-      };
+      init[r.id] = getInitialReading(r);
     });
     return init;
   });
 
   const [savedSuccess, setSavedSuccess] = useState(false);
 
+  // Sync draft state with saved utilityReadings only on initial mount or when external utilityReadings/rooms change
+  useEffect(() => {
+    setDraftReadings(() => {
+      const init: { [roomId: string]: { newElectric: string; newWater: string } } = {};
+      rooms.forEach((r) => {
+        init[r.id] = getInitialReading(r);
+      });
+      return init;
+    });
+  }, [utilityReadings, rooms]);
+
   const handleElectricChange = (roomId: string, val: string) => {
-    setReadings((prev) => ({
+    // Only update local draft state, DO NOT auto-save!
+    setDraftReadings((prev) => ({
       ...prev,
-      [roomId]: { ...prev[roomId], newElectric: val },
+      [roomId]: { ...(prev[roomId] ?? { newElectric: '', newWater: '' }), newElectric: val },
     }));
   };
 
   const handleWaterChange = (roomId: string, val: string) => {
-    setReadings((prev) => ({
+    // Only update local draft state, DO NOT auto-save!
+    setDraftReadings((prev) => ({
       ...prev,
-      [roomId]: { ...prev[roomId], newWater: val },
+      [roomId]: { ...(prev[roomId] ?? { newElectric: '', newWater: '' }), newWater: val },
     }));
   };
 
+  // Only perform save and synchronization when owner explicitly clicks this button!
   const handleSaveAll = () => {
-    const updates = rooms.filter(r => r.meterBaselineKnown !== false).map((r) => ({
-      roomId: r.id,
-      electric: Number(readings[r.id]?.newElectric) || r.electricityIndex,
-      water: Number(readings[r.id]?.newWater) || r.waterIndex,
-    }));
+    const updates = rooms.filter(r => r.meterBaselineKnown !== false).map((r) => {
+      const current = draftReadings[r.id];
+      return {
+        roomId: r.id,
+        electric: Number(current?.newElectric) || r.electricityIndex,
+        water: Number(current?.newWater) || r.waterIndex,
+      };
+    });
     onUpdateIndices(updates);
     setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+    setTimeout(() => setSavedSuccess(false), 3500);
+  };
+
+  const handleOpenInvoiceForRoom = (room: Room) => {
+    if (!onOpenCreateInvoice) return;
+    const tenancy = tenancies.find(t => t.apartmentId === room.id && t.status === 'ACTIVE');
+    onOpenCreateInvoice(tenancy?.id, room.id);
   };
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Header */}
+      {/* Header - Bỏ nút Lập Hóa Đơn Mới theo yêu cầu */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
         <div>
           <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -67,37 +110,34 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
               Kỳ chốt: Tháng 09/2026
             </span>
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Đơn giá quy định: Điện {config.electricPrice.toLocaleString('vi-VN')} đ/kWh • Nước {config.waterPrice.toLocaleString('vi-VN')} đ/m³
-          </p>
+
         </div>
 
         <div className="flex items-center gap-2">
           {savedSuccess && (
             <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
-              <CheckCircle2 className="w-4 h-4" /> Đã lưu chỉ số thành công!
+              <CheckCircle2 className="w-4 h-4" /> Đã lưu & đồng bộ sang Lập Hóa Đơn!
             </span>
           )}
           <button
             onClick={handleSaveAll}
             id="btn-save-utilities"
-            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+            className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
           >
             <Save className="w-4 h-4" />
-            <span>Lưu & Chốt Toàn Bộ Tòa Nhà</span>
+            <span>Lưu & Đồng Bộ Toàn Bộ</span>
           </button>
         </div>
       </div>
 
-      {/* Info bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Info bar & Workflow Guidance */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-amber-50/60 border border-amber-200 p-4 rounded-xl flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
             <Zap className="w-5 h-5" />
           </div>
           <div>
             <div className="text-xs font-bold text-amber-900">Đơn giá điện: {config.electricPrice.toLocaleString('vi-VN')} đ / kWh</div>
-            <div className="text-[11px] text-amber-700">Công tơ điện riêng từng phòng tử tế</div>
           </div>
         </div>
 
@@ -107,12 +147,20 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
           </div>
           <div>
             <div className="text-xs font-bold text-sky-900">Đơn giá nước: {config.waterPrice.toLocaleString('vi-VN')} đ / m³</div>
-            <div className="text-[11px] text-sky-700">Đồng hồ nước kiểm định định kỳ</div>
+          </div>
+        </div>
+
+        <div className="bg-emerald-50/60 border border-emerald-200 p-4 rounded-xl flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-xs font-bold text-emerald-900">Nhấn "Lưu & đồng bộ" để chuyển dữ liệu</div>
           </div>
         </div>
       </div>
 
-      {/* Utilities Table matching Image 5 */}
+      {/* Utilities Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
@@ -127,13 +175,14 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
                 <th className="px-3.5 py-3 bg-sky-50/60 text-sky-900">Nước Mới (Nhập)</th>
                 <th className="px-3.5 py-3 text-right bg-sky-50/80 text-sky-900">Tiêu Thụ (m³)</th>
                 <th className="px-3.5 py-3 text-right font-bold">Tổng Tiền Đ+N</th>
+                <th className="px-3.5 py-3 text-center font-bold">Thao Tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {rooms.map((room) => {
                 const tenant = tenants.find((t) => t.id === room.currentTenantId);
                 const missingBaseline = room.meterBaselineKnown === false;
-                const currentRecord = readings[room.id] || {
+                const currentRecord = draftReadings[room.id] ?? {
                   newElectric: missingBaseline ? '' : room.electricityIndex.toString(),
                   newWater: missingBaseline ? '' : room.waterIndex.toString(),
                 };
@@ -160,7 +209,7 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
                     </td>
 
                     {/* Electric Old */}
-                    <td className="px-3.5 py-2.5 font-mono text-slate-600 bg-amber-50/20">
+                    <td className="px-3.5 py-2.5 font-mono text-slate-700 font-semibold bg-amber-50/20">
                       {missingBaseline ? 'Chưa nhập' : room.electricityIndex}
                     </td>
 
@@ -184,7 +233,7 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
                     </td>
 
                     {/* Water Old */}
-                    <td className="px-3.5 py-2.5 font-mono text-slate-600 bg-sky-50/20">
+                    <td className="px-3.5 py-2.5 font-mono text-slate-700 font-semibold bg-sky-50/20">
                       {missingBaseline ? 'Chưa nhập' : room.waterIndex}
                     </td>
 
@@ -210,6 +259,26 @@ export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
                     {/* Total Cost */}
                     <td className="px-3.5 py-2.5 text-right font-bold text-slate-900 text-sm">
                       {totalCost.toLocaleString('vi-VN')} đ
+                    </td>
+
+                    {/* Action buttons: Only Lập hóa đơn */}
+                    <td className="px-3.5 py-2.5 text-center">
+                      {!tenant ? (
+                        <span className="text-[11px] text-slate-400 italic">Chưa thuê</span>
+                      ) : (
+                        <div className="flex items-center justify-center">
+                          {onOpenCreateInvoice && (
+                            <button
+                              onClick={() => handleOpenInvoiceForRoom(room)}
+                              title="Chuyển dữ liệu tính sẵn sang Lập Hóa Đơn"
+                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold flex items-center gap-1 transition-colors shadow-2xs"
+                            >
+                              <FileText className="w-3 h-3" />
+                              <span>Lập hóa đơn</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );

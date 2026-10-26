@@ -54,8 +54,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const occupancyRate = totalRooms === 0 ? 0 : Math.round((rentedRooms / totalRooms) * 100);
 
   const totalInvoiceAmount = invoices.reduce((acc, inv) => acc + inv.totalAmount, 0);
-  const totalPaidAmount = invoices.reduce((acc, inv) => acc + inv.paidAmount, 0);
-  const totalDebtAmount = totalInvoiceAmount - totalPaidAmount;
+  const totalPaidAmount = invoices.reduce((acc, inv) => acc + (inv.status === 'paid' ? inv.totalAmount : inv.paidAmount), 0);
+  const totalDebtAmount = Math.max(0, totalInvoiceAmount - totalPaidAmount);
 
   const urgentTickets = tickets.filter((t) => t.status !== 'resolved');
   const expiringContracts = contracts.filter((c) => c.status === 'expiring');
@@ -78,9 +78,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <h1 className="text-xl font-bold text-slate-900">
             Bảng Điều Khiển Vận Hành - {propertyName}
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Tổng quan công suất phòng, dòng tiền thanh toán qua VietQR và kiểm định pháp lý bảo chứng Escrow.
-          </p>
+         
         </div>
 
         {/* Quick Actions */}
@@ -229,7 +227,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <h2 className="text-sm font-bold text-slate-900">
                 Biểu Đồ Doanh Thu & Lợi Nhuận 6 Tháng Gần Nhất (Triệu VNĐ)
               </h2>
-              <p className="text-xs text-slate-400">Doanh thu phòng, chi phí vận hành và dòng tiền ký quỹ Escrow</p>
+              
             </div>
             <span className="text-xs font-semibold px-2 py-1 bg-slate-100 rounded text-slate-700">
               Năm 2026

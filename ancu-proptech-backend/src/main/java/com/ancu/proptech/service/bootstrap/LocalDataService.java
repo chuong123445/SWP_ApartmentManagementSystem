@@ -34,6 +34,13 @@ public class LocalDataService {
         String[] titles = {"Studio thoáng sáng — A.101", "Studio có ban công — A.102", "Căn hộ 1 phòng ngủ — A.201", "Căn hộ 1 phòng ngủ — A.202", "Căn hộ 2 phòng ngủ — B.101", "Căn hộ gia đình — B.201", "Căn hộ rộng thoáng — B.202", "Căn hộ chưa đăng — B.301"};
         int[] prices = {4500000, 5000000, 6500000, 7000000, 8500000, 11500000, 12000000, 9000000};
         int[] areas = {24, 28, 36, 40, 45, 60, 65, 50};
+        String[] sampleImages = {
+            "/apartment/images/apartment1.jpg",
+            "/apartment/images/department2.jpg",
+            "/apartment/images/apartment3.jpg",
+            "/apartment/images/apartment4.jpg",
+            "/apartment/images/department5.webp"
+        };
         for (int i = 0; i < titles.length; i++) {
             Apartment apartment = new Apartment();
             apartment.setProperty(i < 4 ? central : east);
@@ -46,7 +53,7 @@ public class LocalDataService {
             apartment.setAdvertisedMonthlyRent(BigDecimal.valueOf(prices[i]));
             apartment.setBedrooms(i < 2 ? 0 : i < 4 ? 1 : 2);
             apartment.setBathrooms(1);
-            apartment.setCoverImagePath("/images/apartment-placeholder.svg");
+            apartment.setCoverImagePath(sampleImages[i % sampleImages.length]);
             apartment.setAmenities(new ArrayList<>(List.of("Máy lạnh", "Khu bếp", "Phòng tắm riêng", "Chỗ để xe")));
             apartment.setPublicationStatus(i == 7 ? Apartment.PublicationStatus.DRAFT : Apartment.PublicationStatus.PUBLISHED);
             apartment.setAvailability(Apartment.Availability.VACANT);

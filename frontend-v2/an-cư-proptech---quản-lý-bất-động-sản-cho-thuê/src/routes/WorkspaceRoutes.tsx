@@ -95,8 +95,9 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
             <InvoicesPage
               invoices={invoices}
               onOpenInvoiceModal={(inv) => setSelectedInvoice(inv)}
-              onOpenCreateInvoiceModal={() => setIsCreateInvoiceOpen(true)}
+              onOpenCreateInvoiceModal={() => navigation.openCreateInvoice()}
               onSendInvoice={workspace.handleSendInvoice}
+              onMarkPaid={workspace.handleMarkPaid}
               error={workspace.billingError} loading={workspace.billingLoading} onReload={workspace.reloadBilling}
               page={workspace.invoicePage} totalPages={workspace.invoiceTotalPages} onPageChange={workspace.setInvoicePage}
             />
@@ -106,8 +107,11 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
             <UtilitiesPage
               rooms={rooms}
               tenants={tenants}
+              tenancies={workspace.tenancies}
               config={config}
+              utilityReadings={workspace.utilityReadings}
               onUpdateIndices={handleUpdateIndices}
+              onOpenCreateInvoice={(contractId, roomId) => navigation.openCreateInvoice(contractId, roomId)}
             />
           )}
 

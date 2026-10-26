@@ -15,7 +15,14 @@ export function useWorkspaceNavigation(canManage: boolean) {
   const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false);
   const [propertyForDossierId, setPropertyForDossierId] = useState<string | null>(null);
   const [isCreateInvoiceOpen, setIsCreateInvoiceOpen] = useState(false);
+  const [targetInvoiceContractId, setTargetInvoiceContractId] = useState<string | null>(null);
+  const [targetInvoiceRoomId, setTargetInvoiceRoomId] = useState<string | null>(null);
 
+  const openCreateInvoice = (contractId?: string, roomId?: string) => {
+    setTargetInvoiceContractId(contractId ?? null);
+    setTargetInvoiceRoomId(roomId ?? null);
+    setIsCreateInvoiceOpen(true);
+  };
 
   // Quick Action Handler from Header
   const handleQuickAction = (
@@ -29,7 +36,7 @@ export function useWorkspaceNavigation(canManage: boolean) {
         setActiveTab('tenants');
         break;
       case 'add-invoice':
-        setIsCreateInvoiceOpen(true);
+        openCreateInvoice();
         break;
       case 'record-meter':
         setActiveTab('utilities');
@@ -44,7 +51,8 @@ export function useWorkspaceNavigation(canManage: boolean) {
   const selectTab = (tab: ActiveTab) => { if (canManage || tab === 'market') setActiveTab(tab); };
   const resetToDashboard = () => setActiveTab('dashboard');
   return { userRole, activeTab, selectedBuildingId, setSelectedBuildingId, searchQuery, setSearchQuery,
-    isAddRoomOpen, setIsAddRoomOpen, isAddPropertyOpen, setIsAddPropertyOpen, propertyForDossierId, setPropertyForDossierId, isCreateInvoiceOpen, setIsCreateInvoiceOpen,
-    handleQuickAction, selectTab, resetToDashboard };
+    isAddRoomOpen, setIsAddRoomOpen, isAddPropertyOpen, setIsAddPropertyOpen, propertyForDossierId, setPropertyForDossierId,
+    isCreateInvoiceOpen, setIsCreateInvoiceOpen, targetInvoiceContractId, setTargetInvoiceContractId, targetInvoiceRoomId, setTargetInvoiceRoomId,
+    openCreateInvoice, handleQuickAction, selectTab, resetToDashboard };
 }
 export type WorkspaceNavigation = ReturnType<typeof useWorkspaceNavigation>;

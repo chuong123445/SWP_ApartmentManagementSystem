@@ -12,6 +12,7 @@ import java.util.*;
 public class Apartment {
     public enum PublicationStatus { DRAFT, PUBLISHED, HIDDEN }
     public enum Availability { VACANT, CONTRACT_IN_PROGRESS, OCCUPIED, MAINTENANCE }
+    public enum EditApprovalStatus { NONE, PENDING }
     @Id @GeneratedValue(strategy = GenerationType.UUID) private UUID id;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "property_id", nullable = false)
     private Property property;
@@ -33,5 +34,6 @@ public class Apartment {
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 24) private PublicationStatus publicationStatus;
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 24) private Availability availability;
     @Column(nullable = false, columnDefinition = "datetime2(6)") private Instant createdAt;
+    @Enumerated(EnumType.STRING) @Column(nullable = false, length = 24) private EditApprovalStatus editApprovalStatus = EditApprovalStatus.NONE;
     @Version private long version;
 }

@@ -78,9 +78,7 @@ export const MaintenancePage: React.FC<MaintenancePageProps> = ({
               {tickets.filter((t) => t.status !== 'resolved').length} sự cố đang mở
             </span>
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Quản lý yêu cầu sửa chữa từ khách thuê, phân công thợ và nghiệm thu chi phí.
-          </p>
+         
         </div>
 
         <button

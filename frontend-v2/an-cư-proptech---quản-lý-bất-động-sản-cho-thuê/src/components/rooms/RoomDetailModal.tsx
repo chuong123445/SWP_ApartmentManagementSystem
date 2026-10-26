@@ -16,12 +16,15 @@ import {
   Lock,
   CheckCircle2,
   Award,
+  Edit3,
+  Clock,
 } from 'lucide-react';
 import { Room, Tenant, Invoice, Contract } from '@/types';
 import { ApartmentImage } from '@/components/apartments/ApartmentImage';
 
 interface RoomDetailModalProps {
   onPublication?: (room: Room, status: 'PUBLISHED' | 'HIDDEN') => Promise<void>;
+  onOpenEdit?: (room: Room) => void;
   room: Room | null;
   tenant: Tenant | undefined;
   contract: Contract | undefined;
@@ -42,6 +45,7 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
   onCheckOut,
   onReserveEscrow,
   onPublication,
+  onOpenEdit,
 }) => {
   const [reserveSuccess, setReserveSuccess] = useState(false);
   const [publicationBusy, setPublicationBusy] = useState(false);const [publicationError, setPublicationError] = useState('');
@@ -62,27 +66,53 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
         <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2.5">
-              <h3 className="text-xl font-bold">Căn Hộ {room.roomNumber}</h3>
+              <h3 className="text-xl font-bold">{room.title || `Căn Hộ ${room.roomNumber}`}</h3>
               <span className="text-xs bg-emerald-500/20 text-emerald-300 font-semibold px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 {room.propertyApprovalStatus === 'APPROVED' ? 'Tài sản đã được duyệt' : room.propertyApprovalStatus === 'DRAFT' ? 'Tài sản nháp – chưa gửi hồ sơ' : room.propertyApprovalStatus === 'NEEDS_INFORMATION' ? 'Tài sản cần bổ sung hồ sơ' : room.propertyApprovalStatus === 'REJECTED' ? 'Tài sản bị từ chối' : 'Tài sản chờ duyệt'}
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Tầng {room.floor} • Diện tích: {room.area}m² • Tối đa: {room.maxOccupants} người • {room.propertyName}
+              {room.roomNumber.toLowerCase().includes('nguyên căn') ? 'Nhà nguyên căn' : `Phòng ${room.roomNumber}`} • {room.roomNumber.toLowerCase().includes('nguyên căn') ? `${room.floor} tầng` : `Tầng ${room.floor}`} • Diện tích: {room.area}m² • Tối đa: {room.maxOccupants} người • {room.propertyName}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            id="btn-close-room-modal"
-            className="w-8 h-8 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {onOpenEdit && (
+              <button
+                type="button"
+                onClick={() => onOpenEdit(room)}
+                id="btn-edit-room-open"
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Chỉnh sửa</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              id="btn-close-room-modal"
+              className="w-8 h-8 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Modal Body */}
         <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+          {room.editApprovalStatus === 'PENDING' && (
+            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1">
+              <div className="font-bold flex items-center gap-1.5 text-amber-950">
+                <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Đang có bản chỉnh sửa nhạy cảm chờ Admin phê duyệt:</span>
+              </div>
+              {room.pendingEdit && (
+                <div className="text-[11px] text-amber-800 bg-white/70 p-2 rounded-lg border border-amber-100 mt-1">
+                  Giá đề xuất: <strong>{Number(room.pendingEdit.advertisedMonthlyRent).toLocaleString('vi-VN')} đ</strong> • Cọc: <strong>{room.pendingEdit.deposit ? `${Number(room.pendingEdit.deposit).toLocaleString('vi-VN')} đ` : 'Không'}</strong> • Diện tích: <strong>{room.pendingEdit.areaM2} m²</strong> • Điện: <strong>{room.pendingEdit.electricityIndex ?? 'N/A'} kWh</strong> • Nước: <strong>{room.pendingEdit.waterIndex ?? 'N/A'} m³</strong>
+                </div>
+              )}
+            </div>
+          )}
           {/* Room Image */}
           {room.image && (
             <div className="relative h-44 w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
