@@ -1,7 +1,7 @@
 # Tổng kết triển khai hồ sơ quyền cho thuê
 
-**Dự án:** An Cư PropTech — Apartment Rental and Management System  
-**Ngày:** 27/10/2026  
+**Dự án:** An Cư PropTech — Apartment Rental and Management System
+**Ngày:** 27/10/2026
 **Kết quả:** đã triển khai backend, frontend, kiểm thử và tài liệu cho luồng ủy quyền/thuê lại, quyền có thời hạn và nhắc hạn. Giữ luồng chính chủ từ Auth0 đã có.
 
 ## 1. Những đầu công việc đã hoàn thành
