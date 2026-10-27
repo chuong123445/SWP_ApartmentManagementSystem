@@ -2,6 +2,7 @@ export type RoomStatus = 'rented' | 'available' | 'overdue' | 'maintenance' | 'e
 
 
 export interface Building {
+  rightType?: 'OWNERSHIP'|'AUTHORIZATION'|'SUBLEASE'|null; rightsValidFrom?: string|null; rightsValidUntil?: string|null;
   verificationSource?: string | null;
   rentalMode?: import('@/types/property').RentalMode | null;
   id: string;

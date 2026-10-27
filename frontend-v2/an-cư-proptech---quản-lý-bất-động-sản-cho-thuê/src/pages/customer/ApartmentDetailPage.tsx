@@ -11,6 +11,7 @@ import type { RentalRequest } from '@/types/rental';
 import type { IdentityProfile } from '@/types/identity';
 import { availabilityLabel, formatRent, requestStatusLabel } from '@/utils/format';
 import { ApiError } from '@/services/http/client';
+import { rightLabels } from '@/types/dossier';
 
 export function ApartmentDetailPage() {
   const { id = '' } = useParams();
@@ -121,12 +122,14 @@ export function ApartmentDetailPage() {
       </section>
       <aside className="space-y-5"><div className="bg-white border border-slate-200 rounded-2xl p-6 lg:sticky lg:top-24">
         <p className="text-sm text-slate-500">Giá niêm yết / tháng</p><p className="text-3xl font-bold text-emerald-700 mt-2">{formatRent(apartment.advertisedMonthlyRent)}</p>
+        {apartment.lessorRelationship&&apartment.lessorRelationship!=='UNSPECIFIED'&&<p className="text-sm mt-2">Bên cho thuê: {rightLabels[apartment.lessorRelationship]}</p>}
+        {apartment.rightsValidUntil&&<p className="text-sm mt-1">Quyền cho thuê đến hết: {apartment.rightsValidUntil}</p>}
         {apartment.electricityUnitPrice != null && <p className="text-sm mt-2">Điện: {formatRent(apartment.electricityUnitPrice)}/kWh</p>}
         {apartment.waterUnitPrice != null && <p className="text-sm mt-1">Nước: {formatRent(apartment.waterUnitPrice)}/m³</p>}
         <div className="my-5 border-y border-slate-100 py-4"><p className="text-xs text-slate-500 mb-1">Chủ nhà</p><p className="font-semibold">{apartment.publicOwner.displayName}</p><p className="text-xs text-slate-500 mt-1">{apartment.propertyName}</p></div>
         {error && <p role="alert" className="text-sm text-rose-700 mb-3">{error}</p>}
         {checking ? <p role="status">Đang tải trạng thái yêu cầu...</p> : requestError ? <div role="alert"><p>{requestError}</p><button onClick={() => setRevision(value => value + 1)} className="underline mt-2">Thử lại</button></div> : submitted ? <div role="status" className="bg-emerald-50 border border-emerald-200 rounded-xl p-4"><CheckCircle2 className="w-6 h-6 text-emerald-600 mb-2" /><p className="font-semibold text-emerald-800">Đã gửi yêu cầu thuê</p><p className="text-sm text-emerald-700 mt-2">{submitted.status === 'ACCEPTED' ? 'Chủ nhà đã chấp nhận yêu cầu thuê.' : 'Yêu cầu đang chờ chủ nhà xử lý.'}</p>{activeRequests.map(request => <div key={request.id} className="mt-3"><p className="text-sm">{requestStatusLabel[request.status]}</p>{request.status === 'PENDING' && <button type="button" disabled={saving} onClick={() => cancel(request)} className="border border-rose-300 text-rose-700 rounded-lg px-4 py-2 mt-2 text-sm disabled:opacity-50">{saving ? 'Đang hủy...' : 'Hủy yêu cầu thuê'}</button>}</div>)}<Link to="/my/rental-requests" className="inline-block text-sm text-emerald-800 underline mt-3">Xem yêu cầu của tôi</Link></div>
-          : apartment.availability !== 'VACANT' ? <p className="text-sm text-amber-700 bg-amber-50 rounded-lg p-4">Căn hộ hiện không còn nhận yêu cầu thuê.</p>
+          : apartment.availability !== 'VACANT' || apartment.rentalRightsAvailable===false ? <p className="text-sm text-amber-700 bg-amber-50 rounded-lg p-4">Căn hộ hiện không còn nhận yêu cầu thuê hoặc quyền cho thuê chưa có hiệu lực/đã hết hạn.</p>
           : !user ? <Link to="/login" state={{ returnTo: `/apartments/${id}` }} className="block text-center bg-emerald-600 text-white rounded-lg px-4 py-3 text-sm font-semibold">Đăng nhập để gửi yêu cầu thuê</Link>
           : !user.roles.some(role => role === 'CUSTOMER' || role === 'OWNER') ? <p className="text-sm text-slate-500">Gửi yêu cầu thuê bằng tài khoản người tìm thuê.</p>
           : <form onSubmit={send} className="space-y-3"><label htmlFor="rental-message" className="text-sm font-semibold block">Lời nhắn cho chủ nhà</label><textarea id="rental-message" rows={5} maxLength={2000} value={message} disabled={saving} onChange={e => setMessage(e.target.value)} placeholder="Giới thiệu nhu cầu thuê, thời gian dự kiến chuyển vào..." className="w-full border border-slate-300 rounded-lg p-3 text-sm" />

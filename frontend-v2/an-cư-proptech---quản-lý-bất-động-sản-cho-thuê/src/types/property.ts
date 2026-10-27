@@ -4,6 +4,7 @@ export interface OwnerProperty {
   approvalStatus: 'DRAFT' | 'PENDING_APPROVAL' | 'NEEDS_INFORMATION' | 'APPROVED' | 'REJECTED';
   rentalMode: RentalMode | null; version: number;
   verificationSource?: string | null;
+  onboardingApplication?: boolean; rightType?: 'OWNERSHIP' | 'AUTHORIZATION' | 'SUBLEASE' | null; rightsValidFrom?: string | null; rightsValidUntil?: string | null;
 }
 export interface PropertyUnitInput {
   roomNumber: string; title: string; description: string; floor: number; areaM2: string; advertisedMonthlyRent: string;

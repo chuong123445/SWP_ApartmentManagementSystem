@@ -44,6 +44,8 @@ export function AccountMenu({ account, onLogout, isLoggingOut, authError, isTena
       <Link to="/account/profile" onClick={() => setOpen(false)} className={linkClass}><UserRound className="w-4 h-4" />Hồ sơ cá nhân</Link>
       <Link to="/account/settings" onClick={() => setOpen(false)} className={linkClass}><Settings className="w-4 h-4" />Cài đặt tài khoản</Link>
       {account.roles.includes('CUSTOMER') && <Link to="/account/owner-upgrade" onClick={() => setOpen(false)} className={linkClass}><LayoutDashboard className="w-4 h-4" />Trở thành chủ cho thuê</Link>}
+      {canRent&&<Link to="/account/rental-properties" onClick={()=>setOpen(false)} className={linkClass}><ClipboardList className="w-4 h-4"/>Hồ sơ quyền cho thuê</Link>}
+      {canRent&&<Link to="/account/property-notices" onClick={()=>setOpen(false)} className={linkClass}><ClipboardList className="w-4 h-4"/>Thông báo thời hạn</Link>}
       <div className="border-t border-slate-100 mt-1 pt-1">
         {authError && <p role="alert" className="px-3 py-2 text-rose-700 text-xs">{authError}</p>}
         <button id="btn-logout" type="button" onClick={onLogout} disabled={isLoggingOut} className="w-full flex items-center gap-2 text-left px-3 py-2.5 rounded-lg text-rose-700 hover:bg-rose-50 disabled:opacity-50"><LogOut className="w-4 h-4" />{isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}</button>

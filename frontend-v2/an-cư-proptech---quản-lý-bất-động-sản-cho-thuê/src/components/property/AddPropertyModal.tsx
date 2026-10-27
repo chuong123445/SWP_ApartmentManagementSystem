@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
+import { Link } from 'react-router';
 import type { PropertyCreateInput, RentalMode } from '@/types/property';
 
 const fieldClass = 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white';
@@ -54,7 +55,7 @@ export function AddPropertyModal({ onClose, onCreate, onChooseVneid }: {
         <h2 id="add-property-title" className="text-lg font-bold">Thêm tài sản cho thuê</h2>
         <button type="button" disabled={saving} onClick={onClose} aria-label="Đóng form tài sản" className="p-2 rounded-lg hover:bg-slate-100"><X className="w-5 h-5" /></button>
       </div>
-      {onChooseVneid && <div className="px-5 pt-4"><button type="button" disabled={saving} onClick={onChooseVneid} className="border border-emerald-600 text-emerald-800 bg-emerald-50 rounded-lg px-4 py-2 font-semibold">Chọn tài sản từ VNeID</button><p className="text-sm text-slate-500 mt-2">Tài sản VNeID có thể cho thuê sau khi bổ sung giá thuê, điện, nước. Hoặc nhập tài sản thủ công bên dưới.</p></div>}
+      {onChooseVneid && <div className="px-5 pt-4 space-y-3"><p className="font-semibold">Bạn là ai đối với bất động sản này?</p><button type="button" disabled={saving} onClick={onChooseVneid} className="border border-emerald-600 text-emerald-800 bg-emerald-50 rounded-lg px-4 py-2 font-semibold">Chọn tài sản từ VNeID</button><div className="flex flex-wrap gap-4"><Link to="/account/rental-properties" state={{rightType:'AUTHORIZATION'}} onClick={onClose} className="text-emerald-700 underline">Đại diện theo ủy quyền</Link><Link to="/account/rental-properties" state={{rightType:'SUBLEASE'}} onClick={onClose} className="text-emerald-700 underline">Bên cho thuê lại</Link></div><p className="text-sm text-slate-500">Chính chủ từ VNeID bổ sung giá để cho thuê. Tài sản nhập thủ công bên dưới cần hồ sơ Admin duyệt.</p></div>}
       <form onSubmit={submit} className="p-5 space-y-5">
         <fieldset disabled={saving} className="space-y-5 disabled:opacity-60">
           <fieldset className="grid sm:grid-cols-2 gap-3">
