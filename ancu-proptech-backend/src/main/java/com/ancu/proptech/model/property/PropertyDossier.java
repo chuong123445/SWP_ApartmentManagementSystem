@@ -10,7 +10,7 @@ import java.util.*;
 public class PropertyDossier {
     public enum Status { PENDING_APPROVAL, NEEDS_INFORMATION, APPROVED, REJECTED }
     public enum RightType { OWNERSHIP, AUTHORIZATION, SUBLEASE }
-    @Id @GeneratedValue(strategy=GenerationType.UUID) private UUID id;
+    @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
     @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="property_id",nullable=false) private Property property;
     @Enumerated(EnumType.STRING) @Column(nullable=false,length=24) private RightType rightType;
     @Nationalized @Column(nullable=false,length=100) private String applicantName;

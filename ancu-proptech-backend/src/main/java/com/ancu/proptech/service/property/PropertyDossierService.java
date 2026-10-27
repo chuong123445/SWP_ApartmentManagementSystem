@@ -24,7 +24,7 @@ public class PropertyDossierService {
     private final PropertyRightsPolicy rights;
     private final com.ancu.proptech.repository.auth.AuthAccountRepository accounts;
     private final com.ancu.proptech.repository.auth.ExternalIdentityRepository identities;
-    @Transactional public PropertyDossierResponse submit(Jwt jwt,UUID propertyId,PropertyDossierSubmit input){
+    @Transactional public PropertyDossierResponse submit(Jwt jwt,Long propertyId,PropertyDossierSubmit input){
         var p=applicants.write(jwt,propertyId);var owner=p.getOwner();
         if(p.getVersion()!=input.getPropertyVersion())throw conflict("STALE_VERSION","Tài sản đã thay đổi. Hãy tải lại trước khi gửi hồ sơ.");
         boolean renewal=p.getApprovalStatus()==Property.ApprovalStatus.APPROVED&&rights.limited(p);
@@ -36,7 +36,7 @@ public class PropertyDossierService {
         if(input.getRightType()!=PropertyDossier.RightType.OWNERSHIP&&(clean(input.getPrincipalName())==null||input.getPrincipalDocumentNumber()==null))throw bad("Cần họ tên và số căn cước của chủ sở hữu gốc.");
         if(input.getRightType()==PropertyDossier.RightType.AUTHORIZATION&&input.getAuthorizationFileIds().isEmpty())throw bad("Cần giấy ủy quyền riêng.");
         if(input.getRightType()==PropertyDossier.RightType.SUBLEASE&&(input.getOriginalLeaseFileIds().isEmpty()||input.getSubleaseConsentFileIds().isEmpty()))throw bad("Cần hợp đồng thuê gốc và văn bản cho phép cho thuê lại riêng.");
-        var all=new ArrayList<PropertyEvidenceFile>();var seen=new HashSet<UUID>();
+        var all=new ArrayList<PropertyEvidenceFile>();var seen=new HashSet<Long>();
         collect(p,input.getDocumentFileIds(),PropertyEvidenceFile.Purpose.RIGHT_DOCUMENT,seen,all);
         collect(p,input.getSupportingFileIds(),PropertyEvidenceFile.Purpose.SUPPORTING,seen,all);
         collect(p,input.getOwnerEvidenceFileIds(),PropertyEvidenceFile.Purpose.OWNER_IDENTITY,seen,all);
@@ -54,11 +54,11 @@ public class PropertyDossierService {
         d.setStatus(PropertyDossier.Status.PENDING_APPROVAL);d.setSubmittedAt(Instant.now());d.setFiles(all);
         if(!renewal)p.setApprovalStatus(Property.ApprovalStatus.PENDING_APPROVAL);dossiers.saveAndFlush(d);return response(d);
     }
-    private void collect(Property p,List<UUID> ids,PropertyEvidenceFile.Purpose purpose,Set<UUID> seen,List<PropertyEvidenceFile> result){
+    private void collect(Property p,List<Long> ids,PropertyEvidenceFile.Purpose purpose,Set<Long> seen,List<PropertyEvidenceFile> result){
         for(var id:ids){if(!seen.add(id))throw bad("Chứng từ bị trùng trong hồ sơ.");var f=files.findById(id).orElseThrow(PropertyDossierService::missing);
             if(!f.getProperty().getId().equals(p.getId())||f.getPurpose()!=purpose)throw missing();result.add(f);}
     }
-    @Transactional(readOnly=true) public List<PropertyDossierResponse> mine(Jwt jwt,UUID propertyId){
+    @Transactional(readOnly=true) public List<PropertyDossierResponse> mine(Jwt jwt,Long propertyId){
         applicants.read(jwt,propertyId);
         return dossiers.findByPropertyIdOrderBySubmittedAtDescIdDesc(propertyId).stream().map(this::response).toList();
     }
@@ -66,8 +66,8 @@ public class PropertyDossierService {
         access.admin(jwt);ApartmentService.validatePage(page,size);var paging=PageRequest.of(page,size,Sort.by("submittedAt","id"));
         return PageResponse.from((status==null?dossiers.findAll(paging):dossiers.findByStatus(status,paging)).map(this::response));
     }
-    @Transactional(readOnly=true) public PropertyDossierResponse detail(Jwt jwt,UUID id){access.admin(jwt);return response(dossiers.findById(id).orElseThrow(PropertyDossierService::missing));}
-    @Transactional public PropertyDossierResponse decide(Jwt jwt,UUID id,PropertyDossierDecision input){
+    @Transactional(readOnly=true) public PropertyDossierResponse detail(Jwt jwt,Long id){access.admin(jwt);return response(dossiers.findById(id).orElseThrow(PropertyDossierService::missing));}
+    @Transactional public PropertyDossierResponse decide(Jwt jwt,Long id,PropertyDossierDecision input){
         var reviewer=access.admin(jwt);var propertyId=dossiers.findPropertyId(id).orElseThrow(PropertyDossierService::missing);
         var applicantId=properties.findById(propertyId).orElseThrow(PropertyDossierService::missing).getOwner().getId();
         var applicant=accounts.findForIdentityUpdate(applicantId).orElseThrow(PropertyDossierService::missing);

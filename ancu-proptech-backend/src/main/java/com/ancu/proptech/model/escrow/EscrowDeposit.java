@@ -12,8 +12,8 @@ import java.time.LocalDateTime;
 public class EscrowDeposit {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @com.fasterxml.jackson.annotation.JsonFormat(shape=com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING) private Long id;
 
     @Column(nullable = false)
     private String contractId;

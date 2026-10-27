@@ -14,7 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.*;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.UUID;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -37,12 +37,12 @@ class OwnerApartmentIntegrationTests {
         ownerToken = token(owner);
     }
     private AuthAccount account(AuthAccount.Role role) {
-        AuthAccount a = new AuthAccount(); a.setEmail(UUID.randomUUID()+"@example.invalid");a.setFullName("Owner integration");
+        AuthAccount a = new AuthAccount(); a.setEmail(com.ancu.proptech.support.TestIds.next()+"@example.invalid");a.setFullName("Owner integration");
         a.setPasswordHash(passwords.encode("Owner-test!12345"));a.setRole(role);a.setStatus(AuthAccount.Status.ACTIVE);a.setContactVerified(true);a.setEmailVerified(true);
         return accounts.saveAndFlush(a);
     }
     private Property property(AuthAccount owner, Property.ApprovalStatus approval) {
-        Property p = new Property();p.setOwner(owner);p.setName("Property "+UUID.randomUUID());p.setAddress("Test address");
+        Property p = new Property();p.setOwner(owner);p.setName("Property "+com.ancu.proptech.support.TestIds.next());p.setAddress("Test address");
         p.setCity("Test city");p.setDistrict("Test district");p.setApprovalStatus(approval);return properties.saveAndFlush(p);
     }
     private String token(AuthAccount a) { return auth.login(a.getEmail(), "Owner-test!12345").tokens().accessToken(); }
@@ -63,7 +63,7 @@ class OwnerApartmentIntegrationTests {
             .andExpect(jsonPath("$.areaM2").value("28.50")).andExpect(jsonPath("$.availability").value("VACANT"))
             .andExpect(jsonPath("$.thumbnail").value("/images/apartment-placeholder.svg")).andReturn();
         String id = JsonPath.read(result.getResponse().getContentAsString(),"$.id");
-        var saved = apartments.findById(UUID.fromString(id)).orElseThrow();assertNotNull(saved.getProperty());
+        var saved = apartments.findById(Long.valueOf(id)).orElseThrow();assertNotNull(saved.getProperty());
         saved.setCoverImagePath("/apartment/images/apartment1.jpg");apartments.saveAndFlush(saved);
         mvc.perform(get("/api/v1/owner/apartments").header("Authorization","Bearer "+ownerToken))
             .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(id))

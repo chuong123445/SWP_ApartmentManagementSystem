@@ -28,6 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties={"app.seed.enabled=false","app.billing.local-fixtures=false","app.auth.secure-cookie=false"})
 @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
 class VneidPropertyImportIntegrationTests {
+    @Autowired com.ancu.proptech.repository.property.PropertyImageRepository imageFiles;
     @Autowired MockMvc mvc;@Autowired AuthAccountRepository accounts;@Autowired ExternalIdentityRepository identities;
     @Autowired PropertyExternalImportRepository imports;@Autowired PropertyRepository properties;@Autowired ApartmentRepository apartments;
     @Autowired AuthService auth;@Autowired ObjectMapper json;@Autowired EntityManager em;
@@ -35,9 +36,9 @@ class VneidPropertyImportIntegrationTests {
     AuthAccount owner;String token;String issuer="https://asset-fixture.invalid/",subject,assetId;
     VneidAsset source;
     @BeforeEach void setup(){
-        owner=new AuthAccount();owner.setEmail("import-"+UUID.randomUUID()+"@example.invalid");owner.setFullName("Chủ nhà kiểm thử");owner.setRole(AuthAccount.Role.OWNER);owner.setStatus(AuthAccount.Status.ACTIVE);accounts.saveAndFlush(owner);
-        subject="auth0|"+UUID.randomUUID();assetId="asset-"+UUID.randomUUID();var i=new ExternalIdentity();i.setAccountId(owner.getId());i.setIssuer(issuer);i.setSubject(subject);
-        i.setDocumentNumber(String.format("%012d",Math.abs(UUID.randomUUID().getMostSignificantBits()%1000000000000L)));i.setLegalName(owner.getFullName());i.setDateOfBirth(LocalDate.of(1990,1,1));i.setGender("Nam");i.setAddress("Đà Nẵng");i.setSource(VneidTokenVerifier.SOURCE);i.setVerificationStatus("VERIFIED");i.setVerifiedAt(Instant.now());identities.saveAndFlush(i);
+        owner=new AuthAccount();owner.setEmail("import-"+com.ancu.proptech.support.TestIds.next()+"@example.invalid");owner.setFullName("Chủ nhà kiểm thử");owner.setRole(AuthAccount.Role.OWNER);owner.setStatus(AuthAccount.Status.ACTIVE);accounts.saveAndFlush(owner);
+        subject="auth0|"+com.ancu.proptech.support.TestIds.next();assetId="asset-"+com.ancu.proptech.support.TestIds.next();var i=new ExternalIdentity();i.setAccountId(owner.getId());i.setIssuer(issuer);i.setSubject(subject);
+        i.setDocumentNumber(String.format("%012d",Math.abs(com.ancu.proptech.support.TestIds.next().longValue()%1000000000000L)));i.setLegalName(owner.getFullName());i.setDateOfBirth(LocalDate.of(1990,1,1));i.setGender("Nam");i.setAddress("Đà Nẵng");i.setSource(VneidTokenVerifier.SOURCE);i.setVerificationStatus("VERIFIED");i.setVerifiedAt(Instant.now());identities.saveAndFlush(i);
         token=auth.createSession(owner).tokens().accessToken();accounts.flush();
         source=new VneidAsset(assetId,"Tài sản nguồn kiểm thử","12 Đường nguồn","SINGLE_UNIT","CERT-TEST",null,null,List.of(new VneidAsset.Unit("unit-1","A.01",new BigDecimal("50.25"),2,1)));
         when(assets.assetDetails(issuer,subject)).thenReturn(List.of(source));
@@ -45,14 +46,14 @@ class VneidPropertyImportIntegrationTests {
     ResultActions list()throws Exception{return mvc.perform(get("/api/v1/owner/properties/vneid-assets").header("Authorization","Bearer "+token));}
     String version()throws Exception{return json.readTree(list().andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).get(0).get("sourceVersion").asText();}
     String unit(){return "{\"externalUnitId\":\"unit-1\",\"monthlyRent\":\"4500000\",\"deposit\":\"4500000\",\"electricityUnitPrice\":\"3500\",\"waterUnitPrice\":\"15000\",\"electricityIndex\":120,\"waterIndex\":30,\"floor\":2,\"maxOccupants\":4,\"description\":\"Thông tin cho thuê\"}";}
-    String body(String version){return "{\"externalAssetId\":\""+assetId+"\",\"sourceVersion\":\""+version+"\",\"city\":\"Đà Nẵng\",\"district\":\"Hải Châu\",\"units\":["+unit()+"]}";}
+    String body(String version){return "{\"imageIds\":[\""+com.ancu.proptech.support.PropertyImageFixtures.stage(imageFiles,owner.getId())+"\"],\"externalAssetId\":\""+assetId+"\",\"sourceVersion\":\""+version+"\",\"city\":\"Đà Nẵng\",\"district\":\"Hải Châu\",\"units\":["+unit()+"]}";}
     ResultActions submit(String body)throws Exception{return mvc.perform(post("/api/v1/owner/properties/vneid-imports").header("Authorization","Bearer "+token).contentType("application/json").content(body));}
     @Test void importsAndPublishesWithSourceAuditWithoutAdminOrManualIdentity()throws Exception{
         String version=version();list().andExpect(header().string("Cache-Control","no-store")).andExpect(jsonPath("$[0].imported").value(false));
         var response=submit(body(version)).andExpect(status().isCreated()).andExpect(jsonPath("$.property.approvalStatus").value("APPROVED"))
             .andExpect(jsonPath("$.property.address").value(source.address())).andExpect(jsonPath("$.apartments[0].publicationStatus").value("PUBLISHED"))
             .andExpect(jsonPath("$.apartments[0].electricityUnitPrice").value("3500.00")).andReturn();
-        var root=json.readTree(response.getResponse().getContentAsString());UUID id=UUID.fromString(root.get("property").get("id").asText());
+        var root=json.readTree(response.getResponse().getContentAsString());Long id=Long.valueOf(root.get("property").get("id").asText());
         assertEquals(VneidTokenVerifier.SOURCE,imports.findById(id).orElseThrow().getSource());assertEquals(version,imports.findById(id).orElseThrow().getSourceVersion());
         String apartmentId=root.get("apartments").get(0).get("id").asText();
         mvc.perform(get("/api/v1/apartments/"+apartmentId)).andExpect(status().isOk()).andExpect(jsonPath("$.waterUnitPrice").value("15000.00"))
@@ -80,7 +81,7 @@ class VneidPropertyImportIntegrationTests {
     @Test void providerFailureAndChangedBindingNeverImport()throws Exception{String v=version();when(assets.assetDetails(issuer,subject)).thenThrow(AccountService.error(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,"ASSET_SOURCE_UNAVAILABLE","Unavailable"));submit(body(v)).andExpect(status().isServiceUnavailable());assertFalse(imports.existsByIssuerAndExternalAssetId(issuer,assetId));}
     @Test void rechecksBindingAfterProviderCall()throws Exception{String v=version();when(assets.assetDetails(issuer,subject)).thenAnswer(call->{identities.findById(owner.getId()).orElseThrow().setSubject("auth0|changed");identities.flush();return List.of(source);});submit(body(v)).andExpect(status().isConflict());assertFalse(imports.existsByIssuerAndExternalAssetId(issuer,assetId));}
     @Test void manualPropertyRemainsDraftAndNeedsApproval()throws Exception{
-        mvc.perform(post("/api/v1/owner/properties").header("Authorization","Bearer "+token).contentType("application/json").content("{\"name\":\"Nhập thủ công\",\"address\":\"12 Đường\",\"city\":\"Đà Nẵng\",\"district\":\"Hải Châu\",\"rentalMode\":\"SINGLE_UNIT\",\"apartments\":[{\"roomNumber\":\"MANUAL\",\"title\":\"Nhập thủ công\",\"floor\":0,\"areaM2\":30,\"advertisedMonthlyRent\":3000000}]}"))
+        mvc.perform(post("/api/v1/owner/properties").header("Authorization","Bearer "+token).contentType("application/json").content("{\"imageIds\":[\""+com.ancu.proptech.support.PropertyImageFixtures.stage(imageFiles,owner.getId())+"\"],\"name\":\"Nhập thủ công\",\"address\":\"12 Đường\",\"city\":\"Đà Nẵng\",\"district\":\"Hải Châu\",\"rentalMode\":\"SINGLE_UNIT\",\"apartments\":[{\"roomNumber\":\"MANUAL\",\"title\":\"Nhập thủ công\",\"floor\":0,\"areaM2\":30,\"advertisedMonthlyRent\":3000000}]}"))
             .andExpect(status().isCreated()).andExpect(jsonPath("$.property.approvalStatus").value("DRAFT")).andExpect(jsonPath("$.apartments[0].publicationStatus").value("DRAFT"));
     }
     @Test void requiresAuthenticatedSession()throws Exception{mvc.perform(get("/api/v1/owner/properties/vneid-assets")).andExpect(status().isUnauthorized());mvc.perform(post("/api/v1/owner/properties/vneid-imports").contentType("application/json").content("{}")).andExpect(status().isUnauthorized());}

@@ -2,10 +2,10 @@ package com.ancu.proptech.model.auth;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.Instant;
-import java.util.UUID;
+
 @Entity @Table(name="email_change_challenges") @Getter @Setter @NoArgsConstructor
 public class EmailChangeChallenge {
-    @Id private UUID id;
+    @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
     @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="account_id",nullable=false) private AuthAccount account;
     @Column(nullable=false,length=254) private String targetEmail;
     @Column(nullable=false,length=64) private String codeHash;

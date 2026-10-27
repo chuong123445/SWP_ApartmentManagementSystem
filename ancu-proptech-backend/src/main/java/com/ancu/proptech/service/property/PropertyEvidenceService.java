@@ -26,7 +26,7 @@ public class PropertyEvidenceService {
     private final PropertyRightsPolicy rights;
     private final EvidenceContentValidator validator;
     public record Download(String filename,String contentType,byte[] content) {}
-    @Transactional public PropertyEvidenceResponse upload(Jwt jwt,UUID propertyId,PropertyEvidenceFile.Purpose purpose,MultipartFile input){
+    @Transactional public PropertyEvidenceResponse upload(Jwt jwt,Long propertyId,PropertyEvidenceFile.Purpose purpose,MultipartFile input){
         var property=applicants.write(jwt,propertyId);var owner=property.getOwner();
         if(dossiers.existsByPropertyIdAndStatus(propertyId,PropertyDossier.Status.PENDING_APPROVAL)||
                 (property.getApprovalStatus()==Property.ApprovalStatus.APPROVED&&!rights.limited(property)))
@@ -60,7 +60,7 @@ public class PropertyEvidenceService {
         var content=new PropertyEvidenceContent();content.setId(file.getId());content.setContent(canonical);contents.save(content);
         return response(file);
     }
-    @Transactional(readOnly=true) public Download download(Jwt jwt,UUID id){
+    @Transactional(readOnly=true) public Download download(Jwt jwt,Long id){
         var account=access.account(jwt);var file=files.findById(id).orElseThrow(PropertyEvidenceService::missing);
         if(account.getRole()==AuthAccount.Role.ADMIN){access.admin(jwt);if(dossiers.countSubmittedFile(id)==0)throw missing();}
         else applicants.read(jwt,file.getProperty().getId());

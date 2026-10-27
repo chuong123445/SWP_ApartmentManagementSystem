@@ -59,7 +59,7 @@ public class VneidService {
         account.setDateOfBirth(identity.getDateOfBirth());account.setAddress(identity.getAddress());
         account.setRole(AuthAccount.Role.CUSTOMER);account.setStatus(AuthAccount.Status.ACTIVE);
         accounts.saveAndFlush(account);
-        identity.setAccountId(account.getId());identities.saveAndFlush(identity);
+        identity.setAccountId(account.getId());identities.saveAndFlush(identity);account.setIdentityVerified(true);accounts.saveAndFlush(account);
         account.setContactVerified(true);
         return auth.createSession(account);
     }
@@ -85,7 +85,7 @@ public class VneidService {
         }
         var identity = identity(external);
         if (identities.existsByDocumentNumber(identity.getDocumentNumber())) throw conflict();
-        identity.setAccountId(account.getId());identities.saveAndFlush(identity);
+        identity.setAccountId(account.getId());identities.saveAndFlush(identity);account.setIdentityVerified(true);accounts.saveAndFlush(account);
         account.setContactVerified(true);
         if (account.getStatus() == AuthAccount.Status.PENDING_VERIFICATION) account.setStatus(AuthAccount.Status.ACTIVE);
         accounts.flush();

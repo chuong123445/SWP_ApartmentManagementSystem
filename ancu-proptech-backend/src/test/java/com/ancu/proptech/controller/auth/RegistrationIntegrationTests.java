@@ -30,12 +30,12 @@ class RegistrationIntegrationTests {
     @Autowired AuthService auth;@MockitoBean EmailOtpSender sender;
     private String email,code;
     private final String password=" Register-test!123 ";
-    @BeforeEach void setup(){email="register-test-"+UUID.randomUUID()+"@example.invalid";when(sender.isConfigured()).thenReturn(true);doAnswer(i->{code=i.getArgument(1);return null;}).when(sender).send(anyString(),anyString());}
+    @BeforeEach void setup(){email="register-test-"+com.ancu.proptech.support.TestIds.next()+"@example.invalid";when(sender.isConfigured()).thenReturn(true);doAnswer(i->{code=i.getArgument(1);return null;}).when(sender).send(anyString(),anyString());}
     private String body(){return "{\"email\":\""+email.toUpperCase(Locale.ROOT)+"\",\"password\":\""+password+"\",\"fullName\":\" Chủ nhà mới \",\"phone\":\"0912345678\"}";}
     private ResultActions register(String content)throws Exception{return mvc.perform(post("/api/v1/auth/register").with(csrf().asHeader()).contentType("application/json").content(content));}
     @Test void defaultCustomerPersistsUnverifiedWithoutSecretsOrSessions()throws Exception{
         for(String role:List.of("CUSTOMER")){
-            email="register-test-"+UUID.randomUUID()+"@example.invalid";
+            email="register-test-"+com.ancu.proptech.support.TestIds.next()+"@example.invalid";
             register(body()).andExpect(status().isCreated()).andExpect(header().string("Cache-Control","no-store"))
                 .andExpect(jsonPath("$.roles[0]").value(role)).andExpect(jsonPath("$.accountStatus").value("PENDING_VERIFICATION"))
                 .andExpect(jsonPath("$.contactVerificationStatus").value("UNVERIFIED"))
@@ -52,7 +52,7 @@ class RegistrationIntegrationTests {
         assertTrue(accounts.findByEmail(email).isEmpty());
     }
     @Test void forgedAuthorityAndIdentityFieldsAreRejected()throws Exception{
-        for(String extra:List.of("\"status\":\"ACTIVE\"","\"contactVerified\":true","\"role\":\"ADMIN\"","\"id\":\""+UUID.randomUUID()+"\"","\"emailVerified\":true"))
+        for(String extra:List.of("\"status\":\"ACTIVE\"","\"contactVerified\":true","\"role\":\"ADMIN\"","\"id\":\""+com.ancu.proptech.support.TestIds.next()+"\"","\"emailVerified\":true"))
             register(body().replace("}",","+extra+"}")).andExpect(status().isBadRequest());
         assertTrue(accounts.findByEmail(email).isEmpty());
     }

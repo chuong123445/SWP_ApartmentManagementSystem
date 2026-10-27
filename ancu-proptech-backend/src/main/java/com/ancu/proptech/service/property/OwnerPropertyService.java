@@ -21,6 +21,7 @@ public class OwnerPropertyService {
     private final OwnerApartmentService apartments;
     private final com.ancu.proptech.repository.property.PropertyExternalImportRepository imports;
     private final PropertyApplicantAccess applicantAccess;
+    private final PropertyImageService images;
     @Transactional public OwnerPropertyCreated createApplication(Jwt jwt,PropertyApplicationCreate input){
         if(input.getRightType()==com.ancu.proptech.model.property.PropertyDossier.RightType.OWNERSHIP)
             throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_RIGHT_TYPE","Hồ sơ nâng cấp thủ công dùng quyền ủy quyền hoặc cho thuê lại.");
@@ -56,6 +57,7 @@ public class OwnerPropertyService {
         property.setRentalMode(input.getRentalMode()); property.setApprovalStatus(Property.ApprovalStatus.DRAFT);
         property.setOnboardingApplication(applicationRight!=null);property.setRightType(applicationRight);
         properties.saveAndFlush(property);
+        images.bind(property,input.getImageIds());
         var created = input.getApartments().stream().map(unit -> {
             var apartment = new OwnerApartmentCreate();
             apartment.setPropertyId(property.getId()); apartment.setRoomNumber(unit.getRoomNumber()); apartment.setTitle(unit.getTitle());
@@ -63,6 +65,7 @@ public class OwnerPropertyService {
             apartment.setAdvertisedMonthlyRent(unit.getAdvertisedMonthlyRent()); apartment.setDeposit(unit.getDeposit());
             apartment.setBedrooms(unit.getBedrooms()); apartment.setBathrooms(unit.getBathrooms()); apartment.setMaxOccupants(unit.getMaxOccupants());
             apartment.setElectricityIndex(unit.getElectricityIndex()); apartment.setWaterIndex(unit.getWaterIndex());
+            apartment.setElectricityUnitPrice(unit.getElectricityUnitPrice());apartment.setWaterUnitPrice(unit.getWaterUnitPrice());
             apartment.setAmenities(unit.getAmenities()); apartment.setPublicationStatus(Apartment.PublicationStatus.DRAFT);
             return applicationRight==null?apartments.create(jwt, apartment):apartments.createApplication(jwt,apartment);
         }).toList();

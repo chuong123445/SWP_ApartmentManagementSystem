@@ -9,6 +9,7 @@ import java.util.List;
 
 @Getter @Setter @NoArgsConstructor
 public class VneidPropertyImportRequest {
+    @NotNull @Size(min=1,max=4) private java.util.List<Long> imageIds;
     @NotBlank @Size(max=100) private String externalAssetId;
     @NotBlank @Pattern(regexp="[a-f0-9]{64}") private String sourceVersion;
     @NotBlank @Size(max=80) private String city;

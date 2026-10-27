@@ -4,13 +4,13 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.Nationalized;
 import java.time.*;
-import java.util.UUID;
+
 
 /** Private, self-declared identity data. Collection never establishes legal identity. */
 @Entity @Table(name="account_identity_profiles") @Getter @Setter @NoArgsConstructor
 public class IdentityProfile {
     public enum VerificationStatus { NOT_VERIFIED }
-    @Id private UUID accountId;
+    @Id private Long accountId;
     @Nationalized @Column(nullable=false,length=100) private String legalName;
     @Column(nullable=false,length=12) private String documentNumber;
     @Column(nullable=false) private LocalDate dateOfBirth;

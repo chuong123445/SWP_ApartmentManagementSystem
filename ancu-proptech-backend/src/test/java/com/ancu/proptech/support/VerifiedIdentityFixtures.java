@@ -3,11 +3,11 @@ import com.ancu.proptech.model.auth.*;
 import com.ancu.proptech.repository.auth.ExternalIdentityRepository;
 import com.ancu.proptech.service.auth.VneidTokenVerifier;
 import java.time.*;
-import java.util.UUID;
+
 public final class VerifiedIdentityFixtures {
     private VerifiedIdentityFixtures(){}
     public static ExternalIdentity bind(ExternalIdentityRepository repository,AuthAccount account){
-        var i=new ExternalIdentity();i.setAccountId(account.getId());i.setIssuer("https://rights-fixture.invalid/");i.setSubject("auth0|"+UUID.randomUUID());
-        i.setDocumentNumber(String.format("%012d",Math.abs(UUID.randomUUID().getMostSignificantBits()%1000000000000L)));i.setLegalName("Căn cước đã xác thực");i.setDateOfBirth(LocalDate.of(1990,1,1));i.setGender("Nam");i.setAddress("Địa chỉ kiểm thử");i.setSource(VneidTokenVerifier.SOURCE);i.setVerificationStatus("VERIFIED");i.setVerifiedAt(Instant.now());return repository.saveAndFlush(i);
+        var i=new ExternalIdentity();i.setAccountId(account.getId());i.setIssuer("https://rights-fixture.invalid/");i.setSubject("auth0|"+com.ancu.proptech.support.TestIds.next());
+        i.setDocumentNumber(String.format("%012d",Math.abs(com.ancu.proptech.support.TestIds.next().longValue()%1000000000000L)));i.setLegalName("Căn cước đã xác thực");i.setDateOfBirth(LocalDate.of(1990,1,1));i.setGender("Nam");i.setAddress("Địa chỉ kiểm thử");i.setSource(VneidTokenVerifier.SOURCE);i.setVerificationStatus("VERIFIED");i.setVerifiedAt(Instant.now());return repository.saveAndFlush(i);
     }
 }

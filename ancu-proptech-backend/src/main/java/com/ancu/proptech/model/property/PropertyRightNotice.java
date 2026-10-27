@@ -3,13 +3,13 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.Nationalized;
 import java.time.*;
-import java.util.UUID;
+
 @Entity @Table(name="property_right_notices") @Getter @Setter @NoArgsConstructor
 public class PropertyRightNotice {
-    @Id @GeneratedValue(strategy=GenerationType.UUID) private UUID id;
+    @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
     @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="property_id",nullable=false) private Property property;
-    @Column(nullable=false) private UUID recipientId;
-    @Column(nullable=false) private UUID dossierId;
+    @Column(nullable=false) private Long recipientId;
+    @Column(nullable=false) private Long dossierId;
     @Column(nullable=false,length=16) private String kind;
     @Column(nullable=false) private LocalDate expiresOn;
     @Column(nullable=false,columnDefinition="datetime2(6)") private Instant createdAt;
