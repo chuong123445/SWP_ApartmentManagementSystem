@@ -80,10 +80,11 @@ public class SecurityConfig {
                 .csrf(c -> c.csrfTokenRepository(csrf).csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
                         .withObjectPostProcessor(VneidSecurityConfig.enforceCsrf(request -> !Set.of("GET", "HEAD", "OPTIONS", "TRACE").contains(request.getMethod())
                                 && (request.getRequestURI().startsWith(request.getContextPath() + "/api/v1/auth/")
-                                || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/verifications/vneid")))))
+                                || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/verifications/vneid")
+                                || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/owner-upgrade")))))
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/api/v1/auth/csrf", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout", "/error").permitAll()
-                        .requestMatchers("/api/v1/me/verifications", "/api/v1/me/verifications/vneid").authenticated()
+                        .requestMatchers("/api/v1/me/verifications", "/api/v1/me/verifications/vneid", "/api/v1/me/owner-upgrade").authenticated()
                         .requestMatchers("/api/v1/auth/vneid-config").permitAll()
                         .requestMatchers("/api/v1/me").authenticated()
                         .requestMatchers("/api/v1/me/identity", "/api/v1/me/identity/documents/*").authenticated()

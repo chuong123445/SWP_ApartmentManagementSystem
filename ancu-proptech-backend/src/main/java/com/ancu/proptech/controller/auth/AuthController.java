@@ -25,6 +25,7 @@ public class AuthController {
     private final AuthService auth;
     private final RegistrationService registration;
     private final com.ancu.proptech.service.auth.VneidService vneid;
+    private final com.ancu.proptech.service.auth.OwnerUpgradeService ownerUpgrade;
     private final com.ancu.proptech.config.auth.VneidProperties vneidConfig;
     private final CookieCsrfTokenRepository csrfRepository;
     @Value("${app.auth.secure-cookie:true}") private boolean secureCookie;
@@ -103,6 +104,12 @@ public class AuthController {
     public ResponseEntity<com.ancu.proptech.dto.auth.AccountVerificationResponse> verifications(@AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(vneid.verificationStatus(jwt));
     }
+
+    @GetMapping("/api/v1/me/owner-upgrade")
+    public ResponseEntity<?> ownerUpgradeContext(@AuthenticationPrincipal Jwt jwt){return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(ownerUpgrade.context(jwt));}
+
+    @PostMapping("/api/v1/me/owner-upgrade")
+    public ResponseEntity<AuthUserResponse> upgradeOwner(@AuthenticationPrincipal Jwt jwt,@Valid @RequestBody com.ancu.proptech.dto.auth.OwnerUpgradeRequest request){return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(ownerUpgrade.upgrade(jwt,request));}
 
     private void setRefreshCookie(HttpServletResponse response, String value, long maxAge) {
         ResponseCookie cookie = ResponseCookie.from(REFRESH_COOKIE, value).httpOnly(true).secure(secureCookie)

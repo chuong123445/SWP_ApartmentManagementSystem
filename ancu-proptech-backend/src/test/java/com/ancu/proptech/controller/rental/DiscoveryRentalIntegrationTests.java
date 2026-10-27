@@ -76,6 +76,14 @@ class DiscoveryRentalIntegrationTests {
     private String token(AuthAccount a) { return auth.login(a.getEmail(), PASSWORD).tokens().accessToken(); }
     private String bearer(AuthAccount a) { return "Bearer " + token(a); }
 
+    @Test void ownerCannotRequestOwnApartmentButCanRentFromAnotherOwner() throws Exception {
+        mvc.perform(post("/api/v1/apartments/"+apartment.getId()+"/rental-requests").header("Authorization",bearer(ownerA))
+                .contentType("application/json").content("{\"message\":\"Thuê nhà\"}"))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("OWN_APARTMENT_RENTAL"));
+        mvc.perform(post("/api/v1/apartments/"+otherApartment.getId()+"/rental-requests").header("Authorization",bearer(ownerA))
+                .contentType("application/json").content("{\"message\":\"Thuê nhà\"}"))
+                .andExpect(status().isCreated());
+    }
     @Test void ownerPropertyFilterRunsBeforePaginationAndNeverExpandsOwnership() throws Exception {
         var secondProperty = property(ownerA);
         var second = apartment(secondProperty, "Second property", "6000000", Apartment.PublicationStatus.PUBLISHED);
