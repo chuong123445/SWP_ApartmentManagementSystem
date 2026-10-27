@@ -34,6 +34,8 @@ public class RentalRequestService {
         Apartment apartment = apartments.findForRequest(apartmentId).orElseThrow(RentalRequestService::notFound);
         var p = apartment.getProperty();
         var owner = p.getOwner();
+        if (owner.getId().equals(customer.getId()))
+            throw new ApiException(HttpStatus.FORBIDDEN, "OWN_APARTMENT_RENTAL", "Bạn không thể gửi yêu cầu thuê căn hộ của chính mình.");
         if (!activeRequests(customer.getId(), apartmentId).isEmpty())
             throw new ApiException(HttpStatus.CONFLICT, "RENTAL_REQUEST_EXISTS", "Bạn đã có yêu cầu thuê cho căn hộ này. Hãy xem hoặc hủy yêu cầu đang chờ xử lý.");
         if (apartment.getPublicationStatus() != Apartment.PublicationStatus.PUBLISHED || p.getApprovalStatus() != Property.ApprovalStatus.APPROVED

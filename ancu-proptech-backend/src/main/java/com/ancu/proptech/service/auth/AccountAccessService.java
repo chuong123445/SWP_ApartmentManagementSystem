@@ -20,7 +20,8 @@ public class AccountAccessService {
     }
     private AuthAccount require(Jwt jwt, AuthAccount.Role role) {
         AuthAccount account = auth.authenticate(jwt);
-        if (account.getRole() != role) throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Tài khoản không có quyền thực hiện thao tác này.");
+        boolean ordinaryAccount = role == AuthAccount.Role.CUSTOMER && account.getRole() == AuthAccount.Role.OWNER;
+        if (account.getRole() != role && !ordinaryAccount) throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Tài khoản không có quyền thực hiện thao tác này.");
         if (account.getStatus() != AuthAccount.Status.ACTIVE || !verification.isVerified(account))
             throw new ApiException(HttpStatus.FORBIDDEN, "CONTACT_NOT_VERIFIED", "Cần xác minh email hoặc số điện thoại để thực hiện thao tác này.");
         return account;
