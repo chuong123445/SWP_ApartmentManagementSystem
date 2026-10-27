@@ -2,6 +2,7 @@ package com.ancu.proptech.service.auth;
 
 import com.ancu.proptech.config.auth.VneidProperties;
 import com.ancu.proptech.dto.auth.AuthUserResponse;
+import com.ancu.proptech.dto.auth.AccountVerificationResponse;
 import com.ancu.proptech.exception.auth.AuthException;
 import com.ancu.proptech.model.auth.*;
 import com.ancu.proptech.repository.auth.*;
@@ -25,6 +26,18 @@ public class VneidService {
     private final VneidProperties config;
     private final Map<String, Window> attempts = new ConcurrentHashMap<>();
     private record Window(long minute, int count) {}
+
+    @Transactional(readOnly=true)
+    public AccountVerificationResponse verificationStatus(Jwt internal) {
+        var account = auth.authenticate(internal);
+        var vneid = identities.findById(account.getId())
+                .filter(identity -> "VERIFIED".equals(identity.getVerificationStatus()))
+                .map(identity -> new AccountVerificationResponse.Vneid("VERIFIED", identity.getVerifiedAt(),
+                        new AccountVerificationResponse.Citizen(identity.getDocumentNumber(), identity.getLegalName(),
+                                identity.getDateOfBirth(), identity.getGender(), identity.getAddress())))
+                .orElseGet(() -> new AccountVerificationResponse.Vneid("UNVERIFIED", null, null));
+        return new AccountVerificationResponse(account.isEmailVerified(), vneid);
+    }
 
     @Transactional
     public AuthService.LoginResult login(Jwt external) {

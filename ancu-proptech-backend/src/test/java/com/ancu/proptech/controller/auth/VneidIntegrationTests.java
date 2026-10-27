@@ -138,6 +138,32 @@ class VneidIntegrationTests {
             }));
         }
     }
+    @Test void readsOwnVerifiedCitizenWithoutExposingExternalCredentials() throws Exception {
+        login();var a=accounts.findByEmail(email).orElseThrow();String internal=auth.createSession(a).tokens().accessToken();
+        mvc.perform(get("/api/v1/me/verifications").header("Authorization","Bearer "+internal))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store"))
+                .andExpect(jsonPath("$.emailVerified").value(false)).andExpect(jsonPath("$.vneid.status").value("VERIFIED"))
+                .andExpect(jsonPath("$.vneid.identity.documentNumber").value(number))
+                .andExpect(jsonPath("$.vneid.identity.legalName").value("Người kiểm thử Auth0"))
+                .andExpect(jsonPath("$.vneid.identity.dateOfBirth").value("1990-05-20"))
+                .andExpect(jsonPath("$.vneid.verifiedAt").isNotEmpty())
+                .andExpect(jsonPath("$.vneid.subject").doesNotExist()).andExpect(jsonPath("$.passwordHash").doesNotExist());
+    }
+    @Test void emailVerificationDoesNotInventVneidIdentity() throws Exception {
+        var a=account(AuthAccount.Role.CUSTOMER,AuthAccount.Status.ACTIVE);a.setEmailVerified(true);accounts.flush();
+        mvc.perform(get("/api/v1/me/verifications").header("Authorization","Bearer "+auth.createSession(a).tokens().accessToken()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.emailVerified").value(true))
+                .andExpect(jsonPath("$.vneid.status").value("UNVERIFIED")).andExpect(jsonPath("$.vneid.identity").isEmpty());
+    }
+    @Test void guestAndOtherAccountsCannotReadCitizen() throws Exception {
+        login();var own=accounts.findByEmail(email).orElseThrow();
+        mvc.perform(get("/api/v1/me/verifications")).andExpect(status().isUnauthorized());
+        email="other-"+UUID.randomUUID()+"@example.invalid";var other=account(AuthAccount.Role.OWNER,AuthAccount.Status.ACTIVE);
+        mvc.perform(get("/api/v1/me/verifications").param("accountId",own.getId().toString())
+                .header("Authorization","Bearer "+auth.createSession(other).tokens().accessToken()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.vneid.status").value("UNVERIFIED"))
+                .andExpect(jsonPath("$.vneid.identity").isEmpty());
+    }
     private org.springframework.test.web.servlet.ResultActions self(String internal) throws Exception {
         return mvc.perform(post("/api/v1/me/verifications/vneid").with(csrf().asHeader()).header("Authorization","Bearer "+internal)
                 .contentType("application/json").content("{\"auth0AccessToken\":\""+token+"\"}"));

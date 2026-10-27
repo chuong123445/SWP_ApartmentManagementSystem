@@ -2,6 +2,12 @@
   "openapi": "3.0.3",
   "info": { "title": "An Cu Auth0 VNeID", "version": "1.0.0", "description": "SWP VNeID simulation. Account verification VERIFIED; source AUTH0_VNEID_SIMULATION. Asset import is not implemented by these routes." },
   "paths": {
+    "/api/v1/me/verifications": { "get": {
+      "summary": "Read own persisted verification methods and verified citizen details",
+      "description": "Self account derived only from internal JWT/session. Returns emailVerified and vneid {status, verifiedAt, identity}. identity is null when UNVERIFIED; VERIFIED identity contains documentNumber, legalName, dateOfBirth (ISO date), gender, address. No issuer/subject/tokens/images exposed. Reads existing evidence even when new Auth0 login is disabled; does not modify self-declared identity dossiers.",
+      "security": [{ "internalBearer": [] }],
+      "responses": { "200": { "description": "Per-method status and private read-only citizen; Cache-Control no-store" }, "401": { "description": "Missing/expired/revoked internal session" } }
+    } },
     "/api/v1/auth/vneid-config": { "get": { "summary": "Public non-secret runtime configuration", "responses": { "200": { "description": "enabled, issuer, clientId, audience, connection; no-store" } } } },
     "/api/v1/auth/vneid-login": { "post": {
       "summary": "Register CUSTOMER or sign in an already linked external identity",
