@@ -348,6 +348,16 @@
               "type": "string",
               "maxLength": 100
             }
+          },
+          "electricityUnitPrice": {
+            "type": "string",
+            "nullable": true,
+            "description": "Optional nonnegative decimal listing unit price. New UI requires explicit input."
+          },
+          "waterUnitPrice": {
+            "type": "string",
+            "nullable": true,
+            "description": "Optional nonnegative decimal listing unit price. New UI requires explicit input."
           }
         }
       }
