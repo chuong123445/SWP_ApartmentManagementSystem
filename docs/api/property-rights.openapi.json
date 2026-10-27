@@ -1,17 +1,356 @@
 {
-  "openapi":"3.0.3","info":{"title":"An Cu verified applicant onboarding and rights expiry","version":"1.0.0","description":"Implemented: account ACTIVE + persisted Auth0 VNeID VERIFIED required for new rights applications/uploads/submissions; email OTP alone insufficient. Customer self application is separate from Owner inventory. Admin approval atomically promotes Customer to OWNER and approves exact property, never auto-publishes. Source-owned Auth0 imports retain automatic path."},
-  "servers":[{"url":"/"}],"security":[{"internalBearer":[]}],
-  "paths":{
-    "/api/v1/me/rental-properties":{
-      "get":{"summary":"Own application properties only, private/no-store","responses":{"200":{"description":"OwnerPropertyResponse[] includes onboardingApplication/rightType/rightsValidFrom/rightsValidUntil; exact account only"},"401":{"description":"Invalid session"},"403":{"description":"VNEID_REQUIRED or inactive/disallowed role"}}},
-      "post":{"summary":"Create private DRAFT property/units for AUTHORIZATION or SUBLEASE","requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ApplicationCreate"}}}},"responses":{"201":{"description":"OwnerPropertyCreated; account still CUSTOMER until Admin approval"},"400":{"description":"Strict validation/unknown role, owner, approval or identity fields"},"403":{"description":"VNEID_REQUIRED or disallowed account"}}}
-    },
-    "/api/v1/me/rental-properties/{id}/evidence-files":{"parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string","format":"uuid"}}],"post":{"summary":"Upload own private PDF/JPEG/PNG10MB; type verified from bytes, PDF1–100pages no encryption/active actions","requestBody":{"required":true,"content":{"multipart/form-data":{"schema":{"type":"object","required":["purpose","file"],"properties":{"purpose":{"type":"string","enum":["RIGHT_DOCUMENT","AUTHORIZATION_DOCUMENT","ORIGINAL_LEASE","SUBLEASE_CONSENT","SUPPORTING","OWNER_IDENTITY"]},"file":{"type":"string","format":"binary"}}}}}},"responses":{"201":{"description":"Private EvidenceFile metadata; contents in SQL varbinary(max)"},"400":{"description":"Invalid file/purpose"},"403":{"description":"VNEID_REQUIRED"},"404":{"description":"Not own application"},"409":{"description":"Pending/not editable or quota"},"413":{"description":"Upload too large"}}}},
-    "/api/v1/me/rental-properties/{id}/verification-dossiers":{"parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string","format":"uuid"}}],"get":{"summary":"Private own append-only dossier history","responses":{"200":{"description":"Dossier[]; see property-dossiers.openapi.json"},"404":{"description":"Not owned"}}},"post":{"summary":"Submit new dossier or renewal; same shared strict rules as Owner dossier","requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"./property-dossiers.openapi.json#/components/schemas/DossierSubmit"}}}},"responses":{"201":{"description":"PENDING_APPROVAL; renewal keeps previously approved rights until expiry/next approval"},"400":{"description":"Missing typed papers/principal/validity, wrong unit/purpose/property or sublease outside original range"},"403":{"description":"VNEID_REQUIRED"},"404":{"description":"Not owned"},"409":{"description":"Stale/pending/type mismatch/not editable"}}}},
-    "/api/v1/me/property-notices":{"get":{"summary":"Own last100 in-app rights notices, private/no-store","responses":{"200":{"description":"[{id,propertyId,propertyName,kind:EXPIRING|EXPIRED,expiresOn,createdAt}]; no email destination/attempts/private documents"},"401":{"description":"Missing session"}}}}
+  "openapi": "3.0.3",
+  "info": {
+    "title": "An Cu verified applicant onboarding and rights expiry",
+    "version": "1.0.0",
+    "description": "Implemented: account ACTIVE + persisted Auth0 VNeID VERIFIED required for new rights applications/uploads/submissions; email OTP alone insufficient. Customer self application is separate from Owner inventory. Admin approval atomically promotes Customer to OWNER and approves exact property, never auto-publishes. Source-owned Auth0 imports retain automatic path."
   },
-  "components":{"securitySchemes":{"internalBearer":{"type":"http","scheme":"bearer"}},"schemas":{
-    "ApplicationCreate":{"type":"object","additionalProperties":false,"required":["rightType","name","address","city","district","rentalMode","apartments"],"properties":{"rightType":{"type":"string","enum":["AUTHORIZATION","SUBLEASE"]},"name":{"type":"string","minLength":1,"maxLength":150},"address":{"type":"string","minLength":1,"maxLength":300},"city":{"type":"string","minLength":1,"maxLength":80},"district":{"type":"string","minLength":1,"maxLength":80},"ward":{"type":"string","nullable":true,"maxLength":80},"rentalMode":{"type":"string","enum":["SINGLE_UNIT","MULTI_UNIT"]},"apartments":{"type":"array","minItems":1,"maxItems":50,"items":{"$ref":"#/components/schemas/Unit"}}}},
-    "Unit":{"type":"object","additionalProperties":false,"required":["roomNumber","title","floor","areaM2","advertisedMonthlyRent"],"properties":{"roomNumber":{"type":"string","minLength":1,"maxLength":20},"title":{"type":"string","minLength":1,"maxLength":150},"description":{"type":"string","maxLength":3000,"default":""},"floor":{"type":"integer","minimum":0,"maximum":200},"areaM2":{"type":"string","description":"Positive decimal,10integer/2fraction"},"advertisedMonthlyRent":{"type":"string","description":"Positive decimal,13integer/2fraction"},"deposit":{"type":"string","nullable":true},"electricityIndex":{"type":"integer","minimum":0,"nullable":true},"waterIndex":{"type":"integer","minimum":0,"nullable":true},"bedrooms":{"type":"integer","minimum":0,"nullable":true},"bathrooms":{"type":"integer","minimum":0,"nullable":true},"maxOccupants":{"type":"integer","minimum":1,"nullable":true},"amenities":{"type":"array","maxItems":50,"items":{"type":"string","maxLength":100}}}}
-  }}
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "security": [
+    {
+      "internalBearer": []
+    }
+  ],
+  "paths": {
+    "/api/v1/me/rental-properties": {
+      "get": {
+        "summary": "Own application properties only, private/no-store",
+        "responses": {
+          "200": {
+            "description": "OwnerPropertyResponse[] includes onboardingApplication/rightType/rightsValidFrom/rightsValidUntil; exact account only"
+          },
+          "401": {
+            "description": "Invalid session"
+          },
+          "403": {
+            "description": "VNEID_REQUIRED or inactive/disallowed role"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create private DRAFT property/units for AUTHORIZATION or SUBLEASE",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OwnerPropertyCreated; account still CUSTOMER until Admin approval"
+          },
+          "400": {
+            "description": "Strict validation/unknown role, owner, approval or identity fields"
+          },
+          "403": {
+            "description": "VNEID_REQUIRED or disallowed account"
+          }
+        }
+      }
+    },
+    "/api/v1/me/rental-properties/{id}/evidence-files": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          }
+        }
+      ],
+      "post": {
+        "summary": "Upload own private PDF/JPEG/PNG10MB; type verified from bytes, PDF1–100pages no encryption/active actions",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "purpose",
+                  "file"
+                ],
+                "properties": {
+                  "purpose": {
+                    "type": "string",
+                    "enum": [
+                      "RIGHT_DOCUMENT",
+                      "AUTHORIZATION_DOCUMENT",
+                      "ORIGINAL_LEASE",
+                      "SUBLEASE_CONSENT",
+                      "SUPPORTING",
+                      "OWNER_IDENTITY"
+                    ]
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Private EvidenceFile metadata; contents in SQL varbinary(max)"
+          },
+          "400": {
+            "description": "Invalid file/purpose"
+          },
+          "403": {
+            "description": "VNEID_REQUIRED"
+          },
+          "404": {
+            "description": "Not own application"
+          },
+          "409": {
+            "description": "Pending/not editable or quota"
+          },
+          "413": {
+            "description": "Upload too large"
+          }
+        }
+      }
+    },
+    "/api/v1/me/rental-properties/{id}/verification-dossiers": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Private own append-only dossier history",
+        "responses": {
+          "200": {
+            "description": "Dossier[]; see property-dossiers.openapi.json"
+          },
+          "404": {
+            "description": "Not owned"
+          }
+        }
+      },
+      "post": {
+        "summary": "Submit new dossier or renewal; same shared strict rules as Owner dossier",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./property-dossiers.openapi.json#/components/schemas/DossierSubmit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "PENDING_APPROVAL; renewal keeps previously approved rights until expiry/next approval"
+          },
+          "400": {
+            "description": "Missing typed papers/principal/validity, wrong unit/purpose/property or sublease outside original range"
+          },
+          "403": {
+            "description": "VNEID_REQUIRED"
+          },
+          "404": {
+            "description": "Not owned"
+          },
+          "409": {
+            "description": "Stale/pending/type mismatch/not editable"
+          }
+        }
+      }
+    },
+    "/api/v1/me/property-notices": {
+      "get": {
+        "summary": "Own last100 in-app rights notices, private/no-store",
+        "responses": {
+          "200": {
+            "description": "[{id,propertyId,propertyName,kind:EXPIRING|EXPIRED,expiresOn,createdAt}]; no email destination/attempts/private documents"
+          },
+          "401": {
+            "description": "Missing session"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "internalBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "ApplicationCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "rightType",
+          "name",
+          "address",
+          "city",
+          "district",
+          "rentalMode",
+          "apartments",
+          "imageIds"
+        ],
+        "properties": {
+          "rightType": {
+            "type": "string",
+            "enum": [
+              "AUTHORIZATION",
+              "SUBLEASE"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150
+          },
+          "address": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "city": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "district": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "ward": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 80
+          },
+          "rentalMode": {
+            "type": "string",
+            "enum": [
+              "SINGLE_UNIT",
+              "MULTI_UNIT"
+            ]
+          },
+          "apartments": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "items": {
+              "$ref": "#/components/schemas/Unit"
+            }
+          },
+          "imageIds": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            },
+            "description": "Own unused staged property-image IDs. Order determines cover. Bound atomically."
+          }
+        }
+      },
+      "Unit": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "roomNumber",
+          "title",
+          "floor",
+          "areaM2",
+          "advertisedMonthlyRent"
+        ],
+        "properties": {
+          "roomNumber": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 3000,
+            "default": ""
+          },
+          "floor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 200
+          },
+          "areaM2": {
+            "type": "string",
+            "description": "Positive decimal,10integer/2fraction"
+          },
+          "advertisedMonthlyRent": {
+            "type": "string",
+            "description": "Positive decimal,13integer/2fraction"
+          },
+          "deposit": {
+            "type": "string",
+            "nullable": true
+          },
+          "electricityIndex": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true
+          },
+          "waterIndex": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true
+          },
+          "bedrooms": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true
+          },
+          "bathrooms": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true
+          },
+          "maxOccupants": {
+            "type": "integer",
+            "minimum": 1,
+            "nullable": true
+          },
+          "amenities": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "type": "string",
+              "maxLength": 100
+            }
+          }
+        }
+      }
+    }
+  }
 }
