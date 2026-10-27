@@ -55,6 +55,14 @@ class DiscoveryRentalIntegrationTests {
         hidden = apartment(property, "Hidden", "4000000.00", Apartment.PublicationStatus.DRAFT);
         apartments.flush();
     }
+    @Test void expiredRightsDisappearFromSearchAndBlockNewRequestsButKeepReadableHistory()throws Exception{
+        String unique="Expired-"+UUID.randomUUID();apartment.setTitle(unique);property.setRightType(com.ancu.proptech.model.property.PropertyDossier.RightType.AUTHORIZATION);
+        var today=java.time.LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));property.setRightsValidFrom(today.minusYears(1));property.setRightsValidUntil(today.minusDays(1));properties.flush();apartments.flush();
+        mvc.perform(get("/api/v1/apartments").param("q",unique)).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get("/api/v1/apartments/"+apartment.getId())).andExpect(status().isOk()).andExpect(jsonPath("$.rentalRightsAvailable").value(false)).andExpect(jsonPath("$.lessorRelationship").value("AUTHORIZATION"));
+        mvc.perform(post("/api/v1/apartments/"+apartment.getId()+"/rental-requests").header("Authorization",bearer(customerA)).contentType("application/json").content("{}"))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PROPERTY_RIGHTS_UNAVAILABLE"));
+    }
     private AuthAccount account(String label, AuthAccount.Role role) {
         AuthAccount a = new AuthAccount();
         a.setEmail(marker.toLowerCase(Locale.ROOT) + "-" + label + "@example.invalid");

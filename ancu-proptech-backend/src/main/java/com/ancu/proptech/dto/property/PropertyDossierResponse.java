@@ -5,4 +5,6 @@ import java.time.LocalDate;
 public record PropertyDossierResponse(UUID id,UUID propertyId,String propertyName,String propertyAddress,
     String applicantName,String rightType,String bank,String accountNumber,String accountHolderName,String status,
     List<PropertyEvidenceResponse> files,Instant submittedAt,Instant reviewedAt,String reviewReason,long version,
-    String certificateNumber,LocalDate certificateIssueDate,String certificateIssuePlace,String exploitationRightDescription,boolean localFixture) {}
+    String certificateNumber,LocalDate certificateIssueDate,String certificateIssuePlace,String exploitationRightDescription,boolean localFixture,
+    LocalDate rightsValidFrom,LocalDate rightsValidUntil,LocalDate originalLeaseFrom,LocalDate originalLeaseUntil,
+    String principalName,String principalDocumentNumber,String applicantDocumentNumber,boolean renewal) {}

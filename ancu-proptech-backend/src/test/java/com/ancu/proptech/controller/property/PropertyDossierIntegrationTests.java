@@ -28,11 +28,13 @@ class PropertyDossierIntegrationTests {
     @Autowired MockMvc mvc;@Autowired AuthAccountRepository accounts;@Autowired PropertyRepository properties;
     @Autowired ApartmentRepository apartments;@Autowired PropertyDossierRepository dossiers;@Autowired PropertyEvidenceFileRepository files;
     @Autowired PasswordEncoder passwords;@Autowired AuthService auth;
+    @Autowired com.ancu.proptech.repository.auth.ExternalIdentityRepository externalIdentities;
     private AuthAccount owner,other,admin,customer;private Property property,foreignProperty;private String ownerToken,adminToken;private byte[] png;
     private static String passwordHash;
     @BeforeEach void fixture()throws Exception{
         if(passwordHash==null)passwordHash=passwords.encode("Dossier-test!12345");
         owner=account(AuthAccount.Role.OWNER);other=account(AuthAccount.Role.OWNER);admin=account(AuthAccount.Role.ADMIN);customer=account(AuthAccount.Role.CUSTOMER);
+        com.ancu.proptech.support.VerifiedIdentityFixtures.bind(externalIdentities,owner);com.ancu.proptech.support.VerifiedIdentityFixtures.bind(externalIdentities,other);
         property=property(owner);foreignProperty=property(other);ownerToken=token(owner);adminToken=token(admin);
         var output=new ByteArrayOutputStream();ImageIO.write(new BufferedImage(2,2,BufferedImage.TYPE_INT_RGB),"png",output);png=output.toByteArray();
     }

@@ -35,6 +35,7 @@ public class ContractDraftService {
     private final AccountVerificationPolicy verification;
     private final IdentityProfileRepository identities;
     private final ObjectMapper json;
+    private final com.ancu.proptech.service.property.PropertyRightsPolicy rights;
 
     // The parent request row serializes create/reopen for the same accepted selection.
     @Transactional
@@ -61,11 +62,12 @@ public class ContractDraftService {
         if(a.getAvailability()!=Apartment.Availability.CONTRACT_IN_PROGRESS || contracts.findByApartmentId(a.getId()).stream().anyMatch(c->c.getStatus()!=RentalContract.Status.ENDED))
             throw conflict("APARTMENT_NOT_SELECTED","Căn hộ không còn ở bước làm hợp đồng hoặc đã có hợp đồng hiện hành.");
         var customer=r.getCustomer();
-        if(customer.getRole()!=AuthAccount.Role.CUSTOMER || customer.getStatus()!=AuthAccount.Status.ACTIVE || !verification.isVerified(customer))
+        if((customer.getRole()!=AuthAccount.Role.CUSTOMER&&customer.getRole()!=AuthAccount.Role.OWNER) || customer.getStatus()!=AuthAccount.Status.ACTIVE || !verification.isRentalVerified(customer))
             throw conflict("CUSTOMER_NOT_ELIGIBLE","Tài khoản khách thuê không còn đủ điều kiện.");
         var snapshot=snapshot(r);
         if(!sourceVersion(r,snapshot).equals(input.getSourceVersion())) throw conflict("SOURCE_CHANGED","Thông tin hai bên hoặc căn hộ đã thay đổi. Hãy mở lại để rà soát.");
         validateTerms(input);
+        rights.contract(a.getProperty(),input.getStartDate(),input.getEndDate());
         var c=new RentalContract();c.setApartment(a);c.setCustomer(customer);c.setStatus(RentalContract.Status.DRAFT);
         applyContract(c,input);contracts.saveAndFlush(c);
         var d=new ContractDraft();d.setContract(c);d.setRentalRequest(r);d.setSnapshotJson(json.writeValueAsString(snapshot));
@@ -99,7 +101,7 @@ public class ContractDraftService {
         var c=contracts.lockById(id).orElseThrow(ContractDraftService::notFound);
         if(d.getContentVersion()!=input.getVersion()) throw stale();
         if(c.getStatus()!=RentalContract.Status.DRAFT) throw conflict("CONTRACT_NOT_DRAFT","Chỉ bản nháp mới được chỉnh sửa.");
-        validateTerms(input);applyContract(c,input);applyDraft(d,input);
+        validateTerms(input);rights.contract(c.getApartment().getProperty(),input.getStartDate(),input.getEndDate());applyContract(c,input);applyDraft(d,input);
         // Content version is independent of the meter billing chain version.
         d.setContentVersion(d.getContentVersion()+1);
         contracts.saveAndFlush(c);drafts.saveAndFlush(d);

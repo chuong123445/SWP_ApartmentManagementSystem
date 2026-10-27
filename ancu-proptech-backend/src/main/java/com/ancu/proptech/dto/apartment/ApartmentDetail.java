@@ -4,6 +4,6 @@ public record ApartmentDetail(UUID id, String title, String description, String 
                               String propertyName, String areaM2, String advertisedMonthlyRent, List<String> images,
                               List<String> amenities, String availability, String publicationStatus,
                               Integer bedrooms, Integer bathrooms, PublicOwner publicOwner, long version,
-                              String electricityUnitPrice,String waterUnitPrice) {
+                              String electricityUnitPrice,String waterUnitPrice,String lessorRelationship,java.time.LocalDate rightsValidFrom,java.time.LocalDate rightsValidUntil,boolean rentalRightsAvailable) {
     public record PublicOwner(UUID id, String displayName, boolean contactVerified) {}
 }

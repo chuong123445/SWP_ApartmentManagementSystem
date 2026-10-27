@@ -75,6 +75,7 @@ public class VneidPropertyImportService {
             var property=properties.findById(created.property().id()).orElseThrow();
             // User cho phép tài sản nguồn Auth0 bỏ Admin; không tạo bản ghi Admin duyệt giả.
             property.setApprovalStatus(Property.ApprovalStatus.APPROVED);
+            property.setRightType(PropertyDossier.RightType.OWNERSHIP);
             for(var createdUnit:created.apartments()) {
                 var unit=apartments.findById(createdUnit.id()).orElseThrow();
                 var sourceUnit=source.units().stream().filter(u->u.code().equals(unit.getRoomNumber())).findFirst().orElseThrow();
