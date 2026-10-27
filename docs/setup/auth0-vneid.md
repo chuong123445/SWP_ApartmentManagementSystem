@@ -49,8 +49,8 @@ Nguồn framework: Context7 Spring Security 7.1.1 (project Boot4.1.1), Auth0 Rea
 ## Troubleshooting đã quan sát 27/10/2026
 
 - Client ID chính xác do user copy: `ZzK7niS70kbjNyonFETMY5lDzBYDTF2Y` (chữ l thường sau MY5). Chép từ ảnh thành số1 gây Unknown client. Đã sửa ignored Backend .env.local, giữ enabled=true do user đã bật. Restart Backend để tiến trình đang chạy nạp giá trị mới; không dùng Client ID M2M của An Cu Backend (Test Application).
-+- Sau khi kiểm tra authorize với Client ID đúng bằng override cấu hình công khai trong browser test (không restart tiến trình user), Auth0 trả về callback với lỗi client not authorized to access resource server https://api.ancu.local. Chưa đăng nhập hoặc tạo tài khoản; đây là lỗi quyền application→API ở Auth0.
-+- Applications → APIs → An Cu Backend → Settings → Application Access Policy: User-Delegated Access dùng Per-app authorization. Save, rồi Application Access → VNeID-Mock → Edit → Grant Access cho User-Delegated Access → Save. M2M Client Access là luồng khác, không thay thế quyền SPA user-delegated. Không cấp Management API hoặc client secret cho React.
-+- Đồng bộ Action Secret SPA_CLIENT_ID bằng cùng giá trị đúng và Deploy lại nếu trước đó đã nhập sai.
+- Sau khi kiểm tra authorize với Client ID đúng bằng override cấu hình công khai trong browser test (không restart tiến trình user), Auth0 trả về callback với lỗi client not authorized to access resource server https://api.ancu.local. Chưa đăng nhập hoặc tạo tài khoản; đây là lỗi quyền application→API ở Auth0.
+- Applications → APIs → An Cu Backend → Settings → Application Access Policy: User-Delegated Access dùng Per-app authorization. Save, rồi Application Access → VNeID-Mock → Edit → Grant Access cho User-Delegated Access → Save. M2M Client Access là luồng khác, không thay thế quyền SPA user-delegated. Không cấp Management API hoặc client secret cho React.
+- Đồng bộ Action Secret SPA_CLIENT_ID bằng cùng giá trị đúng và Deploy lại nếu trước đó đã nhập sai.
 
 Nguồn đối chiếu: Context7 Auth0; https://auth0.com/docs/get-started/applications/application-access-to-apis-client-grants và https://auth0.com/blog/developers-guide-api-access-policies-auth0/ . Chưa xác nhận đăng nhập Auth0 thật thành công; cần user hoàn tất grant trên Dashboard.
