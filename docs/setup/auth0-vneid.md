@@ -5,7 +5,7 @@ Luồng đăng nhập/đăng ký CUSTOMER và liên kết self được triển 
 ## 1. Auth0 Dashboard
 
 - SPA Application: VNeID-Mock; Domain do người dùng cung cấp: `vneid-mock-swp.au.auth0.com`. Application Type phải là Single Page Application; token endpoint authentication phù hợp SPA, không yêu cầu client secret trong React.
-- API riêng: `An Cu Backend`; Identifier đề xuất `https://api.ancu.local`; RS256. Không dùng Auth0 Management API làm audience của luồng đăng nhập.
+- API riêng: `An Cu Backend`; Identifier đã được người dùng xác nhận ngày 27/10/2026: `https://api.ancu.local`; RS256. Không dùng Auth0 Management API làm audience của luồng đăng nhập.
 - Database Connection: `Username-Password-Authentication`; bật ứng dụng trên tab Applications của connection.
 - Allowed Callback URLs: `http://localhost:3000/auth/vneid/callback` (thêm URL 3002 tương ứng nếu kiểm thử ở 3002).
 - Allowed Logout URLs và Allowed Web Origins: `http://localhost:3000` (và 3002 nếu dùng). Khi deploy khai báo HTTPS/origin thật; không dùng wildcard.
