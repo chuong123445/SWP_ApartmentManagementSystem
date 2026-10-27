@@ -1,3 +1,4 @@
+import { ApartmentPriceForm, type PriceInput } from '@/components/rooms/ApartmentPriceForm';
 import React, { useState } from 'react';
 import {
   X,
@@ -21,6 +22,7 @@ import { Room, Tenant, Invoice, Contract } from '@/types';
 import { ApartmentImage } from '@/components/apartments/ApartmentImage';
 
 interface RoomDetailModalProps {
+  onPrices?: (room:Room,input:PriceInput)=>Promise<void>;
   onPublication?: (room: Room, status: 'PUBLISHED' | 'HIDDEN') => Promise<void>;
   room: Room | null;
   tenant: Tenant | undefined;
@@ -42,6 +44,7 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
   onCheckOut,
   onReserveEscrow,
   onPublication,
+  onPrices,
 }) => {
   const [reserveSuccess, setReserveSuccess] = useState(false);
   const [publicationBusy, setPublicationBusy] = useState(false);const [publicationError, setPublicationError] = useState('');
@@ -62,6 +65,7 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
           {room.electricityUnitPrice != null && <p>Đơn giá điện: {room.electricityUnitPrice} đ/kWh</p>}
           {room.waterUnitPrice != null && <p>Đơn giá nước: {room.waterUnitPrice} đ/m³</p>}
         </div>}
+        {onPrices&&<ApartmentPriceForm room={room} onSave={onPrices}/>}
         {/* Modal Header */}
         <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
           <div>

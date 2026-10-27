@@ -19,6 +19,7 @@ import { AccountActionPage } from '@/pages/account/AccountActionPage';
 import { AccountSettingsPage } from '@/pages/account/AccountSettingsPage';
 import { IdentityPage } from '@/pages/account/IdentityPage';
 import { OwnerUpgradePage } from '@/pages/account/OwnerUpgradePage';
+import { PropertyCreatePage } from '@/pages/account/PropertyCreatePage';
 import { PropertyApplicationsPage } from '@/pages/account/PropertyApplicationsPage';
 import { PropertyNoticesPage } from '@/pages/account/PropertyNoticesPage';
 import { PropertyDossiersPage } from '@/pages/admin/PropertyDossiersPage';
@@ -61,6 +62,7 @@ export function AppRoutes() {
     <Route path="/account/profile" element={<RequireAccount verified={false}><ProfilePage /></RequireAccount>} />
     <Route path="/account/settings" element={<RequireAccount verified={false}><AccountSettingsPage /></RequireAccount>} />
     <Route path="/account/owner-upgrade" element={<RequireAccount verified={false}><OwnerUpgradePage /></RequireAccount>} />
+    <Route path="/account/properties/new/:relationship?" element={<RequireAccount verified={false}><PropertyCreatePage /></RequireAccount>} />
     <Route path="/account/rental-properties" element={<RequireAccount verified={false}><PropertyApplicationsPage /></RequireAccount>} />
     <Route path="/account/property-notices" element={<RequireAccount verified={false}><PropertyNoticesPage /></RequireAccount>} />
     <Route path="/account/settings/identity" element={<RequireAccount verified={false}><IdentityPage /></RequireAccount>} />
