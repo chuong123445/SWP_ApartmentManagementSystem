@@ -38,6 +38,7 @@ class ContractDraftIntegrationTests {
     @Autowired ContractDraftRepository drafts;
     @Autowired com.ancu.proptech.repository.identity.IdentityProfileRepository identities;
     @Autowired AuthService auth;
+    @Autowired com.ancu.proptech.repository.auth.ExternalIdentityRepository verifiedIdentities;
     @Autowired PasswordEncoder passwords;
     private AuthAccount owner,customer,other;
     private RentalRequest request;
@@ -55,6 +56,11 @@ class ContractDraftIntegrationTests {
     private AuthAccount account(AuthAccount.Role role) { var a=new AuthAccount();a.setEmail(UUID.randomUUID()+"@example.invalid");a.setFullName("Thông tin đã lưu "+role);a.setPhone("0912345678");a.setAddress("Địa chỉ hồ sơ");a.setPasswordHash(hash);a.setRole(role);a.setStatus(AuthAccount.Status.ACTIVE);a.setEmailVerified(true);a.setContactVerified(true);return accounts.saveAndFlush(a); }
     private String bearer(AuthAccount a) { return "Bearer "+auth.login(a.getEmail(),PASSWORD).tokens().accessToken(); }
     private String context() throws Exception { return mvc.perform(get("/api/v1/owner/rental-requests/"+request.getId()+"/contract-context").header("Authorization",token)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString(); }
+    @Test void newContractContextUsesVerifiedCitizenWithoutRequiringManualIdentity()throws Exception{
+        var verified=com.ancu.proptech.support.VerifiedIdentityFixtures.bind(verifiedIdentities,owner);
+        String context=context();assertEquals(verified.getDocumentNumber(),JsonPath.read(context,"$.snapshot.owner.documentNumber"));assertEquals("VERIFIED",JsonPath.read(context,"$.snapshot.owner.identityVerificationStatus"));
+        assertNull(JsonPath.read(context,"$.snapshot.owner.documentIssueDate"));assertEquals(verified.getLegalName(),JsonPath.read(context,"$.snapshot.owner.fullName"));
+    }
     @Test void cannotCreateContractBeyondApprovedRights()throws Exception{
         var p=request.getApartment().getProperty();p.setRightType(PropertyDossier.RightType.AUTHORIZATION);p.setRightsValidFrom(LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).minusDays(1));p.setRightsValidUntil(LocalDate.of(2027,10,31));properties.flush();
         create(token,body(context())).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONTRACT_EXCEEDS_PROPERTY_RIGHTS"));
