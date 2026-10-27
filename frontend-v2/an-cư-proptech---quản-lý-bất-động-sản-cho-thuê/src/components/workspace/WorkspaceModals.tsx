@@ -1,60 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import type { RentalWorkspace } from '@/hooks/useRentalWorkspace';
 import type { WorkspaceNavigation } from '@/hooks/useWorkspaceNavigation';
 import { RoomDetailModal } from '@/components/rooms/RoomDetailModal';
 import { AddRoomModal } from '@/components/rooms/AddRoomModal';
 import { InvoiceDetailModal } from '@/components/billing/InvoiceDetailModal';
 import { CreateInvoiceModal } from '@/components/billing/CreateInvoiceModal';
-import { AddPropertyModal } from '@/components/property/AddPropertyModal';
+import { AddPropertyIdentityGate } from '@/components/property/AddPropertyIdentityGate';
 import { PropertyDossierModal } from '@/components/property/PropertyDossierModal';
-import { RequireOwnerIdentityModal } from '@/components/property/RequireOwnerIdentityModal';
-import { getIdentity } from '@/services/identity/identityService';
-import type { IdentityProfile } from '@/types/identity';
-import { Loader2 } from 'lucide-react';
 
 export function WorkspaceModals({ workspace, navigation }: { workspace: RentalWorkspace; navigation: WorkspaceNavigation }) {
   const { selectedRoom, selectedInvoice, setSelectedRoom, setSelectedInvoice, rooms, tenants, contracts, invoices,
     config, handleCheckOut, handleReserveEscrow, handleMarkPaid, handleCreateInvoice, handleAddRoom } = workspace;
   const { isAddRoomOpen, setIsAddRoomOpen, isCreateInvoiceOpen, setIsCreateInvoiceOpen } = navigation;
-  const [identityProfile, setIdentityProfile] = useState<IdentityProfile | null | undefined>(undefined);
-  const [checkingIdentity, setCheckingIdentity] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    setCheckingIdentity(true);
-    getIdentity()
-      .then(profile => {
-        if (active) setIdentityProfile(profile);
-      })
-      .catch(() => {
-        if (active) setIdentityProfile(null);
-      })
-      .finally(() => {
-        if (active) setCheckingIdentity(false);
-      });
-    return () => { active = false; };
-  }, [navigation.isAddPropertyOpen]);
-
-  const hasIdentity = Boolean(identityProfile && identityProfile.documentNumber);
+  const { user } = useAuth();
   const availableProperties = workspace.buildings.filter(p => (navigation.selectedBuildingId === 'all' || p.id === navigation.selectedBuildingId) && (p.rentalMode !== 'SINGLE_UNIT' || p.totalRooms === 0));
   return <>
       {navigation.propertyForDossierId && <PropertyDossierModal propertyId={navigation.propertyForDossierId} onClose={() => navigation.setPropertyForDossierId(null)} onSaved={workspace.reloadInventory} />}
       {navigation.isAddPropertyOpen && (
-        checkingIdentity && identityProfile === undefined ? (
-          <div role="status" className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl p-6 shadow-xl flex items-center gap-3 text-slate-600">
-              <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
-              <span className="text-sm font-medium">Đang kiểm tra thông tin danh tính...</span>
-            </div>
-          </div>
-        ) : !hasIdentity ? (
-          <RequireOwnerIdentityModal onClose={() => navigation.setIsAddPropertyOpen(false)} />
-        ) : (
-          <AddPropertyModal onClose={() => navigation.setIsAddPropertyOpen(false)} onCreate={async input => {
+          <AddPropertyIdentityGate key={`${user?.id}:${user?.version}`} onClose={() => navigation.setIsAddPropertyOpen(false)} onCreate={async input => {
             const id = await workspace.handleAddProperty(input);
             navigation.setSelectedBuildingId(id);navigation.selectTab('properties');
           }} />
-        )
       )}
       {selectedRoom && (
         <RoomDetailModal

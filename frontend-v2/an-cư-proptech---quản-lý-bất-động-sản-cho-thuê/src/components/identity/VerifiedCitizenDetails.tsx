@@ -1,5 +1,5 @@
 import type { AccountVerification } from '@/services/auth/vneidService';
-import { useAccountVerification } from '@/hooks/useAccountVerification';
+import type { useAccountVerification } from '@/hooks/useAccountVerification';
 
 export function VerifiedCitizenDetails({ verification }: { verification: AccountVerification['vneid'] }) {
   const identity = verification.identity;
@@ -19,8 +19,8 @@ export function VerifiedCitizenDetails({ verification }: { verification: Account
   </div>;
 }
 
-export function VerifiedCitizenPanel() {
-  const { data, loading, error, reload } = useAccountVerification();
+export function VerifiedCitizenPanel({ state }: { state: ReturnType<typeof useAccountVerification> }) {
+  const { data, loading, error, reload } = state;
   if (loading) return <p role="status" className="mb-4 text-sm text-slate-500">Đang tải căn cước đã xác thực...</p>;
   if (error) return <p role="alert" className="mb-4 text-rose-700">{error}<button type="button" onClick={reload} className="ml-2 underline">Tải lại trạng thái xác thực</button></p>;
   if (data?.vneid.status !== 'VERIFIED') return null;
