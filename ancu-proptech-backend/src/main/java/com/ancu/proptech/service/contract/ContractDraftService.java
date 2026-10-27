@@ -34,6 +34,7 @@ public class ContractDraftService {
     private final AccountAccessService access;
     private final AccountVerificationPolicy verification;
     private final IdentityProfileRepository identities;
+    private final com.ancu.proptech.repository.auth.ExternalIdentityRepository verifiedIdentities;
     private final ObjectMapper json;
     private final com.ancu.proptech.service.property.PropertyRightsPolicy rights;
 
@@ -48,7 +49,7 @@ public class ContractDraftService {
         var snapshot=snapshot(request);
         return new ContractContextResponse(requestId,request.getVersion(),sourceVersion(request,snapshot),snapshot,
             a.getAdvertisedMonthlyRent().toPlainString(),a.getDeposit()==null?null:a.getDeposit().toPlainString(),
-            ContractTemplates.apartment(),existing==null?null:response(existing));
+            ContractTemplates.apartment(),existing==null?null:response(existing),a.getProperty().getRightsValidFrom(),a.getProperty().getRightsValidUntil());
     }
 
     @Transactional
@@ -64,6 +65,7 @@ public class ContractDraftService {
         var customer=r.getCustomer();
         if((customer.getRole()!=AuthAccount.Role.CUSTOMER&&customer.getRole()!=AuthAccount.Role.OWNER) || customer.getStatus()!=AuthAccount.Status.ACTIVE || !verification.isRentalVerified(customer))
             throw conflict("CUSTOMER_NOT_ELIGIBLE","Tài khoản khách thuê không còn đủ điều kiện.");
+        rights.requireCurrent(a.getProperty());
         var snapshot=snapshot(r);
         if(!sourceVersion(r,snapshot).equals(input.getSourceVersion())) throw conflict("SOURCE_CHANGED","Thông tin hai bên hoặc căn hộ đã thay đổi. Hãy mở lại để rà soát.");
         validateTerms(input);
@@ -132,6 +134,9 @@ public class ContractDraftService {
             approved==null?null:new ContractSnapshot.ReceivingAccount(approved.getBank(),approved.getAccountNumber(),approved.getAccountHolderName()));
     }
     private ContractSnapshot.Party party(AuthAccount a) {
+        var verified=verifiedIdentities.findById(a.getId()).filter(i->"VERIFIED".equals(i.getVerificationStatus())).orElse(null);
+        if(verified!=null)return new ContractSnapshot.Party(a.getId(),verified.getLegalName(),a.getEmail(),a.getPhone(),verified.getAddress(),verified.getDateOfBirth(),a.isEmailVerified(),
+            verified.getDocumentNumber(),null,null,null,"VERIFIED",false);
         var identity=identities.findById(a.getId()).orElse(null);
         return new ContractSnapshot.Party(a.getId(),identity==null?a.getFullName():identity.getLegalName(),a.getEmail(),a.getPhone(),
             identity==null?a.getAddress():identity.getCurrentAddress(),identity==null?a.getDateOfBirth():identity.getDateOfBirth(),a.isEmailVerified(),
