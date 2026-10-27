@@ -7,6 +7,7 @@ import { SessionLoading } from '@/components/feedback/SessionLoading';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
 import { AccountVerificationPage } from '@/pages/auth/AccountVerificationPage';
+import { VneidCallbackPage } from '@/pages/auth/VneidCallbackPage';
 import { WorkspacePage } from '@/pages/WorkspacePage';
 import { HomePage } from '@/pages/customer/HomePage';
 import { ApartmentDetailPage } from '@/pages/customer/ApartmentDetailPage';
@@ -45,6 +46,7 @@ export function AppRoutes() {
     <Route path="/apartments/:id" element={<ApartmentDetailPage />} />
     <Route path="/login" element={<LoginRoute />} />
     <Route path="/register" element={<RegisterPage />} />
+    <Route path="/auth/vneid/callback" element={<VneidCallbackPage />} />
     <Route path="/app" element={<RequireAccount role="MANAGER"><WorkspacePage /></RequireAccount>} />
     <Route path="/admin/property-dossiers" element={<RequireAccount role="ADMIN" verified={false}><PropertyDossiersPage /></RequireAccount>} />
     <Route path="/my/rental-requests" element={<RequireAccount role="CUSTOMER"><MyRentalRequestsPage /></RequireAccount>} />

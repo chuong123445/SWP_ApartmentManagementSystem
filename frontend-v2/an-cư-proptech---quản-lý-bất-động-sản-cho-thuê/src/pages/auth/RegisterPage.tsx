@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { register, type RegistrationInput } from '@/services/auth/authService';
 import { requestEmailChange } from '@/services/auth/accountService';
 import { SessionLoading } from '@/components/feedback/SessionLoading';
+import { VneidButton } from '@/components/auth/VneidButton';
 
 export function RegisterPage() {
   const { user, loading, login } = useAuth();const navigate = useNavigate();
@@ -48,6 +49,7 @@ export function RegisterPage() {
         <div><label htmlFor="register-confirm">Nhập lại mật khẩu</label><input id="register-confirm" type="password" required autoComplete="new-password" value={confirmation} onChange={e => setConfirmation(e.target.value)} className={cls} /></div>
         <button type="submit" className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white font-semibold py-3 rounded-lg disabled:opacity-60">{busy ? <><LoaderCircle className="w-4 h-4 animate-spin" />Đang tạo tài khoản...</> : 'Đăng ký'}</button>
       </fieldset></form>
+      <VneidButton intent="login" label="Đăng ký bằng VNeID mô phỏng" />
       <p className="text-sm text-slate-500 mt-6 text-center">Đã có tài khoản? <Link to="/login" className="text-emerald-700 font-semibold">Đăng nhập</Link></p>
     </section>
   </main>;

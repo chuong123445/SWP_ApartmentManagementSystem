@@ -4,8 +4,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as authApi from '@/services/auth/authService';
 import { ApiError, setAccessToken, setRefreshHandler } from '@/services/http/client';
 import { currentUser } from '@/services/auth/accountService';
+import { vneidLogin } from '@/services/auth/vneidService';
+import { useAuth0 } from '@auth0/auth0-react';
+import { useVneidConfig } from '@/contexts/VneidContext';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { logout: clearAuth0 } = useAuth0();
+  const { config } = useVneidConfig();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -59,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await authApi.logout();
       setAccessToken(null);
       setUser(null);
+      if (config?.enabled) await clearAuth0({ openUrl: false });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể đăng xuất. Vui lòng thử lại.');
     } finally {
@@ -68,6 +74,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const reloadUser = async () => { const current = generation.current;const next = await currentUser();if (current === generation.current) setUser(next); };
+  const loginVneid = async (token: string) => {
+    const current = ++generation.current;
+    const session = await vneidLogin(token);
+    if (current !== generation.current) throw new Error('Phiên đăng nhập đã thay đổi. Hãy thử lại.');
+    apply(session); return session.user;
+  };
   const endSession = () => { generation.current++;setAccessToken(null);setUser(null);setError(''); };
-  return <AuthContext.Provider value={{ user, loading, isLoggingOut, error, login, logout, reloadUser, endSession }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, loading, isLoggingOut, error, login, loginVneid, logout, reloadUser, endSession }}>{children}</AuthContext.Provider>;
 }
