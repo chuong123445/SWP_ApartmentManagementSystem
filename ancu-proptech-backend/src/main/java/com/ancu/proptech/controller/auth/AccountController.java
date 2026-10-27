@@ -10,7 +10,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.web.bind.annotation.*;
-import java.util.UUID;
+
 @RestController @RequiredArgsConstructor
 public class AccountController {
     private final AccountService accounts;private final EmailChangeService emails;private final CookieCsrfTokenRepository csrf;
@@ -21,6 +21,6 @@ public class AccountController {
     @PostMapping("/api/v1/me/phone") public ProfileResponse phone(@AuthenticationPrincipal Jwt jwt,@Valid @RequestBody PhoneChange input,HttpServletRequest request,HttpServletResponse response){var result=accounts.phone(jwt,input);clear(request,response);return result;}
     @GetMapping("/api/v1/me/email-change") public ResponseEntity<EmailChallengeResponse> pending(@AuthenticationPrincipal Jwt jwt){var result=emails.pending(jwt);return result==null?ResponseEntity.noContent().build():ResponseEntity.ok(result);}
     @PostMapping("/api/v1/me/email-changes") public ResponseEntity<EmailChallengeResponse> email(@AuthenticationPrincipal Jwt jwt,@Valid @RequestBody EmailChangeRequest input){return ResponseEntity.status(HttpStatus.ACCEPTED).body(emails.request(jwt,input));}
-    @PostMapping("/api/v1/me/email-changes/{id}/confirm") public ProfileResponse confirm(@AuthenticationPrincipal Jwt jwt,@PathVariable UUID id,@Valid @RequestBody EmailChangeConfirm input,HttpServletRequest request,HttpServletResponse response){var result=emails.confirm(jwt,id,input);clear(request,response);return result;}
+    @PostMapping("/api/v1/me/email-changes/{id}/confirm") public ProfileResponse confirm(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody EmailChangeConfirm input,HttpServletRequest request,HttpServletResponse response){var result=emails.confirm(jwt,id,input);clear(request,response);return result;}
     private void clear(HttpServletRequest request,HttpServletResponse response){response.addHeader(HttpHeaders.SET_COOKIE,ResponseCookie.from(AuthController.REFRESH_COOKIE,"").httpOnly(true).secure(secure).sameSite("Lax").path("/api/v1/auth").maxAge(0).build().toString());csrf.saveToken(null,request,response);}
 }

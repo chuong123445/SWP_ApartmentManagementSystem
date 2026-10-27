@@ -15,13 +15,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.*;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.UUID;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
 class OwnerPropertyIntegrationTests {
+    @Autowired com.ancu.proptech.repository.property.PropertyImageRepository imageFiles;
     @Autowired MockMvc mvc;
     @Autowired AuthAccountRepository accounts;
     @Autowired PropertyRepository properties;
@@ -32,7 +33,7 @@ class OwnerPropertyIntegrationTests {
     private String token;
     @BeforeEach void fixture() { owner=account(AuthAccount.Role.OWNER);token=token(owner); }
     private AuthAccount account(AuthAccount.Role role) {
-        var a=new AuthAccount();a.setEmail(UUID.randomUUID()+"@example.invalid");a.setFullName("Property integration");
+        var a=new AuthAccount();a.setEmail(com.ancu.proptech.support.TestIds.next()+"@example.invalid");a.setFullName("Property integration");
         a.setPasswordHash(passwords.encode("Property-test!12345"));a.setRole(role);a.setStatus(AuthAccount.Status.ACTIVE);
         a.setEmailVerified(true);a.setContactVerified(true);return accounts.saveAndFlush(a);
     }
@@ -41,8 +42,8 @@ class OwnerPropertyIntegrationTests {
         {"roomNumber":"%s","title":"Căn hộ kiểm thử","floor":1,"areaM2":"32.50","advertisedMonthlyRent":"4500000.00","amenities":[]}
         """.formatted(number); }
     private String body(String mode,String units) { return """
-        {"name":"Nhà cho thuê kiểm thử","address":"12 Đường Kiểm Thử","city":"TP. Hồ Chí Minh","district":"Quận 3","ward":"Phường Kiểm Thử","rentalMode":"%s","apartments":[%s]}
-        """.formatted(mode,units); }
+        {"imageIds":["%s"],"name":"Nhà cho thuê kiểm thử","address":"12 Đường Kiểm Thử","city":"TP. Hồ Chí Minh","district":"Quận 3","ward":"Phường Kiểm Thử","rentalMode":"%s","apartments":[%s]}
+        """.formatted(com.ancu.proptech.support.PropertyImageFixtures.stage(imageFiles,owner.getId()),mode,units); }
     private ResultActions create(String bearer,String input) throws Exception { return mvc.perform(post("/api/v1/owner/properties")
         .header("Authorization","Bearer "+bearer).contentType("application/json").content(input)); }
     @Test void singlePropertyPersistsOnePrivateDraftAndDoesNotInventMeterBaseline() throws Exception {
@@ -54,7 +55,7 @@ class OwnerPropertyIntegrationTests {
             .andExpect(jsonPath("$.apartments[0].areaM2").value("32.50"))
             .andExpect(jsonPath("$.apartments[0].electricityIndex").isEmpty()).andReturn();
         String id=JsonPath.read(result.getResponse().getContentAsString(),"$.property.id");
-        var p=properties.findById(UUID.fromString(id)).orElseThrow();assertEquals(owner.getId(),p.getOwner().getId());
+        var p=properties.findById(Long.valueOf(id)).orElseThrow();assertEquals(owner.getId(),p.getOwner().getId());
         String a=JsonPath.read(result.getResponse().getContentAsString(),"$.apartments[0].id");
         mvc.perform(get("/api/v1/apartments/"+a)).andExpect(status().isNotFound());
         mvc.perform(get("/api/v1/owner/properties").header("Authorization","Bearer "+token))
@@ -64,7 +65,7 @@ class OwnerPropertyIntegrationTests {
         var result=create(token,body("MULTI_UNIT",unit("P.101")+","+unit("P.102"))).andExpect(status().isCreated())
             .andExpect(jsonPath("$.apartments.length()").value(2)).andReturn();
         String id=JsonPath.read(result.getResponse().getContentAsString(),"$.property.id");
-        assertEquals(2,apartments.countByPropertyId(UUID.fromString(id)));
+        assertEquals(2,apartments.countByPropertyId(Long.valueOf(id)));
         mvc.perform(post("/api/v1/owner/apartments").header("Authorization","Bearer "+token).contentType("application/json")
             .content(unit("P.103").replace("\"roomNumber\"","\"propertyId\":\""+id+"\",\"roomNumber\"")))
             .andExpect(status().isCreated()).andExpect(jsonPath("$.publicationStatus").value("DRAFT"));

@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
-import java.util.UUID;
+
 import java.util.List;
 
 @Service
@@ -24,13 +24,13 @@ public class EscrowService {
     @Transactional
     public EscrowDeposit createEscrow(EscrowDeposit depositRequest) {
         depositRequest.setStatus(EscrowStatus.HELD);
-        depositRequest.setBankHoldReference("MB-ESCROW-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+        depositRequest.setBankHoldReference("MB-ESCROW-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase());
         depositRequest.setCreatedAt(LocalDateTime.now());
         return escrowRepository.save(depositRequest);
     }
 
     @Transactional
-    public EscrowDeposit releaseEscrow(String escrowId) {
+    public EscrowDeposit releaseEscrow(Long escrowId) {
         EscrowDeposit deposit = escrowRepository.findById(escrowId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy hồ sơ ký quỹ: " + escrowId));
 

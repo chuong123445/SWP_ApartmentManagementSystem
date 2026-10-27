@@ -20,6 +20,7 @@ import java.util.*;
 @Service @RequiredArgsConstructor
 public class ApartmentService {
     private final ApartmentRepository apartments;
+    private final com.ancu.proptech.service.property.PropertyImageService images;
     private final com.ancu.proptech.service.property.PropertyRightsPolicy rights;
     public static Specification<Apartment> rightsEffective(){
         return (root,query,cb)->{var p=root.get("property");var today=java.time.LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
@@ -31,7 +32,7 @@ public class ApartmentService {
         return (root, query, cb) -> {
             var property = root.join("property");
             var owner = property.join("owner");
-            var evidence=query.subquery(UUID.class);
+            var evidence=query.subquery(Long.class);
             var identity=evidence.from(com.ancu.proptech.model.auth.ExternalIdentity.class);
             evidence.select(identity.get("accountId")).where(cb.equal(identity.get("accountId"),owner.get("id")),cb.equal(identity.get("verificationStatus"),"VERIFIED"));
             return cb.and(cb.equal(root.get("publicationStatus"), Apartment.PublicationStatus.PUBLISHED),
@@ -68,13 +69,13 @@ public class ApartmentService {
     }
 
     @Transactional(readOnly = true)
-    public ApartmentDetail detail(UUID id) {
+    public ApartmentDetail detail(Long id) {
         Apartment a = apartments.findOne(visible().and((root, query, cb) -> cb.equal(root.get("id"), id)))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Không tìm thấy căn hộ đang được đăng công khai."));
         var p = a.getProperty();
         var owner = p.getOwner();
         return new ApartmentDetail(a.getId(), a.getTitle(), a.getDescription(), p.getAddress(), p.getCity(), p.getDistrict(), p.getName(),
-                a.getAreaM2().toPlainString(), a.getAdvertisedMonthlyRent().toPlainString(), List.of(image(a)),
+                a.getAreaM2().toPlainString(), a.getAdvertisedMonthlyRent().toPlainString(), gallery(a),
                 List.copyOf(a.getAmenities()), a.getAvailability().name(), a.getPublicationStatus().name(), a.getBedrooms(), a.getBathrooms(),
                 new ApartmentDetail.PublicOwner(owner.getId(), owner.getFullName(), owner.isContactVerified()), a.getVersion(),
                 a.getElectricityUnitPrice()==null?null:a.getElectricityUnitPrice().toPlainString(),a.getWaterUnitPrice()==null?null:a.getWaterUnitPrice().toPlainString(),p.getRightType()==null?"UNSPECIFIED":p.getRightType().name(),p.getRightsValidFrom(),p.getRightsValidUntil(),!rights.limited(p)||(p.getRightsValidFrom()!=null&&p.getRightsValidUntil()!=null&&!rights.today().isBefore(p.getRightsValidFrom())&&!rights.today().isAfter(p.getRightsValidUntil())));
@@ -92,5 +93,6 @@ public class ApartmentService {
         return new ApartmentSummary(a.getId(), a.getTitle(), p.getAddress(), p.getCity(), p.getDistrict(),
                 a.getAreaM2().toPlainString(), a.getAdvertisedMonthlyRent().toPlainString(), image(a), a.getAvailability().name(), a.getBedrooms(), a.getBathrooms(),p.getRightType()==null?"UNSPECIFIED":p.getRightType().name());
     }
-    private static String image(Apartment a) { return a.getCoverImagePath() == null ? "/images/apartment-placeholder.svg" : a.getCoverImagePath(); }
+    private List<String> gallery(Apartment a){var urls=images.urls(a.getProperty().getId());return urls.isEmpty()?List.of(image(a)):urls;}
+    private String image(Apartment a) { var urls=images.urls(a.getProperty().getId());if(!urls.isEmpty())return urls.getFirst();return a.getCoverImagePath() == null ? "/images/apartment-placeholder.svg" : a.getCoverImagePath(); }
 }

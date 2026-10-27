@@ -19,7 +19,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
-import java.util.UUID;
+
 
 @Service @RequiredArgsConstructor
 public class RentalRequestService {
@@ -30,7 +30,7 @@ public class RentalRequestService {
     private final com.ancu.proptech.service.property.PropertyRightsPolicy rights;
 
     @Transactional
-    public RentalRequestResponse submit(Jwt jwt, UUID apartmentId, RentalRequestCreate input) {
+    public RentalRequestResponse submit(Jwt jwt, Long apartmentId, RentalRequestCreate input) {
         var customer = access.customer(jwt);
         Apartment apartment = apartments.findForRequest(apartmentId).orElseThrow(RentalRequestService::notFound);
         var p = apartment.getProperty();
@@ -46,6 +46,7 @@ public class RentalRequestService {
             throw new ApiException(HttpStatus.CONFLICT, "APARTMENT_NOT_AVAILABLE", "Căn hộ hiện không còn nhận yêu cầu thuê.");
         RentalRequest request = new RentalRequest();
         request.setApartment(apartment);
+        request.setQuotedMonthlyRent(apartment.getAdvertisedMonthlyRent());
         request.setCustomer(customer);
         request.setMessage(input.getMessage() == null ? "" : input.getMessage().strip());
         request.setCreatedAt(Instant.now());
@@ -54,17 +55,17 @@ public class RentalRequestService {
     }
 
     @Transactional(readOnly = true)
-    public java.util.List<RentalRequestResponse> forApartment(Jwt jwt, UUID apartmentId) {
+    public java.util.List<RentalRequestResponse> forApartment(Jwt jwt, Long apartmentId) {
         return activeRequests(access.customer(jwt).getId(), apartmentId).stream().map(this::response).toList();
     }
 
-    private java.util.List<RentalRequest> activeRequests(UUID customerId, UUID apartmentId) {
+    private java.util.List<RentalRequest> activeRequests(Long customerId, Long apartmentId) {
         return requests.findByCustomerIdAndApartmentIdAndStatusInOrderByCreatedAtDescIdDesc(customerId, apartmentId,
                 java.util.List.of(RentalRequest.Status.PENDING, RentalRequest.Status.ACCEPTED));
     }
 
     @Transactional
-    public RentalRequestResponse cancel(Jwt jwt, UUID id, RentalRequestCancel input) {
+    public RentalRequestResponse cancel(Jwt jwt, Long id, RentalRequestCancel input) {
         var customer = access.customer(jwt);
         var request = requests.findOwnForUpdate(id, customer.getId()).orElseThrow(() ->
                 new ApiException(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Không tìm thấy yêu cầu thuê."));
@@ -84,12 +85,12 @@ public class RentalRequestService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<RentalRequestResponse> ownerInbox(Jwt jwt, UUID apartmentId, RentalRequest.Status status, int page, int size) {
+    public PageResponse<RentalRequestResponse> ownerInbox(Jwt jwt, Long apartmentId, RentalRequest.Status status, int page, int size) {
         return ownerInbox(jwt, apartmentId, status, page, size, null);
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<RentalRequestResponse> ownerInbox(Jwt jwt, UUID apartmentId, RentalRequest.Status status, int page, int size, UUID propertyId) {
+    public PageResponse<RentalRequestResponse> ownerInbox(Jwt jwt, Long apartmentId, RentalRequest.Status status, int page, int size, Long propertyId) {
         ApartmentService.validatePage(page, size);
         var owner = access.owner(jwt);
         return PageResponse.from(requests.findOwnerInbox(owner.getId(), apartmentId, status, propertyId,
@@ -97,7 +98,7 @@ public class RentalRequestService {
     }
 
     @Transactional
-    public RentalRequestResponse decide(Jwt jwt, UUID id, RentalDecision input) {
+    public RentalRequestResponse decide(Jwt jwt, Long id, RentalDecision input) {
         var owner = access.owner(jwt);
         var request = requests.findForOwnerUpdate(id, owner.getId()).orElseThrow(() ->
                 new ApiException(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Không tìm thấy yêu cầu thuê."));
@@ -126,7 +127,7 @@ public class RentalRequestService {
 
     private RentalRequestResponse response(RentalRequest r) {
         return new RentalRequestResponse(r.getId(), r.getApartment().getId(), r.getApartment().getTitle(), r.getApartment().getProperty().getAddress(),
-                r.getApartment().getAdvertisedMonthlyRent().toPlainString(), r.getCustomer().getId(), r.getCustomer().getFullName(), r.getCustomer().getEmail(),
+                (r.getQuotedMonthlyRent()==null?r.getApartment().getAdvertisedMonthlyRent():r.getQuotedMonthlyRent()).toPlainString(), r.getCustomer().getId(), r.getCustomer().getFullName(), r.getCustomer().getEmail(),
                 r.getMessage(), r.getStatus().name(), r.getCreatedAt(), r.getVersion(), r.getDecisionReason());
     }
     private static ApiException notFound() { return new ApiException(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Không tìm thấy căn hộ đang được đăng công khai."); }

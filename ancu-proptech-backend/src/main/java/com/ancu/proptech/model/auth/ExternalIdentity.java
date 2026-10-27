@@ -4,12 +4,12 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.Nationalized;
 import java.time.*;
-import java.util.UUID;
+
 
 /** Bằng chứng tài khoản riêng, không thay hồ sơ ảnh CCCD tự khai. */
 @Entity @Table(name="auth_external_identities") @Getter @Setter @NoArgsConstructor
 public class ExternalIdentity {
-    @Id private UUID accountId;
+    @Id private Long accountId;
     @Column(nullable=false,length=255) private String issuer;
     @Column(nullable=false,length=255) private String subject;
     @Column(nullable=false,length=12) private String documentNumber;

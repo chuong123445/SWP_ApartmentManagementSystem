@@ -15,12 +15,12 @@ import java.util.*;
 public class PropertyRightNoticeService {
     private final PropertyRepository properties;private final PropertyRightNoticeRepository notices;private final AuthAccountRepository accounts;
     private final PropertyRightsPolicy rights;private final AccountAccessService access;private final TransactionTemplate transactions;private final PropertyNoticeEmailSender email;
-    public record Notice(UUID id,UUID propertyId,String propertyName,String kind,LocalDate expiresOn,Instant createdAt){}
-    private record Delivery(UUID id,String destination,String propertyName,LocalDate expiresOn,boolean expired,int attempt){}
+    public record Notice(Long id,Long propertyId,String propertyName,String kind,LocalDate expiresOn,Instant createdAt){}
+    private record Delivery(Long id,String destination,String propertyName,LocalDate expiresOn,boolean expired,int attempt){}
     @Transactional(readOnly=true) public List<Notice> mine(Jwt jwt){var a=access.account(jwt);return notices.findByRecipientIdOrderByCreatedAtDescIdDesc(a.getId(),PageRequest.of(0,100)).stream().map(n->new Notice(n.getId(),n.getProperty().getId(),n.getProperty().getName(),n.getKind(),n.getExpiresOn(),n.getCreatedAt())).toList();}
     public void generate(LocalDate today){
         var ids=properties.rightsDue(today.plusDays(30));
-        for(UUID id:ids)transactions.executeWithoutResult(status->{
+        for(Long id:ids)transactions.executeWithoutResult(status->{
             var p=properties.lockById(id).orElseThrow();
             if(p.getApprovalStatus()!=Property.ApprovalStatus.APPROVED||!rights.limited(p)||p.getApprovedRightsDossierId()==null||p.getRightsValidUntil()==null)return;
             String kind=p.getRightsValidUntil().isBefore(today)?"EXPIRED":"EXPIRING";
@@ -31,7 +31,7 @@ public class PropertyRightNoticeService {
     }
     public void deliver(){
         if(!email.isConfigured())return;
-        for(UUID id:notices.due(Instant.now(),PageRequest.of(0,20))){
+        for(Long id:notices.due(Instant.now(),PageRequest.of(0,20))){
             Delivery delivery=transactions.execute(status->{
                 var n=notices.lockById(id).orElseThrow();if(!Set.of("PENDING","RETRY","SENDING").contains(n.getEmailStatus())||n.getNextAttemptAt().isAfter(Instant.now()))return null;
                 if(n.getAttempts()>=5){n.setEmailStatus("FAILED");return null;}

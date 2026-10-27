@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Instant;
-import java.util.UUID;
+
 import static com.ancu.proptech.service.auth.AccountService.error;
 
 @Service @RequiredArgsConstructor
@@ -19,7 +19,7 @@ public class OwnerUpgradeService {
     private final ExternalIdentityRepository identities;private final OwnerUpgradeRepository upgrades;
     private final Auth0AssetReader assets;private final TransactionTemplate transactions;private final EntityManager em;
     public record Context(String role,boolean identityVerified,boolean assetServiceAvailable,long version){}
-    private record Binding(UUID accountId,String issuer,String subject){}
+    private record Binding(Long accountId,String issuer,String subject){}
     @Transactional(readOnly=true) public Context context(Jwt jwt){var account=auth.authenticate(jwt);return new Context(account.getRole().name(),identities.existsByAccountIdAndVerificationStatus(account.getId(),"VERIFIED"),assets.isConfigured(),account.getVersion());}
     public AuthUserResponse upgrade(Jwt jwt,OwnerUpgradeRequest input){
         Binding binding=transactions.execute(status->{

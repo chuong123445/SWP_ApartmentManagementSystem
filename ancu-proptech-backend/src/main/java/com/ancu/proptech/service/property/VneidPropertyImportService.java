@@ -35,7 +35,7 @@ public class VneidPropertyImportService {
     private final TransactionTemplate transactions;
     private final EntityManager em;
     private final ObjectMapper json;
-    private record Binding(UUID accountId,String issuer,String subject) {}
+    private record Binding(Long accountId,String issuer,String subject) {}
     public record Candidate(VneidAsset asset,String sourceVersion,boolean imported) {}
 
     public List<Candidate> list(Jwt jwt) {
@@ -61,7 +61,7 @@ public class VneidPropertyImportService {
             Map<String,VneidPropertyImportRequest.Unit> terms=new HashMap<>();
             for(var unit:input.getUnits())if(terms.put(unit.getExternalUnitId(),unit)!=null)throw invalidUnits();
             if(terms.size()!=source.units().size()||!terms.keySet().equals(new HashSet<>(source.units().stream().map(VneidAsset.Unit::externalUnitId).toList())))throw invalidUnits();
-            var create=new OwnerPropertyCreate();create.setName(source.name());create.setAddress(source.address());
+            var create=new OwnerPropertyCreate();create.setImageIds(input.getImageIds());create.setName(source.name());create.setAddress(source.address());
             create.setCity(input.getCity().strip());create.setDistrict(input.getDistrict().strip());create.setWard(input.getWard());
             create.setRentalMode(Property.RentalMode.valueOf(source.rentalMode()));
             create.setApartments(source.units().stream().map(unit->{

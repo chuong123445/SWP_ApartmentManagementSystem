@@ -3,11 +3,11 @@ package com.ancu.proptech.model.property;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.Instant;
-import java.util.UUID;
+
 
 @Entity @Table(name="property_external_imports") @Getter @Setter @NoArgsConstructor
 public class PropertyExternalImport {
-    @Id private UUID propertyId;
+    @Id private Long propertyId;
     @Column(nullable=false,length=300) private String issuer;
     @org.hibernate.annotations.Nationalized @Column(nullable=false,length=100) private String externalAssetId;
     @Column(nullable=false,length=255) private String subject;

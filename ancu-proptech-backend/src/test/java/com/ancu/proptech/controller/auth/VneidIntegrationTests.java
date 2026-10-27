@@ -35,8 +35,8 @@ class VneidIntegrationTests {
     String token,email,subject,number;
     Jwt external;
     @BeforeEach void setup() {
-        token="external-"+UUID.randomUUID();email="vneid-"+UUID.randomUUID()+"@example.invalid";subject="auth0|"+UUID.randomUUID();
-        number=String.format("%012d",Math.abs(UUID.randomUUID().getMostSignificantBits()%1000000000000L));
+        token="external-"+com.ancu.proptech.support.TestIds.next();email="vneid-"+com.ancu.proptech.support.TestIds.next()+"@example.invalid";subject="auth0|"+com.ancu.proptech.support.TestIds.next();
+        number=String.format("%012d",Math.abs(com.ancu.proptech.support.TestIds.next().longValue()%1000000000000L));
         external=claims("20/05/1990");when(verifier.decode(token)).thenReturn(external);
     }
     Jwt claims(String dob) {
@@ -92,7 +92,7 @@ class VneidIntegrationTests {
         mvc.perform(get("/api/v1/owner/properties").header("Authorization","Bearer "+internal)).andExpect(status().isOk());
     }
     @Test void preventsCrossAccountBinding() throws Exception {
-        login();email="other-"+UUID.randomUUID()+"@example.invalid";
+        login();email="other-"+com.ancu.proptech.support.TestIds.next()+"@example.invalid";
         var other=account(AuthAccount.Role.CUSTOMER,AuthAccount.Status.PENDING_VERIFICATION);
         self(auth.createSession(other).tokens().accessToken()).andExpect(status().isConflict());
         assertEquals(AuthAccount.Status.PENDING_VERIFICATION,other.getStatus());
@@ -131,7 +131,7 @@ class VneidIntegrationTests {
         } finally {
             executor.shutdownNow();executor.awaitTermination(10,java.util.concurrent.TimeUnit.SECONDS);
             transactions.executeWithoutResult(status->accounts.findByEmail(email).ifPresent(account->{
-                UUID id=account.getId();
+                Long id=account.getId();
                 em.createNativeQuery("delete from auth_refresh_tokens where session_id in (select id from auth_sessions where account_id=:id)").setParameter("id",id).executeUpdate();
                 em.createNativeQuery("delete from auth_sessions where account_id=:id").setParameter("id",id).executeUpdate();
                 identities.deleteById(id);identities.flush();accounts.delete(account);accounts.flush();
@@ -158,7 +158,7 @@ class VneidIntegrationTests {
     @Test void guestAndOtherAccountsCannotReadCitizen() throws Exception {
         login();var own=accounts.findByEmail(email).orElseThrow();
         mvc.perform(get("/api/v1/me/verifications")).andExpect(status().isUnauthorized());
-        email="other-"+UUID.randomUUID()+"@example.invalid";var other=account(AuthAccount.Role.OWNER,AuthAccount.Status.ACTIVE);
+        email="other-"+com.ancu.proptech.support.TestIds.next()+"@example.invalid";var other=account(AuthAccount.Role.OWNER,AuthAccount.Status.ACTIVE);
         mvc.perform(get("/api/v1/me/verifications").param("accountId",own.getId().toString())
                 .header("Authorization","Bearer "+auth.createSession(other).tokens().accessToken()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.vneid.status").value("UNVERIFIED"))

@@ -25,11 +25,11 @@ public class PropertyApplicantAccess {
             throw new ApiException(HttpStatus.FORBIDDEN,"VNEID_REQUIRED","Cần xác thực CCCD qua VNeID trước khi gửi yêu cầu hoặc hồ sơ cho thuê.");
         return a;
     }
-    public Property write(Jwt jwt,java.util.UUID id) {
+    public Property write(Jwt jwt,Long id) {
         var a=verified(jwt);
         return properties.findOwnedForCreation(id,a.getId()).filter(p->a.getRole()==AuthAccount.Role.OWNER || p.isOnboardingApplication()).orElseThrow(PropertyApplicantAccess::missing);
     }
-    public Property read(Jwt jwt,java.util.UUID id) {
+    public Property read(Jwt jwt,Long id) {
         var a=access.account(jwt);
         if(a.getRole()==AuthAccount.Role.OWNER)access.owner(jwt);else verified(jwt);
         return properties.findById(id).filter(p->p.getOwner().getId().equals(a.getId()) && (a.getRole()==AuthAccount.Role.OWNER || p.isOnboardingApplication())).orElseThrow(PropertyApplicantAccess::missing);

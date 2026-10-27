@@ -21,6 +21,19 @@ public class OwnerApartmentService {
     private final com.ancu.proptech.repository.property.PropertyExternalImportRepository imports;
     private final com.ancu.proptech.service.property.PropertyApplicantAccess applicantAccess;
     private final com.ancu.proptech.service.property.PropertyRightsPolicy rights;
+    private final com.ancu.proptech.repository.rental.RentalRequestRepository requests;
+    private final com.ancu.proptech.service.property.PropertyImageService images;
+    /** Cùng khóa căn hộ với gửi/nhận yêu cầu thuê để không lọt thay giá đồng thời. */
+    @Transactional public OwnerApartmentResponse prices(Jwt jwt, Long id, ApartmentPrices input) {
+        var owner=access.owner(jwt);
+        var a=apartments.findForOwnerUpdate(id,owner.getId()).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy căn hộ."));
+        if(a.getVersion()!=input.getVersion())throw new ApiException(HttpStatus.CONFLICT,"STALE_VERSION","Căn hộ đã thay đổi. Hãy tải lại.");
+        if(a.getAvailability()!=Apartment.Availability.VACANT)throw new ApiException(HttpStatus.CONFLICT,"APARTMENT_NOT_VACANT","Chỉ đổi giá khi căn hộ đang trống, chưa làm hợp đồng hoặc có người thuê.");
+        if(requests.existsByApartmentIdAndStatus(id,com.ancu.proptech.model.rental.RentalRequest.Status.PENDING))
+            throw new ApiException(HttpStatus.CONFLICT,"PENDING_REQUESTS_EXIST","Hãy xử lý tất cả yêu cầu thuê đang chờ trước khi thay đổi giá thuê, điện hoặc nước.");
+        a.setAdvertisedMonthlyRent(input.getMonthlyRent());a.setElectricityUnitPrice(input.getElectricityUnitPrice());a.setWaterUnitPrice(input.getWaterUnitPrice());
+        apartments.flush();return response(a);
+    }
     @Transactional public OwnerApartmentResponse createApplication(Jwt jwt,OwnerApartmentCreate input){return createInternal(jwt,input,true);}
     @Transactional(readOnly = true)
     public List<OwnerApartmentResponse> list(Jwt jwt) {
@@ -49,6 +62,7 @@ public class OwnerApartmentService {
         Apartment a = new Apartment();
         a.setProperty(property); a.setRoomNumber(number); a.setTitle(input.getTitle().strip());
         a.setDescription(input.getDescription().strip()); a.setFloor(input.getFloor()); a.setAreaM2(input.getAreaM2());
+        a.setElectricityUnitPrice(input.getElectricityUnitPrice());a.setWaterUnitPrice(input.getWaterUnitPrice());
         a.setAdvertisedMonthlyRent(input.getAdvertisedMonthlyRent()); a.setDeposit(input.getDeposit());
         a.setElectricityIndex(input.getElectricityIndex()); a.setWaterIndex(input.getWaterIndex());
         a.setMaxOccupants(input.getMaxOccupants()); a.setBedrooms(input.getBedrooms()); a.setBathrooms(input.getBathrooms());
@@ -58,7 +72,7 @@ public class OwnerApartmentService {
         return response(apartments.save(a));
     }
     @Transactional
-    public OwnerApartmentResponse publication(Jwt jwt, UUID id, ApartmentPublication input) {
+    public OwnerApartmentResponse publication(Jwt jwt, Long id, ApartmentPublication input) {
         var owner = access.owner(jwt);
         var propertyId = apartments.findPropertyId(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy căn hộ."));
         var property = properties.findById(propertyId).filter(p -> p.getOwner().getId().equals(owner.getId())).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy căn hộ."));
@@ -71,12 +85,13 @@ public class OwnerApartmentService {
     }
     private OwnerApartmentResponse response(Apartment a) {
         var p = a.getProperty();
+        var gallery=images.urls(p.getId());
         return new OwnerApartmentResponse(a.getId(), p.getId(), p.getName(), p.getOwner().getId(),
                 a.getRoomNumber() == null ? a.getTitle() : a.getRoomNumber(), a.getTitle(), a.getDescription(), a.getFloor(),
                 a.getAreaM2().toPlainString(), a.getAdvertisedMonthlyRent().toPlainString(), a.getDeposit() == null ? null : a.getDeposit().toPlainString(),
                 a.getElectricityIndex(), a.getWaterIndex(), a.getMaxOccupants(), a.getBedrooms(), a.getBathrooms(), List.copyOf(a.getAmenities()),
                 a.getPublicationStatus().name(), a.getAvailability().name(), p.getApprovalStatus().name(),
-                a.getCoverImagePath() == null || a.getCoverImagePath().isBlank() ? "/images/apartment-placeholder.svg" : a.getCoverImagePath(), a.getVersion(),
+                !gallery.isEmpty()?gallery.getFirst():a.getCoverImagePath() == null || a.getCoverImagePath().isBlank() ? "/images/apartment-placeholder.svg" : a.getCoverImagePath(), a.getVersion(),
                 a.getElectricityUnitPrice()==null?null:a.getElectricityUnitPrice().toPlainString(),a.getWaterUnitPrice()==null?null:a.getWaterUnitPrice().toPlainString());
     }
 }
