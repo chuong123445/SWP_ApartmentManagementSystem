@@ -1,6 +1,6 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { vneidLogin, verifyVneid, getVneidConfig } from '../src/services/auth/vneidService.ts';
+import { vneidLogin, verifyVneid, getVneidConfig, getAccountVerification } from '../src/services/auth/vneidService.ts';
 import { setAccessToken, setRefreshHandler, ApiError } from '../src/services/http/client.ts';
 const original = globalThis.fetch;
 afterEach(() => { globalThis.fetch = original; setAccessToken(null); setRefreshHandler(null); });
@@ -36,4 +36,13 @@ test('Duplicate external account remains an error and does not fall back to regi
 test('Public configuration reports disabled integration without claiming authentication', async () => {
   globalThis.fetch = async (url, init) => { assert.equal(url, '/api/v1/auth/vneid-config'); assert.equal(init?.cache, 'no-store'); return Response.json({ enabled: false }); };
   assert.equal((await getVneidConfig()).enabled, false);
+});
+test('Citizen status is a private no-store Self read, not a caller-selected account', async () => {
+  setAccessToken('internal');
+  globalThis.fetch = async (url, init) => {
+    assert.equal(url, '/api/v1/me/verifications');assert.equal(init?.cache, 'no-store');
+    assert.equal(new Headers(init?.headers).get('Authorization'), 'Bearer internal');assert.equal(init?.body, undefined);
+    return Response.json({ emailVerified: true, vneid: { status: 'UNVERIFIED', identity: null, verifiedAt: null } });
+  };
+  const result = await getAccountVerification();assert.equal(result.emailVerified, true);assert.equal(result.vneid.identity, null);
 });

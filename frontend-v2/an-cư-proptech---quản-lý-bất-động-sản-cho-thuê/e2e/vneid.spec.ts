@@ -4,7 +4,7 @@ import { mkdirSync } from 'node:fs';
 const diagnostics = new WeakMap<Page, { console: string[]; network: string[] }>();
 test.beforeEach(({ page }) => {
   const log = { console: [] as string[], network: [] as string[] }; diagnostics.set(page, log);
-  page.on('console', message => { if (message.type() === 'error') log.console.push(message.text()); });
+  page.on('console', message => { if (message.type() === 'error') log.console.push(`${message.text()} [${message.location().url}]`); });
   page.on('requestfailed', request => {
     if (request.failure()?.errorText !== 'net::ERR_ABORTED') log.network.push(`${new URL(request.url()).pathname}: ${request.failure()?.errorText}`);
   });
@@ -13,7 +13,10 @@ test.afterEach(async ({ page }) => {
   const log = diagnostics.get(page)!;
   // 401 guest refresh and the explicitly tested 409 conflict are expected.
   const expectedStatuses = test.info().title.startsWith('Existing-email') ? ['401', '409'] : ['401'];
-  expect(log.console.filter(value => !expectedStatuses.some(status => value.includes(`status of ${status}`)))).toEqual([]);
+  // Trình duyệt có thể tự yêu cầu favicon.ico; project hiện chưa có favicon.
+  const unexpected = log.console.filter(value => !(value.includes('status of 404') && value.includes('/favicon.ico]'))
+    && !expectedStatuses.some(status => value.includes(`status of ${status}`)));
+  expect(unexpected).toEqual([]);
   expect(log.network).toEqual([]);
 });
 
@@ -49,6 +52,11 @@ async function oauthFixture(page: Page, intent: 'login' | 'verify', reject = fal
   await page.route('**/api/v1/auth/vneid-config', route => route.fulfill({ json: { enabled: true, issuer: 'https://auth0-test.invalid/', clientId: 'test-spa', audience: 'test-api', connection: 'test-connection' } }));
   await page.route('**/api/v1/auth/refresh', route => intent === 'verify' || complete ? route.fulfill({ json: session() }) : route.fulfill({ status: 401, json: { code: 'UNAUTHENTICATED', message: 'Chưa đăng nhập' } }));
   await page.route('**/api/v1/me', route => route.fulfill({ json: user() }));
+  await page.route('**/api/v1/me/verifications', route => route.fulfill({ json: { emailVerified: false,
+    vneid: complete ? { status: 'VERIFIED', verifiedAt: '2026-10-27T01:00:00Z', identity: {
+      documentNumber: '048090000002', legalName: 'Người kiểm thử', dateOfBirth: '1990-05-20', gender: 'Nam', address: 'Địa chỉ kiểm thử',
+    } } : { status: 'UNVERIFIED', verifiedAt: null, identity: null },
+  } }));
   await page.route('**/api/v1/auth/vneid-login', route => {
     commands++;expect(route.request().headers()['authorization']).toBe('Bearer external-browser-fixture');
     expect(route.request().headers()['x-xsrf-token']).toBeTruthy();
