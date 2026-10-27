@@ -20,6 +20,12 @@ import java.util.*;
 @Service @RequiredArgsConstructor
 public class ApartmentService {
     private final ApartmentRepository apartments;
+    private final com.ancu.proptech.service.property.PropertyRightsPolicy rights;
+    public static Specification<Apartment> rightsEffective(){
+        return (root,query,cb)->{var p=root.get("property");var today=java.time.LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+            return cb.or(cb.isNull(p.get("rightType")),cb.equal(p.get("rightType"),com.ancu.proptech.model.property.PropertyDossier.RightType.OWNERSHIP),
+                cb.and(cb.lessThanOrEqualTo(p.get("rightsValidFrom"),today),cb.greaterThanOrEqualTo(p.get("rightsValidUntil"),today)));};
+    }
 
     public static Specification<Apartment> visible() {
         return (root, query, cb) -> {
@@ -58,7 +64,7 @@ public class ApartmentService {
             return cb.and(predicates.toArray(Predicate[]::new));
         };
         Specification<Apartment> vacant = (root, query, cb) -> cb.equal(root.get("availability"), Apartment.Availability.VACANT);
-        return PageResponse.from(apartments.findAll(visible().and(vacant).and(filters), PageRequest.of(page, size, Sort.by("createdAt", "id"))).map(this::summary));
+        return PageResponse.from(apartments.findAll(visible().and(rightsEffective()).and(vacant).and(filters), PageRequest.of(page, size, Sort.by("createdAt", "id"))).map(this::summary));
     }
 
     @Transactional(readOnly = true)
@@ -71,7 +77,7 @@ public class ApartmentService {
                 a.getAreaM2().toPlainString(), a.getAdvertisedMonthlyRent().toPlainString(), List.of(image(a)),
                 List.copyOf(a.getAmenities()), a.getAvailability().name(), a.getPublicationStatus().name(), a.getBedrooms(), a.getBathrooms(),
                 new ApartmentDetail.PublicOwner(owner.getId(), owner.getFullName(), owner.isContactVerified()), a.getVersion(),
-                a.getElectricityUnitPrice()==null?null:a.getElectricityUnitPrice().toPlainString(),a.getWaterUnitPrice()==null?null:a.getWaterUnitPrice().toPlainString());
+                a.getElectricityUnitPrice()==null?null:a.getElectricityUnitPrice().toPlainString(),a.getWaterUnitPrice()==null?null:a.getWaterUnitPrice().toPlainString(),p.getRightType()==null?"UNSPECIFIED":p.getRightType().name(),p.getRightsValidFrom(),p.getRightsValidUntil(),!rights.limited(p)||(p.getRightsValidFrom()!=null&&p.getRightsValidUntil()!=null&&!rights.today().isBefore(p.getRightsValidFrom())&&!rights.today().isAfter(p.getRightsValidUntil())));
     }
 
     public static void validatePage(int page, int size) {
@@ -79,12 +85,12 @@ public class ApartmentService {
     }
     @Transactional(readOnly=true)
     public List<AddressOption> addressOptions() {
-        return apartments.addressOptions(Apartment.PublicationStatus.PUBLISHED,Apartment.Availability.VACANT,Property.ApprovalStatus.APPROVED,AuthAccount.Status.ACTIVE,AuthAccount.Role.OWNER);
+        return apartments.addressOptions(Apartment.PublicationStatus.PUBLISHED,Apartment.Availability.VACANT,Property.ApprovalStatus.APPROVED,AuthAccount.Status.ACTIVE,AuthAccount.Role.OWNER,rights.today());
     }
     private ApartmentSummary summary(Apartment a) {
         var p = a.getProperty();
         return new ApartmentSummary(a.getId(), a.getTitle(), p.getAddress(), p.getCity(), p.getDistrict(),
-                a.getAreaM2().toPlainString(), a.getAdvertisedMonthlyRent().toPlainString(), image(a), a.getAvailability().name(), a.getBedrooms(), a.getBathrooms());
+                a.getAreaM2().toPlainString(), a.getAdvertisedMonthlyRent().toPlainString(), image(a), a.getAvailability().name(), a.getBedrooms(), a.getBathrooms(),p.getRightType()==null?"UNSPECIFIED":p.getRightType().name());
     }
     private static String image(Apartment a) { return a.getCoverImagePath() == null ? "/images/apartment-placeholder.svg" : a.getCoverImagePath(); }
 }

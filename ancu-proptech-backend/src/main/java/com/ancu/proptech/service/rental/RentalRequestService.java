@@ -27,19 +27,21 @@ public class RentalRequestService {
     private final RentalRequestRepository requests;
     private final AccountAccessService access;
     private final AccountVerificationPolicy verification;
+    private final com.ancu.proptech.service.property.PropertyRightsPolicy rights;
 
     @Transactional
     public RentalRequestResponse submit(Jwt jwt, UUID apartmentId, RentalRequestCreate input) {
         var customer = access.customer(jwt);
         Apartment apartment = apartments.findForRequest(apartmentId).orElseThrow(RentalRequestService::notFound);
         var p = apartment.getProperty();
+        rights.requireCurrent(p);
         var owner = p.getOwner();
         if (owner.getId().equals(customer.getId()))
             throw new ApiException(HttpStatus.FORBIDDEN, "OWN_APARTMENT_RENTAL", "Bạn không thể gửi yêu cầu thuê căn hộ của chính mình.");
         if (!activeRequests(customer.getId(), apartmentId).isEmpty())
             throw new ApiException(HttpStatus.CONFLICT, "RENTAL_REQUEST_EXISTS", "Bạn đã có yêu cầu thuê cho căn hộ này. Hãy xem hoặc hủy yêu cầu đang chờ xử lý.");
         if (apartment.getPublicationStatus() != Apartment.PublicationStatus.PUBLISHED || p.getApprovalStatus() != Property.ApprovalStatus.APPROVED
-                || owner.getStatus() != AuthAccount.Status.ACTIVE || !owner.isContactVerified() || owner.getRole() != AuthAccount.Role.OWNER) throw notFound();
+                || owner.getStatus() != AuthAccount.Status.ACTIVE || !verification.isVerified(owner) || owner.getRole() != AuthAccount.Role.OWNER) throw notFound();
         if (apartment.getAvailability() != Apartment.Availability.VACANT)
             throw new ApiException(HttpStatus.CONFLICT, "APARTMENT_NOT_AVAILABLE", "Căn hộ hiện không còn nhận yêu cầu thuê.");
         RentalRequest request = new RentalRequest();
@@ -105,8 +107,9 @@ public class RentalRequestService {
             throw new ApiException(HttpStatus.CONFLICT, "REQUEST_NOT_PENDING", "Chỉ có thể xử lý yêu cầu đang chờ xử lý.");
 
         if (input.getDecision() == RentalDecision.Decision.ACCEPT) {
+            rights.requireCurrent(request.getApartment().getProperty());
             var customer = request.getCustomer();
-            if (customer.getStatus() != AuthAccount.Status.ACTIVE || !verification.isVerified(customer))
+            if (customer.getStatus() != AuthAccount.Status.ACTIVE || !verification.isRentalVerified(customer))
                 throw new ApiException(HttpStatus.CONFLICT, "CUSTOMER_NOT_ELIGIBLE", "Tài khoản người tìm thuê không còn hợp lệ.");
             Apartment apartment = apartments.findForRequest(request.getApartment().getId()).orElseThrow(RentalRequestService::notFound);
             if (apartment.getAvailability() != Apartment.Availability.VACANT)

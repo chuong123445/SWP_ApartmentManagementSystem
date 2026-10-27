@@ -18,6 +18,15 @@ public class PropertyDossierSubmit {
     @PastOrPresent private LocalDate certificateIssueDate;
     @Size(max=200) private String certificateIssuePlace;
     @Size(max=1000) private String exploitationRightDescription;
+    private LocalDate rightsValidFrom;
+    private LocalDate rightsValidUntil;
+    private LocalDate originalLeaseFrom;
+    private LocalDate originalLeaseUntil;
+    @Size(max=100) private String principalName;
+    @Pattern(regexp="[0-9]{12}") private String principalDocumentNumber;
+    @NotNull @Size(max=20) private List<@NotNull UUID> authorizationFileIds=new ArrayList<>();
+    @NotNull @Size(max=20) private List<@NotNull UUID> originalLeaseFileIds=new ArrayList<>();
+    @NotNull @Size(max=20) private List<@NotNull UUID> subleaseConsentFileIds=new ArrayList<>();
     @AssertTrue public boolean isCertificateComplete(){
         boolean number=certificateNumber!=null&&!certificateNumber.isBlank(),place=certificateIssuePlace!=null&&!certificateIssuePlace.isBlank();
         return (!number&&certificateIssueDate==null&&!place)||(number&&certificateIssueDate!=null&&place);

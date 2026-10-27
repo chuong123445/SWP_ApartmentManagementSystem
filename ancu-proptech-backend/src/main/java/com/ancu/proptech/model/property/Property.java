@@ -23,4 +23,9 @@ public class Property {
     private RentalMode rentalMode;
     @Version private long version;
     @Nationalized @Column(length = 80) private String ward;
+    @Column(nullable=false) private boolean onboardingApplication;
+    @Enumerated(EnumType.STRING) @Column(length=24) private PropertyDossier.RightType rightType;
+    private java.time.LocalDate rightsValidFrom;
+    private java.time.LocalDate rightsValidUntil;
+    private UUID approvedRightsDossierId;
 }

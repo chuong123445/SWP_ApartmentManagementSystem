@@ -7,7 +7,7 @@ import java.time.Instant;
 import java.util.UUID;
 @Entity @Table(name="property_evidence_files") @Getter @Setter @NoArgsConstructor
 public class PropertyEvidenceFile {
-    public enum Purpose { RIGHT_DOCUMENT, SUPPORTING, OWNER_IDENTITY }
+    public enum Purpose { RIGHT_DOCUMENT, SUPPORTING, OWNER_IDENTITY, AUTHORIZATION_DOCUMENT, ORIGINAL_LEASE, SUBLEASE_CONSENT }
     @Id @GeneratedValue(strategy=GenerationType.UUID) private UUID id;
     @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="property_id",nullable=false) private Property property;
     @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="uploader_id",nullable=false) private AuthAccount uploader;
