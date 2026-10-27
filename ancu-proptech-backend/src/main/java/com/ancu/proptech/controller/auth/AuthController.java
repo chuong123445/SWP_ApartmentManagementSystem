@@ -24,12 +24,36 @@ public class AuthController {
     public static final String REFRESH_COOKIE = "ANCU_REFRESH";
     private final AuthService auth;
     private final RegistrationService registration;
+    private final com.ancu.proptech.service.auth.VneidService vneid;
+    private final com.ancu.proptech.config.auth.VneidProperties vneidConfig;
     private final CookieCsrfTokenRepository csrfRepository;
     @Value("${app.auth.secure-cookie:true}") private boolean secureCookie;
 
     @GetMapping("/api/v1/auth/csrf")
     public Map<String, String> csrf(CsrfToken token) {
         return Map.of("token", token.getToken(), "headerName", token.getHeaderName());
+    }
+
+    @GetMapping("/api/v1/auth/vneid-config")
+    public ResponseEntity<?> vneidConfig() {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(Map.of(
+                "enabled",vneidConfig.isEnabled(),"issuer",vneidConfig.getIssuer(),
+                "clientId",vneidConfig.getClientId(),"audience",vneidConfig.getAudience(),"connection",vneidConfig.getConnection()));
+    }
+
+    @PostMapping("/api/v1/auth/vneid-login")
+    public ResponseEntity<TokenResponse> vneidLogin(@AuthenticationPrincipal Jwt jwt,
+            HttpServletRequest http,HttpServletResponse response) {
+        var result=vneid.login(jwt);
+        setRefreshCookie(response,result.refreshToken(),result.refreshMaxAge());
+        csrfRepository.saveToken(null,http,response);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(result.tokens());
+    }
+
+    @PostMapping("/api/v1/me/verifications/vneid")
+    public ResponseEntity<AuthUserResponse> verifyVneid(@AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody com.ancu.proptech.dto.auth.VneidVerificationRequest request) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(vneid.verifySelf(jwt,request.getAuth0AccessToken()));
     }
 
     @PostMapping("/api/v1/auth/register")
