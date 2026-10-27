@@ -2,6 +2,7 @@ export type RoomStatus = 'rented' | 'available' | 'overdue' | 'maintenance' | 'e
 
 
 export interface Building {
+  verificationSource?: string | null;
   rentalMode?: import('@/types/property').RentalMode | null;
   id: string;
   name: string;
@@ -12,6 +13,8 @@ export interface Building {
 }
 
 export interface Room {
+  electricityUnitPrice?: string | null;
+  waterUnitPrice?: string | null;
   version?: number;
   title?: string;
   propertyName?: string;

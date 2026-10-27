@@ -42,7 +42,7 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
       const inventory = apartments.map(a => ({ ...a, currentTenantId: leases.find(c => c.apartmentId === a.id && c.status === 'ACTIVE')?.customerId }));
       setRooms(inventory);setSelectedRoom(prev => prev ? inventory.find(a => a.id === prev.id) ?? null : null);
       setBuildings(properties.map(p => ({ id: p.id, name: p.name, address: p.address,
-        rentalMode: p.rentalMode, totalRooms: apartments.filter(a => a.buildingId === p.id).length, pcccCertified: false, legalStatus: p.approvalStatus })));
+        rentalMode: p.rentalMode, verificationSource: p.verificationSource, totalRooms: apartments.filter(a => a.buildingId === p.id).length, pcccCertified: false, legalStatus: p.approvalStatus })));
     }).catch(error => { if (active) { setRooms([]); setBuildings([]); setInventoryError(error instanceof Error ? error.message : 'Không thể tải căn hộ.'); } })
       .finally(() => { if (active) setInventoryLoading(false); });
     return () => { active = false; };

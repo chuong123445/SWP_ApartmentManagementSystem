@@ -58,6 +58,10 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl max-w-2xl w-full border border-slate-200 shadow-2xl overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-150">
+        {(room.electricityUnitPrice != null || room.waterUnitPrice != null) && <div className="p-4 bg-emerald-50 text-sm">
+          {room.electricityUnitPrice != null && <p>Đơn giá điện: {room.electricityUnitPrice} đ/kWh</p>}
+          {room.waterUnitPrice != null && <p>Đơn giá nước: {room.waterUnitPrice} đ/m³</p>}
+        </div>}
         {/* Modal Header */}
         <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
           <div>

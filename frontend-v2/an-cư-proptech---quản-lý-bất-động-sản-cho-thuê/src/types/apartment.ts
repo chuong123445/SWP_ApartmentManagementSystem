@@ -8,6 +8,7 @@ export interface ApartmentSummary {
 export interface ApartmentDetail extends Omit<ApartmentSummary, 'thumbnail'> {
   description: string; propertyName: string; images: string[]; amenities: string[];
   publicationStatus: string; version: number;
+  electricityUnitPrice?: string | null; waterUnitPrice?: string | null;
   publicOwner: { id: string; displayName: string; contactVerified: boolean };
 }
 export interface ApartmentFilters { q?: string; city?: string; district?: string; ward?: string; minRent?: string; maxRent?: string; bedrooms?: string; page?: number; size?: number }
