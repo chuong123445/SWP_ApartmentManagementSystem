@@ -18,7 +18,7 @@ public class DiscoveryErrorHandler {
         org.springframework.web.multipart.support.MissingServletRequestPartException.class})
     ResponseEntity<?> validation(Exception e) { return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Dữ liệu không hợp lệ hoặc chứa trường không được phép."); }
     @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
-    ResponseEntity<?> tooLarge(Exception e) { return error(HttpStatus.PAYLOAD_TOO_LARGE,"FILE_TOO_LARGE","Ảnh chứng từ tối đa 5 MB."); }
+    ResponseEntity<?> tooLarge(Exception e) { return error(HttpStatus.PAYLOAD_TOO_LARGE,"FILE_TOO_LARGE","Yêu cầu tải lên vượt giới hạn dung lượng. Chứng từ tài sản tối đa 10 MB/file."); }
     private ResponseEntity<?> error(HttpStatus status, String code, String message) {
         return ResponseEntity.status(status).cacheControl(CacheControl.noStore()).body(Map.of("code", code, "message", message));
     }
