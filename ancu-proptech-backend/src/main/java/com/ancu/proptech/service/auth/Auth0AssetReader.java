@@ -11,6 +11,7 @@ import java.net.URI;
 import java.time.Instant;
 import java.util.*;
 import java.math.BigDecimal;
+import com.ancu.proptech.dto.property.VneidAsset;
 import static com.ancu.proptech.service.auth.AccountService.error;
 
 /** Đọc đúng user_id đã liên kết, không tìm user theo email hoặc nhận danh sách từ client. */
@@ -25,6 +26,9 @@ public class Auth0AssetReader {
     Auth0AssetReader(VneidProperties vneid,Auth0ManagementProperties config,RestOperations http){this.vneid=vneid;this.config=config;this.http=http;}
     public boolean isConfigured(){return vneid.isEnabled()&&!vneid.getIssuer().isBlank()&&!config.getClientId().isBlank()&&!config.getClientSecret().isBlank();}
     public List<String> rentableAssets(String issuer,String subject){
+        return assetDetails(issuer,subject).stream().map(VneidAsset::externalAssetId).toList();
+    }
+    public List<VneidAsset> assetDetails(String issuer,String subject){
         if(!isConfigured())throw unavailable();
         if(!issuer.equals(vneid.getIssuer())||subject==null||subject.isBlank())throw error(HttpStatus.CONFLICT,"VNEID_LINK_CHANGED","Liên kết VNeID không còn phù hợp với nguồn dữ liệu.");
         URI uri=UriComponentsBuilder.fromUriString(issuer).pathSegment("api","v2","users",subject)
@@ -36,9 +40,18 @@ public class Auth0AssetReader {
             Object raw=map(metadata.get("vneid")).get("assets");
             if(raw==null)return List.of();
             if(!(raw instanceof List<?> assets)||assets.size()>100)throw invalidData();
-            var ids=new LinkedHashSet<String>();
-            for(Object entry:assets){var asset=map(entry);if(validAsset(asset))ids.add((String)asset.get("external_asset_id"));}
-            return List.copyOf(ids);
+            var results=new LinkedHashMap<String,VneidAsset>();
+            for(Object entry:assets){
+                var asset=map(entry);if(!validAsset(asset))continue;
+                if(((List<?>)asset.get("units")).stream().map(Auth0AssetReader::map).anyMatch(u->!validUnit(u)))continue;
+                var units=((List<?>)asset.get("units")).stream().map(Auth0AssetReader::map).filter(Auth0AssetReader::validUnit)
+                    .map(u->new VneidAsset.Unit((String)u.get("external_unit_id"),(String)u.get("code"),new BigDecimal(u.get("floor_area_m2").toString()),integer(u.get("bedrooms")),integer(u.get("bathrooms")))).toList();
+                var cert=map(asset.get("certificate"));String id=(String)asset.get("external_asset_id");
+                var detail=new VneidAsset(id,(String)asset.get("name"),(String)asset.get("address"),(String)asset.get("property_mode"),
+                    (String)cert.get("number"),optional(cert.get("issued_date")),optional(cert.get("issued_place")),units);
+                if(results.putIfAbsent(id,detail)!=null&&!results.get(id).equals(detail))throw invalidData();
+            }
+            return List.copyOf(results.values());
         }catch(RestClientException e){token=null;tokenExpires=Instant.EPOCH;throw unavailable();}
     }
     private synchronized String accessToken(){
@@ -55,9 +68,11 @@ public class Auth0AssetReader {
         Map<?,?> certificate=map(asset.get("certificate"));
         if(!text(certificate.get("number"),100))return false;
         if(!(asset.get("units") instanceof List<?> units)||units.isEmpty()||units.size()>100)return false;
-        return units.stream().map(Auth0AssetReader::map).anyMatch(unit->text(unit.get("external_unit_id"),100)
-                &&text(unit.get("code"),100)&&positive(unit.get("floor_area_m2")));
+        return units.stream().map(Auth0AssetReader::map).anyMatch(Auth0AssetReader::validUnit);
     }
+    private static boolean validUnit(Map<?,?> unit){return text(unit.get("external_unit_id"),100)&&text(unit.get("code"),20)&&positive(unit.get("floor_area_m2"));}
+    private static Integer integer(Object value){try{int result=new BigDecimal(String.valueOf(value)).intValueExact();return result>=0&&result<=200?result:null;}catch(RuntimeException e){return null;}}
+    private static String optional(Object value){return value instanceof String s?s:null;}
     private static boolean text(Object value,int max){return value instanceof String s&&!s.isBlank()&&s.length()<=max;}
     private static boolean positive(Object value){try{return value instanceof Number&&new BigDecimal(value.toString()).signum()>0;}catch(NumberFormatException e){return false;}}
     private static Map<?,?> map(Object value){return value instanceof Map<?,?> result?result:Map.of();}

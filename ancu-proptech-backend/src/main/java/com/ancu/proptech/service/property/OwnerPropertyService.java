@@ -19,6 +19,7 @@ public class OwnerPropertyService {
     private final PropertyRepository properties;
     private final AccountAccessService access;
     private final OwnerApartmentService apartments;
+    private final com.ancu.proptech.repository.property.PropertyExternalImportRepository imports;
     @Transactional(readOnly = true)
     public List<OwnerPropertyResponse> list(Jwt jwt) {
         var owner = access.owner(jwt);
@@ -57,6 +58,6 @@ public class OwnerPropertyService {
 
     private OwnerPropertyResponse response(Property p) {
         return new OwnerPropertyResponse(p.getId(), p.getName(), p.getAddress(), p.getApprovalStatus().name(),
-                p.getRentalMode() == null ? null : p.getRentalMode().name(), p.getCity(), p.getDistrict(), p.getWard(), p.getVersion());
+                p.getRentalMode() == null ? null : p.getRentalMode().name(), p.getCity(), p.getDistrict(), p.getWard(), p.getVersion(),imports.findById(p.getId()).map(com.ancu.proptech.model.property.PropertyExternalImport::getSource).orElse(null));
     }
 }

@@ -18,6 +18,7 @@ public class OwnerApartmentService {
     private final ApartmentRepository apartments;
     private final PropertyRepository properties;
     private final AccountAccessService access;
+    private final com.ancu.proptech.repository.property.PropertyExternalImportRepository imports;
     @Transactional(readOnly = true)
     public List<OwnerApartmentResponse> list(Jwt jwt) {
         var owner = access.owner(jwt);
@@ -28,6 +29,7 @@ public class OwnerApartmentService {
         var owner = access.owner(jwt);
         var property = properties.findOwnedForCreation(input.getPropertyId(), owner.getId()).orElseThrow(() ->
                 new ApiException(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Không tìm thấy tài sản thuộc tài khoản của bạn."));
+        if(imports.existsById(property.getId()))throw new ApiException(HttpStatus.CONFLICT,"SOURCE_UNITS_MANAGED","Các căn/phòng của tài sản VNeID được lấy từ nguồn xác thực, không thêm thủ công vào tài sản này.");
         if (input.getPublicationStatus() == Apartment.PublicationStatus.PUBLISHED && property.getApprovalStatus() != Property.ApprovalStatus.APPROVED)
             throw new ApiException(HttpStatus.CONFLICT, "PROPERTY_NOT_APPROVED", "Tài sản phải được duyệt trước khi đăng căn hộ công khai.");
         String number = input.getRoomNumber().strip();
@@ -64,6 +66,7 @@ public class OwnerApartmentService {
                 a.getAreaM2().toPlainString(), a.getAdvertisedMonthlyRent().toPlainString(), a.getDeposit() == null ? null : a.getDeposit().toPlainString(),
                 a.getElectricityIndex(), a.getWaterIndex(), a.getMaxOccupants(), a.getBedrooms(), a.getBathrooms(), List.copyOf(a.getAmenities()),
                 a.getPublicationStatus().name(), a.getAvailability().name(), p.getApprovalStatus().name(),
-                a.getCoverImagePath() == null || a.getCoverImagePath().isBlank() ? "/images/apartment-placeholder.svg" : a.getCoverImagePath(), a.getVersion());
+                a.getCoverImagePath() == null || a.getCoverImagePath().isBlank() ? "/images/apartment-placeholder.svg" : a.getCoverImagePath(), a.getVersion(),
+                a.getElectricityUnitPrice()==null?null:a.getElectricityUnitPrice().toPlainString(),a.getWaterUnitPrice()==null?null:a.getWaterUnitPrice().toPlainString());
     }
 }
