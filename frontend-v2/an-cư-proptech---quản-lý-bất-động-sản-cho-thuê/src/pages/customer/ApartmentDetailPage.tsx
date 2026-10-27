@@ -29,13 +29,13 @@ export function ApartmentDetailPage() {
   const [checking, setChecking] = useState(true);
   const [requestError, setRequestError] = useState('');
   const [revision, setRevision] = useState(0);
-  const isEmailVerified = Boolean(user && user.roles.includes('CUSTOMER') && user.accountStatus === 'ACTIVE' && user.contactVerificationStatus === 'VERIFIED');
+  const isEmailVerified = Boolean(user && user.roles.some(role => role === 'CUSTOMER' || role === 'OWNER') && user.accountStatus === 'ACTIVE' && user.contactVerificationStatus === 'VERIFIED');
   const hasIdentity = Boolean(identityProfile && identityProfile.documentNumber);
   const customer = isEmailVerified && hasIdentity;
   useEffect(() => { setNeedsVerification(false); setShowVerificationModal(false); }, [id, user?.id]);
   useEffect(() => {
     let active = true;
-    if (user?.roles.includes('CUSTOMER')) {
+    if (user?.roles.some(role => role === 'CUSTOMER' || role === 'OWNER')) {
       getIdentity().then(profile => { if (active) setIdentityProfile(profile); }).catch(() => { if (active) setIdentityProfile(null); });
     } else {
       setIdentityProfile(null);
@@ -72,7 +72,7 @@ export function ApartmentDetailPage() {
     event.preventDefault();
     if (saving || submitted || checking || requestError) return;
     let currentId = identityProfile;
-    if (currentId === undefined && user?.roles.includes('CUSTOMER')) {
+    if (currentId === undefined && user?.roles.some(role => role === 'CUSTOMER' || role === 'OWNER')) {
       try {
         currentId = await getIdentity();
         setIdentityProfile(currentId);
@@ -126,7 +126,7 @@ export function ApartmentDetailPage() {
         {checking ? <p role="status">Đang tải trạng thái yêu cầu...</p> : requestError ? <div role="alert"><p>{requestError}</p><button onClick={() => setRevision(value => value + 1)} className="underline mt-2">Thử lại</button></div> : submitted ? <div role="status" className="bg-emerald-50 border border-emerald-200 rounded-xl p-4"><CheckCircle2 className="w-6 h-6 text-emerald-600 mb-2" /><p className="font-semibold text-emerald-800">Đã gửi yêu cầu thuê</p><p className="text-sm text-emerald-700 mt-2">{submitted.status === 'ACCEPTED' ? 'Chủ nhà đã chấp nhận yêu cầu thuê.' : 'Yêu cầu đang chờ chủ nhà xử lý.'}</p>{activeRequests.map(request => <div key={request.id} className="mt-3"><p className="text-sm">{requestStatusLabel[request.status]}</p>{request.status === 'PENDING' && <button type="button" disabled={saving} onClick={() => cancel(request)} className="border border-rose-300 text-rose-700 rounded-lg px-4 py-2 mt-2 text-sm disabled:opacity-50">{saving ? 'Đang hủy...' : 'Hủy yêu cầu thuê'}</button>}</div>)}<Link to="/my/rental-requests" className="inline-block text-sm text-emerald-800 underline mt-3">Xem yêu cầu của tôi</Link></div>
           : apartment.availability !== 'VACANT' ? <p className="text-sm text-amber-700 bg-amber-50 rounded-lg p-4">Căn hộ hiện không còn nhận yêu cầu thuê.</p>
           : !user ? <Link to="/login" state={{ returnTo: `/apartments/${id}` }} className="block text-center bg-emerald-600 text-white rounded-lg px-4 py-3 text-sm font-semibold">Đăng nhập để gửi yêu cầu thuê</Link>
-          : !user.roles.includes('CUSTOMER') ? <p className="text-sm text-slate-500">Gửi yêu cầu thuê bằng tài khoản người tìm thuê.</p>
+          : !user.roles.some(role => role === 'CUSTOMER' || role === 'OWNER') ? <p className="text-sm text-slate-500">Gửi yêu cầu thuê bằng tài khoản người tìm thuê.</p>
           : <form onSubmit={send} className="space-y-3"><label htmlFor="rental-message" className="text-sm font-semibold block">Lời nhắn cho chủ nhà</label><textarea id="rental-message" rows={5} maxLength={2000} value={message} disabled={saving} onChange={e => setMessage(e.target.value)} placeholder="Giới thiệu nhu cầu thuê, thời gian dự kiến chuyển vào..." className="w-full border border-slate-300 rounded-lg p-3 text-sm" />
             <button type="submit" disabled={saving} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg py-3 text-sm font-semibold disabled:opacity-50">{saving ? 'Đang gửi...' : 'Gửi yêu cầu thuê'}</button>
             {needsVerification && !showVerificationModal && (
