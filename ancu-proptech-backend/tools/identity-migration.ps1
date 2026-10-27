@@ -37,8 +37,15 @@ try{
   if($Mode -eq 'Verify'){Migrate $manifest.clone;Check $manifest.before (Audit $manifest.clone);"VERIFY_DATABASE=$($manifest.clone)";'Idempotent migration and preservation PASS.'}
   else{
    if(Get-NetTCPConnection -State Listen -LocalPort 8080,8082 -ErrorAction SilentlyContinue){throw 'Stop local backend before live migration.'}
-   # Chỉ áp dụng khi dữ liệu không đổi kể từ backup đã kiểm chứng.
-   Check $manifest.before (Audit 'proptech_db');Migrate 'proptech_db';Check $manifest.before (Audit 'proptech_db')
+   # Lấy backup mới ngay trong maintenance window: không dùng backup từ phiên kiểm thử trước.
+   $liveBefore=Audit 'proptech_db';Run 'USE [master]'
+   $backupFolder=(Rows "SELECT CAST(SERVERPROPERTY('InstanceDefaultBackupPath') AS nvarchar(4000)) folder").Rows[0].folder
+   $freshBackup=Join-Path $backupFolder ('ancu_before_identity_live_'+(Get-Date -Format yyyyMMddHHmmss)+'.bak')
+   $escapedBackup=$freshBackup.Replace("'","''");Run "BACKUP DATABASE [proptech_db] TO DISK=N'$escapedBackup' WITH COPY_ONLY,CHECKSUM; RESTORE VERIFYONLY FROM DISK=N'$escapedBackup' WITH CHECKSUM;"
+   $manifest|Add-Member -Force -NotePropertyName liveBackup -NotePropertyValue $freshBackup
+   $manifest|Add-Member -Force -NotePropertyName liveBefore -NotePropertyValue $liveBefore
+   $manifest|ConvertTo-Json -Depth 12|Set-Content -Encoding utf8 $manifestPath
+   Migrate 'proptech_db';Check $liveBefore (Audit 'proptech_db')
    $manifest.applied=$true;$manifest|ConvertTo-Json -Depth 12|Set-Content -Encoding utf8 $manifestPath
    'Live identity migration PASS; rows and private fingerprints preserved. Sign in again.'
   }
