@@ -84,6 +84,12 @@ class DiscoveryRentalIntegrationTests {
                 .contentType("application/json").content("{\"message\":\"Thuê nhà\"}"))
                 .andExpect(status().isCreated());
     }
+    @Test void ownerPhoneVerificationAloneDoesNotBypassRentalEmailOrVneidPolicy() throws Exception {
+        ownerA.setEmailVerified(false);ownerA.setPhoneVerified(true);ownerA.setContactVerified(true);accounts.flush();
+        mvc.perform(post("/api/v1/apartments/"+otherApartment.getId()+"/rental-requests").header("Authorization",bearer(ownerA))
+                .contentType("application/json").content("{\"message\":\"Thuê nhà\"}"))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CONTACT_NOT_VERIFIED"));
+    }
     @Test void ownerPropertyFilterRunsBeforePaginationAndNeverExpandsOwnership() throws Exception {
         var secondProperty = property(ownerA);
         var second = apartment(secondProperty, "Second property", "6000000", Apartment.PublicationStatus.PUBLISHED);
