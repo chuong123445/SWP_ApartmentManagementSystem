@@ -19,7 +19,7 @@ public class AuthAccount {
     private UUID id;
     @Column(nullable = false, unique = true, length = 254)
     private String email;
-    @Column(nullable = false, length = 100)
+    @Column(length = 100)
     private String passwordHash;
     @Nationalized @Column(nullable = false, length = 100)
     private String fullName;

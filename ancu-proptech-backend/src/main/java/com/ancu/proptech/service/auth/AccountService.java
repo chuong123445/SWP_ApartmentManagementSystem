@@ -39,7 +39,7 @@ public class AccountService {
         var a=auth.authenticate(jwt);entityManager.refresh(a,LockModeType.PESSIMISTIC_WRITE);
         if(a.getStatus()==AuthAccount.Status.LOCKED||a.getStatus()==AuthAccount.Status.INACTIVE)throw error(HttpStatus.FORBIDDEN,"ACCOUNT_UNAVAILABLE","Tài khoản không thể thực hiện thao tác này.");return a;
     }
-    public void reauth(AuthAccount a,String password){if(password.getBytes(StandardCharsets.UTF_8).length>72||!passwords.matches(password,a.getPasswordHash()))throw error(HttpStatus.FORBIDDEN,"CURRENT_PASSWORD_INVALID","Mật khẩu hiện tại không đúng.");}
+    public void reauth(AuthAccount a,String password){if(a.getPasswordHash()==null)throw error(HttpStatus.FORBIDDEN,"EXTERNAL_ACCOUNT_PASSWORD_REQUIRED","Tài khoản đăng nhập qua VNeID chưa có mật khẩu nội bộ. Chức năng này cần mật khẩu nội bộ.");if(password.getBytes(StandardCharsets.UTF_8).length>72||!passwords.matches(password,a.getPasswordHash()))throw error(HttpStatus.FORBIDDEN,"CURRENT_PASSWORD_INVALID","Mật khẩu hiện tại không đúng.");}
     public void version(AuthAccount a,long version){if(a.getVersion()!=version)throw error(HttpStatus.CONFLICT,"VERSION_CONFLICT","Thông tin tài khoản đã thay đổi. Hãy tải lại trang.");}
     public void invalidate(UUID accountId){Instant now=Instant.now();challenges.findByAccountIdAndUsedAtIsNullAndInvalidatedAtIsNull(accountId).forEach(c->c.setInvalidatedAt(now));}
     public void recompute(AuthAccount a){a.setContactVerified(verification.isVerified(a));if(a.getStatus()==AuthAccount.Status.ACTIVE&&!a.isContactVerified())a.setStatus(AuthAccount.Status.PENDING_VERIFICATION);else if(a.getStatus()==AuthAccount.Status.PENDING_VERIFICATION&&a.isContactVerified())a.setStatus(AuthAccount.Status.ACTIVE);}
