@@ -10,5 +10,5 @@ public interface PropertyRightNoticeRepository extends JpaRepository<PropertyRig
     boolean existsByDossierIdAndKind(UUID dossierId,String kind);
     @EntityGraph(attributePaths="property") List<PropertyRightNotice> findByRecipientIdOrderByCreatedAtDescIdDesc(UUID recipientId,Pageable pageable);
     @Lock(LockModeType.PESSIMISTIC_WRITE) @Query("select n from PropertyRightNotice n where n.id=:id") Optional<PropertyRightNotice> lockById(@Param("id") UUID id);
-    @Query("select n.id from PropertyRightNotice n where n.emailStatus in ('PENDING','RETRY','SENDING') and n.nextAttemptAt<=:now and n.attempts<5 order by n.nextAttemptAt,n.id") List<UUID> due(@Param("now") Instant now,Pageable pageable);
+    @Query("select n.id from PropertyRightNotice n where n.emailStatus in ('PENDING','RETRY','SENDING') and n.nextAttemptAt<=:now and n.attempts<=5 order by n.nextAttemptAt,n.id") List<UUID> due(@Param("now") Instant now,Pageable pageable);
 }

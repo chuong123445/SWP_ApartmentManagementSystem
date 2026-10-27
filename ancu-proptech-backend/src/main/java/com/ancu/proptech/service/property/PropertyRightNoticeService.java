@@ -33,7 +33,8 @@ public class PropertyRightNoticeService {
         if(!email.isConfigured())return;
         for(UUID id:notices.due(Instant.now(),PageRequest.of(0,20))){
             Delivery delivery=transactions.execute(status->{
-                var n=notices.lockById(id).orElseThrow();if(!Set.of("PENDING","RETRY","SENDING").contains(n.getEmailStatus())||n.getNextAttemptAt().isAfter(Instant.now())||n.getAttempts()>=5)return null;
+                var n=notices.lockById(id).orElseThrow();if(!Set.of("PENDING","RETRY","SENDING").contains(n.getEmailStatus())||n.getNextAttemptAt().isAfter(Instant.now()))return null;
+                if(n.getAttempts()>=5){n.setEmailStatus("FAILED");return null;}
                 var a=accounts.findById(n.getRecipientId()).orElseThrow();var p=n.getProperty();
                 if(a.getStatus()!=com.ancu.proptech.model.auth.AuthAccount.Status.ACTIVE||!a.isEmailVerified()||!Objects.equals(a.getEmail(),n.getEmailDestination())||!Objects.equals(p.getApprovedRightsDossierId(),n.getDossierId())||!Objects.equals(p.getRightsValidUntil(),n.getExpiresOn())){n.setEmailStatus("SKIPPED");return null;}
                 n.setEmailStatus("SENDING");n.setAttempts(n.getAttempts()+1);n.setNextAttemptAt(Instant.now().plusSeconds(600));
