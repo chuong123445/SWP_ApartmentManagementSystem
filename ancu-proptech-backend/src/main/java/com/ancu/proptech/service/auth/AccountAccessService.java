@@ -22,7 +22,8 @@ public class AccountAccessService {
         AuthAccount account = auth.authenticate(jwt);
         boolean ordinaryAccount = role == AuthAccount.Role.CUSTOMER && account.getRole() == AuthAccount.Role.OWNER;
         if (account.getRole() != role && !ordinaryAccount) throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Tài khoản không có quyền thực hiện thao tác này.");
-        if (account.getStatus() != AuthAccount.Status.ACTIVE || !verification.isVerified(account))
+        boolean verified = role == AuthAccount.Role.CUSTOMER ? verification.isRentalVerified(account) : verification.isVerified(account);
+        if (account.getStatus() != AuthAccount.Status.ACTIVE || !verified)
             throw new ApiException(HttpStatus.FORBIDDEN, "CONTACT_NOT_VERIFIED", "Cần xác minh email hoặc số điện thoại để thực hiện thao tác này.");
         return account;
     }
