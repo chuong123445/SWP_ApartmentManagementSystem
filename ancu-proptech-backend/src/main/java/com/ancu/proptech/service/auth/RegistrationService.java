@@ -28,7 +28,7 @@ public class RegistrationService {
         account.setEmail(email);
         account.setFullName(input.getFullName().strip());
         account.setPasswordHash(passwords.encode(input.getPassword()));
-        account.setRole(AuthAccount.Role.valueOf(input.getRequestedRole().name()));
+        account.setRole(AuthAccount.Role.CUSTOMER);
         account.setStatus(AuthAccount.Status.PENDING_VERIFICATION);
         account.setPhone(AccountService.normalizePhone(input.getPhone()));
         // Unverified registration never grants business authority or property approval.

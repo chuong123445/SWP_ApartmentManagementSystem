@@ -9,7 +9,7 @@ import { VneidButton } from '@/components/auth/VneidButton';
 
 export function RegisterPage() {
   const { user, loading, login } = useAuth();const navigate = useNavigate();
-  const [input, setInput] = useState<RegistrationInput>({ fullName: '', email: '', password: '', phone: '', requestedRole: 'CUSTOMER' });
+  const [input, setInput] = useState<RegistrationInput>({ fullName: '', email: '', password: '', phone: '' });
   const [confirmation, setConfirmation] = useState('');const [busy, setBusy] = useState(false);const [error, setError] = useState('');
   const [registrationCreated, setRegistrationCreated] = useState(false);
   const submit = async (event: FormEvent) => {
@@ -38,10 +38,9 @@ export function RegisterPage() {
     <section className="w-full max-w-xl bg-white border border-slate-200 rounded-3xl shadow-lg p-8 sm:p-10">
       <Link to="/" className="flex items-center gap-2 text-emerald-700 font-bold mb-7"><Building2 />An Cư PropTech</Link>
       <h1 className="text-2xl font-bold text-slate-900">Tạo tài khoản</h1>
-      <p className="text-sm text-slate-500 mt-2 mb-6">Đăng ký và xác minh email để bắt đầu. Chủ nhà cần được duyệt tài sản trước khi đăng căn hộ công khai.</p>
+      <p className="text-sm text-slate-500 mt-2 mb-6">Tạo tài khoản và xác thực để bắt đầu. Khi có nhu cầu cho thuê, bạn có thể đăng ký trở thành chủ cho thuê trong cài đặt tài khoản.</p>
       {error && <p role="alert" className="bg-rose-50 text-rose-700 p-3 rounded-lg mb-4">{error}</p>}
       <form onSubmit={submit}><fieldset disabled={busy} className="space-y-4">
-        <div><label htmlFor="register-role">Loại tài khoản</label><select id="register-role" value={input.requestedRole} onChange={e => setInput({ ...input, requestedRole: e.target.value as RegistrationInput['requestedRole'] })} className={cls}><option value="CUSTOMER">Khách thuê (Customer)</option><option value="OWNER">Chủ nhà (Owner)</option></select></div>
         <div><label htmlFor="register-name">Họ và tên</label><input id="register-name" required maxLength={100} autoComplete="name" value={input.fullName} onChange={e => setInput({ ...input, fullName: e.target.value })} className={cls} /></div>
         <div><label htmlFor="register-email">Email</label><input id="register-email" type="email" required maxLength={254} autoComplete="email" value={input.email} onChange={e => setInput({ ...input, email: e.target.value })} className={cls} /></div>
         <div><label htmlFor="register-phone">Số điện thoại (không bắt buộc)</label><input id="register-phone" type="tel" maxLength={20} autoComplete="tel" value={input.phone} onChange={e => setInput({ ...input, phone: e.target.value })} className={cls} /></div>
