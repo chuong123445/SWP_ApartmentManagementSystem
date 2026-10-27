@@ -7,8 +7,8 @@ const blankUnit = () => ({ key: crypto.randomUUID(), roomNumber: '', title: '', 
   bedrooms: '', bathrooms: '', maxOccupants: '', electric: '', water: '', description: '' });
 type Unit = ReturnType<typeof blankUnit>;
 
-export function AddPropertyModal({ onClose, onCreate }: {
-  onClose: () => void; onCreate: (input: PropertyCreateInput) => Promise<void>;
+export function AddPropertyModal({ onClose, onCreate, onChooseVneid }: {
+  onClose: () => void; onCreate: (input: PropertyCreateInput) => Promise<void>; onChooseVneid?: () => void;
 }) {
   const [mode, setMode] = useState<RentalMode>('SINGLE_UNIT');
   const [name, setName] = useState('');const [address, setAddress] = useState('');
@@ -54,6 +54,7 @@ export function AddPropertyModal({ onClose, onCreate }: {
         <h2 id="add-property-title" className="text-lg font-bold">Thêm tài sản cho thuê</h2>
         <button type="button" disabled={saving} onClick={onClose} aria-label="Đóng form tài sản" className="p-2 rounded-lg hover:bg-slate-100"><X className="w-5 h-5" /></button>
       </div>
+      {onChooseVneid && <div className="px-5 pt-4"><button type="button" disabled={saving} onClick={onChooseVneid} className="border border-emerald-600 text-emerald-800 bg-emerald-50 rounded-lg px-4 py-2 font-semibold">Chọn tài sản từ VNeID</button><p className="text-sm text-slate-500 mt-2">Tài sản VNeID có thể cho thuê sau khi bổ sung giá thuê, điện, nước. Hoặc nhập tài sản thủ công bên dưới.</p></div>}
       <form onSubmit={submit} className="p-5 space-y-5">
         <fieldset disabled={saving} className="space-y-5 disabled:opacity-60">
           <fieldset className="grid sm:grid-cols-2 gap-3">

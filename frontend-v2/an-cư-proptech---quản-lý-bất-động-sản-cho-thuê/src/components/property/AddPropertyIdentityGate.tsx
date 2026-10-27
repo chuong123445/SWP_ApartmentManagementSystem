@@ -4,13 +4,15 @@ import { RequireOwnerIdentityModal } from '@/components/property/RequireOwnerIde
 import { getAccountVerification } from '@/services/auth/vneidService';
 import { getIdentity } from '@/services/identity/identityService';
 import type { PropertyCreateInput } from '@/types/property';
+import { VneidAssetImportModal } from '@/components/property/VneidAssetImportModal';
 
 /** Căn cước đã xác thực từ Backend thay thế hồ sơ tự khai trong bước thêm tài sản. */
-export function AddPropertyIdentityGate({ onClose, onCreate }: {
-  onClose: () => void; onCreate: (input: PropertyCreateInput) => Promise<void>;
+export function AddPropertyIdentityGate({ onClose, onCreate, onImported }: {
+  onClose: () => void; onCreate: (input: PropertyCreateInput) => Promise<void>; onImported: (id: string) => void;
 }) {
   const [state, setState] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading');
   const [revision, setRevision] = useState(0);
+  const [vneidMode,setVneidMode] = useState(false);
   useEffect(() => {
     const controller = new AbortController();setState('loading');
     async function check() {
@@ -26,7 +28,7 @@ export function AddPropertyIdentityGate({ onClose, onCreate }: {
     }
     void check();return () => controller.abort();
   }, [revision]);
-  if (state === 'ready') return <AddPropertyModal onClose={onClose} onCreate={onCreate} />;
+  if (state === 'ready') return vneidMode ? <VneidAssetImportModal onClose={onClose} onBack={() => setVneidMode(false)} onImported={onImported} /> : <AddPropertyModal onClose={onClose} onCreate={onCreate} onChooseVneid={() => setVneidMode(true)} />;
   if (state === 'missing') return <RequireOwnerIdentityModal onClose={onClose} />;
   return <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
     <section role="dialog" aria-modal="true" aria-label="Kiểm tra thông tin danh tính" className="bg-white rounded-2xl p-6 max-w-md w-full space-y-4">

@@ -13,11 +13,13 @@ export function WorkspaceModals({ workspace, navigation }: { workspace: RentalWo
     config, handleCheckOut, handleReserveEscrow, handleMarkPaid, handleCreateInvoice, handleAddRoom } = workspace;
   const { isAddRoomOpen, setIsAddRoomOpen, isCreateInvoiceOpen, setIsCreateInvoiceOpen } = navigation;
   const { user } = useAuth();
-  const availableProperties = workspace.buildings.filter(p => (navigation.selectedBuildingId === 'all' || p.id === navigation.selectedBuildingId) && (p.rentalMode !== 'SINGLE_UNIT' || p.totalRooms === 0));
+  const availableProperties = workspace.buildings.filter(p => !p.verificationSource && (navigation.selectedBuildingId === 'all' || p.id === navigation.selectedBuildingId) && (p.rentalMode !== 'SINGLE_UNIT' || p.totalRooms === 0));
   return <>
       {navigation.propertyForDossierId && <PropertyDossierModal propertyId={navigation.propertyForDossierId} onClose={() => navigation.setPropertyForDossierId(null)} onSaved={workspace.reloadInventory} />}
       {navigation.isAddPropertyOpen && (
-          <AddPropertyIdentityGate key={`${user?.id}:${user?.version}`} onClose={() => navigation.setIsAddPropertyOpen(false)} onCreate={async input => {
+          <AddPropertyIdentityGate key={`${user?.id}:${user?.version}`} onClose={() => navigation.setIsAddPropertyOpen(false)} onImported={id => {
+            workspace.reloadInventory();navigation.setSelectedBuildingId(id);navigation.selectTab('properties');navigation.setIsAddPropertyOpen(false);
+          }} onCreate={async input => {
             const id = await workspace.handleAddProperty(input);
             navigation.setSelectedBuildingId(id);navigation.selectTab('properties');
           }} />
