@@ -99,6 +99,11 @@ public class AuthController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(auth.user(auth.authenticate(jwt)));
     }
 
+    @GetMapping("/api/v1/me/verifications")
+    public ResponseEntity<com.ancu.proptech.dto.auth.AccountVerificationResponse> verifications(@AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(vneid.verificationStatus(jwt));
+    }
+
     private void setRefreshCookie(HttpServletResponse response, String value, long maxAge) {
         ResponseCookie cookie = ResponseCookie.from(REFRESH_COOKIE, value).httpOnly(true).secure(secureCookie)
                 .sameSite("Lax").path("/api/v1/auth").maxAge(maxAge).build();
