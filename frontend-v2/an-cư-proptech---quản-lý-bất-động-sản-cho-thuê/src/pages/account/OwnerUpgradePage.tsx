@@ -28,7 +28,7 @@ export function OwnerUpgradePage() {
     <h1 className="text-2xl font-bold mt-4">Trở thành chủ cho thuê</h1>
     {owner ? <section className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-5"><p role="status" className="font-semibold text-emerald-900">Tài khoản đã là chủ cho thuê.</p><p className="text-sm mt-2 text-slate-600">Bạn có thể vào trang quản lý để thêm tài sản và chuẩn bị thông tin cho thuê.</p><Link to="/app" className="inline-block mt-4 px-4 py-2 rounded-lg bg-emerald-600 text-white">Vào trang quản lý</Link></section>
       : <section className="mt-5 rounded-xl border bg-white p-5 space-y-4">
-        <p className="text-slate-600">Bạn cần xác thực CCCD qua VNeID và có ít nhất một tài sản cho thuê hợp lệ trong thông tin VNeID để mở chức năng quản lý cho thuê.</p>
+        <p className="text-slate-600">Chính chủ có thể nâng cấp tự động sau khi xác thực CCCD và kiểm tra tài sản VNeID. Người được ủy quyền hoặc thuê lại dùng luồng hồ sơ Admin duyệt.</p>
         {loading && <p role="status">Đang kiểm tra điều kiện...</p>}
         {context && context.role === 'CUSTOMER' && <>
           {!context.identityVerified ? <Link to="/account/verification" className="inline-block text-emerald-700 underline">Xác thực CCCD qua VNeID trước khi nâng cấp</Link>
@@ -37,6 +37,7 @@ export function OwnerUpgradePage() {
                 <button type="button" disabled={!consent || busy} onClick={submit} className="px-4 py-3 rounded-lg bg-emerald-600 text-white font-semibold disabled:opacity-50">{busy ? 'Đang kiểm tra tài sản...' : 'Kiểm tra tài sản và nâng cấp'}</button></>}
         </>}
         {context?.role === 'ADMIN' && <p>Tài khoản quản trị không sử dụng chức năng nâng cấp chủ cho thuê.</p>}
+        {context?.identityVerified&&context.role==='CUSTOMER'&&<Link to="/account/rental-properties" className="block border rounded-lg p-4 text-emerald-800 font-semibold">Tôi được ủy quyền / thuê lại — Nộp hồ sơ quyền cho thuê</Link>}
       </section>}
     {error && <p role="alert" className="mt-4 text-rose-700">{error}<button type="button" disabled={busy} onClick={() => setRevision(v => v + 1)} className="ml-2 underline">Tải lại điều kiện</button></p>}
   </div></AccountLayout>;
