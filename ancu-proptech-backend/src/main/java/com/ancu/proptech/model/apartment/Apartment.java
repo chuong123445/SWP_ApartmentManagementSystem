@@ -25,6 +25,8 @@ public class Apartment {
     @Nationalized @Column(nullable = false, length = 3000) private String description;
     @Column(nullable = false, precision = 12, scale = 2) private BigDecimal areaM2;
     @Column(nullable = false, precision = 15, scale = 2) private BigDecimal advertisedMonthlyRent;
+    @Column(precision=15,scale=2) private BigDecimal electricityUnitPrice;
+    @Column(precision=15,scale=2) private BigDecimal waterUnitPrice;
     private Integer bedrooms;
     private Integer bathrooms;
     @Column(length = 500) private String coverImagePath;

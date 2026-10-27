@@ -25,9 +25,12 @@ public class ApartmentService {
         return (root, query, cb) -> {
             var property = root.join("property");
             var owner = property.join("owner");
+            var evidence=query.subquery(UUID.class);
+            var identity=evidence.from(com.ancu.proptech.model.auth.ExternalIdentity.class);
+            evidence.select(identity.get("accountId")).where(cb.equal(identity.get("accountId"),owner.get("id")),cb.equal(identity.get("verificationStatus"),"VERIFIED"));
             return cb.and(cb.equal(root.get("publicationStatus"), Apartment.PublicationStatus.PUBLISHED),
                     cb.equal(property.get("approvalStatus"), Property.ApprovalStatus.APPROVED),
-                    cb.equal(owner.get("status"), AuthAccount.Status.ACTIVE), cb.isTrue(owner.get("contactVerified")),
+                    cb.equal(owner.get("status"), AuthAccount.Status.ACTIVE), cb.or(cb.isTrue(owner.get("contactVerified")),cb.exists(evidence)),
                     cb.equal(owner.get("role"), AuthAccount.Role.OWNER));
         };
     }
@@ -67,7 +70,8 @@ public class ApartmentService {
         return new ApartmentDetail(a.getId(), a.getTitle(), a.getDescription(), p.getAddress(), p.getCity(), p.getDistrict(), p.getName(),
                 a.getAreaM2().toPlainString(), a.getAdvertisedMonthlyRent().toPlainString(), List.of(image(a)),
                 List.copyOf(a.getAmenities()), a.getAvailability().name(), a.getPublicationStatus().name(), a.getBedrooms(), a.getBathrooms(),
-                new ApartmentDetail.PublicOwner(owner.getId(), owner.getFullName(), owner.isContactVerified()), a.getVersion());
+                new ApartmentDetail.PublicOwner(owner.getId(), owner.getFullName(), owner.isContactVerified()), a.getVersion(),
+                a.getElectricityUnitPrice()==null?null:a.getElectricityUnitPrice().toPlainString(),a.getWaterUnitPrice()==null?null:a.getWaterUnitPrice().toPlainString());
     }
 
     public static void validatePage(int page, int size) {
