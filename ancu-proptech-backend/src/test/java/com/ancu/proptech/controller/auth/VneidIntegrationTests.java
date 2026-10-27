@@ -30,6 +30,7 @@ class VneidIntegrationTests {
     @Autowired ExternalIdentityRepository identities;
     @Autowired AuthService auth;
     @Autowired EntityManager em;
+    @Autowired org.springframework.transaction.support.TransactionTemplate transactions;
     @MockitoBean VneidTokenVerifier verifier;
     String token,email,subject,number;
     Jwt external;
@@ -108,6 +109,34 @@ class VneidIntegrationTests {
                 .content("{\"auth0AccessToken\":\""+token+"\"}")).andExpect(status().isForbidden());
         mvc.perform(post("/api/v1/me/verifications/vneid").with(csrf().asHeader()).header("Authorization","Bearer "+internal).contentType("application/json")
                 .content("{\"auth0AccessToken\":\""+token+"\",\"verified\":true}")).andExpect(status().isBadRequest());
+    }
+    @Test @Transactional(propagation=org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+    void concurrentRegistrationCreatesOnlyOneBindingAndAccount() throws Exception {
+        var executor=java.util.concurrent.Executors.newFixedThreadPool(2);
+        var barrier=new java.util.concurrent.CyclicBarrier(2);
+        java.util.concurrent.Callable<Integer> call=()->{
+            barrier.await(10,java.util.concurrent.TimeUnit.SECONDS);
+            return mvc.perform(post("/api/v1/auth/vneid-login").with(csrf().asHeader())
+                    .header("Authorization","Bearer "+token)).andReturn().getResponse().getStatus();
+        };
+        try {
+            var first=executor.submit(call);var second=executor.submit(call);
+            var statuses=List.of(first.get(30,java.util.concurrent.TimeUnit.SECONDS),second.get(30,java.util.concurrent.TimeUnit.SECONDS));
+            assertTrue(statuses.contains(200));assertTrue(statuses.stream().allMatch(s->s==200||s==409));
+            transactions.executeWithoutResult(status->{
+                var account=accounts.findByEmail(email).orElseThrow();
+                assertEquals(account.getId(),identities.findByIssuerAndSubject("https://test.invalid/",subject).orElseThrow().getAccountId());
+                assertEquals(1,identities.findAll().stream().filter(i->i.getSubject().equals(subject)).count());
+            });
+        } finally {
+            executor.shutdownNow();executor.awaitTermination(10,java.util.concurrent.TimeUnit.SECONDS);
+            transactions.executeWithoutResult(status->accounts.findByEmail(email).ifPresent(account->{
+                UUID id=account.getId();
+                em.createNativeQuery("delete from auth_refresh_tokens where session_id in (select id from auth_sessions where account_id=:id)").setParameter("id",id).executeUpdate();
+                em.createNativeQuery("delete from auth_sessions where account_id=:id").setParameter("id",id).executeUpdate();
+                identities.deleteById(id);identities.flush();accounts.delete(account);accounts.flush();
+            }));
+        }
     }
     private org.springframework.test.web.servlet.ResultActions self(String internal) throws Exception {
         return mvc.perform(post("/api/v1/me/verifications/vneid").with(csrf().asHeader()).header("Authorization","Bearer "+internal)
