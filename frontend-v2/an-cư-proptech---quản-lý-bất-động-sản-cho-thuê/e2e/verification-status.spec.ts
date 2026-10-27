@@ -31,7 +31,8 @@ test('Verified Auth0 option hides action and shows persisted citizen on desktop/
   await page.goto('/account/settings/identity');
   await expect(page.getByRole('heading', { name: 'Căn cước VNeID · Đã xác thực' })).toBeVisible();
   await expect(page.getByText(identity.documentNumber, { exact: true })).toBeVisible();
-  await expect(page.locator('#identity-number')).toHaveValue('');
+  await expect(page.locator('#identity-number')).toHaveCount(0);
+  await expect(page.locator('input[type=file]')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 test('Email-only verified account still has a VNeID action and no invented citizen', async ({ page }) => {
