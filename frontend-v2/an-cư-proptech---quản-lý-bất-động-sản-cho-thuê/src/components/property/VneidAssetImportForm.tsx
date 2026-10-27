@@ -1,18 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { PropertyImagesField } from '@/components/property/PropertyImagesField';
+import { uploadPropertyImages } from '@/services/property/propertyImageService';
+import { useEffect, useState } from 'react';
 import { getVneidAssets, importVneidProperty, type VneidAssetCandidate } from '@/services/property/vneidPropertyService';
 import { ApiError } from '@/services/http/client';
 
 type Fields = { monthlyRent: string; deposit: string; electricityUnitPrice: string; waterUnitPrice: string; electricityIndex: string; waterIndex: string; floor: string; maxOccupants: string; description: string };
 const blank = (): Fields => ({ monthlyRent: '', deposit: '', electricityUnitPrice: '', waterUnitPrice: '', electricityIndex: '', waterIndex: '', floor: '', maxOccupants: '', description: '' });
 const inputClass = 'mt-1 w-full min-w-0 border border-slate-300 rounded-lg px-3 py-2 bg-white';
-export function VneidAssetImportModal({ onClose, onBack, onImported }: { onClose: () => void; onBack: () => void; onImported: (id: string) => void }) {
+export function VneidAssetImportForm({ onClose, onBack, onImported }: { onClose: () => void; onBack: () => void; onImported: (id: string) => void }) {
   const [items, setItems] = useState<VneidAssetCandidate[]>([]);const [selected, setSelected] = useState<VneidAssetCandidate | null>(null);
   const [terms, setTerms] = useState<Record<string, Fields>>({});const [city, setCity] = useState('');const [district, setDistrict] = useState('');const [ward, setWard] = useState('');
   const [loading, setLoading] = useState(true);const [saving, setSaving] = useState(false);const [error, setError] = useState('');const [stale, setStale] = useState(false);const [revision, setRevision] = useState(0);
-  const dialog = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;dialog.current?.focus();return () => previous?.focus();
-  }, []);
+  const [photos,setPhotos]=useState<File[]>([]);
   useEffect(() => {
     const controller = new AbortController();setLoading(true);setItems([]);setError('');setSelected(null);setTerms({});setStale(false);
     getVneidAssets(controller.signal).then(data => { if (!controller.signal.aborted) setItems(data); })
@@ -24,11 +23,7 @@ export function VneidAssetImportModal({ onClose, onBack, onImported }: { onClose
     setSelected(item);setTerms(Object.fromEntries(item.asset.units.map(unit => [unit.externalUnitId, blank()])));setError('');setStale(false);
   };
   const change = (id: string, key: keyof Fields, value: string) => setTerms(previous => ({ ...previous, [id]: { ...previous[id], [key]: value } }));
-  return <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-3 sm:p-6">
-    <section ref={dialog} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="vneid-assets-title" className="bg-white rounded-2xl w-full max-w-3xl max-h-[92dvh] overflow-y-auto p-5 sm:p-6 space-y-5" onKeyDown={e => {
-      if (e.key === 'Escape' && !saving) onClose();
-      if (e.key === 'Tab') { const nodes = dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),textarea:not(:disabled)');if (!nodes?.length) return;const first=nodes[0],last=nodes[nodes.length-1];if(e.shiftKey && (document.activeElement===first || document.activeElement===dialog.current)){e.preventDefault();last.focus();}else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first.focus();} }
-    }}>
+  return <section className="bg-white border rounded-2xl p-5 sm:p-6 space-y-5 min-w-0">
       <div className="flex justify-between items-start gap-3"><h2 id="vneid-assets-title" className="text-xl font-bold">Chọn tài sản từ VNeID</h2><button type="button" disabled={saving} onClick={onClose} className="underline">Đóng</button></div>
       <p className="text-sm text-slate-600">Thông tin sở hữu được lấy từ VNeID mô phỏng. Điền đủ điều kiện cho thuê để đăng căn hộ, không cần Admin duyệt.</p>
       {loading && <p role="status">Đang tải tài sản VNeID...</p>}
@@ -38,9 +33,10 @@ export function VneidAssetImportModal({ onClose, onBack, onImported }: { onClose
         <span className="min-w-0 break-words"><span className="block font-semibold">{item.asset.name}</span><span className="block text-sm text-slate-600">{item.asset.address}</span><span className="block text-sm mt-1">{item.asset.units.length} căn/phòng · {item.imported ? 'Đã thêm vào hệ thống' : 'Có thể chọn'}</span></span>
       </label>)}</div>}
       {selected && <form className="space-y-5" onSubmit={async e => {
-        e.preventDefault();if (saving || stale) return;setSaving(true);setError('');
+        e.preventDefault();if (saving || stale) return;setError('');if(photos.length<1||photos.length>4){setError('Chọn từ 1 đến 4 ảnh tài sản.');return;}setSaving(true);
         try {
-          const result = await importVneidProperty({ externalAssetId: selected.asset.externalAssetId, sourceVersion: selected.sourceVersion,
+          const imageIds=await uploadPropertyImages(photos);
+          const result = await importVneidProperty({ imageIds, externalAssetId: selected.asset.externalAssetId, sourceVersion: selected.sourceVersion,
             city: city.trim(), district: district.trim(), ward: ward.trim() || null,
             units: selected.asset.units.map(unit => { const t=terms[unit.externalUnitId];return { ...t, externalUnitId: unit.externalUnitId,
               floor: Number(t.floor), maxOccupants: Number(t.maxOccupants), electricityIndex: Number(t.electricityIndex), waterIndex: Number(t.waterIndex) }; }),
@@ -48,6 +44,7 @@ export function VneidAssetImportModal({ onClose, onBack, onImported }: { onClose
         } catch (e) {setError(e instanceof Error ? e.message : 'Chưa thêm được tài sản.');if(e instanceof ApiError && ['ASSET_SOURCE_CHANGED','ASSET_ALREADY_IMPORTED','ASSET_NOT_AVAILABLE','VNEID_LINK_CHANGED'].includes(e.code))setStale(true);}
         finally {setSaving(false);}
       }}>
+        <PropertyImagesField files={photos} onChange={setPhotos} disabled={saving||stale}/>
         <fieldset disabled={saving || stale} className="space-y-5 min-w-0">
           <div className="bg-emerald-50 p-3 rounded-lg text-sm break-words">Địa chỉ theo VNeID: <strong>{selected.asset.address}</strong></div>
           <p className="text-sm text-slate-600">Bổ sung địa phương để căn hộ xuất hiện đúng bộ lọc tìm kiếm.</p>
@@ -68,7 +65,6 @@ export function VneidAssetImportModal({ onClose, onBack, onImported }: { onClose
         </fieldset>
       </form>}
       {error && <p role="alert" className="text-rose-700 break-words">{error}</p>}
-      <div className="flex flex-wrap gap-4"><button type="button" disabled={saving || loading} onClick={() => setRevision(v => v+1)} className="text-emerald-700 underline">Tải lại danh sách</button><button type="button" disabled={saving} onClick={onBack} className="underline">Nhập tài sản thủ công</button></div>
-    </section>
-  </div>;
+      <div className="flex flex-wrap gap-4"><button type="button" disabled={saving || loading} onClick={() => setRevision(v => v+1)} className="text-emerald-700 underline">Tải lại danh sách</button><button type="button" disabled={saving} onClick={onBack} className="underline">Quay lại chọn vai trò</button></div>
+  </section>;
 }

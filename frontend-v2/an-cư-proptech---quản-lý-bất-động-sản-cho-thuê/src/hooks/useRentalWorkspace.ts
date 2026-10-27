@@ -1,3 +1,5 @@
+import { updateApartmentPrices } from '@/services/apartments/ownerApartmentService';
+import type { PriceInput } from '@/components/rooms/ApartmentPriceForm';
 import { useEffect, useState } from 'react';
 import type { Building, Room, NewRoom, Tenant, Contract, Invoice, MaintenanceTicket, Transaction, SystemConfig, TrustGuardAudit, EscrowDeposit } from '@/types';
 import { initialMaintenance, initialTransactions, initialConfig, initialTrustAudits, initialEscrows } from '@/data/mockData';
@@ -80,6 +82,11 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
       rentalMode: saved.property.rentalMode, legalStatus: saved.property.approvalStatus, pcccCertified: false, totalRooms: saved.apartments.length }]);
     setRooms(prev => [...saved.apartments, ...prev]);
     return saved.property.id;
+  };
+  const handlePrices = async (room: Room,input: PriceInput) => {
+    if(room.version===undefined)throw new Error('Tải lại căn hộ trước khi cập nhật giá.');
+    try{const saved=await updateApartmentPrices(room.id,room.version,input);setRooms(prev=>prev.map(r=>r.id===saved.id?{...r,...saved}:r));setSelectedRoom(prev=>prev?.id===saved.id?{...prev,...saved}:prev);}
+    catch(error){setInventoryRevision(v=>v+1);throw error;}
   };
   const handlePublication = async (room: Room, status: 'PUBLISHED' | 'HIDDEN') => {
     if (room.version === undefined) throw new Error('Cần tải lại căn hộ trước khi thay đổi đăng tin.');
@@ -257,7 +264,7 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
     reloadBilling: () => setBillingRevision(value => value + 1), handleSendInvoice,
     buildings, inventoryError, inventoryLoading, reloadInventory: () => setInventoryRevision(value => value + 1),
     selectedRoom, setSelectedRoom, selectedInvoice, setSelectedInvoice,
-    handleMarkPaid, handleAddTenant, handleAddContract, handleAddRoom, handleAddProperty, handlePublication, handleCheckOut,
+    handleMarkPaid, handleAddTenant, handleAddContract, handleAddRoom, handleAddProperty, handlePrices, handlePublication, handleCheckOut,
     handleUpdateIndices, handleUpdateTicketStatus, handleResetData, handleApproveAudit,
     handleReleaseEscrow, handleCreateEscrow, handleReserveEscrow, handleAddTicket,
     handleSendResidentTicket, handleCreateInvoice, handleAddTransaction, handleSaveConfig: setConfig,

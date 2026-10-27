@@ -10,7 +10,7 @@ export interface ImportUnitTerms {
   externalUnitId: string; monthlyRent: string; deposit: string; electricityUnitPrice: string; waterUnitPrice: string;
   electricityIndex: number; waterIndex: number; floor: number; maxOccupants: number; description: string;
 }
-export interface VneidImportInput { externalAssetId: string; sourceVersion: string; city: string; district: string; ward: string | null; units: ImportUnitTerms[] }
+export interface VneidImportInput { imageIds: string[]; externalAssetId: string; sourceVersion: string; city: string; district: string; ward: string | null; units: ImportUnitTerms[] }
 export async function getVneidAssets(signal?: AbortSignal): Promise<VneidAssetCandidate[]> {
   const response = await apiFetch('/api/v1/owner/properties/vneid-assets', { signal, cache: 'no-store' });
   if (!response.ok) throw await readApiError(response);

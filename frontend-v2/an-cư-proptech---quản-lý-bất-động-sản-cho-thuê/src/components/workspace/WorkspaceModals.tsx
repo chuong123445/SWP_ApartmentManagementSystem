@@ -1,29 +1,20 @@
-import { useAuth } from '@/hooks/useAuth';
+import { Navigate } from 'react-router';
 import type { RentalWorkspace } from '@/hooks/useRentalWorkspace';
 import type { WorkspaceNavigation } from '@/hooks/useWorkspaceNavigation';
 import { RoomDetailModal } from '@/components/rooms/RoomDetailModal';
 import { AddRoomModal } from '@/components/rooms/AddRoomModal';
 import { InvoiceDetailModal } from '@/components/billing/InvoiceDetailModal';
 import { CreateInvoiceModal } from '@/components/billing/CreateInvoiceModal';
-import { AddPropertyIdentityGate } from '@/components/property/AddPropertyIdentityGate';
 import { PropertyDossierModal } from '@/components/property/PropertyDossierModal';
 
 export function WorkspaceModals({ workspace, navigation }: { workspace: RentalWorkspace; navigation: WorkspaceNavigation }) {
   const { selectedRoom, selectedInvoice, setSelectedRoom, setSelectedInvoice, rooms, tenants, contracts, invoices,
     config, handleCheckOut, handleReserveEscrow, handleMarkPaid, handleCreateInvoice, handleAddRoom } = workspace;
   const { isAddRoomOpen, setIsAddRoomOpen, isCreateInvoiceOpen, setIsCreateInvoiceOpen } = navigation;
-  const { user } = useAuth();
   const availableProperties = workspace.buildings.filter(p => !p.verificationSource && (navigation.selectedBuildingId === 'all' || p.id === navigation.selectedBuildingId) && (p.rentalMode !== 'SINGLE_UNIT' || p.totalRooms === 0));
   return <>
       {navigation.propertyForDossierId && <PropertyDossierModal propertyId={navigation.propertyForDossierId} onClose={() => navigation.setPropertyForDossierId(null)} onSaved={workspace.reloadInventory} />}
-      {navigation.isAddPropertyOpen && (
-          <AddPropertyIdentityGate key={`${user?.id}:${user?.version}`} onClose={() => navigation.setIsAddPropertyOpen(false)} onImported={id => {
-            workspace.reloadInventory();navigation.setSelectedBuildingId(id);navigation.selectTab('properties');navigation.setIsAddPropertyOpen(false);
-          }} onCreate={async input => {
-            const id = await workspace.handleAddProperty(input);
-            navigation.setSelectedBuildingId(id);navigation.selectTab('properties');
-          }} />
-      )}
+      {navigation.isAddPropertyOpen && <Navigate to="/account/properties/new" />}
       {selectedRoom && (
         <RoomDetailModal
           room={selectedRoom}
@@ -37,6 +28,7 @@ export function WorkspaceModals({ workspace, navigation }: { workspace: RentalWo
           }}
           onCheckOut={handleCheckOut}
           onReserveEscrow={handleReserveEscrow}
+          onPrices={workspace.handlePrices}
           onPublication={workspace.handlePublication}
         />
       )}
