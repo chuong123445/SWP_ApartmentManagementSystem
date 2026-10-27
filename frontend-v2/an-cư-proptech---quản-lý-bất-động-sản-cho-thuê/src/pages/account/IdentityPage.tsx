@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { AccountLayout } from '@/layouts/AccountLayout';
 import { IdentityImage } from '@/components/identity/IdentityImage';
+import { VerifiedCitizenPanel } from '@/components/identity/VerifiedCitizenDetails';
 import { getIdentity, saveIdentity } from '@/services/identity/identityService';
 import { ApiError } from '@/services/http/client';
 import type { IdentityFields, IdentityProfile } from '@/types/identity';
@@ -49,6 +50,8 @@ export function IdentityPage() {
   return <AccountLayout>
     <Link to={returnTo} className="text-emerald-700 underline text-sm">{returnLabel}</Link>
     <h1 className="text-2xl font-bold mt-4 mb-3">Xác thực danh tính</h1>
+    <VerifiedCitizenPanel />
+    <h2 className="text-lg font-semibold mb-2">Hồ sơ ảnh giấy tờ tự khai</h2>
     <p className="text-slate-600 mb-4">Cung cấp thông tin căn cước và địa chỉ để chuẩn bị thông tin cá nhân khi thuê nhà. Hãy nhập đúng nội dung trên giấy tờ.</p>
     <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5">
       {saved?.localFixture && <p className="font-bold mb-2">Dữ liệu mẫu — không có giá trị xác minh hoặc làm giấy tờ pháp lý.</p>}

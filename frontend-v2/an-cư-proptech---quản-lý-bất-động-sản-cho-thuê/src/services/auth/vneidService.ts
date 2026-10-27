@@ -1,6 +1,16 @@
 import { apiFetch, readApiError } from '@/services/http/client';
 import type { AuthSession, AuthUser } from '@/types/auth';
 export interface VneidConfig { enabled: boolean; issuer: string; clientId: string; audience: string; connection: string }
+export interface VerifiedCitizen { documentNumber: string; legalName: string; dateOfBirth: string; gender: string; address: string }
+export interface AccountVerification {
+  emailVerified: boolean;
+  vneid: { status: 'VERIFIED' | 'UNVERIFIED'; verifiedAt: string | null; identity: VerifiedCitizen | null };
+}
+export async function getAccountVerification(signal?: AbortSignal): Promise<AccountVerification> {
+  const response = await apiFetch('/api/v1/me/verifications', { cache: 'no-store', signal });
+  if (!response.ok) throw await readApiError(response);
+  return response.json();
+}
 export async function getVneidConfig(): Promise<VneidConfig> {
   const response = await fetch('/api/v1/auth/vneid-config', { cache: 'no-store', credentials: 'same-origin' });
   if (!response.ok) throw await readApiError(response);
