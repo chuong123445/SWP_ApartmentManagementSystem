@@ -49,7 +49,7 @@ public class PropertyImageService {
     }
     /** Khóa ảnh theo thứ tự ID; gắn toàn bộ cùng transaction tạo tài sản, không cho lấy ảnh người khác. */
     public void bind(Property property,List<Long> ids){
-        if(ids==null||ids.isEmpty()||ids.size()>4||new HashSet<>(ids).size()!=ids.size())throw bad("Tài sản cần từ 1 đến 4 ảnh khác nhau.");
+        if(ids==null||ids.isEmpty()||ids.size()>4||ids.stream().anyMatch(Objects::isNull)||new HashSet<>(ids).size()!=ids.size())throw bad("Tài sản cần từ 1 đến 4 ảnh khác nhau.");
         var locked=new HashMap<Long,PropertyImage>();
         ids.stream().sorted().forEach(id->{var i=images.findForBinding(id).filter(x->x.getUploaderId().equals(property.getOwner().getId())&&x.getPropertyId()==null).orElseThrow(()->bad("Ảnh không thuộc bạn hoặc đã được sử dụng."));locked.put(id,i);});
         for(int n=0;n<ids.size();n++){var i=locked.get(ids.get(n));i.setPropertyId(property.getId());i.setPosition(n);}
