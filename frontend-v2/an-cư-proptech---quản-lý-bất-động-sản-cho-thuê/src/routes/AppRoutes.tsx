@@ -18,6 +18,7 @@ import { ProfilePage } from '@/pages/account/ProfilePage';
 import { AccountActionPage } from '@/pages/account/AccountActionPage';
 import { AccountSettingsPage } from '@/pages/account/AccountSettingsPage';
 import { IdentityPage } from '@/pages/account/IdentityPage';
+import { OwnerUpgradePage } from '@/pages/account/OwnerUpgradePage';
 import { PropertyDossiersPage } from '@/pages/admin/PropertyDossiersPage';
 import { MyContractsPage } from '@/pages/customer/MyContractsPage';
 import { ContractDetailPage } from '@/pages/customer/ContractDetailPage';
@@ -30,7 +31,7 @@ function RequireAccount({ children, role, verified = true }: { children: ReactNo
   if (role === 'ADMIN' && !user.roles.includes('ADMIN')) return <Navigate to="/" replace />;
   if (role === 'MANAGER' && user.roles.includes('ADMIN')) return <Navigate to="/admin/property-dossiers" replace />;
   if (role === 'MANAGER' && !hasManagementRole(user)) return <Navigate to="/" replace />;
-  if (role === 'CUSTOMER' && !user.roles.includes('CUSTOMER')) return <Navigate to="/app" replace />;
+  if (role === 'CUSTOMER' && !user.roles.some(role => role === 'CUSTOMER' || role === 'OWNER')) return <Navigate to="/app" replace />;
   if (verified && (user.accountStatus !== 'ACTIVE' || user.contactVerificationStatus !== 'VERIFIED')) return <AccountVerificationPage />;
   return <div key={user.id} className="contents">{children}</div>;
 }
@@ -57,6 +58,7 @@ export function AppRoutes() {
     <Route path="/account/verification" element={<RequireAccount verified={false}><AccountVerificationPage /></RequireAccount>} />
     <Route path="/account/profile" element={<RequireAccount verified={false}><ProfilePage /></RequireAccount>} />
     <Route path="/account/settings" element={<RequireAccount verified={false}><AccountSettingsPage /></RequireAccount>} />
+    <Route path="/account/owner-upgrade" element={<RequireAccount verified={false}><OwnerUpgradePage /></RequireAccount>} />
     <Route path="/account/settings/identity" element={<RequireAccount verified={false}><IdentityPage /></RequireAccount>} />
     <Route path="/account/settings/password" element={<RequireAccount verified={false}><AccountActionPage key="password" action="password" /></RequireAccount>} />
     <Route path="/account/settings/email" element={<RequireAccount verified={false}><AccountActionPage key="email" action="email" /></RequireAccount>} />

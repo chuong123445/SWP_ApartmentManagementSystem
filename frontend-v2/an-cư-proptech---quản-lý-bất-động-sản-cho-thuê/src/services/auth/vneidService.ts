@@ -33,3 +33,15 @@ export async function verifyVneid(token: string): Promise<AuthUser> {
   if (!response.ok) throw await readApiError(response);
   return response.json();
 }
+export interface OwnerUpgradeContext { role: 'CUSTOMER' | 'OWNER' | 'ADMIN'; identityVerified: boolean; assetServiceAvailable: boolean; version: number }
+export async function getOwnerUpgradeContext(signal?: AbortSignal): Promise<OwnerUpgradeContext> {
+  const response = await apiFetch('/api/v1/me/owner-upgrade', { signal, cache: 'no-store' });
+  if (!response.ok) throw await readApiError(response);
+  return response.json();
+}
+export async function upgradeOwner(version: number): Promise<AuthUser> {
+  const headers = await csrfHeaders();headers.set('Content-Type', 'application/json');
+  const response = await apiFetch('/api/v1/me/owner-upgrade', { method: 'POST', headers, body: JSON.stringify({ consent: true, version }) });
+  if (!response.ok) throw await readApiError(response);
+  return response.json();
+}
