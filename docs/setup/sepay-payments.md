@@ -68,3 +68,6 @@ Nhánh feature/sepay-payments. Khởi động lại Spring Boot và Vite. Có V2
 - [QR và quy tắc ngân hàng](https://developer.sepay.vn/vi/tien-ich-khac/tao-qr-code)
 - [Webhook](https://docs.sepay.vn/tich-hop-webhooks.html)
 - [Cloudflare Quick Tunnel](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/)
+
+
+Bật/tắt nhận thanh toán: sau khi cấu hình, dùng nút Tạm dừng/Bật lại bằng phiên nội bộ và version, không cần token SePay. Khi tắt, không cấp QR mới hay tự đối soát giao dịch; trạng thái các hóa đơn đã thanh toán vẫn giữ nguyên. Thông báo nhận trong lúc tắt lưu DISABLED, không tự phát lại để thanh toán sau khi bật.

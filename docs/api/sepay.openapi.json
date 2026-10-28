@@ -75,6 +75,9 @@
           },
           "503": {
             "description": "Provider unavailable"
+          },
+          "429": {
+            "description": "SePay provider rate limit; wait before retrying"
           }
         },
         "requestBody": {
@@ -113,6 +116,9 @@
           },
           "503": {
             "description": "Provider unavailable"
+          },
+          "429": {
+            "description": "SePay provider rate limit; wait before retrying"
           }
         },
         "requestBody": {
@@ -151,6 +157,9 @@
           },
           "503": {
             "description": "Provider unavailable"
+          },
+          "429": {
+            "description": "SePay provider rate limit; wait before retrying"
           }
         },
         "requestBody": {
@@ -396,6 +405,51 @@
           }
         ]
       }
+    },
+    "/api/v1/owner/payments/sepay/status": {
+      "patch": {
+        "summary": "Exact Owner enables/pauses existing connection using only internal session and version; no provider token",
+        "responses": {
+          "200": {
+            "description": "Saved/private result; Cache-Control no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or provider token/data"
+          },
+          "401": {
+            "description": "Missing/invalid session or webhook API key"
+          },
+          "403": {
+            "description": "Role/account verification denied"
+          },
+          "404": {
+            "description": "Not exact invoice party"
+          },
+          "409": {
+            "description": "Stale version, invoice not SENT, missing config/public URL, fractional VND"
+          },
+          "503": {
+            "description": "Provider unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Status"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -417,13 +471,22 @@
         "type": "object",
         "properties": {
           "bank": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "accountNumber": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "accountHolderName": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "virtualAccount": {
             "type": [
@@ -647,6 +710,22 @@
             "type": "number",
             "minimum": 1,
             "multipleOf": 1
+          }
+        }
+      },
+      "Status": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "version"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       }

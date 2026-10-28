@@ -51,6 +51,7 @@ public class SepayService {
   c.setBank(bank.bank());c.setBankAccountId(bank.id());c.setAccountNumber(bank.accountNumber());c.setAccountHolderName(va!=null&&!va.holder().isBlank()?va.holder():bank.accountHolderName());c.setVirtualAccount(va==null?null:va.number());c.setEnabled(input.enabled());
   connections.saveAndFlush(c);return view(c,owner,key);
  }
+ @Transactional public Connection enabled(Jwt jwt,boolean enabled,long version){Long owner=access.owner(jwt).getId();var c=connections.lockOwner(owner).orElseThrow(SepayService::missing);if(c.getVersion()!=version)throw stale();c.setEnabled(enabled);connections.flush();return view(c,owner,null);}
  @Transactional public Connection rotate(Jwt jwt,long version){Long owner=access.owner(jwt).getId();var c=connections.lockOwner(owner).orElseThrow(SepayService::missing);if(c.getVersion()!=version)throw stale();String key=secret();c.setSecretHash(hash(key));connections.flush();return view(c,owner,key);}
  @Transactional(readOnly=true) public List<Event> history(Jwt jwt){return events.findTop20ByOwnerIdOrderByReceivedAtDescIdDesc(access.owner(jwt).getId()).stream().map(e->new Event(e.getTransactionId().toString(),e.getInvoiceId()==null?null:e.getInvoiceId().toString(),e.getResult(),e.getAmount().toPlainString(),e.getReceivedAt())).toList();}
  @Transactional(readOnly=true) public Payment status(Jwt jwt,Long invoiceId){

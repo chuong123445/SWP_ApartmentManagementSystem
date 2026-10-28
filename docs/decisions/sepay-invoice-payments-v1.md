@@ -29,3 +29,6 @@ V23/V24 thêm sepay_connections (người nhận + hash key + trạng thái/vers
 ## Ngoài phạm vi
 
 Escrow/đặt cọc, hoàn tiền, thanh toán một phần/gộp, đối soát thủ công thay trạng thái, tự đăng ký webhook qua API, OAuth SePay, hỗ trợ toàn bộ loại VA/ngân hàng, xác nhận giao dịch thật và triển khai tunnel thật. Chưa gọi SePay bằng token thật; URL/provider acceptance vẫn cần người vận hành.
+
+
+Bật/tắt nhận thanh toán: sau khi cấu hình, dùng nút Tạm dừng/Bật lại bằng phiên nội bộ và version, không cần token SePay. Khi tắt, không cấp QR mới hay tự đối soát giao dịch; trạng thái các hóa đơn đã thanh toán vẫn giữ nguyên. Thông báo nhận trong lúc tắt lưu DISABLED, không tự phát lại để thanh toán sau khi bật.

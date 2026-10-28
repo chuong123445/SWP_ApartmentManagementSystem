@@ -14,6 +14,7 @@ public final class SepayDtos {
   @NotBlank @Pattern(regexp="[A-Za-z0-9-]{1,64}") String bankAccountId,
   @Pattern(regexp="[A-Za-z0-9-]{1,64}") String virtualAccountId,
   boolean enabled,@NotNull @Min(0) Long version){}
+ public record Status(@NotNull Boolean enabled,@NotNull @Min(0) Long version){}
  public record Rotate(@NotNull @Min(0) Long version){}
  public record Connection(boolean configured,String bank,String accountNumber,String accountHolderName,String virtualAccount,
   boolean enabled,long version,String webhookUrl,Instant lastWebhookAt,String webhookSecret){}

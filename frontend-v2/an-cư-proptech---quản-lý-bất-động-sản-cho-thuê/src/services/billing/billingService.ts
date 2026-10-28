@@ -26,7 +26,7 @@ export function invoiceView(i: BillingInvoice): Invoice {
   return {
     id: i.id, invoiceCode: `HD-${i.period}-${i.id.slice(0, 8)}`, monthYear: i.period, roomId: i.apartmentId,
     roomNumber: i.roomNumber, tenantName: i.tenantName, tenantPhone: '', createdAt: i.createdAt, dueDate: i.dueDate,
-    status: 'unpaid', paidAmount: 0, totalAmount: Number(i.totalAmount), apiInvoice: i,
+    status: i.paymentStatus==='PAID'?'paid':'unpaid', paidAmount: i.paymentStatus==='PAID'?Number(i.totalAmount):0, totalAmount: Number(i.totalAmount), apiInvoice: i,
     items: [
       { name: 'Tiền thuê', unit: 'tháng', quantity: 1, unitPrice: Number(i.monthlyRent), amount: Number(i.monthlyRent) },
       { name: 'Tiền điện', unit: 'kWh', oldIndex: Number(i.electricityStartReading), newIndex: Number(i.electricityEndReading), quantity: Number(i.electricityQuantity), unitPrice: Number(i.electricityUnitPrice), amount: Number(i.electricityAmount) },

@@ -111,7 +111,7 @@ class SepayIntegrationTests {
     }
     @Test void disabledConnectionStopsNewQrAndNeverSettlesWebhook()throws Exception{
         String id=prepare();String code=JsonPath.read(ticket(tenantToken,id),"$.paymentCode");long version=connections.findByOwnerId(owner.getId()).orElseThrow().getVersion();
-        mvc.perform(put("/api/v1/owner/payments/sepay").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"apiToken\":\"test-provider-token\",\"bankAccountId\":\"bank1\",\"virtualAccountId\":\"va1\",\"enabled\":false,\"version\":"+version+"}")).andExpect(status().isOk());
+        org.mockito.Mockito.clearInvocations(bankClient);mvc.perform(patch("/api/v1/owner/payments/sepay/status").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"enabled\":false,\"version\":"+version+"}")).andExpect(status().isOk());org.mockito.Mockito.verifyNoInteractions(bankClient);
         mvc.perform(get("/api/v1/invoices/"+id+"/payment").header("Authorization","Bearer "+tenantToken)).andExpect(jsonPath("$.status").value("NOT_CONFIGURED"));
         deliver(key,webhook(85001,code,"5540000","1234567890","96247123456789","in")).andExpect(status().isOk());assertNull(payments.findByInvoiceId(Long.valueOf(id)).orElseThrow().getPaidAt());
     }
