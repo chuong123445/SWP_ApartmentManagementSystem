@@ -54,6 +54,16 @@ public class PropertyImageService {
         ids.stream().sorted().forEach(id->{var i=images.findForBinding(id).filter(x->x.getUploaderId().equals(property.getOwner().getId())&&x.getPropertyId()==null).orElseThrow(()->bad("Ảnh không thuộc bạn hoặc đã được sử dụng."));locked.put(id,i);});
         for(int n=0;n<ids.size();n++){var i=locked.get(ids.get(n));i.setPropertyId(property.getId());i.setPosition(n);}
     }
+    /** Giữ ảnh đã chọn, gắn ảnh staging mới và xóa ảnh bỏ chọn trong cùng transaction. */
+    public void replace(Property property,List<Long> ids){
+        if(ids==null||ids.isEmpty()||ids.size()>4||new HashSet<>(ids).size()!=ids.size())throw bad("Cần giữ từ 1 đến 4 ảnh khác nhau.");
+        var selected=new HashMap<Long,PropertyImage>();
+        ids.stream().sorted().forEach(id->{var image=images.findForBinding(id).filter(i->i.getUploaderId().equals(property.getOwner().getId())&&(i.getPropertyId()==null||i.getPropertyId().equals(property.getId()))).orElseThrow(()->bad("Không được lấy ảnh của người khác hoặc tài sản khác."));selected.put(id,image);});
+        var removed=images.findByPropertyIdOrderByPositionAsc(property.getId()).stream().filter(i->!selected.containsKey(i.getId())).toList();
+        images.deleteAll(removed);
+        for(int n=0;n<ids.size();n++){var image=selected.get(ids.get(n));image.setPropertyId(property.getId());image.setPosition(n);}images.flush();
+    }
+    @Transactional(readOnly=true) public List<Image> gallery(Long property){return images.ids(property).stream().map(id->new Image(id,url(id))).toList();}
     @Transactional(readOnly=true) public Download download(Jwt jwt,@com.fasterxml.jackson.annotation.JsonFormat(shape=com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING) Long id){
         var image=images.findById(id).orElseThrow(PropertyImageService::missing);
         boolean publicImage=image.getPropertyId()!=null&&apartments.existsByPropertyIdAndPublicationStatus(image.getPropertyId(),com.ancu.proptech.model.apartment.Apartment.PublicationStatus.PUBLISHED)
