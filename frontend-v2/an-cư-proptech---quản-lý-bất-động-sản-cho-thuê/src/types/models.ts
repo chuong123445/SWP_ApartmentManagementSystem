@@ -2,6 +2,9 @@ export type RoomStatus = 'rented' | 'available' | 'overdue' | 'maintenance' | 'e
 
 
 export interface Building {
+  rightType?: 'OWNERSHIP'|'AUTHORIZATION'|'SUBLEASE'|null; rightsValidFrom?: string|null; rightsValidUntil?: string|null;
+  verificationSource?: string | null;
+  rentalMode?: import('@/types/property').RentalMode | null;
   id: string;
   name: string;
   address: string;
@@ -11,6 +14,9 @@ export interface Building {
 }
 
 export interface Room {
+  electricityUnitPrice?: string | null;
+  waterUnitPrice?: string | null;
+  version?: number;
   title?: string;
   propertyName?: string;
   publicationStatus?: string;
@@ -36,7 +42,7 @@ export interface Room {
   depositEscrowLocked?: boolean;
 }
 
-export type NewRoom = Omit<Room, 'id'>;
+export type NewRoom = Omit<Room, 'id' | 'electricityIndex' | 'waterIndex'> & { electricityIndex: number | null; waterIndex: number | null };
 
 export interface Tenant {
   id: string;
@@ -70,7 +76,7 @@ export interface Contract {
   monthlyRent: number;
   deposit: number;
   paymentCycle: number; // months
-  status: 'active' | 'expiring' | 'terminated';
+  status: 'draft' | 'active' | 'expiring' | 'terminated';
   note?: string;
   signingMethod?: 'VNPT SmartCA' | 'Ký OTP SMS' | 'Chữ ký số Viettel-CA';
   signedDate?: string;

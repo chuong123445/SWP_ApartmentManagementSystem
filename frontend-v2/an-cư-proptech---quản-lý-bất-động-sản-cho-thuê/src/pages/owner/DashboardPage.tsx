@@ -28,6 +28,7 @@ import { Room, Invoice, MaintenanceTicket, Contract, ActiveTab } from '@/types';
 import { monthlyRevenueData } from '@/data/mockData';
 
 interface DashboardPageProps {
+  propertyName: string;
   rooms: Room[];
   invoices: Invoice[];
   tickets: MaintenanceTicket[];
@@ -38,6 +39,7 @@ interface DashboardPageProps {
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
+  propertyName,
   rooms,
   invoices,
   tickets,
@@ -49,7 +51,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const rentedRooms = rooms.filter((r) => r.status === 'rented' || r.status === 'expiring').length;
   const availableRooms = rooms.filter((r) => r.status === 'available').length;
   const overdueRooms = rooms.filter((r) => r.status === 'overdue').length;
-  const occupancyRate = Math.round((rentedRooms / totalRooms) * 100);
+  const occupancyRate = totalRooms === 0 ? 0 : Math.round((rentedRooms / totalRooms) * 100);
 
   const totalInvoiceAmount = invoices.reduce((acc, inv) => acc + inv.totalAmount, 0);
   const totalPaidAmount = invoices.reduce((acc, inv) => acc + inv.paidAmount, 0);
@@ -67,14 +69,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px] uppercase flex items-center gap-1">
               <ShieldCheck className="w-3 h-3 text-emerald-600" />
-              An Cư TrustGuard™ Verified
+              Quản lý tài sản
             </span>
             <span className="text-xs bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded-full">
               Tháng 09/2026
             </span>
           </div>
           <h1 className="text-xl font-bold text-slate-900">
-            Bảng Điều Khiển Vận Hành - Tòa A Lê Văn Sỹ (Q.3)
+            Bảng Điều Khiển Vận Hành - {propertyName}
           </h1>
           <p className="text-xs text-slate-500 mt-1">
             Tổng quan công suất phòng, dòng tiền thanh toán qua VietQR và kiểm định pháp lý bảo chứng Escrow.

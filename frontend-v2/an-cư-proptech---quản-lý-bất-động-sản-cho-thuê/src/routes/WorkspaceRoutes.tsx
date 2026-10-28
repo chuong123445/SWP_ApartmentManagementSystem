@@ -14,6 +14,7 @@ import { FinancePage } from '@/pages/owner/finance/FinancePage';
 import { ReportsPage } from '@/pages/owner/finance/ReportsPage';
 import { SettingsPage } from '@/pages/owner/SettingsPage';
 import { RentalRequestsPage } from '@/pages/owner/RentalRequestsPage';
+import { PropertiesPage } from '@/pages/owner/PropertiesPage';
 
 export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWorkspace; navigation: WorkspaceNavigation }) {
   const { activeTab, selectTab: setActiveTab, setIsAddRoomOpen, setIsCreateInvoiceOpen } = navigation;
@@ -24,7 +25,8 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
     handleReserveEscrow, handleResetData, handleSaveConfig: setConfig, handleAddTicket, handleSendResidentTicket,
     handleAddTransaction } = workspace;
   return <>
-          {activeTab === 'rental_requests' && <RentalRequestsPage />}
+          {activeTab === 'properties' && <PropertiesPage properties={initialBuildings} onReload={workspace.reloadInventory} onDossier={navigation.setPropertyForDossierId} onAdd={() => navigation.setIsAddPropertyOpen(true)} onSelect={id => { navigation.setSelectedBuildingId(id);setActiveTab('rooms'); }} />}
+          {activeTab === 'rental_requests' && <RentalRequestsPage key={navigation.selectedBuildingId} propertyId={navigation.selectedBuildingId === 'all' ? undefined : navigation.selectedBuildingId} onDecision={workspace.reloadInventory} />}
           {activeTab === 'resident_portal' && (!currentResidentRoom || !currentResidentTenant || !currentResidentContract || !residentInvoices[0]) && <section className="bg-white p-6 rounded-xl border"><h1 className="text-xl font-bold">Cổng cư dân</h1><p className="mt-3 text-slate-500">Chưa có đủ quan hệ thuê và hóa đơn đã gửi để xem màn hình này.</p></section>}
           {activeTab === 'resident_portal' && currentResidentRoom && currentResidentTenant && currentResidentContract && residentInvoices[0] && (
             <ResidentPortalPage
@@ -52,6 +54,7 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
 
           {activeTab === 'dashboard' && (
             <DashboardPage
+              propertyName={navigation.selectedBuildingId === 'all' ? 'Tất cả tài sản' : initialBuildings.find(p => p.id === navigation.selectedBuildingId)?.name ?? 'Tài sản'}
               rooms={rooms}
               invoices={invoices}
               tickets={tickets}
@@ -82,11 +85,9 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
 
           {activeTab === 'contracts' && (
             <ContractsPage
-              readOnly
               contracts={contracts}
-              rooms={rooms}
-              tenants={tenants}
-              onAddContract={handleAddContract}
+              propertyId={navigation.selectedBuildingId === 'all' ? undefined : navigation.selectedBuildingId}
+              onChooseRequest={() => setActiveTab('rental_requests')}
             />
           )}
 

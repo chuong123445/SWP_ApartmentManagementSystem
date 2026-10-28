@@ -40,12 +40,28 @@ class BillingIntegrationTests {
         contract=new RentalContract();contract.setApartment(apartment);contract.setCustomer(tenant);contract.setStatus(RentalContract.Status.ACTIVE);contract.setStartDate(LocalDate.of(2026,10,1));contract.setEndDate(LocalDate.of(2027,9,30));contract.setBaselineDate(contract.getStartDate());contract.setMonthlyRent(new BigDecimal("5000000"));contract.setElectricityUnitPrice(new BigDecimal("3500"));contract.setWaterUnitPrice(new BigDecimal("15000"));contract.setElectricityBaseline(new BigDecimal("1000"));contract.setWaterBaseline(new BigDecimal("200"));contract=contracts.saveAndFlush(contract);
         ownerToken=token(owner);tenantToken=token(tenant);
     }
-    private AuthAccount account(AuthAccount.Role role){var a=new AuthAccount();a.setEmail("billing-"+UUID.randomUUID()+"@example.invalid");a.setFullName("Billing test account");a.setRole(role);a.setStatus(AuthAccount.Status.ACTIVE);a.setContactVerified(true);a.setPasswordHash(encoder.encode("Billing-test!12345"));return accounts.saveAndFlush(a);}
+    private AuthAccount account(AuthAccount.Role role){var a=new AuthAccount();a.setEmail("billing-"+com.ancu.proptech.support.TestIds.next()+"@example.invalid");a.setFullName("Billing test account");a.setRole(role);a.setStatus(AuthAccount.Status.ACTIVE);a.setContactVerified(true);a.setEmailVerified(true);a.setPasswordHash(encoder.encode("Billing-test!12345"));return accounts.saveAndFlush(a);}
     private String token(AuthAccount a){return auth.login(a.getEmail(),"Billing-test!12345").tokens().accessToken();}
     private String body(String period,long version,String electric,String water){return "{\"period\":\""+period+"\",\"baselineVersion\":"+version+",\"electricityEndReading\":\""+electric+"\",\"waterEndReading\":\""+water+"\",\"dueDate\":\"2027-10-05\"}";}
     private ResultActions create(String token,String body)throws Exception{return mvc.perform(post("/api/v1/owner/contracts/"+contract.getId()+"/invoices").header("Authorization","Bearer "+token).contentType("application/json").content(body));}
     private String createDraft()throws Exception{return JsonPath.read(create(ownerToken,body("2026-10",0,"1120","208")).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(),"$.id");}
     private ResultActions send(String token,String id,long version)throws Exception{return mvc.perform(post("/api/v1/owner/invoices/"+id+"/send").header("Authorization","Bearer "+token).contentType("application/json").content("{\"version\":"+version+"}"));}
+    @Test void propertyFilterControlsInvoiceCountBeforePaginationAndKeepsOwnerScope()throws Exception{
+        String firstId=createDraft();
+        send(ownerToken,firstId,0).andExpect(status().isOk());
+        create(ownerToken,body("2026-11",2,"1200","212")).andExpect(status().isCreated());
+        var second=new Property();second.setOwner(owner);second.setName("Empty second property");second.setAddress("Test");
+        second.setCity("City");second.setDistrict("District");second.setApprovalStatus(Property.ApprovalStatus.DRAFT);properties.saveAndFlush(second);
+        mvc.perform(get("/api/v1/owner/invoices").header("Authorization","Bearer "+ownerToken)
+                .param("propertyId",property.getId().toString()).param("size","1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2)).andExpect(jsonPath("$.totalPages").value(2));
+        mvc.perform(get("/api/v1/owner/invoices").header("Authorization","Bearer "+ownerToken)
+                .param("propertyId",second.getId().toString()).param("size","1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get("/api/v1/owner/invoices").header("Authorization","Bearer "+token(otherOwner))
+                .param("propertyId",property.getId().toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items").isEmpty()).andExpect(jsonPath("$.totalElements").value(0));
+    }
     @Test void serverCalculatesFromContractAndTenantReceivesOnlySentInvoice()throws Exception{
         var result=create(ownerToken,body("2026-10",0,"1120","208")).andExpect(status().isCreated()).andReturn();
         var json=result.getResponse().getContentAsString();String id=JsonPath.read(json,"$.id");
@@ -54,7 +70,7 @@ class BillingIntegrationTests {
         mvc.perform(get("/api/v1/me/invoices").header("Authorization","Bearer "+tenantToken)).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
         mvc.perform(get("/api/v1/invoices/"+id).header("Authorization","Bearer "+tenantToken)).andExpect(status().isNotFound());
         send(ownerToken,id,0).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("SENT"));
-        send(ownerToken,id,0).andExpect(status().isOk());assertEquals(1,notifications.countByInvoiceId(UUID.fromString(id)));
+        send(ownerToken,id,0).andExpect(status().isOk());assertEquals(1,notifications.countByInvoiceId(Long.valueOf(id)));
         mvc.perform(get("/api/v1/me/invoices").header("Authorization","Bearer "+tenantToken)).andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(id));
     }
     @Test void crossOwnerCrossTenantAndGuestAccessAreDenied()throws Exception{
@@ -87,6 +103,7 @@ class BillingIntegrationTests {
         create(ownerToken,body("2026-11",2,"1200","212")).andExpect(status().isConflict());
     }
     @Test void addressOptionsAndWardFiltersUseOnlyVisibleCatalog()throws Exception{
+        apartment.setAvailability(Apartment.Availability.VACANT);apartments.saveAndFlush(apartment);
         mvc.perform(get("/api/v1/apartments").param("city","Test city").param("district","District").param("ward","Ward")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1));
         mvc.perform(get("/api/v1/apartments").param("ward","Unknown ward")).andExpect(jsonPath("$.totalElements").value(0));
         mvc.perform(get("/api/v1/apartments/address-options")).andExpect(status().isOk());
@@ -95,7 +112,7 @@ class BillingIntegrationTests {
     }
     @Test void concurrentSendsAreIdempotentAndDoNotDuplicateNotifications()throws Exception{
         String id=createDraft();TestTransaction.flagForCommit();TestTransaction.end();var pool=Executors.newFixedThreadPool(2);var gate=new CountDownLatch(1);
-        try{Callable<Integer> task=()->{gate.await();return send(ownerToken,id,0).andReturn().getResponse().getStatus();};var a=pool.submit(task);var b=pool.submit(task);gate.countDown();assertEquals(200,a.get(15,TimeUnit.SECONDS));assertEquals(200,b.get(15,TimeUnit.SECONDS));assertEquals(1,notifications.countByInvoiceId(UUID.fromString(id)));}
+        try{Callable<Integer> task=()->{gate.await();return send(ownerToken,id,0).andReturn().getResponse().getStatus();};var a=pool.submit(task);var b=pool.submit(task);gate.countDown();assertEquals(200,a.get(15,TimeUnit.SECONDS));assertEquals(200,b.get(15,TimeUnit.SECONDS));assertEquals(1,notifications.countByInvoiceId(Long.valueOf(id)));}
         finally{pool.shutdownNow();cleanupCommitted();}
     }
     @Test void concurrentCreatesCommitOnlyOneInvoiceForThePeriod()throws Exception{

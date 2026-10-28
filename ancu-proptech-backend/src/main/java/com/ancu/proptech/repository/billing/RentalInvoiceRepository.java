@@ -3,16 +3,18 @@ import com.ancu.proptech.model.billing.RentalInvoice;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.repository.*;
 import java.util.*;
-public interface RentalInvoiceRepository extends JpaRepository<RentalInvoice,UUID> {
+public interface RentalInvoiceRepository extends JpaRepository<RentalInvoice,Long> {
     @Query("select i.contract.id from RentalInvoice i where i.id=:id")
-    Optional<UUID> findContractId(@org.springframework.data.repository.query.Param("id") UUID id);
-    boolean existsByContractIdAndPeriod(UUID contractId,String period);
-    boolean existsByContractIdAndStatus(UUID contractId,RentalInvoice.Status status);
-    Optional<RentalInvoice> findFirstByContractIdAndStatusOrderByPeriodDesc(UUID contractId,RentalInvoice.Status status);
+    Optional<Long> findContractId(@org.springframework.data.repository.query.Param("id") Long id);
+    boolean existsByContractIdAndPeriod(Long contractId,String period);
+    boolean existsByContractIdAndStatus(Long contractId,RentalInvoice.Status status);
+    Optional<RentalInvoice> findFirstByContractIdAndStatusOrderByPeriodDesc(Long contractId,RentalInvoice.Status status);
     @EntityGraph(attributePaths={"contract","contract.apartment","contract.apartment.property","contract.apartment.property.owner","contract.customer"})
-    Page<RentalInvoice> findByContractApartmentPropertyOwnerId(UUID ownerId,Pageable pageable);
+    Page<RentalInvoice> findByContractApartmentPropertyOwnerId(Long ownerId,Pageable pageable);
+    @EntityGraph(attributePaths={"contract","contract.apartment","contract.apartment.property","contract.apartment.property.owner","contract.customer"})
+    Page<RentalInvoice> findByContractApartmentPropertyOwnerIdAndContractApartmentPropertyId(Long ownerId,Long propertyId,Pageable pageable);
     @EntityGraph(attributePaths={"contract","contract.apartment","contract.apartment.property","contract.customer"})
-    Page<RentalInvoice> findByContractCustomerIdAndStatus(UUID customerId,RentalInvoice.Status status,Pageable pageable);
+    Page<RentalInvoice> findByContractCustomerIdAndStatus(Long customerId,RentalInvoice.Status status,Pageable pageable);
     @EntityGraph(attributePaths={"contract","contract.apartment","contract.apartment.property","contract.apartment.property.owner","contract.customer"})
-    Optional<RentalInvoice> findWithContractById(UUID id);
+    Optional<RentalInvoice> findWithContractById(Long id);
 }

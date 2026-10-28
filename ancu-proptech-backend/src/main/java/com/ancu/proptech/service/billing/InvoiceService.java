@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.*;
 import java.time.format.DateTimeParseException;
-import java.util.UUID;
+
 @Service @RequiredArgsConstructor
 public class InvoiceService {
     private final RentalContractRepository contracts;
@@ -25,11 +25,11 @@ public class InvoiceService {
     private final InvoiceNotificationRepository notifications;
     private final AccountAccessService access;
     private record Source(YearMonth period,BigDecimal electric,BigDecimal water) {}
-    @Transactional(readOnly=true) public BillingContext context(Jwt jwt,UUID id){
+    @Transactional(readOnly=true) public BillingContext context(Jwt jwt,Long id){
         var owner=access.owner(jwt);var c=contracts.findById(id).orElseThrow(InvoiceService::missing);owned(c,owner.getId());
         var s=source(c);return new BillingContext(c.getId(),c.getApartment().getId(),c.getApartment().getRoomNumber(),c.getCustomer().getFullName(),s.period().toString(),str(c.getMonthlyRent()),str(s.electric()),str(c.getElectricityUnitPrice()),str(s.water()),str(c.getWaterUnitPrice()),c.getBillingVersion());
     }
-    @Transactional public InvoiceResponse create(Jwt jwt,UUID contractId,InvoiceCreate input){
+    @Transactional public InvoiceResponse create(Jwt jwt,Long contractId,InvoiceCreate input){
         var owner=access.owner(jwt);var c=contracts.lockById(contractId).orElseThrow(InvoiceService::missing);owned(c,owner.getId());
         if(invoices.existsByContractIdAndPeriod(c.getId(),input.getPeriod()))throw conflict("DUPLICATE_BILLING_PERIOD","Đã có hóa đơn cho kỳ này.");
         if(input.getBaselineVersion()!=c.getBillingVersion())throw conflict("VERSION_CONFLICT","Chỉ số đầu kỳ đã thay đổi. Hãy tải lại thông tin lập hóa đơn.");
@@ -44,7 +44,7 @@ public class InvoiceService {
         i.setTotalAmount(i.getMonthlyRent().add(i.getElectricityAmount()).add(i.getWaterAmount()));i.setStatus(RentalInvoice.Status.DRAFT);i.setCreatedAt(Instant.now());
         c.setBillingVersion(c.getBillingVersion()+1);return response(invoices.saveAndFlush(i));
     }
-    @Transactional public InvoiceResponse send(Jwt jwt,UUID id,InvoiceSend input){
+    @Transactional public InvoiceResponse send(Jwt jwt,Long id,InvoiceSend input){
         var owner=access.owner(jwt);var contractId=invoices.findContractId(id).orElseThrow(InvoiceService::missing);
         var c=contracts.lockById(contractId).orElseThrow(InvoiceService::missing);owned(c,owner.getId());
         // Reload after obtaining the chain lock; all billing writes use this lock order.
@@ -56,9 +56,15 @@ public class InvoiceService {
         var n=new InvoiceNotification();n.setInvoice(i);n.setCustomer(c.getCustomer());n.setCreatedAt(i.getSentAt());notifications.save(n);
         c.setBillingVersion(c.getBillingVersion()+1);invoices.flush();return response(i);
     }
-    @Transactional(readOnly=true) public PageResponse<InvoiceResponse> owner(Jwt jwt,int page,int size){ApartmentService.validatePage(page,size);return PageResponse.from(invoices.findByContractApartmentPropertyOwnerId(access.owner(jwt).getId(),paging(page,size)).map(this::response));}
+    @Transactional(readOnly=true) public PageResponse<InvoiceResponse> owner(Jwt jwt,int page,int size){return owner(jwt,page,size,null);}
+    @Transactional(readOnly=true) public PageResponse<InvoiceResponse> owner(Jwt jwt,int page,int size,Long propertyId){
+        ApartmentService.validatePage(page,size);var ownerId=access.owner(jwt).getId();
+        var result=propertyId==null ? invoices.findByContractApartmentPropertyOwnerId(ownerId,paging(page,size))
+                : invoices.findByContractApartmentPropertyOwnerIdAndContractApartmentPropertyId(ownerId,propertyId,paging(page,size));
+        return PageResponse.from(result.map(this::response));
+    }
     @Transactional(readOnly=true) public PageResponse<InvoiceResponse> mine(Jwt jwt,int page,int size){ApartmentService.validatePage(page,size);return PageResponse.from(invoices.findByContractCustomerIdAndStatus(access.customer(jwt).getId(),RentalInvoice.Status.SENT,paging(page,size)).map(this::response));}
-    @Transactional(readOnly=true) public InvoiceResponse detail(Jwt jwt,UUID id){
+    @Transactional(readOnly=true) public InvoiceResponse detail(Jwt jwt,Long id){
         var u=access.account(jwt);var i=invoices.findWithContractById(id).orElseThrow(InvoiceService::missing);var c=i.getContract();
         if(c.getApartment().getProperty().getOwner().getId().equals(u.getId())){access.owner(jwt);return response(i);}
         if(c.getCustomer().getId().equals(u.getId())&&i.getStatus()==RentalInvoice.Status.SENT){access.customer(jwt);return response(i);}throw missing();
@@ -74,7 +80,7 @@ public class InvoiceService {
         return new Source(period,last.map(RentalInvoice::getElectricityEndReading).orElse(c.getElectricityBaseline()),last.map(RentalInvoice::getWaterEndReading).orElse(c.getWaterBaseline()));
     }
     private static Pageable paging(int p,int s){return PageRequest.of(p,s,Sort.by(Sort.Direction.DESC,"createdAt","id"));}
-    private static void owned(RentalContract c,UUID owner){if(!c.getApartment().getProperty().getOwner().getId().equals(owner))throw missing();}
+    private static void owned(RentalContract c,Long owner){if(!c.getApartment().getProperty().getOwner().getId().equals(owner))throw missing();}
     private static String str(BigDecimal x){return x.toPlainString();}
     private static ApiException missing(){return new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy hóa đơn hoặc hợp đồng thuộc tài khoản của bạn.");}
     private static ApiException conflict(String code,String message){return new ApiException(HttpStatus.CONFLICT,code,message);}

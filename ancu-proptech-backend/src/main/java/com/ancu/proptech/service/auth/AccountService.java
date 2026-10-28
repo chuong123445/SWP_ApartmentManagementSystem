@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.util.*;
 @Service @RequiredArgsConstructor
 public class AccountService {
+    private final AccountVerificationPolicy verification;
     private final AuthService auth;private final AuthAccountRepository accounts;private final AuthSessionRepository sessions;
     private final EmailChangeChallengeRepository challenges;private final PasswordEncoder passwords;
     private final EmailOtpSender sender;private final OtpHasher hasher;private final EntityManager entityManager;
@@ -38,11 +39,11 @@ public class AccountService {
         var a=auth.authenticate(jwt);entityManager.refresh(a,LockModeType.PESSIMISTIC_WRITE);
         if(a.getStatus()==AuthAccount.Status.LOCKED||a.getStatus()==AuthAccount.Status.INACTIVE)throw error(HttpStatus.FORBIDDEN,"ACCOUNT_UNAVAILABLE","Tài khoản không thể thực hiện thao tác này.");return a;
     }
-    public void reauth(AuthAccount a,String password){if(password.getBytes(StandardCharsets.UTF_8).length>72||!passwords.matches(password,a.getPasswordHash()))throw error(HttpStatus.FORBIDDEN,"CURRENT_PASSWORD_INVALID","Mật khẩu hiện tại không đúng.");}
+    public void reauth(AuthAccount a,String password){if(a.getPasswordHash()==null)throw error(HttpStatus.FORBIDDEN,"EXTERNAL_ACCOUNT_PASSWORD_REQUIRED","Tài khoản đăng nhập qua VNeID chưa có mật khẩu nội bộ. Chức năng này cần mật khẩu nội bộ.");if(password.getBytes(StandardCharsets.UTF_8).length>72||!passwords.matches(password,a.getPasswordHash()))throw error(HttpStatus.FORBIDDEN,"CURRENT_PASSWORD_INVALID","Mật khẩu hiện tại không đúng.");}
     public void version(AuthAccount a,long version){if(a.getVersion()!=version)throw error(HttpStatus.CONFLICT,"VERSION_CONFLICT","Thông tin tài khoản đã thay đổi. Hãy tải lại trang.");}
-    public void invalidate(UUID accountId){Instant now=Instant.now();challenges.findByAccountIdAndUsedAtIsNullAndInvalidatedAtIsNull(accountId).forEach(c->c.setInvalidatedAt(now));}
-    public void recompute(AuthAccount a){a.setContactVerified(a.isEmailVerified()||a.isPhoneVerified());if(a.getStatus()==AuthAccount.Status.ACTIVE&&!a.isContactVerified())a.setStatus(AuthAccount.Status.PENDING_VERIFICATION);else if(a.getStatus()==AuthAccount.Status.PENDING_VERIFICATION&&a.isContactVerified())a.setStatus(AuthAccount.Status.ACTIVE);}
-    public ProfileResponse response(AuthAccount a){return new ProfileResponse(a.getId(),a.getEmail(),a.getPhone(),a.getFullName(),a.getDateOfBirth(),a.getAddress(),a.getBio(),List.of(a.getRole().name()),a.getStatus().name(),a.isContactVerified()?"VERIFIED":"UNVERIFIED",a.isEmailVerified(),a.isPhoneVerified(),sender.isConfigured()&&hasher.isConfigured(),a.getVersion());}
+    public void invalidate(Long accountId){Instant now=Instant.now();challenges.findByAccountIdAndUsedAtIsNullAndInvalidatedAtIsNull(accountId).forEach(c->c.setInvalidatedAt(now));}
+    public void recompute(AuthAccount a){a.setContactVerified(verification.isVerified(a));if(a.getStatus()==AuthAccount.Status.ACTIVE&&!a.isContactVerified())a.setStatus(AuthAccount.Status.PENDING_VERIFICATION);else if(a.getStatus()==AuthAccount.Status.PENDING_VERIFICATION&&a.isContactVerified())a.setStatus(AuthAccount.Status.ACTIVE);}
+    public ProfileResponse response(AuthAccount a){return new ProfileResponse(a.getId(),a.getEmail(),a.getPhone(),a.getFullName(),a.getDateOfBirth(),a.getAddress(),a.getBio(),List.of(a.getRole().name()),a.getStatus().name(),verification.isVerified(a)?"VERIFIED":"UNVERIFIED",a.isEmailVerified(),a.isPhoneVerified(),sender.isConfigured()&&hasher.isConfigured(),a.getVersion());}
     private static String clean(String text){return text==null?null:text.strip();}
     static String normalizePhone(String raw){if(raw==null||raw.isBlank())return null;String phone=raw.strip().replaceAll("[ ()-]","");if(phone.matches("0[0-9]{9,10}"))phone="+84"+phone.substring(1);if(!phone.matches("\\+[1-9][0-9]{7,14}"))throw error(HttpStatus.BAD_REQUEST,"VALIDATION_ERROR","Số điện thoại cần dạng +849... hoặc số Việt Nam bắt đầu 0.");return phone;}
     public static AuthException error(HttpStatus status,String code,String message){return new AuthException(status,code,message);}

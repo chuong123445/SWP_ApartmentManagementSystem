@@ -12,7 +12,7 @@ import java.util.*;
 public class Apartment {
     public enum PublicationStatus { DRAFT, PUBLISHED, HIDDEN }
     public enum Availability { VACANT, CONTRACT_IN_PROGRESS, OCCUPIED, MAINTENANCE }
-    @Id @GeneratedValue(strategy = GenerationType.UUID) private UUID id;
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "property_id", nullable = false)
     private Property property;
     @Nationalized @Column(length = 20) private String roomNumber;
@@ -25,6 +25,8 @@ public class Apartment {
     @Nationalized @Column(nullable = false, length = 3000) private String description;
     @Column(nullable = false, precision = 12, scale = 2) private BigDecimal areaM2;
     @Column(nullable = false, precision = 15, scale = 2) private BigDecimal advertisedMonthlyRent;
+    @Column(precision=15,scale=2) private BigDecimal electricityUnitPrice;
+    @Column(precision=15,scale=2) private BigDecimal waterUnitPrice;
     private Integer bedrooms;
     private Integer bathrooms;
     @Column(length = 500) private String coverImagePath;

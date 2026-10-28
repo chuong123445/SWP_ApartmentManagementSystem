@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 import java.util.*;
 @Getter @Setter @NoArgsConstructor
 public class OwnerApartmentCreate {
-    @NotNull private UUID propertyId;
+    @NotNull private @com.fasterxml.jackson.annotation.JsonFormat(shape=com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING) Long propertyId;
     @NotBlank @Size(max = 20) private String roomNumber;
     @NotBlank @Size(max = 150) private String title;
     @NotNull @Size(max = 3000) private String description = "";
@@ -22,6 +22,8 @@ public class OwnerApartmentCreate {
     @Min(0) private Integer bathrooms;
     @NotNull @Size(max = 50) private List<@NotBlank @Size(max = 100) String> amenities = new ArrayList<>();
     @NotNull private Apartment.PublicationStatus publicationStatus = Apartment.PublicationStatus.DRAFT;
+    @DecimalMin("0") @Digits(integer=13,fraction=2) private java.math.BigDecimal electricityUnitPrice;
+    @DecimalMin("0") @Digits(integer=13,fraction=2) private java.math.BigDecimal waterUnitPrice;
     @JsonAnySetter public void rejectUnknown(String field, Object value) {
         throw new IllegalArgumentException("Unsupported field: " + field);
     }

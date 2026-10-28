@@ -1,0 +1,42 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "An Cu Auth0 VNeID", "version": "1.0.0", "description": "SWP VNeID simulation. Account verification VERIFIED; source AUTH0_VNEID_SIMULATION. Asset import is not implemented by these routes." },
+  "paths": {
+    "/api/v1/me/verifications": { "get": {
+      "summary": "Read own persisted verification methods and verified citizen details",
+      "description": "Self account derived only from internal JWT/session. Returns emailVerified and vneid {status, verifiedAt, identity}. identity is null when UNVERIFIED; VERIFIED identity contains documentNumber, legalName, dateOfBirth (ISO date), gender, address. No issuer/subject/tokens/images exposed. Reads existing evidence even when new Auth0 login is disabled; does not modify self-declared identity dossiers.",
+      "security": [{ "internalBearer": [] }],
+      "responses": { "200": { "description": "Per-method status and private read-only citizen; Cache-Control no-store" }, "401": { "description": "Missing/expired/revoked internal session" } }
+    } },
+    "/api/v1/auth/vneid-config": { "get": { "summary": "Public non-secret runtime configuration", "responses": { "200": { "description": "enabled, issuer, clientId, audience, connection; no-store" } } } },
+    "/api/v1/auth/vneid-login": { "post": {
+      "summary": "Register CUSTOMER or sign in an already linked external identity",
+      "description": "Requires Auth0 RS256 access token for configured audience/client/source/connection and CSRF cookie/header. Does not auto-link matching email/CCCD. Returns existing TokenResponse shape and rotates internal refresh credential. Creates no password and does not set emailVerified. No citizen JSON accepted as proof.",
+      "security": [{ "auth0Bearer": [], "csrfHeader": [] }],
+      "responses": {
+        "200": { "description": "accessToken, tokenType, expiresIn, user; opaque HttpOnly SameSite refresh cookie; no-store" },
+        "400": { "description": "VNEID_CLAIMS_INVALID" }, "401": { "description": "VNEID_TOKEN_INVALID" },
+        "403": { "description": "Missing CSRF or ACCOUNT_UNAVAILABLE" },
+        "409": { "description": "VNEID_ACCOUNT_LINK_REQUIRED, VNEID_IDENTITY_IN_USE or uniqueness conflict" },
+        "429": { "description": "RATE_LIMITED; retry in one minute" }
+      }
+    } },
+    "/api/v1/me/verifications/vneid": { "post": {
+      "summary": "Link and verify only the currently signed-in account",
+      "description": "Internal session JWT in Authorization; separate Auth0 access token in JSON, excluded from logging. Requires CSRF. Same link retry is idempotent; existing dossier/profile/contract snapshot not overwritten; no role or Property approval change.",
+      "security": [{ "internalBearer": [], "csrfHeader": [] }],
+      "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "additionalProperties": false, "required": ["auth0AccessToken"], "properties": { "auth0AccessToken": { "type": "string", "minLength": 1, "maxLength": 16384, "writeOnly": true } } } } } },
+      "responses": {
+        "200": { "description": "AuthUserResponse with current role/accountStatus/contactVerificationStatus/version" },
+        "400": { "description": "Unknown JSON fields or invalid/missing citizen claims" }, "401": { "description": "Invalid internal session or external token" },
+        "403": { "description": "Missing CSRF or unavailable account" }, "409": { "description": "Identity belongs to another account or different identity already linked" },
+        "429": { "description": "RATE_LIMITED" }, "503": { "description": "VNEID_UNAVAILABLE when disabled" }
+      }
+    } }
+  },
+  "components": { "securitySchemes": {
+    "auth0Bearer": { "type": "http", "scheme": "bearer", "bearerFormat": "Auth0 RS256 access JWT" },
+    "internalBearer": { "type": "http", "scheme": "bearer", "bearerFormat": "An Cu session JWT" },
+    "csrfHeader": { "type": "apiKey", "in": "header", "name": "X-XSRF-TOKEN", "description": "GET /api/v1/auth/csrf first; retain corresponding cookie" }
+  } }
+}

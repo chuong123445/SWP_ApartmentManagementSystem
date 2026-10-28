@@ -4,16 +4,16 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import java.util.*;
-public interface RentalContractRepository extends JpaRepository<RentalContract,UUID> {
+public interface RentalContractRepository extends JpaRepository<RentalContract,Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from RentalContract c where c.id=:id")
-    Optional<RentalContract> lockById(@Param("id") UUID id);
+    Optional<RentalContract> lockById(@Param("id") Long id);
     @EntityGraph(attributePaths={"apartment","apartment.property","apartment.property.owner","customer"})
-    List<RentalContract> findByApartmentPropertyOwnerIdOrderByStartDateDescIdAsc(UUID ownerId);
+    List<RentalContract> findByApartmentPropertyOwnerIdOrderByStartDateDescIdAsc(Long ownerId);
     @EntityGraph(attributePaths={"apartment","apartment.property","customer"})
-    List<RentalContract> findByCustomerIdOrderByStartDateDescIdAsc(UUID customerId);
-    Optional<RentalContract> findByApartmentIdAndCustomerId(UUID apartmentId,UUID customerId);
-    List<RentalContract> findByApartmentId(UUID apartmentId);
-    boolean existsByCustomerIdAndLocalFixtureTrue(UUID customerId);
+    List<RentalContract> findByCustomerIdOrderByStartDateDescIdAsc(Long customerId);
+    Optional<RentalContract> findByApartmentIdAndCustomerId(Long apartmentId,Long customerId);
+    List<RentalContract> findByApartmentId(Long apartmentId);
+    boolean existsByCustomerIdAndLocalFixtureTrue(Long customerId);
     long countByLocalFixtureTrue();
 }

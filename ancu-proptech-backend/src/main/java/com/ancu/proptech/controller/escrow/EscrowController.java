@@ -25,7 +25,7 @@ public class EscrowController {
     }
 
     @PostMapping("/{id}/release")
-    public ResponseEntity<EscrowDeposit> releaseEscrow(@PathVariable String id) {
+    public ResponseEntity<EscrowDeposit> releaseEscrow(@PathVariable Long id) {
         return ResponseEntity.ok(escrowService.releaseEscrow(id));
     }
 }

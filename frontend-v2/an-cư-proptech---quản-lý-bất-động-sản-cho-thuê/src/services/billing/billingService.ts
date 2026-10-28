@@ -15,7 +15,11 @@ export function getBillingContext(id: string) { return request<BillingContext>(`
 export function createInvoice(id: string, input: InvoiceCreate) { return request<BillingInvoice>(`/api/v1/owner/contracts/${encodeURIComponent(id)}/invoices`, input); }
 export function sendInvoice(id: string, version: number) { return request<BillingInvoice>(`/api/v1/owner/invoices/${encodeURIComponent(id)}/send`, { version }); }
 export function getInvoice(id: string) { return request<BillingInvoice>(`/api/v1/invoices/${encodeURIComponent(id)}`); }
-export function ownerInvoices(page = 0, size = 20) { return request<PageResult<BillingInvoice>>(`/api/v1/owner/invoices?page=${page}&size=${size}`); }
+export function ownerInvoices(page = 0, size = 20, propertyId?: string) {
+  const query = new URLSearchParams({ page: String(page), size: String(size) });
+  if (propertyId) query.set('propertyId', propertyId);
+  return request<PageResult<BillingInvoice>>(`/api/v1/owner/invoices?${query}`);
+}
 export function myInvoices(page = 0, size = 20) { return request<PageResult<BillingInvoice>>(`/api/v1/me/invoices?page=${page}&size=${size}`); }
 // Adapt server data to the existing Owner layout. Numbers are for display only.
 export function invoiceView(i: BillingInvoice): Invoice {
@@ -38,7 +42,7 @@ export function tenancyViews(items: Tenancy[]): { tenants: Tenant[]; contracts: 
     contracts: items.map(c => ({ id: c.id, contractNumber: `HD-${c.id.slice(0, 8)}`, tenantId: c.customerId,
       tenantName: c.customerName, roomId: c.apartmentId, roomNumber: c.roomNumber, buildingName: c.propertyName,
       startDate: c.startDate, endDate: c.endDate, monthlyRent: Number(c.monthlyRent), deposit: 0, paymentCycle: 1,
-      status: c.status === 'ACTIVE' ? 'active' : 'terminated' })),
+      status: c.status === 'ACTIVE' ? 'active' : c.status === 'DRAFT' ? 'draft' : 'terminated' })),
   };
 }
 export function billingMoney(value: string) {
