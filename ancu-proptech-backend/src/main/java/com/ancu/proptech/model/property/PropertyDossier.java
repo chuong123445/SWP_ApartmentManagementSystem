@@ -9,8 +9,8 @@ import java.util.*;
 @Entity @Table(name="property_dossiers") @Getter @Setter @NoArgsConstructor
 public class PropertyDossier {
     public enum Status { PENDING_APPROVAL, NEEDS_INFORMATION, APPROVED, REJECTED }
-    public enum RightType { OWNERSHIP, AUTHORIZATION }
-    @Id @GeneratedValue(strategy=GenerationType.UUID) private UUID id;
+    public enum RightType { OWNERSHIP, AUTHORIZATION, SUBLEASE }
+    @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
     @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="property_id",nullable=false) private Property property;
     @Enumerated(EnumType.STRING) @Column(nullable=false,length=24) private RightType rightType;
     @Nationalized @Column(nullable=false,length=100) private String applicantName;
@@ -27,6 +27,14 @@ public class PropertyDossier {
     @Nationalized @Column(length=200) private String certificateIssuePlace;
     @Nationalized @Column(length=1000) private String exploitationRightDescription;
     @Column(nullable=false) private boolean localFixture;
+    private LocalDate rightsValidFrom;
+    private LocalDate rightsValidUntil;
+    private LocalDate originalLeaseFrom;
+    private LocalDate originalLeaseUntil;
+    @Nationalized @Column(length=100) private String principalName;
+    @Column(length=12) private String principalDocumentNumber;
+    @Column(length=12) private String applicantDocumentNumber;
+    @Column(nullable=false) private boolean renewal;
     @ManyToMany @JoinTable(name="property_dossier_files",joinColumns=@JoinColumn(name="dossier_id"),inverseJoinColumns=@JoinColumn(name="file_id"))
     private List<PropertyEvidenceFile> files=new ArrayList<>();
     @Version private long version;

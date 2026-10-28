@@ -44,7 +44,7 @@ class DiscoveryRentalIntegrationTests {
 
     @BeforeEach void fixture() {
         if (passwordHash == null) passwordHash = passwords.encode(PASSWORD);
-        marker = "RentalTest" + UUID.randomUUID().toString().substring(0, 8);
+        marker = "RentalTest" + com.ancu.proptech.support.TestIds.next().toString().substring(0, 8);
         ownerA = account("owner-a", AuthAccount.Role.OWNER);
         ownerB = account("owner-b", AuthAccount.Role.OWNER);
         customerA = account("customer-a", AuthAccount.Role.CUSTOMER);
@@ -54,6 +54,14 @@ class DiscoveryRentalIntegrationTests {
         otherApartment = apartment(property(ownerB), "Large", "9000000.00", Apartment.PublicationStatus.PUBLISHED);
         hidden = apartment(property, "Hidden", "4000000.00", Apartment.PublicationStatus.DRAFT);
         apartments.flush();
+    }
+    @Test void expiredRightsDisappearFromSearchAndBlockNewRequestsButKeepReadableHistory()throws Exception{
+        String unique="Expired-"+com.ancu.proptech.support.TestIds.next();apartment.setTitle(unique);property.setRightType(com.ancu.proptech.model.property.PropertyDossier.RightType.AUTHORIZATION);
+        var today=java.time.LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));property.setRightsValidFrom(today.minusYears(1));property.setRightsValidUntil(today.minusDays(1));properties.flush();apartments.flush();
+        mvc.perform(get("/api/v1/apartments").param("q",unique)).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get("/api/v1/apartments/"+apartment.getId())).andExpect(status().isOk()).andExpect(jsonPath("$.rentalRightsAvailable").value(false)).andExpect(jsonPath("$.lessorRelationship").value("AUTHORIZATION"));
+        mvc.perform(post("/api/v1/apartments/"+apartment.getId()+"/rental-requests").header("Authorization",bearer(customerA)).contentType("application/json").content("{}"))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PROPERTY_RIGHTS_UNAVAILABLE"));
     }
     private AuthAccount account(String label, AuthAccount.Role role) {
         AuthAccount a = new AuthAccount();
@@ -76,6 +84,20 @@ class DiscoveryRentalIntegrationTests {
     private String token(AuthAccount a) { return auth.login(a.getEmail(), PASSWORD).tokens().accessToken(); }
     private String bearer(AuthAccount a) { return "Bearer " + token(a); }
 
+    @Test void ownerCannotRequestOwnApartmentButCanRentFromAnotherOwner() throws Exception {
+        mvc.perform(post("/api/v1/apartments/"+apartment.getId()+"/rental-requests").header("Authorization",bearer(ownerA))
+                .contentType("application/json").content("{\"message\":\"Thuê nhà\"}"))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("OWN_APARTMENT_RENTAL"));
+        mvc.perform(post("/api/v1/apartments/"+otherApartment.getId()+"/rental-requests").header("Authorization",bearer(ownerA))
+                .contentType("application/json").content("{\"message\":\"Thuê nhà\"}"))
+                .andExpect(status().isCreated());
+    }
+    @Test void ownerPhoneVerificationAloneDoesNotBypassRentalEmailOrVneidPolicy() throws Exception {
+        ownerA.setEmailVerified(false);ownerA.setPhoneVerified(true);ownerA.setContactVerified(true);accounts.flush();
+        mvc.perform(post("/api/v1/apartments/"+otherApartment.getId()+"/rental-requests").header("Authorization",bearer(ownerA))
+                .contentType("application/json").content("{\"message\":\"Thuê nhà\"}"))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CONTACT_NOT_VERIFIED"));
+    }
     @Test void ownerPropertyFilterRunsBeforePaginationAndNeverExpandsOwnership() throws Exception {
         var secondProperty = property(ownerA);
         var second = apartment(secondProperty, "Second property", "6000000", Apartment.PublicationStatus.PUBLISHED);
@@ -91,7 +113,7 @@ class DiscoveryRentalIntegrationTests {
                 .param("propertyId", secondProperty.getId().toString()).param("size", "1").param("status", "PENDING"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.totalPages").value(1)).andExpect(jsonPath("$.items[0].apartmentId").value(second.getId().toString()));
-        for (var id : List.of(otherApartment.getProperty().getId(), UUID.randomUUID()))
+        for (var id : List.of(otherApartment.getProperty().getId(), com.ancu.proptech.support.TestIds.next()))
             mvc.perform(get("/api/v1/owner/rental-requests").header("Authorization", ownerToken).param("propertyId", id.toString()))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
         mvc.perform(get("/api/v1/owner/rental-requests").header("Authorization", ownerToken)
@@ -399,7 +421,7 @@ class DiscoveryRentalIntegrationTests {
     }
 
     @Test void competingPendingRequestsCannotSelectTheSameApartmentAndOthersStayPending() throws Exception {
-        var ids=new ArrayList<UUID>();
+        var ids=new ArrayList<Long>();
         for(var c:List.of(customerA,customerB)) {
             mvc.perform(post("/api/v1/apartments/"+apartment.getId()+"/rental-requests").header("Authorization",bearer(c)).contentType("application/json").content("{}")).andExpect(status().isCreated());
             ids.add(requests.findByCustomerIdAndApartmentIdAndStatusInOrderByCreatedAtDescIdDesc(c.getId(),apartment.getId(),List.of(com.ancu.proptech.model.rental.RentalRequest.Status.PENDING)).getFirst().getId());

@@ -1,4 +1,4 @@
-param([Parameter(Mandatory)][Guid]$TestKey,[Parameter(Mandatory)][Guid]$AccountId)
+param([Parameter(Mandatory)][Guid]$TestKey,[Parameter(Mandatory)][long]$AccountId)
 $ErrorActionPreference='Stop'
 # Only remove a newly registered, uniquely named identity-test account. Never demo users.
 $taskRoot=Split-Path $PSScriptRoot -Parent

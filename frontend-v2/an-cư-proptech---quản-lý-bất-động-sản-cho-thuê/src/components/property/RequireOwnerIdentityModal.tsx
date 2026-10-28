@@ -35,21 +35,21 @@ export function RequireOwnerIdentityModal({ onClose }: { onClose: () => void }) 
         </div>
 
         <p className="text-sm text-slate-600 leading-relaxed">
-          Để đảm bảo tính pháp lý, minh bạch và an toàn khi đăng tin cho thuê căn hộ, hệ thống yêu cầu chủ nhà hoàn tất thông tin <strong>Căn cước công dân (CCDN/CCCD)</strong> trong mục Cài đặt tài khoản trước khi tạo tài sản mới.
+          Bạn chưa có thông tin căn cước để thêm tài sản. Hãy xác thực qua VNeID mô phỏng hoặc cung cấp hồ sơ căn cước trong Cài đặt tài khoản.
         </p>
 
         <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2 text-xs text-slate-700">
           <div className="flex items-start gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-            <span>Chỉ cần cập nhật một lần số CCCD và địa chỉ</span>
+            <span>Đã xác thực VNeID thì không cần nhập lại hoặc tải ảnh căn cước</span>
           </div>
           <div className="flex items-start gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-            <span>Tự động đồng bộ vào hồ sơ pháp lý tài sản khi gửi duyệt</span>
+            <span>Hồ sơ tự khai chỉ được lưu, không đồng nghĩa đã xác thực danh tính</span>
           </div>
           <div className="flex items-start gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-            <span>Bảo vệ quyền sở hữu và giao dịch cho thuê an toàn</span>
+            <span>Hồ sơ và trạng thái duyệt tài sản được xử lý riêng</span>
           </div>
         </div>
 

@@ -19,6 +19,17 @@ public class OwnerPropertyService {
     private final PropertyRepository properties;
     private final AccountAccessService access;
     private final OwnerApartmentService apartments;
+    private final com.ancu.proptech.repository.property.PropertyExternalImportRepository imports;
+    private final PropertyApplicantAccess applicantAccess;
+    private final PropertyImageService images;
+    @Transactional public OwnerPropertyCreated createApplication(Jwt jwt,PropertyApplicationCreate input){
+        if(input.getRightType()==com.ancu.proptech.model.property.PropertyDossier.RightType.OWNERSHIP)
+            throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_RIGHT_TYPE","Hồ sơ nâng cấp thủ công dùng quyền ủy quyền hoặc cho thuê lại.");
+        return createInternal(jwt,input,input.getRightType());
+    }
+    @Transactional(readOnly=true) public List<OwnerPropertyResponse> applications(Jwt jwt){
+        var a=applicantAccess.verified(jwt);return properties.findByOwnerIdOrderByNameAscIdAsc(a.getId()).stream().filter(Property::isOnboardingApplication).map(this::response).toList();
+    }
     @Transactional(readOnly = true)
     public List<OwnerPropertyResponse> list(Jwt jwt) {
         var owner = access.owner(jwt);
@@ -28,7 +39,10 @@ public class OwnerPropertyService {
 
     @Transactional
     public OwnerPropertyCreated create(Jwt jwt, OwnerPropertyCreate input) {
-        var owner = access.owner(jwt);
+        return createInternal(jwt,input,null);
+    }
+    private OwnerPropertyCreated createInternal(Jwt jwt,OwnerPropertyCreate input,com.ancu.proptech.model.property.PropertyDossier.RightType applicationRight){
+        var owner = applicationRight==null?access.owner(jwt):applicantAccess.verified(jwt);
         if (input.getRentalMode() == Property.RentalMode.SINGLE_UNIT && input.getApartments().size() != 1)
             throw new ApiException(HttpStatus.BAD_REQUEST, "SINGLE_UNIT_REQUIRED", "Tài sản cho thuê nguyên căn chỉ có một căn cho thuê.");
         var numbers = new HashSet<String>();
@@ -41,7 +55,9 @@ public class OwnerPropertyService {
         property.setCity(input.getCity().strip()); property.setDistrict(input.getDistrict().strip());
         property.setWard(input.getWard() == null || input.getWard().isBlank() ? null : input.getWard().strip());
         property.setRentalMode(input.getRentalMode()); property.setApprovalStatus(Property.ApprovalStatus.DRAFT);
+        property.setOnboardingApplication(applicationRight!=null);property.setRightType(applicationRight);
         properties.saveAndFlush(property);
+        images.bind(property,input.getImageIds());
         var created = input.getApartments().stream().map(unit -> {
             var apartment = new OwnerApartmentCreate();
             apartment.setPropertyId(property.getId()); apartment.setRoomNumber(unit.getRoomNumber()); apartment.setTitle(unit.getTitle());
@@ -49,14 +65,15 @@ public class OwnerPropertyService {
             apartment.setAdvertisedMonthlyRent(unit.getAdvertisedMonthlyRent()); apartment.setDeposit(unit.getDeposit());
             apartment.setBedrooms(unit.getBedrooms()); apartment.setBathrooms(unit.getBathrooms()); apartment.setMaxOccupants(unit.getMaxOccupants());
             apartment.setElectricityIndex(unit.getElectricityIndex()); apartment.setWaterIndex(unit.getWaterIndex());
+            apartment.setElectricityUnitPrice(unit.getElectricityUnitPrice());apartment.setWaterUnitPrice(unit.getWaterUnitPrice());
             apartment.setAmenities(unit.getAmenities()); apartment.setPublicationStatus(Apartment.PublicationStatus.DRAFT);
-            return apartments.create(jwt, apartment);
+            return applicationRight==null?apartments.create(jwt, apartment):apartments.createApplication(jwt,apartment);
         }).toList();
         return new OwnerPropertyCreated(response(property), created);
     }
 
     private OwnerPropertyResponse response(Property p) {
         return new OwnerPropertyResponse(p.getId(), p.getName(), p.getAddress(), p.getApprovalStatus().name(),
-                p.getRentalMode() == null ? null : p.getRentalMode().name(), p.getCity(), p.getDistrict(), p.getWard(), p.getVersion());
+                p.getRentalMode() == null ? null : p.getRentalMode().name(), p.getCity(), p.getDistrict(), p.getWard(), p.getVersion(),imports.findById(p.getId()).map(com.ancu.proptech.model.property.PropertyExternalImport::getSource).orElse(null),p.isOnboardingApplication(),p.getRightType()==null?null:p.getRightType().name(),p.getRightsValidFrom(),p.getRightsValidUntil());
     }
 }

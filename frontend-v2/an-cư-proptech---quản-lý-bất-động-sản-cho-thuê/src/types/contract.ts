@@ -15,6 +15,7 @@ export interface ContractDraft extends ContractTerms {
   id: string; rentalRequestId: string; contractNumber: string; status: 'DRAFT' | 'ACTIVE' | 'ENDED'; version: number; snapshot: ContractSnapshot; createdAt: string;
 }
 export interface ContractContext {
+  rightsValidFrom?: string|null; rightsValidUntil?: string|null;
   rentalRequestId: string; requestVersion: number; sourceVersion: string; snapshot: ContractSnapshot; advertisedMonthlyRent: string;
   suggestedDeposit: string | null; templateClauses: ContractClause[]; existingDraft: ContractDraft | null;
 }

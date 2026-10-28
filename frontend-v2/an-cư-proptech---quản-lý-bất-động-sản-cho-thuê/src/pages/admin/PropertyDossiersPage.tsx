@@ -24,7 +24,7 @@ export function PropertyDossiersPage() {
     if (decision !== 'APPROVE' && !reason.trim()) { setError('Cần nhập lý do từ chối hoặc yêu cầu bổ sung.');return; }
     if (decision === 'APPROVE' && !confirmed) { setError('Cần xác nhận đã đối chiếu hồ sơ trước khi phê duyệt.');return; }
     setBusy(true);
-    try { const saved = await reviewDossier(selected.id, decision, reason.trim(), selected.version);setSelected(saved);setRevision(n => n + 1);setNotice(`Đã cập nhật hồ sơ: ${dossierStatusLabels[saved.status]}.`); }
+    try { const saved = await reviewDossier(selected.id, decision, reason.trim(), selected.version,confirmed);setSelected(saved);setRevision(n => n + 1);setNotice(`Đã cập nhật hồ sơ: ${dossierStatusLabels[saved.status]}.`); }
     catch (e) { setError(e instanceof Error ? e.message : 'Không cập nhật được hồ sơ.');try { setSelected(await adminDossier(selected.id)); } catch { /* original action error is shown */ } }
     finally { setBusy(false); }
   };

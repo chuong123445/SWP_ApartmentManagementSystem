@@ -1,0 +1,23 @@
+import { test,expect } from '@playwright/test';
+test('Contract wizard shows verified citizen and prevents term outside approved rights',async({page})=>{
+  const errors:string[]=[],network:string[]=[],logs:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',e=>{if(e.type()==='error')logs.push(`${e.text()} [${e.location().url}]`);});page.on('requestfailed',r=>{if(r.failure()?.errorText!=='net::ERR_ABORTED')network.push(r.url());});let writes=0;
+  const user={id:'11111111-1111-1111-1111-111111111111',email:'contract@example.invalid',fullName:'Chủ nhà kiểm thử',roles:['OWNER'],accountStatus:'ACTIVE',contactVerificationStatus:'VERIFIED',version:2};
+  const party={id:user.id,fullName:'Căn cước đã xác thực',email:user.email,phone:null,address:'Địa chỉ kiểm thử',dateOfBirth:'1990-01-01',emailVerified:false,documentNumber:'048090000002',identityVerificationStatus:'VERIFIED'};
+  await page.route('**/api/**',route=>{const path=new URL(route.request().url()).pathname;
+    if(path==='/api/v1/auth/csrf')return route.fulfill({json:{token:'csrf',headerName:'X-XSRF-TOKEN'}});
+    if(path==='/api/v1/auth/vneid-config')return route.fulfill({json:{enabled:false}});
+    if(path==='/api/v1/auth/refresh')return route.fulfill({json:{accessToken:'contract-rights-test',tokenType:'Bearer',expiresIn:900,user}});
+    if(path==='/api/v1/me')return route.fulfill({json:user});
+    if(path==='/api/v1/owner/properties')return route.fulfill({json:[{id:'property-1',name:'Tài sản',address:'Địa chỉ',approvalStatus:'APPROVED',rentalMode:'SINGLE_UNIT'}]});
+    if(path==='/api/v1/owner/rental-requests')return route.fulfill({json:{items:[{id:'request-1',apartmentId:'unit-1',apartmentTitle:'Căn hộ',propertyAddress:'Địa chỉ',advertisedMonthlyRent:'4500000',customerId:'customer-1',customerName:'Khách thuê',customerEmail:'customer@example.invalid',message:'',status:'ACCEPTED',createdAt:'2026-10-27T00:00:00Z',version:1}],totalPages:1,page:0,totalElements:1}});
+    if(path.endsWith('/contract-context'))return route.fulfill({json:{rentalRequestId:'request-1',requestVersion:1,sourceVersion:'a'.repeat(64),snapshot:{owner:party,customer:{...party,id:'customer-1',fullName:'Khách thuê'},asset:{apartmentId:'unit-1',propertyId:'property-1',propertyName:'Tài sản',title:'Căn hộ',roomNumber:'A.01',address:'Địa chỉ',city:'Đà Nẵng',district:'Hải Châu',areaM2:'40',amenities:[],approvalStatus:'APPROVED',exploitationRight:'SUBLEASE'},receivingAccount:null},advertisedMonthlyRent:'4500000',suggestedDeposit:'4500000',templateClauses:Array.from({length:5},(_,i)=>({title:`Điều khoản ${i+1}`,body:'Nội dung kiểm thử'})),existingDraft:null,rightsValidFrom:'2026-10-27',rightsValidUntil:'2027-10-27'}});
+    if(path==='/api/v1/owner/invoices')return route.fulfill({json:{items:[],totalPages:0,page:0,totalElements:0}});
+    if(['/api/v1/owner/apartments','/api/v1/owner/tenancies','/api/v1/me/tenancies'].includes(path))return route.fulfill({json:[]});
+    if(route.request().method()!=='GET')writes++;network.push(`Unexpected API ${path}`);return route.fulfill({status:400});
+  });
+  await page.goto('/app');await page.locator('#nav-rental_requests').click();await page.getByRole('button',{name:'Tạo hợp đồng',exact:true}).click();const modal=page.getByRole('dialog',{name:'Tạo hợp đồng thuê căn hộ',exact:true});
+  await expect(modal.getByText('Thời hạn được phép cho thuê hiện hành:',{exact:false})).toBeVisible();await modal.getByRole('button',{name:'Tiếp theo →',exact:true}).click();await expect(modal.getByText('Đã xác thực qua VNeID',{exact:true})).toBeVisible();await modal.getByRole('button',{name:'Tiếp theo →',exact:true}).click();await modal.getByRole('button',{name:'Tiếp theo →',exact:true}).click();
+  await modal.getByLabel('Ngày bắt đầu',{exact:true}).fill('2026-11-01');await modal.getByLabel('Ngày kết thúc',{exact:true}).fill('2027-10-28');await modal.getByLabel('Đơn giá điện (VND/kWh)',{exact:true}).fill('3500');await modal.getByLabel('Đơn giá nước (VND/m³)',{exact:true}).fill('15000');
+  await modal.getByRole('button',{name:'Tiếp theo →',exact:true}).click();await expect(modal.getByRole('alert')).toContainText('khoảng quyền cho thuê');await expect(modal.getByLabel('Ngày kết thúc',{exact:true})).toHaveAttribute('max','2027-10-27');expect(writes).toBe(0);
+  await page.setViewportSize({width:390,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(errors).toEqual([]);expect(network).toEqual([]);expect(logs.filter(x=>!(x.includes('status of 404')&&x.includes('/favicon.ico]')))).toEqual([]);
+});

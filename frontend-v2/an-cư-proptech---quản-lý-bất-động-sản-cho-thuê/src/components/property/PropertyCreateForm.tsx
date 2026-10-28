@@ -1,13 +1,15 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
+import { Plus, Trash2 } from 'lucide-react';
+import { PropertyImagesField } from '@/components/property/PropertyImagesField';
+import { uploadPropertyImages } from '@/services/property/propertyImageService';
 import type { PropertyCreateInput, RentalMode } from '@/types/property';
 
 const fieldClass = 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white';
 const blankUnit = () => ({ key: crypto.randomUUID(), roomNumber: '', title: '', floor: '0', area: '', rent: '', deposit: '',
-  bedrooms: '', bathrooms: '', maxOccupants: '', electric: '', water: '', description: '' });
+  bedrooms: '', bathrooms: '', maxOccupants: '', electric: '', water: '', electricityPrice: '', waterPrice: '', description: '' });
 type Unit = ReturnType<typeof blankUnit>;
 
-export function AddPropertyModal({ onClose, onCreate }: {
+export function PropertyCreateForm({ onClose, onCreate }: {
   onClose: () => void; onCreate: (input: PropertyCreateInput) => Promise<void>;
 }) {
   const [mode, setMode] = useState<RentalMode>('SINGLE_UNIT');
@@ -15,46 +17,32 @@ export function AddPropertyModal({ onClose, onCreate }: {
   const [city, setCity] = useState('');const [district, setDistrict] = useState('');const [ward, setWard] = useState('');
   const [units, setUnits] = useState<Unit[]>(() => [blankUnit()]);
   const [saving, setSaving] = useState(false);const [error, setError] = useState('');
-  const dialog = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
-    dialog.current?.querySelector<HTMLInputElement>('input')?.focus();
-    return () => { previous?.focus(); };
-  }, []);
+  const [photos,setPhotos]=useState<File[]>([]);
   const shownUnits = mode === 'SINGLE_UNIT' ? units.slice(0, 1) : units;
   const update = (key: string, field: keyof Unit, value: string) => setUnits(prev => prev.map(u => u.key === key ? { ...u, [field]: value } : u));
   const optionalNumber = (text: string) => text.trim() === '' ? null : Number(text);
   const submit = async (event: FormEvent) => {
-    event.preventDefault();if (saving) return;setError('');
+    event.preventDefault();if (saving) return;setError('');if(photos.length<1||photos.length>4){setError('Chọn từ 1 đến 4 ảnh tài sản.');return;}
     const numbers = shownUnits.map(u => u.roomNumber.trim().toLocaleLowerCase());
     if (new Set(numbers).size !== numbers.length) { setError('Mã căn/phòng bị trùng trong tài sản.');return; }
     setSaving(true);
     try {
-      await onCreate({ name: name.trim(), address: address.trim(), city: city.trim(), district: district.trim(), ward: ward.trim() || null,
+      const imageIds=await uploadPropertyImages(photos);
+      await onCreate({ imageIds, name: name.trim(), address: address.trim(), city: city.trim(), district: district.trim(), ward: ward.trim() || null,
         rentalMode: mode, apartments: shownUnits.map(u => ({ roomNumber: u.roomNumber.trim(), title: u.title.trim() || (mode === 'SINGLE_UNIT' ? name.trim() : `${name.trim()} - ${u.roomNumber.trim()}`),
           description: u.description.trim(), floor: Number(u.floor), areaM2: u.area, advertisedMonthlyRent: u.rent,
-          deposit: u.deposit || null, bedrooms: optionalNumber(u.bedrooms), bathrooms: optionalNumber(u.bathrooms),
+          electricityUnitPrice: u.electricityPrice || null, waterUnitPrice: u.waterPrice || null, deposit: u.deposit || null, bedrooms: optionalNumber(u.bedrooms), bathrooms: optionalNumber(u.bathrooms),
           maxOccupants: optionalNumber(u.maxOccupants), electricityIndex: optionalNumber(u.electric), waterIndex: optionalNumber(u.water), amenities: [] })) });
-      onClose();
     } catch (err) { setError(err instanceof Error ? err.message : 'Không thể lưu tài sản. Vui lòng thử lại.'); }
     finally { setSaving(false); }
   };
-  return <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-3 md:p-6">
-    <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="add-property-title" className="bg-white rounded-2xl w-full max-w-3xl max-h-[92dvh] overflow-y-auto shadow-xl" onKeyDown={event => {
-      if (event.key === 'Escape' && !saving) onClose();
-      if (event.key === 'Tab') {
-        const focusable = dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),textarea:not(:disabled)');
-        if (!focusable?.length) return;
-        const first = focusable[0], last = focusable[focusable.length - 1];
-        if (event.shiftKey && document.activeElement === first) { event.preventDefault();last.focus(); }
-        if (!event.shiftKey && document.activeElement === last) { event.preventDefault();first.focus(); }
-      }
-    }}>
+  return <section className="bg-white border rounded-2xl w-full min-w-0">
       <div className="flex justify-between items-center px-5 py-4 border-b">
         <h2 id="add-property-title" className="text-lg font-bold">Thêm tài sản cho thuê</h2>
-        <button type="button" disabled={saving} onClick={onClose} aria-label="Đóng form tài sản" className="p-2 rounded-lg hover:bg-slate-100"><X className="w-5 h-5" /></button>
+        <button type="button" disabled={saving} onClick={onClose} aria-label="Đóng form tài sản" className="p-2 rounded-lg hover:bg-slate-100">Quay lại chọn vai trò</button>
       </div>
       <form onSubmit={submit} className="p-5 space-y-5">
+        <PropertyImagesField files={photos} onChange={setPhotos} disabled={saving}/>
         <fieldset disabled={saving} className="space-y-5 disabled:opacity-60">
           <fieldset className="grid sm:grid-cols-2 gap-3">
             <legend className="font-semibold mb-2">Cách cho thuê</legend>
@@ -81,6 +69,8 @@ export function AddPropertyModal({ onClose, onCreate }: {
               <label className="text-sm">Số người tối đa<input type="number" min={1} step={1} value={u.maxOccupants} onChange={e => update(u.key, 'maxOccupants', e.target.value)} className={fieldClass} /></label>
               <label className="text-sm">Số phòng ngủ<input type="number" min={0} step={1} value={u.bedrooms} onChange={e => update(u.key, 'bedrooms', e.target.value)} className={fieldClass} /></label>
               <label className="text-sm">Số phòng tắm<input type="number" min={0} step={1} value={u.bathrooms} onChange={e => update(u.key, 'bathrooms', e.target.value)} className={fieldClass} /></label>
+              <label className="text-sm">Đơn giá điện (đ/kWh) *<input required type="number" min="0" max="9999999999999.99" step="0.01" value={u.electricityPrice} onChange={e=>update(u.key,'electricityPrice',e.target.value)} className={fieldClass}/></label>
+              <label className="text-sm">Đơn giá nước (đ/m³) *<input required type="number" min="0" max="9999999999999.99" step="0.01" value={u.waterPrice} onChange={e=>update(u.key,'waterPrice',e.target.value)} className={fieldClass}/></label>
               <label className="text-sm">Chỉ số điện hiện tại (kWh)<input type="number" min={0} step={1} value={u.electric} onChange={e => update(u.key, 'electric', e.target.value)} className={fieldClass} /></label>
               <label className="text-sm">Chỉ số nước hiện tại (m³)<input type="number" min={0} step={1} value={u.water} onChange={e => update(u.key, 'water', e.target.value)} className={fieldClass} /></label>
               <label className="sm:col-span-2 text-sm">Mô tả<textarea maxLength={3000} value={u.description} onChange={e => update(u.key, 'description', e.target.value)} className={fieldClass} rows={2} /></label>
@@ -93,6 +83,5 @@ export function AddPropertyModal({ onClose, onCreate }: {
         {error && <p role="alert" className="text-sm text-rose-700 bg-rose-50 p-3 rounded-lg">{error}</p>}
         <div className="flex justify-end gap-2"><button type="button" disabled={saving} onClick={onClose} className="border rounded-lg px-4 py-2 text-sm">Hủy</button><button type="submit" disabled={saving} className="bg-emerald-600 text-white rounded-lg px-4 py-2 font-semibold text-sm disabled:opacity-50">{saving ? 'Đang lưu...' : 'Lưu tài sản nháp'}</button></div>
       </form>
-    </div>
-  </div>;
+  </section>;
 }

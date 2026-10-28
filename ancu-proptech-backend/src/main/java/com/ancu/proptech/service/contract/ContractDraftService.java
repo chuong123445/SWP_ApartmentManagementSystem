@@ -34,11 +34,13 @@ public class ContractDraftService {
     private final AccountAccessService access;
     private final AccountVerificationPolicy verification;
     private final IdentityProfileRepository identities;
+    private final com.ancu.proptech.repository.auth.ExternalIdentityRepository verifiedIdentities;
     private final ObjectMapper json;
+    private final com.ancu.proptech.service.property.PropertyRightsPolicy rights;
 
     // The parent request row serializes create/reopen for the same accepted selection.
     @Transactional
-    public ContractContextResponse context(Jwt jwt,UUID requestId) {
+    public ContractContextResponse context(Jwt jwt,Long requestId) {
         var owner=access.owner(jwt);
         var request=requests.findForOwnerUpdate(requestId,owner.getId()).orElseThrow(ContractDraftService::notFound);
         if(request.getStatus()!=RentalRequest.Status.ACCEPTED) throw conflict("REQUEST_NOT_ACCEPTED","Chỉ tạo hợp đồng từ yêu cầu đã chấp nhận.");
@@ -47,11 +49,11 @@ public class ContractDraftService {
         var snapshot=snapshot(request);
         return new ContractContextResponse(requestId,request.getVersion(),sourceVersion(request,snapshot),snapshot,
             a.getAdvertisedMonthlyRent().toPlainString(),a.getDeposit()==null?null:a.getDeposit().toPlainString(),
-            ContractTemplates.apartment(),existing==null?null:response(existing));
+            ContractTemplates.apartment(),existing==null?null:response(existing),a.getProperty().getRightsValidFrom(),a.getProperty().getRightsValidUntil());
     }
 
     @Transactional
-    public ContractDraftResponse create(Jwt jwt,UUID requestId,ContractDraftCreate input) {
+    public ContractDraftResponse create(Jwt jwt,Long requestId,ContractDraftCreate input) {
         var owner=access.owner(jwt);
         var r=requests.findForOwnerUpdate(requestId,owner.getId()).orElseThrow(ContractDraftService::notFound);
         if(r.getVersion()!=input.getRequestVersion()) throw stale();
@@ -61,11 +63,13 @@ public class ContractDraftService {
         if(a.getAvailability()!=Apartment.Availability.CONTRACT_IN_PROGRESS || contracts.findByApartmentId(a.getId()).stream().anyMatch(c->c.getStatus()!=RentalContract.Status.ENDED))
             throw conflict("APARTMENT_NOT_SELECTED","Căn hộ không còn ở bước làm hợp đồng hoặc đã có hợp đồng hiện hành.");
         var customer=r.getCustomer();
-        if(customer.getRole()!=AuthAccount.Role.CUSTOMER || customer.getStatus()!=AuthAccount.Status.ACTIVE || !verification.isVerified(customer))
+        if((customer.getRole()!=AuthAccount.Role.CUSTOMER&&customer.getRole()!=AuthAccount.Role.OWNER) || customer.getStatus()!=AuthAccount.Status.ACTIVE || !verification.isRentalVerified(customer))
             throw conflict("CUSTOMER_NOT_ELIGIBLE","Tài khoản khách thuê không còn đủ điều kiện.");
+        rights.requireCurrent(a.getProperty());
         var snapshot=snapshot(r);
         if(!sourceVersion(r,snapshot).equals(input.getSourceVersion())) throw conflict("SOURCE_CHANGED","Thông tin hai bên hoặc căn hộ đã thay đổi. Hãy mở lại để rà soát.");
         validateTerms(input);
+        rights.contract(a.getProperty(),input.getStartDate(),input.getEndDate());
         var c=new RentalContract();c.setApartment(a);c.setCustomer(customer);c.setStatus(RentalContract.Status.DRAFT);
         applyContract(c,input);contracts.saveAndFlush(c);
         var d=new ContractDraft();d.setContract(c);d.setRentalRequest(r);d.setSnapshotJson(json.writeValueAsString(snapshot));
@@ -74,7 +78,7 @@ public class ContractDraftService {
     }
 
     @Transactional(readOnly=true)
-    public List<ContractDraftResponse> ownerList(Jwt jwt,UUID propertyId) {
+    public List<ContractDraftResponse> ownerList(Jwt jwt,Long propertyId) {
         return drafts.findByContractApartmentPropertyOwnerIdOrderByCreatedAtDescIdDesc(access.owner(jwt).getId()).stream()
             .filter(d->propertyId==null || d.getContract().getApartment().getProperty().getId().equals(propertyId)).map(this::response).toList();
     }
@@ -83,7 +87,7 @@ public class ContractDraftService {
         return drafts.findByContractCustomerIdOrderByCreatedAtDescIdDesc(access.customer(jwt).getId()).stream().map(this::response).toList();
     }
     @Transactional(readOnly=true)
-    public ContractDraftResponse get(Jwt jwt,UUID id) {
+    public ContractDraftResponse get(Jwt jwt,Long id) {
         var account=access.account(jwt);
         var d=drafts.findByContractId(id).orElseThrow(ContractDraftService::notFound);
         var c=d.getContract();
@@ -91,7 +95,7 @@ public class ContractDraftService {
         return response(d);
     }
     @Transactional
-    public ContractDraftResponse update(Jwt jwt,UUID id,ContractDraftUpdate input) {
+    public ContractDraftResponse update(Jwt jwt,Long id,ContractDraftUpdate input) {
         var owner=access.owner(jwt);
         var requestId=drafts.findRequestId(id).orElseThrow(ContractDraftService::notFound);
         requests.findForOwnerUpdate(requestId,owner.getId()).orElseThrow(ContractDraftService::notFound);
@@ -99,7 +103,7 @@ public class ContractDraftService {
         var c=contracts.lockById(id).orElseThrow(ContractDraftService::notFound);
         if(d.getContentVersion()!=input.getVersion()) throw stale();
         if(c.getStatus()!=RentalContract.Status.DRAFT) throw conflict("CONTRACT_NOT_DRAFT","Chỉ bản nháp mới được chỉnh sửa.");
-        validateTerms(input);applyContract(c,input);applyDraft(d,input);
+        validateTerms(input);rights.contract(c.getApartment().getProperty(),input.getStartDate(),input.getEndDate());applyContract(c,input);applyDraft(d,input);
         // Content version is independent of the meter billing chain version.
         d.setContentVersion(d.getContentVersion()+1);
         contracts.saveAndFlush(c);drafts.saveAndFlush(d);
@@ -122,16 +126,19 @@ public class ContractDraftService {
         var approved=dossiers.findByPropertyIdOrderBySubmittedAtDescIdDesc(p.getId()).stream()
             .filter(d->d.getStatus()==PropertyDossier.Status.APPROVED).findFirst().orElse(null);
         return new ContractSnapshot(party(p.getOwner()),party(r.getCustomer()),
-            new ContractSnapshot.Asset(a.getId(),p.getId(),p.getName(),a.getTitle(),a.getRoomNumber(),p.getAddress(),p.getCity(),p.getDistrict(),p.getWard(),
+            new ContractSnapshot.Asset(a.getId().toString(),p.getId().toString(),p.getName(),a.getTitle(),a.getRoomNumber(),p.getAddress(),p.getCity(),p.getDistrict(),p.getWard(),
                 a.getAreaM2().toPlainString(),a.getFloor(),a.getBedrooms(),a.getBathrooms(),List.copyOf(a.getAmenities()),p.getApprovalStatus().name(),
-                approved==null?null:approved.getId(),approved==null?null:approved.getRightType().name(),
+                approved==null?null:approved.getId().toString(),approved==null?null:approved.getRightType().name(),
                 approved==null?null:approved.getCertificateNumber(),approved==null?null:approved.getCertificateIssueDate(),
                 approved==null?null:approved.getCertificateIssuePlace(),approved==null?null:approved.getExploitationRightDescription(),approved==null?null:approved.isLocalFixture()),
             approved==null?null:new ContractSnapshot.ReceivingAccount(approved.getBank(),approved.getAccountNumber(),approved.getAccountHolderName()));
     }
     private ContractSnapshot.Party party(AuthAccount a) {
+        var verified=verifiedIdentities.findById(a.getId()).filter(i->"VERIFIED".equals(i.getVerificationStatus())).orElse(null);
+        if(verified!=null)return new ContractSnapshot.Party(a.getId().toString(),verified.getLegalName(),a.getEmail(),a.getPhone(),verified.getAddress(),verified.getDateOfBirth(),a.isEmailVerified(),
+            verified.getDocumentNumber(),null,null,null,"VERIFIED",false);
         var identity=identities.findById(a.getId()).orElse(null);
-        return new ContractSnapshot.Party(a.getId(),identity==null?a.getFullName():identity.getLegalName(),a.getEmail(),a.getPhone(),
+        return new ContractSnapshot.Party(a.getId().toString(),identity==null?a.getFullName():identity.getLegalName(),a.getEmail(),a.getPhone(),
             identity==null?a.getAddress():identity.getCurrentAddress(),identity==null?a.getDateOfBirth():identity.getDateOfBirth(),a.isEmailVerified(),
             identity==null?null:identity.getDocumentNumber(),identity==null?null:identity.getIssueDate(),identity==null?null:identity.getIssuePlace(),
             identity==null?null:identity.getPermanentAddress(),identity==null?null:identity.getVerificationStatus().name(),identity==null?null:identity.isLocalFixture());

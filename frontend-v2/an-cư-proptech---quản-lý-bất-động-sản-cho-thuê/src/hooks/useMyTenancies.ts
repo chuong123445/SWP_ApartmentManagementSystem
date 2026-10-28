@@ -8,7 +8,7 @@ export function useMyTenancies() {
   const [accountId, setAccountId] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const eligible = user?.roles.includes('CUSTOMER') && user.accountStatus === 'ACTIVE' && user.contactVerificationStatus === 'VERIFIED';
+  const eligible = user?.roles.some(role => role === 'CUSTOMER' || role === 'OWNER') && user.accountStatus === 'ACTIVE' && user.contactVerificationStatus === 'VERIFIED';
   useEffect(() => {
     let active = true; setTenancies([]); setError('');
     if (!eligible) { setLoading(false); return; }

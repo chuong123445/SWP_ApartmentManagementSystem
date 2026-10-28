@@ -42,7 +42,7 @@ public class AuthService {
     private String dummyHash;
 
     @jakarta.annotation.PostConstruct
-    void prepareDummyHash() { dummyHash = passwordEncoder.encode(UUID.randomUUID().toString()); }
+    void prepareDummyHash() { dummyHash = passwordEncoder.encode(java.util.UUID.randomUUID().toString()); }
 
     @Transactional
     public LoginResult login(String email, String password) {
@@ -50,10 +50,16 @@ public class AuthService {
             throw new AuthException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Mật khẩu tối đa 72 byte.");
         }
         AuthAccount account = accounts.findByEmail(email.trim().toLowerCase(Locale.ROOT)).orElse(null);
-        boolean matches = passwordEncoder.matches(password, account == null ? dummyHash : account.getPasswordHash());
-        if (account == null || !matches) {
+        boolean hasPassword = account != null && account.getPasswordHash() != null;
+        boolean matches = passwordEncoder.matches(password, hasPassword ? account.getPasswordHash() : dummyHash);
+        if (!hasPassword || !matches) {
             throw new AuthException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Email hoặc mật khẩu không đúng.");
         }
+        return createSession(account);
+    }
+
+    @Transactional
+    public LoginResult createSession(AuthAccount account) {
         requireUsableAccount(account);
         AuthSession session = new AuthSession();
         session.setAccount(account);
@@ -87,7 +93,7 @@ public class AuthService {
     @Transactional(readOnly = true)
     public AuthAccount authenticate(Jwt jwt) {
         try {
-            UUID sessionId = UUID.fromString(jwt.getClaimAsString("sid"));
+            Long sessionId = Long.valueOf(jwt.getClaimAsString("sid"));
             AuthSession session = sessions.findById(sessionId).orElseThrow(AuthService::unauthorized);
             requireLiveSession(session);
             if (!session.getAccount().getId().toString().equals(jwt.getSubject())) throw unauthorized();
@@ -116,7 +122,7 @@ public class AuthService {
         if (expires.isAfter(session.getExpiresAt())) expires = session.getExpiresAt();
         JwtClaimsSet claims = JwtClaimsSet.builder().issuer(ISSUER).audience(List.of(AUDIENCE))
                 .subject(session.getAccount().getId().toString()).issuedAt(now).expiresAt(expires)
-                .id(UUID.randomUUID().toString()).claim("sid", session.getId().toString()).build();
+                .id(java.util.UUID.randomUUID().toString()).claim("sid", session.getId().toString()).build();
         String jwt = jwtEncoder.encode(JwtEncoderParameters.from(
                 JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
         long cookieAge = Math.max(0, session.getExpiresAt().getEpochSecond() - now.getEpochSecond());

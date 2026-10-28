@@ -38,7 +38,7 @@ class AuthIntegrationTests {
 
     @BeforeEach void fixture() {
         owner = new AuthAccount();
-        owner.setEmail("auth-test-" + UUID.randomUUID() + "@example.invalid");
+        owner.setEmail("auth-test-" + com.ancu.proptech.support.TestIds.next() + "@example.invalid");
         owner.setFullName("Chủ nhà kiểm thử");
         owner.setPasswordHash(passwords.encode(password));
         owner.setRole(AuthAccount.Role.OWNER);

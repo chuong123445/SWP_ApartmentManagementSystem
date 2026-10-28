@@ -4,6 +4,7 @@ import { apiFetch, readApiError } from '@/services/http/client';
 import type { OwnerProperty } from '@/types/property';
 export type { OwnerProperty } from '@/types/property';
 interface OwnerApartment {
+  electricityUnitPrice?: string | null; waterUnitPrice?: string | null;
   version: number;
   id: string; propertyId: string; propertyName: string; ownerId: string;
   roomNumber: string; title: string; floor: number | null; areaM2: string;
@@ -26,6 +27,7 @@ export function fromOwnerApartment(data: OwnerApartment): Room {
     meterBaselineKnown: data.electricityIndex != null && data.waterIndex != null,
     maxOccupants: data.maxOccupants ?? 2, amenities: data.amenities ?? [],
     publicationStatus: data.publicationStatus, propertyApprovalStatus: data.propertyApprovalStatus,
+    electricityUnitPrice: data.electricityUnitPrice, waterUnitPrice: data.waterUnitPrice,
   };
 }
 export function toOwnerApartmentCreate(room: NewRoom) {
@@ -59,4 +61,7 @@ export async function setApartmentPublication(id: string, publicationStatus: 'PU
   return fromOwnerApartment(await ownerRequest(`/api/v1/owner/apartments/${id}/publication`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ publicationStatus, version }),
   }));
+}
+export async function updateApartmentPrices(id:string,version:number,input:{monthlyRent:string;electricityUnitPrice:string;waterUnitPrice:string}):Promise<Room>{
+  return fromOwnerApartment(await ownerRequest(`/api/v1/owner/apartments/${id}/prices`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({...input,version})}));
 }
