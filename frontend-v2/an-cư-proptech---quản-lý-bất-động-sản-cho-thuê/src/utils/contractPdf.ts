@@ -1,5 +1,12 @@
 import type { Contract } from '@/types';
 
+// Các trường hợp đồng là văn bản, không phải HTML. Escape ở đầu ra dùng chung
+// để bảo vệ cả in (doc.write), PDF (innerHTML) và file HTML tải xuống.
+function escapeHtml(value: unknown): string {
+  const entities: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  return String(value ?? '').replace(/[&<>"']/g, character => entities[character]);
+}
+
 function getContractCss(): string {
   return `
     @page {
@@ -183,10 +190,10 @@ function getContractCss(): string {
 }
 
 export function generateContractBody(contract: Contract): string {
-  const auditCode = contract.trustGuardAuditCode || `TG-AUD-${contract.contractNumber || '2026-08912'}`;
-  const signedAt = contract.signedDate || '15/01/2026 09:32:15';
-  const rentFormatted = contract.monthlyRent.toLocaleString('vi-VN');
-  const depositFormatted = contract.deposit.toLocaleString('vi-VN');
+  const auditCode = escapeHtml(contract.trustGuardAuditCode || `TG-AUD-${contract.contractNumber || '2026-08912'}`);
+  const signedAt = escapeHtml(contract.signedDate || '15/01/2026 09:32:15');
+  const rentFormatted = escapeHtml(contract.monthlyRent.toLocaleString('vi-VN'));
+  const depositFormatted = escapeHtml(contract.deposit.toLocaleString('vi-VN'));
 
   return `
   <div class="header-national">
@@ -197,7 +204,7 @@ export function generateContractBody(contract: Contract): string {
 
   <div class="title-contract">
     <h2>HỢP ĐỒNG CHO THUÊ CĂN HỘ CAO CẤP & BẢO CHỨNG KÝ QUỸ ESCROW</h2>
-    <div class="meta">Số hợp đồng điện tử: <strong>${contract.contractNumber}</strong></div>
+    <div class="meta">Số hợp đồng điện tử: <strong>${escapeHtml(contract.contractNumber)}</strong></div>
     <div><span class="badge-audit">Mã xác thực TrustGuard: ${auditCode}</span></div>
   </div>
 
@@ -218,16 +225,16 @@ export function generateContractBody(contract: Contract): string {
   </div>
 
   <div class="party-box">
-    <strong>BÊN THUÊ (BÊN B):</strong> Ông/Bà <strong>${contract.tenantName}</strong><br>
-    • Căn hộ thuê: <strong>Căn số ${contract.roomNumber}</strong> - Tòa A Lê Văn Sỹ<br>
-    • Thời hạn thuê: Từ ngày <strong>${contract.startDate}</strong> đến hết ngày <strong>${contract.endDate}</strong><br>
+    <strong>BÊN THUÊ (BÊN B):</strong> Ông/Bà <strong>${escapeHtml(contract.tenantName)}</strong><br>
+    • Căn hộ thuê: <strong>Căn số ${escapeHtml(contract.roomNumber)}</strong> - Tòa A Lê Văn Sỹ<br>
+    • Thời hạn thuê: Từ ngày <strong>${escapeHtml(contract.startDate)}</strong> đến hết ngày <strong>${escapeHtml(contract.endDate)}</strong><br>
     • Phương thức định danh: Xác thực CCCD gắn chip & eKYC đối soát số liệu
   </div>
 
   <div class="section-title">III. ĐIỀU KHOẢN TÀI CHÍNH & KÝ QUỸ BẢO CHỨNG</div>
   <ol class="terms-list">
     <li><strong>Giá thuê căn hộ:</strong> Cố định <strong>${rentFormatted} VNĐ/tháng</strong> (Chưa bao gồm tiền dịch vụ điện nước theo chỉ số công tơ niêm phong).</li>
-    <li><strong>Tiền ký quỹ cọc bảo đảm:</strong> <strong>${depositFormatted} VNĐ</strong>, được phong tỏa tài khoản Escrow tại Ngân hàng MBBank theo mã <strong>${contract.escrowCode || 'MB-ESCROW'}</strong>. Tiền cọc được bảo chứng giải tỏa 100% khi hai bên nghiệm thu biên bản bàn giao.</li>
+    <li><strong>Tiền ký quỹ cọc bảo đảm:</strong> <strong>${depositFormatted} VNĐ</strong>, được phong tỏa tài khoản Escrow tại Ngân hàng MBBank theo mã <strong>${escapeHtml(contract.escrowCode || 'MB-ESCROW')}</strong>. Tiền cọc được bảo chứng giải tỏa 100% khi hai bên nghiệm thu biên bản bàn giao.</li>
     <li><strong>Chu kỳ thanh toán:</strong> Định kỳ hàng tháng từ ngày 01 đến 05 qua cổng thanh toán tự động VietQR Napas247.</li>
     <li><strong>Quy định an toàn & PCCC:</strong> Căn hộ đạt tiêu chuẩn Thẩm duyệt PCCC số 112/TD-PCCC-PC07. Bên B cam kết tuân thủ nghiêm ngặt nội quy an ninh trật tự.</li>
   </ol>
@@ -250,11 +257,11 @@ export function generateContractBody(contract: Contract): string {
 
     <div class="signature-card signed-b">
       <div class="signature-title">BÊN THUÊ (BÊN B)</div>
-      <div class="signature-signer">Ký bởi: ${contract.tenantName}</div>
+      <div class="signature-signer">Ký bởi: ${escapeHtml(contract.tenantName)}</div>
       <div class="signature-seal seal-b">
         <span class="verified-badge">✓ eKYC CHIP & DIGITAL OTP</span>
         <span>Thời gian: ${signedAt}</span><br>
-        <span style="font-size: 9px; color: #2563eb;">Phương thức: ${contract.signingMethod || 'Ký số eKYC Chip'}</span>
+        <span style="font-size: 9px; color: #2563eb;">Phương thức: ${escapeHtml(contract.signingMethod || 'Ký số eKYC Chip')}</span>
       </div>
     </div>
   </div>
@@ -264,7 +271,7 @@ export function generateContractBody(contract: Contract): string {
       <strong>An Cư TrustGuard™ Protection</strong> • Văn bản điện tử đã khóa niêm phong chống chỉnh sửa.
     </div>
     <div class="hash">
-      SHA-256: 7f83b165...${contract.id.slice(-8)}
+      SHA-256: 7f83b165...${escapeHtml(contract.id.slice(-8))}
     </div>
   </div>`;
 }
@@ -274,7 +281,7 @@ export function generateContractHtml(contract: Contract): string {
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>Hop_Dong_Thue_Can_Ho_${contract.contractNumber}</title>
+  <title>Hop_Dong_Thue_Can_Ho_${escapeHtml(contract.contractNumber)}</title>
   <style>
     ${getContractCss()}
   </style>
