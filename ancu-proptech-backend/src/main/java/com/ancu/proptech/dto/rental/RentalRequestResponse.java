@@ -1,6 +1,6 @@
 package com.ancu.proptech.dto.rental;
 import java.time.Instant;
-import java.util.UUID;
-public record RentalRequestResponse(UUID id, UUID apartmentId, String apartmentTitle, String address,
-                                    String advertisedMonthlyRent, UUID customerId, String customerName,
-                                    String customerEmail, String message, String status, Instant createdAt, long version) {}
+
+public record RentalRequestResponse(@com.fasterxml.jackson.annotation.JsonFormat(shape=com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING) Long id, @com.fasterxml.jackson.annotation.JsonFormat(shape=com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING) Long apartmentId, String apartmentTitle, String address,
+                                    String advertisedMonthlyRent, @com.fasterxml.jackson.annotation.JsonFormat(shape=com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING) Long customerId, String customerName,
+                                    String customerEmail, String message, String status, Instant createdAt, long version, String decisionReason) {}

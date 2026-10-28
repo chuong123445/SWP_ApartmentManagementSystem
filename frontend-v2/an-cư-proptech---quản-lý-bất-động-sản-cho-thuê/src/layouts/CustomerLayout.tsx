@@ -17,7 +17,7 @@ export function CustomerLayout({ children }: { children: ReactNode }) {
         <nav className="customer-nav">
           <Link to="/" className="customer-home-link">Trang chủ</Link>
           {user ? <AccountMenu account={user} onLogout={logout} isLoggingOut={isLoggingOut} authError={error}
-            hasInvoiceHistory={tenancy.tenancies.length > 0} isTenant={tenancy.tenancies.some(contract => contract.status === 'ACTIVE')} />
+            isTenant={tenancy.tenancies.some(contract => contract.status === 'ACTIVE')} />
             : <><Link to="/login" className="customer-login">Đăng nhập</Link><Link to="/register" className="home-primary customer-register">Đăng ký</Link></>}
         </nav>
       </div>

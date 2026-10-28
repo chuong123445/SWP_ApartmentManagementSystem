@@ -1,0 +1,179 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "An Cu property images and vacant apartment prices",
+    "version": "1.0.0",
+    "description": "Implemented28October2026. Active persisted VNeID VERIFIED for staging; bind1–4 own images during Property/Self/import creation. Numeric identity keys serialize as decimal strings. Changes to rent/utilities allowed only VACANT and no PENDING requests; contract prices unchanged."
+  },
+  "security": [
+    {
+      "internalBearer": []
+    }
+  ],
+  "paths": {
+    "/api/v1/me/property-images": {
+      "post": {
+        "summary": "Upload1–4 JPEG/PNG5MB each,20MP maximum; canonical PNG private staging",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "files"
+                ],
+                "properties": {
+                  "files": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 4,
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "[{id:decimal string,url:/api/v1/property-images/{id}}]; SQL binary; not public while staged"
+          },
+          "400": {
+            "description": "INVALID_PROPERTY_IMAGES invalid bytes/format/count/size/dimensions/staging quota"
+          },
+          "401": {
+            "description": "Invalid session"
+          },
+          "403": {
+            "description": "VNEID_REQUIRED or invalid account"
+          },
+          "413": {
+            "description": "Multipart exceeds server limits"
+          }
+        }
+      }
+    },
+    "/api/v1/property-images/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          }
+        }
+      ],
+      "get": {
+        "security": [],
+        "summary": "Own private image with optional Bearer, or public promotional image of approved/published property with ACTIVE owner",
+        "responses": {
+          "200": {
+            "description": "Canonical PNG, Cache-Control:no-store, X-Content-Type-Options:nosniff",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown image or private image without exact uploader session"
+          }
+        }
+      }
+    },
+    "/api/v1/owner/apartments/{id}/prices": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          }
+        }
+      ],
+      "patch": {
+        "summary": "Exact Owner changes vacant listing prices, locked/version checked",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Prices"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OwnerApartmentResponse with updated prices/version, readings unchanged"
+          },
+          "400": {
+            "description": "Invalid decimal/version/unknown fields"
+          },
+          "401": {
+            "description": "Invalid session"
+          },
+          "403": {
+            "description": "Not eligible Owner"
+          },
+          "404": {
+            "description": "Unknown or foreign apartment"
+          },
+          "409": {
+            "description": "STALE_VERSION, APARTMENT_NOT_VACANT, PENDING_REQUESTS_EXIST"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "internalBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "Prices": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "monthlyRent",
+          "electricityUnitPrice",
+          "waterUnitPrice"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "monthlyRent": {
+            "type": "string",
+            "description": "Decimal >0,13integer/2fraction digits"
+          },
+          "electricityUnitPrice": {
+            "type": "string",
+            "description": "Decimal >=0,13integer/2fraction digits VND/kWh"
+          },
+          "waterUnitPrice": {
+            "type": "string",
+            "description": "Decimal >=0,13integer/2fraction digits VND/m3"
+          }
+        }
+      }
+    }
+  }
+}

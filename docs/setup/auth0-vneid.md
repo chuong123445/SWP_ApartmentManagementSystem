@@ -1,0 +1,72 @@
+# Kết nối Auth0 VNeID
+## Đổi tài khoản khi kiểm thử — 28/10/2026
+
+Auth0 giữ phiên SSO tại domain riêng, độc lập phiên JWT/refresh nội bộ An Cư. Vì vậy logout nội bộ có thể vẫn để lại SSO Auth0.
+
+Nút đăng nhập, đăng ký và xác thực VNeID hiện gửi `authorizationParams: { connection: config.connection, prompt: 'login' }` khi gọi `loginWithRedirect`. Mỗi lần chủ động bấm nút yêu cầu Auth0 xác thực lại; không đặt prompt lên provider/global hoặc các lần lấy token nền. Không đổi cách thu hồi phiên nội bộ, không logout toàn bộ Auth0/ứng dụng khác, không auto-link tài khoản. Nếu Auth0 còn điền sẵn email, chọn “Not you?”/dùng tài khoản khác trên màn hình Auth0 rồi nhập user cần test.
+
+Test browser dùng SDK thật và provider giả lập, xác nhận prompt trong authorize, cookie SSO cũ vẫn yêu cầu reauthentication, callback/verify/error/token-storage hồi quy. Đây không phải lần đăng nhập Auth0 thật hoặc bằng chứng phương thức đăng nhập bên ngoài bắt buộc nhập mật khẩu; hành vi cụ thể còn tùy connection. Project dùng database connection Username-Password-Authentication.
+## Cập nhật 28/10/2026 — cấu hình nhóm đã có sẵn
+
+`application-local.properties` đã chứa mặc định công khai của tenant VNeID-Mock: bật luồng VNeID local, issuer, SPA Client ID, audience, connection và M2M Client ID. Người khác pull code không cần chép lại các giá trị này hoặc tạo Auth0 riêng. `.env.example` cũng đã đồng bộ. Global/non-local vẫn opt-in; môi trường triển khai cần cấu hình rõ ràng.
+
+Local env hoặc biến môi trường vẫn ghi đè mặc định. Nếu `.env.local` cũ chứa `AUTH0_VNEID_ENABLED=false` hoặc các giá trị Auth0 rỗng/sai, bỏ/sửa những override đó để dùng cấu hình chung.
+
+M2M Client Secret không có trong Git. Đăng nhập/xác thực căn cước không cần secret này; đọc tài sản/nâng cấp chính chủ cần `AUTH0_MANAGEMENT_CLIENT_SECRET` riêng ở Backend. SPA Client Secret không dùng. Nếu muốn thành viên không phải giữ secret, dùng một Backend dùng chung đã được cấu hình M2M, frontend gọi Backend đó; đây là phương án triển khai, chưa tạo server từ xa trong task này. Cùng localhost3000 dùng callback đã khai báo; cổng/domain khác phải nằm trong danh sách cho phép trên Auth0.
+
+Các đoạn mô tả slice ban đầu bên dưới là lịch sử; các luồng tài sản, nâng cấp Owner và ủy quyền/thuê lại đã được triển khai theo các ADR/report mới hơn.
+
+Luồng đăng nhập/đăng ký CUSTOMER và liên kết self được triển khai trong code. Tài sản trong app_metadata chưa được đọc/nhập; không có đổi role Owner hoặc tự duyệt Property trong slice xác thực này. Đây là mô phỏng SWP, không phải VNeID thật. Backend ghi VERIFIED, không dùng SIMULATED_VERIFIED; không tự gán emailVerified.
+
+## 1. Auth0 Dashboard
+
+- SPA Application: VNeID-Mock; Domain do người dùng cung cấp: `vneid-mock-swp.au.auth0.com`. Application Type phải là Single Page Application; token endpoint authentication phù hợp SPA, không yêu cầu client secret trong React.
+- API riêng: `An Cu Backend`; Identifier đã được người dùng xác nhận ngày 27/10/2026: `https://api.ancu.local`; RS256. Không dùng Auth0 Management API làm audience của luồng đăng nhập.
+- Database Connection: `Username-Password-Authentication`; bật ứng dụng trên tab Applications của connection.
+- Allowed Callback URLs: `http://localhost:3000/auth/vneid/callback` (thêm URL 3002 tương ứng nếu kiểm thử ở 3002).
+- Allowed Logout URLs và Allowed Web Origins: `http://localhost:3000` (và 3002 nếu dùng). Khi deploy khai báo HTTPS/origin thật; không dùng wildcard.
+
+## 2. Cấu hình Backend
+
+Thêm vào `.env.local` bị gitignore, sau đó restart Backend:
+
+```properties
+AUTH0_VNEID_ENABLED=true
+AUTH0_ISSUER=https://vneid-mock-swp.au.auth0.com/
+AUTH0_CLIENT_ID=CLIENT_ID_CUA_UNG_DUNG_REACT
+AUTH0_AUDIENCE=https://api.ancu.local
+AUTH0_CONNECTION=Username-Password-Authentication
+```
+
+Audience phải đúng API Identifier thực tế đã tạo; không tự bật khi chưa xác nhận cấu hình. Backend công khai những giá trị không bí mật này qua GET /api/v1/auth/vneid-config; React tự lấy nên không cần VITE client secret hoặc hai bộ cấu hình lệch nhau. Không lưu raw tokens/password vào tài liệu/git/log.
+
+## 3. Thay Action cũ rồi Deploy
+
+Action hardcode CCCD trước đây sẽ gán cùng CCCD cho mọi user. Dùng `docs/setup/vneid-post-login.js` thay thế; khai báo ba Action Secrets `SPA_CLIENT_ID`, `API_AUDIENCE`, `VNEID_CONNECTION` với giá trị tương ứng. Ba giá trị này là cấu hình; dùng cơ chế Action Secrets để không hardcode. Client ID không phải Client Secret.
+
+Action phải gắn vào Post Login trigger và Deploy phiên bản mới; Apply flow nếu Dashboard yêu cầu. Dữ liệu lấy từ app_metadata.vneid.citizen do quản trị viên kiểm soát, không lấy user_metadata. Source/connection và email namespaced là claim bắt buộc của bản tích hợp, ngoài claim CCCD hiện có. Backend kiểm tra issuer/audience/azp/source/connection/RS256/exp/nbf, không tin frontend verified. Access token không chứa danh sách tài sản.
+
+Đăng xuất/đăng nhập lại để nhận token mới. Không dán token vào website giải mã bên ngoài để debug dữ liệu cá nhân; kiểm tra cục bộ và che giá trị trong evidence.
+
+## 4. Luồng ứng dụng
+
+- /register: “Đăng ký bằng VNeID mô phỏng”; /login có đăng nhập tương ứng. User mới có role CUSTOMER, ACTIVE, passwordHash null, email/phone flags không tự verified. Backend tạo phiên JWT nội bộ/refresh HttpOnly giống đăng nhập cũ.
+- /account/verification hoặc Settings → Quản lý xác thực tài khoản: đăng nhập tài khoản nội bộ trước rồi bấm xác thực VNeID; Backend liên kết đúng account từ session. Trùng email khi đăng ký yêu cầu login/link; không auto-merge theo email hoặc CCCD.
+- Các lệnh đổi mật khẩu/email/phone hiện yêu cầu mật khẩu nội bộ. Account external-only nhận EXTERNAL_ACCOUNT_PASSWORD_REQUIRED; chưa có luồng đặt mật khẩu mới bằng Auth0 trong slice này.
+- Source và CCCD lưu riêng ở auth_external_identities; hồ sơ ảnh CCCD tự khai và snapshot hợp đồng không bị ghi đè. Danh sách tài sản sẽ cần consent của ứng dụng, M2M Management API và luồng nhập riêng; chưa coi app_metadata là dữ liệu đã có trong SQL.
+- Tài khoản bị LOCKED/INACTIVE vẫn bị chặn; role OWNER/ADMIN không được cấp bởi metadata. Không phát hành token Auth0 làm JWT business của ứng dụng.
+
+## 5. Kiểm tra thật
+
+Chạy test chữ ký RSA/JWKS giả lập và SQL rollback chưa chứng minh tenant đã kết nối. Kiểm tra riêng: authorize callback thành công với user đã tạo, POST vneid-login trả JWT nội bộ, reload phục hồi, logout thu hồi JWT, self verification pending account khác, không trùng danh tính. Dùng tài khoản test riêng và không reset customer@ancu.local hoặc fixtures.
+
+Nguồn framework: Context7 Spring Security 7.1.1 (project Boot4.1.1), Auth0 React docs đối chiếu SDK cài 2.29.0/React19.3.0; https://github.com/auth0/auth0-react/blob/main/EXAMPLES.md .
+
+## Troubleshooting đã quan sát 27/10/2026
+
+- Client ID chính xác do user copy: `ZzK7niS70kbjNyonFETMY5lDzBYDTF2Y` (chữ l thường sau MY5). Chép từ ảnh thành số1 gây Unknown client. Đã sửa ignored Backend .env.local, giữ enabled=true do user đã bật. Restart Backend để tiến trình đang chạy nạp giá trị mới; không dùng Client ID M2M của An Cu Backend (Test Application).
+- Sau khi kiểm tra authorize với Client ID đúng bằng override cấu hình công khai trong browser test (không restart tiến trình user), Auth0 trả về callback với lỗi client not authorized to access resource server https://api.ancu.local. Chưa đăng nhập hoặc tạo tài khoản; đây là lỗi quyền application→API ở Auth0.
+- Applications → APIs → An Cu Backend → Settings → Application Access Policy: User-Delegated Access dùng Per-app authorization. Save, rồi Application Access → VNeID-Mock → Edit → Grant Access cho User-Delegated Access → Save. M2M Client Access là luồng khác, không thay thế quyền SPA user-delegated. Không cấp Management API hoặc client secret cho React.
+- Đồng bộ Action Secret SPA_CLIENT_ID bằng cùng giá trị đúng và Deploy lại nếu trước đó đã nhập sai.
+
+Nguồn đối chiếu: Context7 Auth0; https://auth0.com/docs/get-started/applications/application-access-to-apis-client-grants và https://auth0.com/blog/developers-guide-api-access-policies-auth0/ . Chưa xác nhận đăng nhập Auth0 thật thành công; cần user hoàn tất grant trên Dashboard.

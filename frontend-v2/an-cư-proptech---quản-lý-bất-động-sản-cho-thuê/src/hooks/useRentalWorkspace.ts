@@ -1,16 +1,20 @@
+import { updateApartmentPrices } from '@/services/apartments/ownerApartmentService';
+import type { PriceInput } from '@/components/rooms/ApartmentPriceForm';
 import { useEffect, useState } from 'react';
 import type { Building, Room, NewRoom, Tenant, Contract, Invoice, MaintenanceTicket, Transaction, SystemConfig, TrustGuardAudit, EscrowDeposit } from '@/types';
 import { initialMaintenance, initialTransactions, initialConfig, initialTrustAudits, initialEscrows } from '@/data/mockData';
-import { createOwnerApartment, getOwnerApartments, getOwnerProperties } from '@/services/apartments/ownerApartmentService';
+import { createOwnerApartment, getOwnerApartments, getOwnerProperties, setApartmentPublication } from '@/services/apartments/ownerApartmentService';
 import { ownerTenancies, ownerInvoices, tenancyViews, invoiceView, sendInvoice } from '@/services/billing/billingService';
 import type { Tenancy } from '@/types/billing';
+import { createOwnerProperty } from '@/services/property/ownerPropertyService';
+import type { PropertyCreateInput } from '@/types/property';
 
-export function useRentalWorkspace(canManage: boolean, onReset: () => void) {
+export function useRentalWorkspace(canManage: boolean, onReset: () => void, selectedPropertyId = 'all') {
   // Global Data States
   const [rooms, setRooms] = useState<Room[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [inventoryError, setInventoryError] = useState('');
-  const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [inventoryLoading, setInventoryLoading] = useState(canManage);
   const [inventoryRevision, setInventoryRevision] = useState(0);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -37,20 +41,24 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void) {
       if (!active) return;
       setTenancies(leases);
       const views = tenancyViews(leases);setTenants(views.tenants);setContracts(views.contracts);
-      setRooms(apartments.map(a => ({ ...a, currentTenantId: leases.find(c => c.apartmentId === a.id && c.status === 'ACTIVE')?.customerId })));
+      const inventory = apartments.map(a => ({ ...a, currentTenantId: leases.find(c => c.apartmentId === a.id && c.status === 'ACTIVE')?.customerId }));
+      setRooms(inventory);setSelectedRoom(prev => prev ? inventory.find(a => a.id === prev.id) ?? null : null);
       setBuildings(properties.map(p => ({ id: p.id, name: p.name, address: p.address,
-        totalRooms: apartments.filter(a => a.buildingId === p.id).length, pcccCertified: false, legalStatus: p.approvalStatus })));
+        rentalMode: p.rentalMode, verificationSource: p.verificationSource, rightType:p.rightType,rightsValidFrom:p.rightsValidFrom,rightsValidUntil:p.rightsValidUntil,totalRooms: apartments.filter(a => a.buildingId === p.id).length, pcccCertified: false, legalStatus: p.approvalStatus })));
     }).catch(error => { if (active) { setRooms([]); setBuildings([]); setInventoryError(error instanceof Error ? error.message : 'Không thể tải căn hộ.'); } })
       .finally(() => { if (active) setInventoryLoading(false); });
     return () => { active = false; };
   }, [canManage, inventoryRevision]);
   useEffect(() => {
+    setInvoicePage(0);
+  }, [selectedPropertyId]);
+  useEffect(() => {
     if (!canManage) return;
     let active = true;setBillingLoading(true);setBillingError('');
-    ownerInvoices(invoicePage).then(data => { if (active) { setInvoices(data.items.map(invoiceView));setInvoiceTotalPages(data.totalPages); } })
+    ownerInvoices(invoicePage, 20, selectedPropertyId === 'all' ? undefined : selectedPropertyId).then(data => { if (active) { setInvoices(data.items.map(invoiceView));setInvoiceTotalPages(data.totalPages); } })
       .catch(e => { if (active) { setInvoices([]);setBillingError(e.message); } }).finally(() => { if (active) setBillingLoading(false); });
     return () => { active = false; };
-  }, [canManage, invoicePage, billingRevision]);
+  }, [canManage, invoicePage, billingRevision, selectedPropertyId]);
   // ==========================================
 
   // Payment/provider integration is not implemented; do not mark real invoices paid locally.
@@ -67,6 +75,26 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void) {
     const savedRoom = await createOwnerApartment(newRoom);
     setRooms((prev) => [savedRoom, ...prev]);
     setBuildings(prev => prev.map(p => p.id === savedRoom.buildingId ? { ...p, totalRooms: p.totalRooms + 1 } : p));
+  };
+  const handleAddProperty = async (input: PropertyCreateInput) => {
+    const saved = await createOwnerProperty(input);
+    setBuildings(prev => [...prev, { id: saved.property.id, name: saved.property.name, address: saved.property.address,
+      rentalMode: saved.property.rentalMode, legalStatus: saved.property.approvalStatus, pcccCertified: false, totalRooms: saved.apartments.length }]);
+    setRooms(prev => [...saved.apartments, ...prev]);
+    return saved.property.id;
+  };
+  const handlePrices = async (room: Room,input: PriceInput) => {
+    if(room.version===undefined)throw new Error('Tải lại căn hộ trước khi cập nhật giá.');
+    try{const saved=await updateApartmentPrices(room.id,room.version,input);setRooms(prev=>prev.map(r=>r.id===saved.id?{...r,...saved}:r));setSelectedRoom(prev=>prev?.id===saved.id?{...prev,...saved}:prev);}
+    catch(error){setInventoryRevision(v=>v+1);throw error;}
+  };
+  const handlePublication = async (room: Room, status: 'PUBLISHED' | 'HIDDEN') => {
+    if (room.version === undefined) throw new Error('Cần tải lại căn hộ trước khi thay đổi đăng tin.');
+    try {
+      const saved = await setApartmentPublication(room.id, status, room.version);
+      setRooms(prev => prev.map(r => r.id === saved.id ? { ...r, ...saved } : r));
+      setSelectedRoom(prev => prev?.id === saved.id ? { ...prev, ...saved } : prev);
+    } catch (error) { setInventoryRevision(n => n + 1);throw error; }
   };
   // ==========================================
 
@@ -236,7 +264,7 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void) {
     reloadBilling: () => setBillingRevision(value => value + 1), handleSendInvoice,
     buildings, inventoryError, inventoryLoading, reloadInventory: () => setInventoryRevision(value => value + 1),
     selectedRoom, setSelectedRoom, selectedInvoice, setSelectedInvoice,
-    handleMarkPaid, handleAddTenant, handleAddContract, handleAddRoom, handleCheckOut,
+    handleMarkPaid, handleAddTenant, handleAddContract, handleAddRoom, handleAddProperty, handlePrices, handlePublication, handleCheckOut,
     handleUpdateIndices, handleUpdateTicketStatus, handleResetData, handleApproveAudit,
     handleReleaseEscrow, handleCreateEscrow, handleReserveEscrow, handleAddTicket,
     handleSendResidentTicket, handleCreateInvoice, handleAddTransaction, handleSaveConfig: setConfig,

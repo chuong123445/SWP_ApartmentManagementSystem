@@ -1,0 +1,1176 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "An Cu Private Property Dossiers and Admin Review",
+    "version": "1.1.0",
+    "description": "Implemented private PDF/JPEG/PNG up to10MB, VNeID-verified submissions, AUTHORIZATION/SUBLEASE typed papers and validity, Admin confirmation/promotion, append-only renewal. SQL binary private storage, no malware-scan/OCR claim. Self application/expiry endpoints are described in property-rights.openapi.json."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/owner/properties/{id}/evidence-files": {
+      "post": {
+        "operationId": "uploadPrivatePropertyEvidence",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "description": "Exact verified Owner property; DRAFT/NEEDS_INFORMATION/REJECTED or legacy pending with no dossier. Genuine PDF/JPEG/PNG, 5MB and 20M pixels, decoded/re-encoded without metadata. Max200 stored uploads/property; no PDF/SVG/public URL.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "purpose": {
+                    "type": "string",
+                    "enum": [
+                      "RIGHT_DOCUMENT",
+                      "SUPPORTING",
+                      "OWNER_IDENTITY",
+                      "AUTHORIZATION_DOCUMENT",
+                      "ORIGINAL_LEASE",
+                      "SUBLEASE_CONSENT"
+                    ]
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "purpose",
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Private evidence metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceFile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/owner/properties/{id}/verification-dossiers": {
+      "post": {
+        "operationId": "submitOwnerPropertyDossier",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "description": "Versioned property lock. At least one own RIGHT_DOCUMENT, at most20 unique files of correct purpose/property. Preserves earlier submissions; owner/applicant/status/time assigned on server. Pending with any existing dossier/approved cannot resubmit; legacy pending without dossier may submit once without resetting property.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DossierSubmit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "New pending dossier; property becomes pending atomically",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dossier"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "ownerPropertyDossierHistory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Exact Owner history newest first, private",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Dossier"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/property-evidence-files/{id}": {
+      "get": {
+        "operationId": "downloadPrivatePropertyEvidence",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "description": "Exact submitting applicant or owning Owner; ACTIVE Admin only for files referenced by submitted dossiers. Private attachment/no-store/nosniff; no public URL.",
+        "responses": {
+          "200": {
+            "description": "Validated PDF or canonical raster attachment",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "const": "nosniff"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "No staff/Owner access"
+          },
+          "404": {
+            "description": "Missing or not accessible"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/property-dossiers": {
+      "get": {
+        "operationId": "adminPropertyDossierQueue",
+        "description": "ACTIVE ADMIN only; submitted dossiers oldest first. Metadata only; binary content stored separately.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING_APPROVAL",
+                "NEEDS_INFORMATION",
+                "APPROVED",
+                "REJECTED"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Private dossier queue",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DossierPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/property-dossiers/{id}": {
+      "get": {
+        "operationId": "adminPropertyDossierDetail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Private dossier for active Admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dossier"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/property-dossiers/{id}/decisions": {
+      "post": {
+        "operationId": "decidePropertyDossier",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "description": "ACTIVE ADMIN, pending dossier/current integer version only, property+dossier transaction/locks. Reviewer/time/reason persisted. Per-property approval does not publish apartments or verify account/identity automatically.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DossierDecision"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Dossier and property approval state updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dossier"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Rejected by validation, authentication, ownership, current state/version or upload size",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "EvidenceFile": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "RIGHT_DOCUMENT",
+              "SUPPORTING",
+              "OWNER_IDENTITY",
+              "AUTHORIZATION_DOCUMENT",
+              "ORIGINAL_LEASE",
+              "SUBLEASE_CONSENT"
+            ]
+          },
+          "filename": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string",
+            "enum": [
+              "image/png",
+              "image/jpeg"
+            ]
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5242880
+          }
+        },
+        "required": [
+          "id",
+          "purpose",
+          "filename",
+          "contentType",
+          "size"
+        ]
+      },
+      "ReceivingAccount": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "bank": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "accountNumber": {
+            "type": "string",
+            "pattern": "^[0-9]{4,40}$"
+          },
+          "accountHolderName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "bank",
+          "accountNumber",
+          "accountHolderName"
+        ]
+      },
+      "DossierSubmit": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "propertyVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rightType": {
+            "type": "string",
+            "enum": [
+              "OWNERSHIP",
+              "AUTHORIZATION",
+              "SUBLEASE"
+            ]
+          },
+          "receivingAccount": {
+            "$ref": "#/components/schemas/ReceivingAccount"
+          },
+          "documentFileIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            },
+            "minItems": 1,
+            "maxItems": 20
+          },
+          "supportingFileIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            },
+            "minItems": 0,
+            "maxItems": 20
+          },
+          "ownerEvidenceFileIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            },
+            "minItems": 0,
+            "maxItems": 20
+          },
+          "certificateNumber": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true
+          },
+          "certificateIssueDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "certificateIssuePlace": {
+            "type": "string",
+            "maxLength": 200,
+            "nullable": true
+          },
+          "exploitationRightDescription": {
+            "type": "string",
+            "maxLength": 1000,
+            "nullable": true
+          },
+          "rightsValidFrom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "rightsValidUntil": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "originalLeaseFrom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "originalLeaseUntil": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "principalName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "principalDocumentNumber": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9]{12}$"
+          },
+          "authorizationFileIds": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          },
+          "originalLeaseFileIds": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          },
+          "subleaseConsentFileIds": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        },
+        "required": [
+          "propertyVersion",
+          "rightType",
+          "receivingAccount",
+          "documentFileIds"
+        ],
+        "description": "AUTHORIZATION requires rightsValidFrom/Until, principalName/CCCD, original ownership documentFileIds and authorizationFileIds. SUBLEASE additionally requires originalLeaseFrom/Until, originalLeaseFileIds and separate subleaseConsentFileIds. Rights range must be inside original lease, not expired; no automatic one-year inference. All papers must belong to exact property with exact purpose; max20 total. VERIFIED Auth0 required."
+      },
+      "DossierDecision": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "APPROVE",
+              "REQUEST_ADDITIONAL_INFORMATION",
+              "REJECT"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000,
+            "description": "Nonblank required for non-approval."
+          },
+          "rightsConfirmed": {
+            "type": "boolean",
+            "default": false,
+            "description": "Required true for APPROVE of AUTHORIZATION/SUBLEASE after human checks scope and dates."
+          }
+        },
+        "required": [
+          "decision",
+          "version"
+        ]
+      },
+      "Dossier": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "propertyId": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "propertyAddress": {
+            "type": "string"
+          },
+          "applicantName": {
+            "type": "string"
+          },
+          "rightType": {
+            "type": "string",
+            "enum": [
+              "OWNERSHIP",
+              "AUTHORIZATION",
+              "SUBLEASE"
+            ]
+          },
+          "bank": {
+            "type": "string"
+          },
+          "accountNumber": {
+            "type": "string"
+          },
+          "accountHolderName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING_APPROVAL",
+              "NEEDS_INFORMATION",
+              "APPROVED",
+              "REJECTED"
+            ]
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EvidenceFile"
+            },
+            "minItems": 1,
+            "maxItems": 20
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reviewedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "reviewReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "certificateNumber": {
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true
+          },
+          "certificateIssueDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "certificateIssuePlace": {
+            "type": "string",
+            "maxLength": 200,
+            "nullable": true
+          },
+          "exploitationRightDescription": {
+            "type": "string",
+            "maxLength": 1000,
+            "nullable": true
+          },
+          "localFixture": {
+            "type": "boolean",
+            "readOnly": true,
+            "description": "Explicit local illustrative dossier; not a real Admin evidence review."
+          },
+          "rightsValidFrom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "rightsValidUntil": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "originalLeaseFrom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "originalLeaseUntil": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "principalName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "principalDocumentNumber": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9]{12}$"
+          },
+          "applicantDocumentNumber": {
+            "description": "Private persisted verified citizen number; never public listing.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "renewal": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "propertyId",
+          "propertyName",
+          "propertyAddress",
+          "applicantName",
+          "rightType",
+          "bank",
+          "accountNumber",
+          "accountHolderName",
+          "status",
+          "files",
+          "submittedAt",
+          "reviewedAt",
+          "reviewReason",
+          "version"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ]
+      },
+      "DossierPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Dossier"
+            },
+            "minItems": 0,
+            "maxItems": 100
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "totalElements": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalPages": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ]
+      }
+    }
+  }
+}

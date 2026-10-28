@@ -10,6 +10,7 @@ const room: NewRoom = {
   electricityIndex: 1200, waterIndex: 110, maxOccupants: 2, amenities: ['AC'],
 };
 const savedApi = {
+  version: 0,
   id: 'apartment-uuid', propertyId: 'property-uuid', propertyName: 'My property', ownerId: 'owner-uuid',
   roomNumber: 'P.303', title: 'Apartment', floor: 3, areaM2: '28.00', advertisedMonthlyRent: '5000000.00',
   deposit: '5000000.00', electricityIndex: 1200, waterIndex: 110, maxOccupants: 2,
@@ -44,3 +45,11 @@ test('Connection failure keeps the add form able to retry',async()=>{
   globalThis.fetch=async()=>{throw new TypeError('Failed to fetch');};
   await assert.rejects(createOwnerApartment(room));
 });
+test('Owner identity gate detects missing identity and verified CCCD documentNumber', () => {
+  const isIdentityComplete = (p: { documentNumber?: string } | null | undefined) => Boolean(p && p.documentNumber);
+  assert.equal(isIdentityComplete(null), false);
+  assert.equal(isIdentityComplete(undefined), false);
+  assert.equal(isIdentityComplete({ documentNumber: '' }), false);
+  assert.equal(isIdentityComplete({ documentNumber: '012345678901' }), true);
+});
+

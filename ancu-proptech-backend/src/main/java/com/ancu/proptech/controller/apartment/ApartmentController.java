@@ -5,7 +5,7 @@ import com.ancu.proptech.service.apartment.ApartmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
-import java.util.UUID;
+
 @RestController @RequestMapping("/api/v1/apartments") @RequiredArgsConstructor
 public class ApartmentController {
     private final ApartmentService apartments;
@@ -16,6 +16,6 @@ public class ApartmentController {
         @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "6") int size) {
         return apartments.search(q, city, district, ward, minRent, maxRent, bedrooms, page, size);
     }
-    @GetMapping("/{id}") public ApartmentDetail detail(@PathVariable UUID id) { return apartments.detail(id); }
+    @GetMapping("/{id}") public ApartmentDetail detail(@PathVariable Long id) { return apartments.detail(id); }
     @GetMapping("/address-options") public java.util.List<AddressOption> addresses(){return apartments.addressOptions();}
 }

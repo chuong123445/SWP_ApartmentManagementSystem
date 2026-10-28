@@ -15,6 +15,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { Room, RoomStatus, Tenant } from '@/types';
+import { ApartmentImage } from '@/components/apartments/ApartmentImage';
 
 interface RoomsPageProps {
   rooms: Room[];
@@ -48,7 +49,7 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
         };
       case 'available':
         return {
-          label: 'Phòng trống',
+          label: 'Căn hộ trống',
           bg: 'bg-slate-100 text-slate-700 border-slate-300',
           dot: 'bg-slate-400',
         };
@@ -87,9 +88,9 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
             </span>
           </div>
           <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <span>Sơ Đồ Phòng Trọ & Căn Hộ Cho Thuê</span>
+            <span>Danh sách căn hộ</span>
             <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full font-semibold">
-              {filteredRooms.length}/{rooms.length} phòng
+              {filteredRooms.length}/{rooms.length} căn hộ
             </span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
@@ -121,7 +122,7 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
             },
             {
               id: 'available',
-              label: `Phòng trống (${rooms.filter((r) => r.status === 'available').length})`,
+              label: `Căn hộ trống (${rooms.filter((r) => r.status === 'available').length})`,
             },
             {
               id: 'overdue',
@@ -180,6 +181,7 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
               className="bg-white rounded-xl border border-slate-200 hover:border-emerald-500 p-4 shadow-xs transition-all hover:shadow-md cursor-pointer flex flex-col justify-between group"
             >
               <div>
+                <ApartmentImage src={room.image} alt={`Ảnh căn hộ ${room.roomNumber}`} className="w-full aspect-[4/3] object-cover rounded-lg bg-slate-100 mb-3" />
                 {/* Header: Room number & status */}
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <div>
@@ -230,7 +232,7 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
                     </span>
                   ) : (
                     <span className="text-slate-400 font-medium flex items-center gap-1">
-                      <Home className="w-3.5 h-3.5" /> Sẵn sàng đón khách mới
+                      <Home className="w-3.5 h-3.5" /> {room.status === 'available' ? 'Sẵn sàng đón khách mới' : badge.label}
                     </span>
                   )}
                 </div>

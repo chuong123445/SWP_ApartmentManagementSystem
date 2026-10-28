@@ -1,3 +1,4 @@
+import { ApartmentPriceForm, type PriceInput } from '@/components/rooms/ApartmentPriceForm';
 import React, { useState } from 'react';
 import {
   X,
@@ -18,8 +19,11 @@ import {
   Award,
 } from 'lucide-react';
 import { Room, Tenant, Invoice, Contract } from '@/types';
+import { ApartmentImage } from '@/components/apartments/ApartmentImage';
 
 interface RoomDetailModalProps {
+  onPrices?: (room:Room,input:PriceInput)=>Promise<void>;
+  onPublication?: (room: Room, status: 'PUBLISHED' | 'HIDDEN') => Promise<void>;
   room: Room | null;
   tenant: Tenant | undefined;
   contract: Contract | undefined;
@@ -39,8 +43,11 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
   onOpenInvoiceModal,
   onCheckOut,
   onReserveEscrow,
+  onPublication,
+  onPrices,
 }) => {
   const [reserveSuccess, setReserveSuccess] = useState(false);
+  const [publicationBusy, setPublicationBusy] = useState(false);const [publicationError, setPublicationError] = useState('');
 
   if (!room) return null;
 
@@ -54,6 +61,11 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl max-w-2xl w-full border border-slate-200 shadow-2xl overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-150">
+        {(room.electricityUnitPrice != null || room.waterUnitPrice != null) && <div className="p-4 bg-emerald-50 text-sm">
+          {room.electricityUnitPrice != null && <p>Đơn giá điện: {room.electricityUnitPrice} đ/kWh</p>}
+          {room.waterUnitPrice != null && <p>Đơn giá nước: {room.waterUnitPrice} đ/m³</p>}
+        </div>}
+        {onPrices&&<ApartmentPriceForm room={room} onSave={onPrices}/>}
         {/* Modal Header */}
         <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
           <div>
@@ -61,7 +73,7 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
               <h3 className="text-xl font-bold">Căn Hộ {room.roomNumber}</h3>
               <span className="text-xs bg-emerald-500/20 text-emerald-300 font-semibold px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                {room.propertyApprovalStatus === 'APPROVED' ? 'Tài sản đã được duyệt' : room.propertyApprovalStatus === 'REJECTED' ? 'Tài sản bị từ chối' : 'Tài sản chờ duyệt'}
+                {room.propertyApprovalStatus === 'APPROVED' ? 'Tài sản đã được duyệt' : room.propertyApprovalStatus === 'DRAFT' ? 'Tài sản nháp – chưa gửi hồ sơ' : room.propertyApprovalStatus === 'NEEDS_INFORMATION' ? 'Tài sản cần bổ sung hồ sơ' : room.propertyApprovalStatus === 'REJECTED' ? 'Tài sản bị từ chối' : 'Tài sản chờ duyệt'}
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
@@ -82,9 +94,9 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
           {/* Room Image */}
           {room.image && (
             <div className="relative h-44 w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
-              <img src={room.image} alt={room.roomNumber} className="w-full h-full object-cover" />
+              <ApartmentImage src={room.image} alt={`Ảnh căn hộ ${room.roomNumber}`} className="w-full h-full object-cover" />
               <div className="absolute bottom-2 left-2 bg-slate-900/80 backdrop-blur-xs text-white text-xs px-2.5 py-1 rounded-md font-semibold">
-                Ảnh thực tế 100% không chỉnh sửa
+                Ảnh căn hộ
               </div>
             </div>
           )}
@@ -127,12 +139,15 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
                 Tài sản: {room.propertyName}
               </span>
               <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
-                {room.propertyApprovalStatus === 'APPROVED' ? 'Đã duyệt' : room.propertyApprovalStatus === 'REJECTED' ? 'Từ chối' : 'Chờ duyệt'}
+                {room.propertyApprovalStatus === 'APPROVED' ? 'Đã duyệt' : room.propertyApprovalStatus === 'DRAFT' ? 'Nháp' : room.propertyApprovalStatus === 'NEEDS_INFORMATION' ? 'Cần bổ sung' : room.propertyApprovalStatus === 'REJECTED' ? 'Từ chối' : 'Chờ duyệt'}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2 text-slate-700 text-[11px]">
               <div>• Đăng tin: <strong>{room.publicationStatus === 'PUBLISHED' ? 'Đã đăng' : room.publicationStatus === 'HIDDEN' ? 'Đã ẩn' : 'Bản nháp'}</strong></div>
             </div>
+            {onPublication && <div className="space-y-2"><button type="button" disabled={publicationBusy || (room.publicationStatus !== 'PUBLISHED' && room.propertyApprovalStatus !== 'APPROVED')} onClick={async () => {
+              setPublicationError('');setPublicationBusy(true);try { await onPublication(room, room.publicationStatus === 'PUBLISHED' ? 'HIDDEN' : 'PUBLISHED'); } catch (e) { setPublicationError(e instanceof Error ? e.message : 'Không cập nhật được đăng tin.'); } finally { setPublicationBusy(false); }
+            }} className="bg-emerald-600 text-white px-3 py-2 rounded-lg font-semibold disabled:opacity-50">{publicationBusy ? 'Đang cập nhật...' : room.publicationStatus === 'PUBLISHED' ? 'Ẩn tin căn hộ' : 'Công khai căn hộ'}</button>{room.propertyApprovalStatus !== 'APPROVED' && <p>Cần tài sản được Admin duyệt trước khi công khai.</p>}{publicationError && <p role="alert" className="text-rose-700">{publicationError}</p>}</div>}
           </div>
 
           {/* Tenant Profile if occupied */}
