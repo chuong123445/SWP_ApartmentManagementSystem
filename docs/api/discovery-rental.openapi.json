@@ -3,7 +3,7 @@
   "info": {
     "title": "An Cu Discovery and Rental Requests",
     "version": "1.2.0",
-    "description": "Implemented public discovery, verified renter submission/cancellation/history, and Owner inbox with accept/reject decisions. CUSTOMER and OWNER acting as renter use the same server verification policy. Property dossier and Owner inventory endpoints are documented separately."
+    "description": "Implemented public discovery, verified renter submission/cancellation/history, and Owner inbox with accept/reject decisions. CUSTOMER and OWNER acting as renter use the same server verification policy. Property dossier and Owner inventory endpoints are documented separately. Private owner detail extension28October: authenticated exact Property owner may read own unpublished draft and receive management capability metadata; others still require public visibility. Detail no-store, JWT remains Bearer, source/legal data and saved contracts not editable through marketing commands."
   },
   "servers": [
     {
@@ -127,7 +127,13 @@
           "404": {
             "$ref": "#/components/responses/Error"
           }
-        }
+        },
+        "security": [
+          {},
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/apartments/{id}/rental-requests": {
@@ -703,6 +709,11 @@
                 "type": "boolean"
               }
             }
+          },
+          "management": {
+            "type": "object",
+            "nullable": true,
+            "description": "Owner-only management metadata; see asset-management.openapi.json Management. Null for everyone else."
           }
         }
       },

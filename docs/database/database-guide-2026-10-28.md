@@ -18,6 +18,12 @@ Phần 29 bảng bên dưới là ảnh chụp live tại V19. Đợt này chỉ
 
 Sau hai migration, schema thiết kế có thêm 1 bảng và 1 cột IDENTITY so với ảnh chụp V19. Existing contract JSON giữ nguyên; hợp đồng mới có `snapshot.evidence` thể hiện nguồn xác thực. Tài sản vẫn dùng chung `rental_properties/rental_apartments`; chỉ bằng chứng Admin/Auth0 lưu riêng theo bản chất nguồn.
 
+## Bổ sung V22 — consent đọc tài sản độc lập với quyền Owner
+
+`property_source_consents` là bảng mới, dùng `account_id` BIGINT làm PK/FK chung với account (không phải một ID UUID hoặc root entity có IDENTITY riêng). Lưu `issuer`, `subject`, `consented_at`, `consent_version` để giới hạn quyền đọc đúng nguồn của chính tài khoản. Không lưu danh sách tài sản, JWT, mật khẩu hoặc M2M secret và không cấp Owner khi ghi consent.
+
+`auth_owner_upgrades` cũ giữ nguyên dữ liệu audit; luồng mới không dùng việc đồng ý/số lượng preview để nâng quyền. Owner mới được ghi cùng transaction tạo tài sản nguồn hợp lệ hoặc khi Admin duyệt hồ sơ thủ công đầu tiên. `rental_properties.version` cũng tăng khi thay gallery để chống cập nhật mất dữ liệu; không thêm bảng ảnh thứ hai. Không thay hợp đồng, khóa chính hoặc trạng thái thuê có sẵn. V22 chỉ áp dụng live khi restart Backend; phiên triển khai đã chạy trên SQL clone.
+
 ## 1. Phân biệt các trạng thái xác thực
 
 | Vị trí | Ý nghĩa | Có xác thực CCCD không? |

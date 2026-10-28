@@ -2,13 +2,13 @@
   "openapi": "3.0.3",
   "info": {
     "title": "An Cu VNeID property import",
-    "version": "1.1.0",
-    "description": "Implemented Auth0 simulation source. Source-owned assets only; manual property review remains separate. Source evidence stays separate from Admin decisions; properties/units stay shared. Source rightDescription is retained for new imports. Receiving account is owner-declared, name-matched to linked verified citizen; not bank verification."
+    "version": "2.0.0",
+    "description": "Implemented Auth0 simulation source. Source-owned assets only; manual property review remains separate. Source evidence stays separate from Admin decisions; properties/units stay shared. Source rightDescription is retained for new imports. Receiving account is owner-declared, name-matched to linked verified citizen; not bank verification. Current28October: ACTIVE VERIFIED CUSTOMER or OWNER with explicit current linked-source consent may preview/import. Preview/consent does not promote. Successful complete source import atomically grants OWNER if needed; source property is not a manual onboarding dossier."
   },
   "paths": {
     "/api/v1/owner/properties/vneid-assets": {
       "get": {
-        "summary": "Read linked verified Owner's eligible source assets on explicit selection",
+        "summary": "After explicit source consent, read exact linked verified account assets without granting Owner",
         "security": [
           {
             "internalBearer": []
@@ -22,7 +22,7 @@
             "description": "Invalid session"
           },
           "403": {
-            "description": "Not active verified Owner or VNEID_REQUIRED"
+            "description": "VNEID_REQUIRED, ASSET_CONSENT_REQUIRED or ineligible account; no provider call before consent"
           },
           "503": {
             "description": "Provider unavailable/invalid; no sample fallback"
@@ -33,7 +33,7 @@
     "/api/v1/owner/properties/vneid-imports": {
       "post": {
         "summary": "Complete rental terms and import/publish a source-owned asset without Admin review",
-        "description": "Server rereads exact linked subject and exact asset, checks sourceVersion and complete exact unit set; locks/rechecks owner session/link; unique issuer+external_asset_id. Atomic Property APPROVED, Apartment PUBLISHED/VACANT, rates/baselines and V15 private source audit. No fake Admin decision. Cannot add manual units into imported property. Caller cannot select account/owner/approval/area/address/source/verified fields. Rentable status is not contract activation or payment.",
+        "description": "Server rereads exact linked subject and exact asset, checks sourceVersion and complete exact unit set; locks/rechecks owner session/link; unique issuer+external_asset_id. Atomic Property APPROVED, Apartment PUBLISHED/VACANT, rates/baselines and V15 private source audit. No fake Admin decision. Cannot add manual units into imported property. Caller cannot select account/owner/approval/area/address/source/verified fields. Rentable status is not contract activation or payment. Exact verified CUSTOMER/OWNER and consent required. Atomic validated creation, source evidence and CUSTOMER→OWNER at successful commit. Failure/stale/missing fields never promotes.",
         "security": [
           {
             "internalBearer": []

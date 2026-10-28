@@ -1,27 +1,159 @@
 {
   "openapi": "3.0.3",
-  "info": { "title": "An Cu ordinary registration and Owner upgrade", "version": "1.0.0" },
+  "info": {
+    "title": "An Cu ordinary registration and Owner upgrade",
+    "version": "2.0.0",
+    "description": "Asset-bound activation replaces consent/count-based role promotion. Current source consent/self asset endpoints are in asset-management.openapi.json."
+  },
   "paths": {
-    "/api/v1/auth/register": { "post": {
-      "summary": "Register an ordinary CUSTOMER; caller cannot select a role",
-      "security": [{ "csrf": [] }],
-      "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "additionalProperties": false, "required": ["email", "password", "fullName"], "properties": {
-        "email": { "type": "string", "format": "email", "maxLength": 254 }, "password": { "type": "string", "minLength": 12, "maxLength": 72 }, "fullName": { "type": "string", "minLength": 1, "maxLength": 100 }, "phone": { "type": "string", "maxLength": 20 }
-      } } } } },
-      "responses": { "201": { "description": "AuthUserResponse CUSTOMER/PENDING_VERIFICATION; no session or password returned" }, "400": { "description": "Invalid/unknown fields including requestedRole and role" }, "403": { "description": "Missing CSRF" }, "409": { "description": "Email already used" } }
-    } },
-    "/api/v1/me/owner-upgrade": {
-      "get": { "summary": "Read own upgrade prerequisites without contacting asset provider", "security": [{ "internalBearer": [] }], "responses": {
-        "200": { "description": "{role, identityVerified, assetServiceAvailable, version}; no-store; no M2M credentials/asset list" }, "401": { "description": "Missing or invalid session" }
-      } },
+    "/api/v1/auth/register": {
       "post": {
-        "summary": "Explicitly consent, check linked Auth0 assets server-side, and upgrade CUSTOMER to OWNER",
-        "description": "Requires ACTIVE ordinary account and persisted VERIFIED VNeID identity. Server reads linked subject app_metadata.vneid.assets via Management API using Backend-only credentials; needs >=1 supported owned rentable asset. Never trusts client roles, actor IDs, asset lists/counts or verification flags. Provider failure/empty data never promotes. V14 stores consent version/time and eligible count; account version/row lock guards commit; repeat for existing OWNER is idempotent. Retains exact-party rental access; no property import/publication/approval implied.",
-        "security": [{ "internalBearer": [], "csrf": [] }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "additionalProperties": false, "required": ["consent", "version"], "properties": { "consent": { "type": "boolean", "enum": [true] }, "version": { "type": "integer", "format": "int64", "minimum": 0 } } } } } },
-        "responses": { "200": { "description": "AuthUserResponse with server role OWNER; no-store; existing session remains valid" }, "400": { "description": "No consent or invalid/unknown fields" }, "401": { "description": "Missing/revoked session" }, "403": { "description": "Missing CSRF, ACCOUNT_UNAVAILABLE, VNEID_REQUIRED, OWNER_ASSET_REQUIRED or disallowed role" }, "409": { "description": "VERSION_CONFLICT or VNEID_LINK_CHANGED" }, "503": { "description": "ASSET_SOURCE_UNAVAILABLE or ASSET_SOURCE_INVALID; no role change" } }
+        "summary": "Register an ordinary CUSTOMER; caller cannot select a role",
+        "security": [
+          {
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "email",
+                  "password",
+                  "fullName"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "maxLength": 254
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 12,
+                    "maxLength": 72
+                  },
+                  "fullName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "phone": {
+                    "type": "string",
+                    "maxLength": 20
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "AuthUserResponse CUSTOMER/PENDING_VERIFICATION; no session or password returned"
+          },
+          "400": {
+            "description": "Invalid/unknown fields including requestedRole and role"
+          },
+          "403": {
+            "description": "Missing CSRF"
+          },
+          "409": {
+            "description": "Email already used"
+          }
+        }
+      }
+    },
+    "/api/v1/me/owner-upgrade": {
+      "get": {
+        "summary": "Read own upgrade prerequisites without contacting asset provider",
+        "security": [
+          {
+            "internalBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{role, identityVerified, assetServiceAvailable, version}; no-store; no M2M credentials/asset list"
+          },
+          "401": {
+            "description": "Missing or invalid session"
+          }
+        }
+      },
+      "post": {
+        "summary": "Deprecated: Customer must complete property onboarding; consent alone never promotes",
+        "description": "Returns409 PROPERTY_ONBOARDING_REQUIRED for Customer, with no provider asset read or role change. Existing Owner returns current AuthUserResponse unchanged for compatibility. Use relationship selection, source consent, then successful source property creation; manual AUTHORIZATION/SUBLEASE grants Owner only on Admin approval.",
+        "security": [
+          {
+            "internalBearer": [],
+            "csrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "consent",
+                  "version"
+                ],
+                "properties": {
+                  "consent": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
+                  },
+                  "version": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Existing Owner only, unchanged account"
+          },
+          "400": {
+            "description": "Invalid consent/version/unknown fields"
+          },
+          "401": {
+            "description": "Invalid session"
+          },
+          "403": {
+            "description": "Missing CSRF"
+          },
+          "409": {
+            "description": "PROPERTY_ONBOARDING_REQUIRED"
+          }
+        },
+        "deprecated": true
       }
     }
   },
-  "components": { "securitySchemes": { "internalBearer": { "type": "http", "scheme": "bearer", "bearerFormat": "Internal session JWT" }, "csrf": { "type": "apiKey", "in": "header", "name": "X-XSRF-TOKEN" } } }
+  "components": {
+    "securitySchemes": {
+      "internalBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Internal session JWT"
+      },
+      "csrf": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-XSRF-TOKEN"
+      }
+    }
+  }
 }

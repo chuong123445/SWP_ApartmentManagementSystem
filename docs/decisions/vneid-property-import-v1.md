@@ -19,3 +19,7 @@ User đưa proposal phân nhánh chính chủ/được ủy quyền/thuê lại 
 Blocker nghiệp vụ hiện tại: nâng cấp Owner đòi ít nhất một tài sản Auth0 chính chủ, nên user chỉ có ủy quyền/thuê lại chưa vào được Owner dossier. Cần thêm Self onboarding cho Customer đủ điều kiện nộp hồ sơ; khi Admin duyệt quyền đầu tiên mới cấp chức năng quản lý Owner cùng quyền đúng property. Không bỏ gate hiện tại cho mọi user hoặc auto-promote bằng client role. SMS OTP chưa có provider, không được gọi phone verified từ UI. Chưa quyết định/triển khai expiry/revocation hoặc diễn giải mọi trường hợp phải công chứng; đó cần quy tắc riêng trước khi code.
 
 Luồng source import hoàn tất vẫn giữ theo yêu cầu đã giao; nhánh agent/sublease mới là đánh giá, chưa được thêm vào API/role/schema bằng task này.
+
+## Current override — asset-bound activation, 28 October 2026
+
+User replaced the original consent/count-only Owner upgrade. New flow is Customer-layout /account/properties, per-property relationship selection, then source consent after OWNERSHIP choice. Consent/preview never promotes. A complete validated source property import grants OWNER atomically with Property/units/evidence; AUTHORIZATION/SUBLEASE grants it only on Admin approval as before. Existing Owners/data remain unchanged. Workspace is operational; shared /apartments/{id} provides exact-owner editing/private draft access. Read asset-management-and-lessor-activation-v2.md and asset-management-lessor-flow-2026-10-28 report; this override takes precedence over the historical steps above.
