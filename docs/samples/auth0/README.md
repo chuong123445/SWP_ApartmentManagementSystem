@@ -2,20 +2,22 @@
 
 Ngày chuẩn bị: 28/10/2026. **Toàn bộ tên, CCCD, giấy chứng nhận và thông tin sở hữu là dữ liệu hư cấu để test SWP**, không xác nhận quyền sở hữu thực tế. Dùng miền `example.com` dành cho tài liệu; không gửi email/OTP tới các địa chỉ này.
 
+Email dùng họ tên không dấu viết liền + `@example.com`, không chứa vai trò tài khoản.
+
 ## Danh sách
 
 | Email | Họ tên | Số tài sản | Số căn/phòng | Trường hợp thử |
 |---|---|---:|---:|---|
-| owner03@example.com | NGUYỄN MINH KHANG | 1 | 1 | Một căn hộ2phòng ngủ |
-| owner04@example.com | TRẦN THỊ THU HÀ | 1 | 4 | Một nhà gồm4căn/phòng nhỏ |
-| owner05@example.com | LÊ QUỐC BẢO | 2 | 2 | Căn hộ và nhà nguyên căn |
-| owner06@example.com | PHẠM NGỌC ANH | 2 | 4 | Căn hộ3phòng ngủ và nhà3studio |
-| owner07@example.com | VÕ HOÀNG NAM | 3 | 7 | Hai tài sản nguyên căn và khu5căn |
-| owner08@example.com | ĐẶNG THỊ MAI LAN | 1 | 1 | Biệt thự4phòng ngủ |
-| owner09@example.com | BÙI GIA HUY | 2 | 7 | Duplex và nhà6căn/studio |
-| owner10@example.com | ĐỖ THỊ KHÁNH LINH | 3 | 6 | Căn hộ, nhà4căn, nhà nguyên căn |
-| owner11@example.com | HUỲNH THANH TÙNG | 2 | 2 | Căn hộ và nhà vườn |
-| owner12@example.com | PHAN THỊ NGỌC DIỆP | 4 | 9 | Hai tài sản nguyên căn và hai nhà chia nhiều căn |
+| nguyenminhkhang@example.com | NGUYỄN MINH KHANG | 1 | 1 | Một căn hộ2phòng ngủ |
+| tranthithuha@example.com | TRẦN THỊ THU HÀ | 1 | 4 | Một nhà gồm4căn/phòng nhỏ |
+| lequocbao@example.com | LÊ QUỐC BẢO | 2 | 2 | Căn hộ và nhà nguyên căn |
+| phamngocanh@example.com | PHẠM NGỌC ANH | 2 | 4 | Căn hộ3phòng ngủ và nhà3studio |
+| vohoangnam@example.com | VÕ HOÀNG NAM | 3 | 7 | Hai tài sản nguyên căn và khu5căn |
+| dangthimailan@example.com | ĐẶNG THỊ MAI LAN | 1 | 1 | Biệt thự4phòng ngủ |
+| buigiahuy@example.com | BÙI GIA HUY | 2 | 7 | Duplex và nhà6căn/studio |
+| dothikhanhlinh@example.com | ĐỖ THỊ KHÁNH LINH | 3 | 6 | Căn hộ, nhà4căn, nhà nguyên căn |
+| huynhthanhtung@example.com | HUỲNH THANH TÙNG | 2 | 2 | Căn hộ và nhà vườn |
+| phanthingocdiep@example.com | PHAN THỊ NGỌC DIỆP | 4 | 9 | Hai tài sản nguyên căn và hai nhà chia nhiều căn |
 | **Tổng** | **10tài khoản** | **21** | **43** | SINGLE_UNIT và MULTI_UNIT |
 
 Tất cả tài sản dùng OWNERSHIP/SOLE_OWNER, ID tài sản/căn và CCCD khác nhau. CCCD dùng dải999 để nhận diện dữ liệu hư cấu, đủ12chữ số theo validator mô phỏng. `floor_area_m2` là số JSON, DOB `dd/MM/yyyy`; khớp Backend/Action đang có. Không đặt role OWNER hoặc verified=true từ JSON. `email_verified=false` giữ đúng trạng thái chưa xác thực email.
@@ -25,7 +27,7 @@ Tất cả tài sản dùng OWNERSHIP/SOLE_OWNER, ID tài sản/căn và CCCD kh
 - `users.json` cạnh README: **chỉ là profile/metadata không có password**, được Git theo dõi; không dùng trực tiếp file này nếu muốn import rồi đăng nhập ngay bằng password.
 - Bộ sẵn dùng được tạo tại `ancu-proptech-backend/target/auth0-test-users-2026-10-28/`, không đưa lên Git.
 - `auth0-users-import.json`: một mảng10user, bcrypt `$2a$10$` trong `password_hash`, dành cho Bulk Import.
-- `create-users/owner03.json` đến `owner12.json`: mỗi file một user, có `password`, dành cho giao diện **Create User bằng JSON** đang dùng.
+- `create-users/nguyenminhkhang.json` đến `phanthingocdiep.json`: mỗi file một user, có `password`, dành cho giao diện **Create User bằng JSON** đang dùng.
 - `TAI-KHOAN-VA-MAT-KHAU.md`: email/password để đăng nhập thử Auth0.
 - File ZIP nằm cạnh thư mục: `ancu-proptech-backend/target/auth0-test-users-2026-10-28.zip`.
 
@@ -35,9 +37,11 @@ Không trộn hai kiểu: Bulk Import dùng `password_hash`, không nhận plain
 
 **Cách1 — Import một lần:** nếu Dashboard có Import/Export Users, chọn Import, chọn database connection **Username-Password-Authentication** và chọn `auth0-users-import.json` trong bộ private. File đã có password hash, có thể đăng nhập bằng password trong danh sách. Nếu import báo trùng email/user, dừng để kiểm tra; không bật ghi đè/upsert vào tài khoản đang có.
 
-**Cách2 — Tạo từng user bằng JSON:** Users → Create User → giao diện JSON; chọn connection trên → mở `create-users/owner03.json`, chép toàn bộ nội dung rồi Create; lặp lại đến owner12. Cách này phù hợp màn hình Create User mà bạn đã gửi trước đây.
+**Cách2 — Tạo từng user bằng JSON:** Users → Create User → giao diện JSON; chọn connection trên → mở `create-users/nguyenminhkhang.json`, chép toàn bộ nội dung rồi Create; lặp lại cho đủ10tài khoản. Cách này phù hợp màn hình Create User mà bạn đã gửi trước đây.
 
 Cả nhóm dùng chung tenant thì chỉ cần một người thêm một lần. **Không cần cấp thêm quyền ghi user cho M2M Backend** chỉ để import bằng Dashboard. Task này chuẩn bị file, chưa gọi Auth0 để tạo/ghi tài khoản thật.
+
+Nếu đã import bộ email "ownerNN@example.com" trước đó, sửa email trên các user Auth0 đã có và giữ user_id/metadata; không import thêm bản thứ hai cùng CCCD. Task này chỉ cập nhật file local, chưa đổi tài khoản trên Auth0.
 
 ## Test trong ứng dụng
 
