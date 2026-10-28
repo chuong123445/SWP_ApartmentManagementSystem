@@ -3,7 +3,7 @@
   "info": {
     "title": "An Cu Discovery and Rental Requests",
     "version": "1.2.0",
-    "description": "Implemented public discovery, verified-Customer submission/cancellation/history, and Owner inbox with accept/reject decisions. Property approval UI and apartment update/delete are not implemented. Owner list/create is documented separately."
+    "description": "Implemented public discovery, verified renter submission/cancellation/history, and Owner inbox with accept/reject decisions. CUSTOMER and OWNER acting as renter use the same server verification policy. Property dossier and Owner inventory endpoints are documented separately."
   },
   "servers": [
     {
@@ -143,7 +143,7 @@
             "BearerAuth": []
           }
         ],
-        "description": "Serializes submission on apartment lock; rejects same Customer/Apartment PENDING or ACCEPTED with 409 RENTAL_REQUEST_EXISTS. CANCELLED/REJECTED history does not block a new request. Never reserves apartment. Customer must be ACTIVE with verified email evidence through AccountVerificationPolicy; legacy summary or phone flag alone cannot grant access.",
+        "description": "Serializes submission on apartment lock; rejects same Customer/Apartment PENDING or ACCEPTED with 409 RENTAL_REQUEST_EXISTS. CANCELLED/REJECTED history does not block a new request. Never reserves apartment. Renter must be ACTIVE and satisfy AccountVerificationPolicy through verified email OR persisted VERIFIED Auth0 VNeID evidence. No manual CCCD dossier is required. Summary flags, phone alone or self-declared identity cannot grant access. OWNER may rent another owner's apartment but cannot rent their own.",
         "requestBody": {
           "required": true,
           "content": {

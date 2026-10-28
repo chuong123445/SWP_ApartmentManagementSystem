@@ -146,3 +146,42 @@ test('Remembered Auth0 SSO session still requests explicit reauthentication befo
   expect(fixture.commands()).toBe(0);
   expect(fixture.errors).toEqual([]);
 });
+
+async function apartmentReturnFixture(page: Page) {
+  let manualReads = 0;
+  await page.route('**/api/v1/apartments/3', route => route.fulfill({ json: {
+    id: '3', title: 'Căn hộ quay lại sau VNeID', description: '', address: 'Địa chỉ kiểm thử', propertyName: 'Tài sản kiểm thử',
+    areaM2: '40', bedrooms: 1, bathrooms: 1, advertisedMonthlyRent: '4500000', availability: 'VACANT', amenities: [], images: [],
+    publicOwner: { displayName: 'Chủ nhà kiểm thử' },
+  } }));
+  await page.route('**/api/v1/me/apartments/3/rental-requests', route => route.fulfill({ json: [] }));
+  await page.route('**/api/v1/me/identity', route => { manualReads++; return route.fulfill({ status: 204 }); });
+  return () => manualReads;
+}
+
+test('VNeID login returns to numeric apartment ID and does not require manual identity', async ({ page }) => {
+  const fixture = await oauthFixture(page, 'login');
+  const manualReads = await apartmentReturnFixture(page);
+  await page.goto('/apartments/3');
+  await page.getByRole('link', { name: 'Đăng nhập để gửi yêu cầu thuê' }).click();
+  await page.getByRole('button', { name: 'Đăng nhập bằng VNeID mô phỏng' }).click();
+  await expect(page).toHaveURL(/\/apartments\/3$/);
+  await expect(page.getByLabel('Lời nhắn cho chủ nhà')).toBeVisible();
+  expect(fixture.commands()).toBe(1);
+  expect(manualReads()).toBe(0);
+  expect(fixture.errors).toEqual([]);
+});
+
+test('pending Customer returns to apartment after self verification through the actual OAuth callback', async ({ page }) => {
+  const fixture = await oauthFixture(page, 'verify');
+  const manualReads = await apartmentReturnFixture(page);
+  await page.goto('/apartments/3');
+  await page.getByRole('button', { name: 'Gửi yêu cầu thuê', exact: true }).click();
+  await page.getByRole('link', { name: 'Quản lý xác thực tài khoản' }).click();
+  await page.getByRole('button', { name: 'Xác thực bằng VNeID mô phỏng' }).click();
+  await expect(page).toHaveURL(/\/apartments\/3$/);
+  await expect(page.getByLabel('Lời nhắn cho chủ nhà')).toBeVisible();
+  expect(fixture.commands()).toBe(1);
+  expect(manualReads()).toBe(0);
+  expect(fixture.errors).toEqual([]);
+});

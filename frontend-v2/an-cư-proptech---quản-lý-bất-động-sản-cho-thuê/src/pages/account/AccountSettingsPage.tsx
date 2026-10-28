@@ -28,7 +28,7 @@ export function AccountSettingsPage() {
         {profile.email && <Link className={`${linkClass} ${!profile.emailVerified ? 'ml-3' : ''}`} to="/account/settings/email">{profile.emailVerified ? 'Cập nhật email' : 'Thêm email khác'}</Link>}
       </section>
       <section className="bg-white border rounded-xl p-6"><h2 className="text-lg font-bold">Số điện thoại</h2><p className="text-sm text-slate-500 mt-2">{profile.phone || 'Chưa thêm số điện thoại'} · {profile.phoneVerified ? 'Đã xác thực' : 'Chưa xác thực'}</p><Link className={linkClass} to="/account/settings/phone">Cập nhật số điện thoại</Link></section>
-      <section className="bg-white border rounded-xl p-6"><h2 className="text-lg font-bold">Danh tính</h2><p className="text-sm text-slate-500 mt-2">Quản lý thông tin căn cước, địa chỉ và ảnh giấy tờ riêng tư. Hiện hỗ trợ lưu hồ sơ; chưa hỗ trợ kiểm tra eKYC.</p><Link className={linkClass} to="/account/settings/identity">Xác thực danh tính</Link></section>
+      <section className="bg-white border rounded-xl p-6"><h2 className="text-lg font-bold">Danh tính</h2><p className="text-sm text-slate-500 mt-2">{verification.data?.vneid.status === 'VERIFIED' ? 'Thông tin căn cước đã xác thực qua VNeID, không cần nhập lại.' : 'Xem thông tin căn cước hoặc lưu hồ sơ giấy tờ riêng tư.'}</p><Link className={linkClass} to="/account/settings/identity">{verification.data?.vneid.status === 'VERIFIED' ? 'Xem căn cước đã xác thực' : 'Quản lý thông tin căn cước'}</Link></section>
     </div>}
   </AccountLayout>;
 }

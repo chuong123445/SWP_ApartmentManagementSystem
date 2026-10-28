@@ -32,6 +32,8 @@ class DiscoveryRentalIntegrationTests {
     @Autowired PropertyRepository properties;
     @Autowired ApartmentRepository apartments;
     @Autowired RentalRequestRepository requests;
+    @Autowired com.ancu.proptech.repository.auth.ExternalIdentityRepository externalIdentities;
+    @Autowired com.ancu.proptech.repository.identity.IdentityProfileRepository manualIdentities;
     @Autowired AuthService auth;
     @Autowired PasswordEncoder passwords;
     @Autowired EntityManager em;
@@ -96,6 +98,33 @@ class DiscoveryRentalIntegrationTests {
         ownerA.setEmailVerified(false);ownerA.setPhoneVerified(true);ownerA.setContactVerified(true);accounts.flush();
         mvc.perform(post("/api/v1/apartments/"+otherApartment.getId()+"/rental-requests").header("Authorization",bearer(ownerA))
                 .contentType("application/json").content("{\"message\":\"Thuê nhà\"}"))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CONTACT_NOT_VERIFIED"));
+    }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(value=AuthAccount.Role.class,names={"CUSTOMER","OWNER"})
+    void persistedVneidAllowsRequestHistoryAndCancellationWithoutEmailOrManualIdentity(AuthAccount.Role role) throws Exception {
+        customerA.setRole(role);customerA.setEmailVerified(false);customerA.setContactVerified(false);
+        accounts.flush();
+        com.ancu.proptech.support.VerifiedIdentityFixtures.bind(externalIdentities,customerA);
+        org.junit.jupiter.api.Assertions.assertFalse(manualIdentities.existsById(customerA.getId()));
+        var token=bearer(customerA);
+        mvc.perform(post("/api/v1/apartments/"+apartment.getId()+"/rental-requests").header("Authorization",token)
+                .contentType("application/json").content("{\"message\":\"Đã xác thực VNeID\"}"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("PENDING"));
+        mvc.perform(get("/api/v1/me/rental-requests").header("Authorization",token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1));
+        var saved=requests.findByCustomerIdAndApartmentIdAndStatusInOrderByCreatedAtDescIdDesc(customerA.getId(),apartment.getId(),List.of(com.ancu.proptech.model.rental.RentalRequest.Status.PENDING)).getFirst();
+        mvc.perform(post("/api/v1/me/rental-requests/"+saved.getId()+"/cancel").header("Authorization",token)
+                .contentType("application/json").content("{\"version\":"+saved.getVersion()+"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CANCELLED"));
+        org.junit.jupiter.api.Assertions.assertFalse(customerA.isEmailVerified());
+        org.junit.jupiter.api.Assertions.assertFalse(manualIdentities.existsById(customerA.getId()));
+    }
+    @Test void identitySummaryWithoutExternalEvidenceCannotGrantRentalAccess() throws Exception {
+        customerA.setEmailVerified(false);customerA.setContactVerified(true);customerA.setIdentityVerified(true);accounts.flush();
+        org.junit.jupiter.api.Assertions.assertFalse(externalIdentities.existsById(customerA.getId()));
+        mvc.perform(post("/api/v1/apartments/"+apartment.getId()+"/rental-requests").header("Authorization",bearer(customerA))
+                .contentType("application/json").content("{}"))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CONTACT_NOT_VERIFIED"));
     }
     @Test void ownerPropertyFilterRunsBeforePaginationAndNeverExpandsOwnership() throws Exception {

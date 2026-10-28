@@ -51,6 +51,12 @@ test('login redirects only to supported local pages', () => {
   assert.equal(loginDestination(user, 'https://external.example'), '/');
   assert.equal(loginDestination(user, '//external.example'), '/');
   assert.equal(loginDestination(user, '/my/rental-requests'), '/my/rental-requests');
+  for (const target of ['/apartments/123', '/my/invoices/456', '/my/contracts/9223372036854775807']) {
+    assert.equal(loginDestination(user, target), target);
+  }
+  for (const target of ['javascript:alert(1)', '/apartments/3/../../evil', '/my/contracts/not-an-id']) {
+    assert.equal(loginDestination(user, target), '/');
+  }
 });
 test('owner decision sends decision, version and optional reason with bearer token', async () => {
   const { decideRentalRequest } = await import('@/services/rental/rentalService');
