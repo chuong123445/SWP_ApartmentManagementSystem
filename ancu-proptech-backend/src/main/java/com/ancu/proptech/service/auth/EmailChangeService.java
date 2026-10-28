@@ -19,7 +19,7 @@ public class EmailChangeService {
     private final EmailOtpSender sender;private final OtpHasher hasher;private final SecureRandom random=new SecureRandom();
     @Transactional(readOnly=true) public EmailChallengeResponse pending(Jwt jwt){return challenges.findFirstByAccountIdOrderByCreatedAtDescIdDesc(auth.authenticate(jwt).getId()).map(this::response).orElse(null);}
     @Transactional public EmailChallengeResponse request(Jwt jwt,EmailChangeRequest input){
-        var a=account.locked(jwt);account.version(a,input.getVersion());account.reauth(a,input.getCurrentPassword());
+        var a=account.locked(jwt);account.version(a,input.getVersion());account.reauth(jwt,a,input.getCurrentPassword(),input.getReauthenticationProof(),com.ancu.proptech.model.auth.AccountReauthentication.Purpose.EMAIL);
         String email=input.getEmail().strip().toLowerCase(Locale.ROOT);if(email.equals(a.getEmail())&&a.isEmailVerified())throw error(HttpStatus.CONFLICT,"CONTACT_UNCHANGED","Email hiện tại đã được xác minh.");
         if(accounts.findByEmail(email).filter(other->!other.getId().equals(a.getId())).isPresent())throw error(HttpStatus.CONFLICT,"CONTACT_IN_USE","Email đã được sử dụng.");
         Instant now=Instant.now();var previous=challenges.findFirstByAccountIdOrderByCreatedAtDescIdDesc(a.getId());

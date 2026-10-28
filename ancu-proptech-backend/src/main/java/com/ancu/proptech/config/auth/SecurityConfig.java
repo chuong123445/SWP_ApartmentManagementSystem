@@ -92,6 +92,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/me").authenticated()
                         .requestMatchers("/api/v1/me/identity", "/api/v1/me/identity/documents/*").authenticated()
                         .requestMatchers("/api/v1/me/rental-properties", "/api/v1/me/rental-properties/*/evidence-files", "/api/v1/me/rental-properties/*/verification-dossiers", "/api/v1/me/property-notices").authenticated()
+                         .requestMatchers("/api/v1/me/security", "/api/v1/me/reauthentications", "/api/v1/me/reauthentications/*/confirm").authenticated()
                         .requestMatchers("/api/v1/me/profile", "/api/v1/me/password", "/api/v1/me/phone", "/api/v1/me/email-change", "/api/v1/me/email-changes", "/api/v1/me/email-changes/*/confirm").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/apartments", "/api/v1/apartments/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/apartment/images/**").permitAll()
