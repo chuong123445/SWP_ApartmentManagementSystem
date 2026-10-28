@@ -23,6 +23,7 @@ import java.util.Map;
 public class AuthController {
     public static final String REFRESH_COOKIE = "ANCU_REFRESH";
     private final AuthService auth;
+    private final com.ancu.proptech.service.auth.GoogleLoginService google;
     private final RegistrationService registration;
     private final CookieCsrfTokenRepository csrfRepository;
     @Value("${app.auth.secure-cookie:true}") private boolean secureCookie;
@@ -42,6 +43,17 @@ public class AuthController {
     public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request,
                                                    HttpServletRequest http, HttpServletResponse response) {
         AuthService.LoginResult result = auth.login(request.email(), request.password());
+        setRefreshCookie(response, result.refreshToken(), result.refreshMaxAge());
+        csrfRepository.saveToken(null, http, response);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(result.tokens());
+    }
+
+    public record GoogleRequest(@jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max = 8192) String credential) {}
+
+    @PostMapping("/api/v1/auth/google")
+    public ResponseEntity<TokenResponse> google(@Valid @RequestBody GoogleRequest request,
+            HttpServletRequest http, HttpServletResponse response) {
+        AuthService.LoginResult result = google.login(request.credential());
         setRefreshCookie(response, result.refreshToken(), result.refreshMaxAge());
         csrfRepository.saveToken(null, http, response);
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(result.tokens());
