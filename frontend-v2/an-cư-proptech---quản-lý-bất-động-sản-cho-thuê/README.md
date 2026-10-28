@@ -8,7 +8,7 @@ React 19/TypeScript/Vite. Trang quản lý Owner được giữ nguyên; đăng 
 App.tsx                   Ghép BrowserRouter, AuthProvider và AppRoutes
 pages/
   auth/                   LoginPage, AccountVerificationPage
-  owner/                  Dashboard, Rooms, Tenants, Contracts, Maintenance, TrustGuard, Settings, RentalRequestsPage
+  owner/                  Dashboard, Rooms, Tenants, Contracts, Maintenance, Settings, RentalRequestsPage
     billing/              InvoicesPage, UtilitiesPage
     finance/              FinancePage, ReportsPage
   resident/               ResidentPortalPage

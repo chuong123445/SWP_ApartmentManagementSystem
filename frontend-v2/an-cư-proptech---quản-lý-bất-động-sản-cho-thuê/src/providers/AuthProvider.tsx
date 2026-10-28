@@ -67,7 +67,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const loginWithGoogle = async (credential: string) => {
+    generation.current++;
+    const session = await authApi.loginWithGoogle(credential);
+    apply(session);
+    return session.user;
+  };
+
   const reloadUser = async () => { const current = generation.current;const next = await currentUser();if (current === generation.current) setUser(next); };
   const endSession = () => { generation.current++;setAccessToken(null);setUser(null);setError(''); };
-  return <AuthContext.Provider value={{ user, loading, isLoggingOut, error, login, logout, reloadUser, endSession }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, loading, isLoggingOut, error, login, loginWithGoogle, logout, reloadUser, endSession }}>{children}</AuthContext.Provider>;
 }

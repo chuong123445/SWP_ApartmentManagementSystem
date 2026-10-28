@@ -8,6 +8,7 @@ import java.util.UUID;
 
 public interface AuthAccountRepository extends JpaRepository<AuthAccount, UUID> {
     Optional<AuthAccount> findByEmail(String email);
+    Optional<AuthAccount> findByGoogleSubject(String googleSubject);
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @org.springframework.data.jpa.repository.Query("select a from AuthAccount a where a.id=:id")
     Optional<AuthAccount> findForIdentityUpdate(@org.springframework.data.repository.query.Param("id") UUID id);

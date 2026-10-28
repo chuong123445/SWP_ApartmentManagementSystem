@@ -81,6 +81,7 @@ public class SecurityConfig {
                         .requireCsrfProtectionMatcher(request -> !Set.of("GET", "HEAD", "OPTIONS", "TRACE").contains(request.getMethod())
                                 && request.getRequestURI().startsWith(request.getContextPath() + "/api/v1/auth/")))
                 .authorizeHttpRequests(a -> a
+                        .requestMatchers("/api/v1/auth/google").permitAll()
                         .requestMatchers("/api/v1/auth/csrf", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout", "/error").permitAll()
                         .requestMatchers("/api/v1/me").authenticated()
                         .requestMatchers("/api/v1/me/identity", "/api/v1/me/identity/documents/*").authenticated()
