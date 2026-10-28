@@ -89,7 +89,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             }
           }
         ],
@@ -128,7 +128,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             }
           }
         ],
@@ -180,7 +180,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             }
           }
         ],
@@ -251,7 +251,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             },
             "description": "Intersect exact property with current Owner scope before count/pagination; another Owner or absent property yields empty page."
           }
@@ -340,7 +340,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             }
           }
         ],
@@ -436,19 +436,19 @@
         "properties": {
           "id": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "contractId": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "apartmentId": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "customerId": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "roomNumber": {
             "type": "string"
@@ -586,11 +586,11 @@
         "properties": {
           "contractId": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "apartmentId": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "roomNumber": {
             "type": "string"
@@ -648,15 +648,15 @@
         "properties": {
           "id": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "apartmentId": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "customerId": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "roomNumber": {
             "type": "string"

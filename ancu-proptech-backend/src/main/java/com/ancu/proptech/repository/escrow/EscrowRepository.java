@@ -7,6 +7,6 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface EscrowRepository extends JpaRepository<EscrowDeposit, String> {
+public interface EscrowRepository extends JpaRepository<EscrowDeposit, Long> {
     List<EscrowDeposit> findByStatus(EscrowStatus status);
 }

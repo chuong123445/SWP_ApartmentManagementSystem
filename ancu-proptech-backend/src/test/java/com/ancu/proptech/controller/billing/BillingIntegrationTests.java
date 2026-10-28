@@ -40,7 +40,7 @@ class BillingIntegrationTests {
         contract=new RentalContract();contract.setApartment(apartment);contract.setCustomer(tenant);contract.setStatus(RentalContract.Status.ACTIVE);contract.setStartDate(LocalDate.of(2026,10,1));contract.setEndDate(LocalDate.of(2027,9,30));contract.setBaselineDate(contract.getStartDate());contract.setMonthlyRent(new BigDecimal("5000000"));contract.setElectricityUnitPrice(new BigDecimal("3500"));contract.setWaterUnitPrice(new BigDecimal("15000"));contract.setElectricityBaseline(new BigDecimal("1000"));contract.setWaterBaseline(new BigDecimal("200"));contract=contracts.saveAndFlush(contract);
         ownerToken=token(owner);tenantToken=token(tenant);
     }
-    private AuthAccount account(AuthAccount.Role role){var a=new AuthAccount();a.setEmail("billing-"+UUID.randomUUID()+"@example.invalid");a.setFullName("Billing test account");a.setRole(role);a.setStatus(AuthAccount.Status.ACTIVE);a.setContactVerified(true);a.setEmailVerified(true);a.setPasswordHash(encoder.encode("Billing-test!12345"));return accounts.saveAndFlush(a);}
+    private AuthAccount account(AuthAccount.Role role){var a=new AuthAccount();a.setEmail("billing-"+com.ancu.proptech.support.TestIds.next()+"@example.invalid");a.setFullName("Billing test account");a.setRole(role);a.setStatus(AuthAccount.Status.ACTIVE);a.setContactVerified(true);a.setEmailVerified(true);a.setPasswordHash(encoder.encode("Billing-test!12345"));return accounts.saveAndFlush(a);}
     private String token(AuthAccount a){return auth.login(a.getEmail(),"Billing-test!12345").tokens().accessToken();}
     private String body(String period,long version,String electric,String water){return "{\"period\":\""+period+"\",\"baselineVersion\":"+version+",\"electricityEndReading\":\""+electric+"\",\"waterEndReading\":\""+water+"\",\"dueDate\":\"2027-10-05\"}";}
     private ResultActions create(String token,String body)throws Exception{return mvc.perform(post("/api/v1/owner/contracts/"+contract.getId()+"/invoices").header("Authorization","Bearer "+token).contentType("application/json").content(body));}
@@ -70,7 +70,7 @@ class BillingIntegrationTests {
         mvc.perform(get("/api/v1/me/invoices").header("Authorization","Bearer "+tenantToken)).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
         mvc.perform(get("/api/v1/invoices/"+id).header("Authorization","Bearer "+tenantToken)).andExpect(status().isNotFound());
         send(ownerToken,id,0).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("SENT"));
-        send(ownerToken,id,0).andExpect(status().isOk());assertEquals(1,notifications.countByInvoiceId(UUID.fromString(id)));
+        send(ownerToken,id,0).andExpect(status().isOk());assertEquals(1,notifications.countByInvoiceId(Long.valueOf(id)));
         mvc.perform(get("/api/v1/me/invoices").header("Authorization","Bearer "+tenantToken)).andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(id));
     }
     @Test void crossOwnerCrossTenantAndGuestAccessAreDenied()throws Exception{
@@ -112,7 +112,7 @@ class BillingIntegrationTests {
     }
     @Test void concurrentSendsAreIdempotentAndDoNotDuplicateNotifications()throws Exception{
         String id=createDraft();TestTransaction.flagForCommit();TestTransaction.end();var pool=Executors.newFixedThreadPool(2);var gate=new CountDownLatch(1);
-        try{Callable<Integer> task=()->{gate.await();return send(ownerToken,id,0).andReturn().getResponse().getStatus();};var a=pool.submit(task);var b=pool.submit(task);gate.countDown();assertEquals(200,a.get(15,TimeUnit.SECONDS));assertEquals(200,b.get(15,TimeUnit.SECONDS));assertEquals(1,notifications.countByInvoiceId(UUID.fromString(id)));}
+        try{Callable<Integer> task=()->{gate.await();return send(ownerToken,id,0).andReturn().getResponse().getStatus();};var a=pool.submit(task);var b=pool.submit(task);gate.countDown();assertEquals(200,a.get(15,TimeUnit.SECONDS));assertEquals(200,b.get(15,TimeUnit.SECONDS));assertEquals(1,notifications.countByInvoiceId(Long.valueOf(id)));}
         finally{pool.shutdownNow();cleanupCommitted();}
     }
     @Test void concurrentCreatesCommitOnlyOneInvoiceForThePeriod()throws Exception{

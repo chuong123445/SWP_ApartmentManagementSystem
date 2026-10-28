@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Nationalized;
-import java.util.UUID;
+
 import java.time.LocalDate;
 
 @Entity
@@ -15,11 +15,11 @@ public class AuthAccount {
     public enum Role { ADMIN, OWNER, CUSTOMER }
     public enum Status { PENDING_VERIFICATION, ACTIVE, LOCKED, INACTIVE }
 
-    @Id @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
     @Column(nullable = false, unique = true, length = 254)
     private String email;
-    @Column(nullable = false, length = 100)
+    @Column(length = 100)
     private String passwordHash;
     @Nationalized @Column(nullable = false, length = 100)
     private String fullName;
@@ -28,6 +28,7 @@ public class AuthAccount {
     @Nationalized @Column(length=1000) private String bio;
     private LocalDate dateOfBirth;
     @Column(nullable=false) private boolean emailVerified;
+    @Column(nullable=false) private boolean identityVerified;
     @Column(nullable=false) private boolean phoneVerified;
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 20)
     private Role role;

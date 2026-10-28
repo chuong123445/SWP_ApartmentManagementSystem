@@ -33,7 +33,7 @@ class IdentityProfileIntegrationTests {
         customer=account(AuthAccount.Role.CUSTOMER,false);other=account(AuthAccount.Role.CUSTOMER,true);token=token(customer);
         var output=new ByteArrayOutputStream();ImageIO.write(new BufferedImage(3,2,BufferedImage.TYPE_INT_RGB),"png",output);png=output.toByteArray();
     }
-    private AuthAccount account(AuthAccount.Role role,boolean verified){var a=new AuthAccount();a.setEmail("identity-"+UUID.randomUUID()+"@example.invalid");a.setFullName("Tên hồ sơ hiển thị");a.setRole(role);a.setStatus(verified?AuthAccount.Status.ACTIVE:AuthAccount.Status.PENDING_VERIFICATION);a.setEmailVerified(verified);a.setContactVerified(verified);a.setPasswordHash(hash);return accounts.saveAndFlush(a);}
+    private AuthAccount account(AuthAccount.Role role,boolean verified){var a=new AuthAccount();a.setEmail("identity-"+com.ancu.proptech.support.TestIds.next()+"@example.invalid");a.setFullName("Tên hồ sơ hiển thị");a.setRole(role);a.setStatus(verified?AuthAccount.Status.ACTIVE:AuthAccount.Status.PENDING_VERIFICATION);a.setEmailVerified(verified);a.setContactVerified(verified);a.setPasswordHash(hash);return accounts.saveAndFlush(a);}
     private String token(AuthAccount a){return auth.login(a.getEmail(),"Identity-test!12345").tokens().accessToken();}
     private String input(String version){return """
         {"legalName":" Nguyễn Văn Thử ","documentNumber":"001095000123","dateOfBirth":"1995-06-15","issueDate":"2022-05-01","issuePlace":"Cục Cảnh sát QLHC về TTXH","permanentAddress":"Địa chỉ trên căn cước","currentAddress":"Địa chỉ đang sinh sống","version":%s}
