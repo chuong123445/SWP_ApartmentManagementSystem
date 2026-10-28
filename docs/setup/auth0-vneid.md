@@ -1,4 +1,13 @@
 # Kết nối Auth0 VNeID
+## Cập nhật 28/10/2026 — cấu hình nhóm đã có sẵn
+
+`application-local.properties` đã chứa mặc định công khai của tenant VNeID-Mock: bật luồng VNeID local, issuer, SPA Client ID, audience, connection và M2M Client ID. Người khác pull code không cần chép lại các giá trị này hoặc tạo Auth0 riêng. `.env.example` cũng đã đồng bộ. Global/non-local vẫn opt-in; môi trường triển khai cần cấu hình rõ ràng.
+
+Local env hoặc biến môi trường vẫn ghi đè mặc định. Nếu `.env.local` cũ chứa `AUTH0_VNEID_ENABLED=false` hoặc các giá trị Auth0 rỗng/sai, bỏ/sửa những override đó để dùng cấu hình chung.
+
+M2M Client Secret không có trong Git. Đăng nhập/xác thực căn cước không cần secret này; đọc tài sản/nâng cấp chính chủ cần `AUTH0_MANAGEMENT_CLIENT_SECRET` riêng ở Backend. SPA Client Secret không dùng. Nếu muốn thành viên không phải giữ secret, dùng một Backend dùng chung đã được cấu hình M2M, frontend gọi Backend đó; đây là phương án triển khai, chưa tạo server từ xa trong task này. Cùng localhost3000 dùng callback đã khai báo; cổng/domain khác phải nằm trong danh sách cho phép trên Auth0.
+
+Các đoạn mô tả slice ban đầu bên dưới là lịch sử; các luồng tài sản, nâng cấp Owner và ủy quyền/thuê lại đã được triển khai theo các ADR/report mới hơn.
 
 Luồng đăng nhập/đăng ký CUSTOMER và liên kết self được triển khai trong code. Tài sản trong app_metadata chưa được đọc/nhập; không có đổi role Owner hoặc tự duyệt Property trong slice xác thực này. Đây là mô phỏng SWP, không phải VNeID thật. Backend ghi VERIFIED, không dùng SIMULATED_VERIFIED; không tự gán emailVerified.
 
