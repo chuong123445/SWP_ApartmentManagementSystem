@@ -29,7 +29,7 @@ test('Owner login, reload restoration and Role-menu logout revoke the session', 
   await expect(page.locator('#nav-rooms')).toBeVisible();
 
   // All moved pages must still render through the shared workspace/layout.
-  for (const tab of ['rooms', 'tenants', 'contracts', 'invoices', 'utilities', 'maintenance', 'trustguard', 'finance', 'reports', 'settings', 'dashboard']) {
+  for (const tab of ['rooms', 'tenants', 'contracts', 'invoices', 'utilities', 'maintenance', 'finance', 'reports', 'settings', 'dashboard']) {
     await page.locator(`#nav-${tab}`).click();
     await expect(page.locator('main h1').first()).toBeVisible();
   }

@@ -4,9 +4,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { loginDestination } from '@/utils/navigation';
 import { VneidButton } from '@/components/auth/VneidButton';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 
 export function LoginPage() {
-  const { login, error: sessionError } = useAuth();
+  const { login, loginWithGoogle, error: sessionError } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState('');
@@ -63,6 +64,15 @@ export function LoginPage() {
             </button>
           </form>
           <VneidButton intent="login" label="Đăng nhập bằng VNeID mô phỏng" />
+          <GoogleSignInButton disabled={isSubmitting} onCredential={async credential => {
+            setError('');
+            setIsSubmitting(true);
+            try {
+              const user = await loginWithGoogle(credential);
+              navigate(loginDestination(user, location.state?.returnTo), { replace: true });
+            } catch (err) { setError(err instanceof Error ? err.message : 'Không thể đăng nhập Google.'); }
+            finally { setIsSubmitting(false); }
+          }} />
           <p className="text-sm text-slate-500 mt-6 text-center">Chưa có tài khoản? <Link to="/register" className="text-emerald-700 font-semibold">Đăng ký</Link></p>
         </section>
       </div>

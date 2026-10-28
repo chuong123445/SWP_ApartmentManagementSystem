@@ -19,6 +19,8 @@ public class AuthAccount {
     private Long id;
     @Column(nullable = false, unique = true, length = 254)
     private String email;
+    @Column(length = 255)
+    private String googleSubject;
     @Column(length = 100)
     private String passwordHash;
     @Nationalized @Column(nullable = false, length = 100)

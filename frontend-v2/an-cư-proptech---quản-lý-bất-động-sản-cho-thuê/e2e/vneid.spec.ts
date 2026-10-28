@@ -1,8 +1,17 @@
 import { test, expect, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
+import { mockGoogleIdentity } from './support/google-identity';
 
 const diagnostics = new WeakMap<Page, { console: string[]; network: string[] }>();
-test.beforeEach(({ page }) => {
+test.beforeEach(async ({ page }) => {
+  await mockGoogleIdentity(page);
+  // Hồi quy OAuth độc lập Backend đang chạy; các fixture cụ thể ghi đè route này.
+  await page.route('**/api/v1/auth/csrf', route => route.fulfill({ json: { token: 'vneid-csrf', headerName: 'X-XSRF-TOKEN' } }));
+  await page.route('**/api/v1/auth/refresh', route => route.fulfill({ status: 401, json: { message: 'Chưa đăng nhập' } }));
+  await page.route('**/api/v1/apartments?*', route => route.fulfill({ json: { items: [], page: 0, totalPages: 0, totalElements: 0, size: 6 } }));
+  for (const endpoint of ['apartments/address-options', 'me/tenancies', 'me/apartments']) {
+    await page.route(`**/api/v1/${endpoint}`, route => route.fulfill({ json: [] }));
+  }
   const log = { console: [] as string[], network: [] as string[] }; diagnostics.set(page, log);
   page.on('console', message => { if (message.type() === 'error') log.console.push(`${message.text()} [${message.location().url}]`); });
   page.on('requestfailed', request => {

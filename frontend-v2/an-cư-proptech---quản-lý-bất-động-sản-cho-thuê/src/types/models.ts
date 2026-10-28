@@ -167,30 +167,6 @@ export interface SystemConfig {
   trustGuardFeePercent: number;
 }
 
-// TrustGuard Legal Verification Dossier
-export interface TrustGuardAudit {
-  id: string;
-  dossierCode: string;
-  roomNumber: string;
-  buildingName: string;
-  ownerName: string;
-  ownerPhone: string;
-  legalDocType: 'Sổ hồng cá nhân' | 'HĐMB Chủ đầu tư' | 'Quyền sử dụng đất & tài sản gắn liền';
-  legalDocNumber: string;
-  issuePlace: string;
-  issueDate: string;
-  pcccApprovalNumber: string;
-  pcccStatus: 'Đạt chuẩn PCCC Quốc Gia' | 'Đang gia hạn thẩm duyệt';
-  ekycChipMatchRate: number; // e.g. 99.8%
-  auditStatus: 'verified' | 'pending' | 'rejected';
-  trustScore: number; // 98/100
-  escrowDeposit: number;
-  auditor: string;
-  auditedAt: string;
-  docScanUrl: string;
-  notes: string;
-}
-
 // TrustGuard Escrow Deposit
 export interface EscrowDeposit {
   id: string;

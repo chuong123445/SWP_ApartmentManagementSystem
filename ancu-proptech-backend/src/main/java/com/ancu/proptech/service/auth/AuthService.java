@@ -68,6 +68,16 @@ public class AuthService {
         return issue(session);
     }
 
+    @Transactional
+    public LoginResult googleLogin(AuthAccount account) {
+        requireUsableAccount(account);
+        AuthSession session = new AuthSession();
+        session.setAccount(account);
+        session.setExpiresAt(Instant.now().plusSeconds(refreshSeconds));
+        sessions.save(session);
+        return issue(session);
+    }
+
     // Reuse revocation must commit even when the command returns an auth error.
     @Transactional(noRollbackFor = AuthException.class)
     public LoginResult refresh(String rawToken) {

@@ -1,8 +1,8 @@
 import { updateApartmentPrices } from '@/services/apartments/ownerApartmentService';
 import type { PriceInput } from '@/components/rooms/ApartmentPriceForm';
 import { useEffect, useState } from 'react';
-import type { Building, Room, NewRoom, Tenant, Contract, Invoice, MaintenanceTicket, Transaction, SystemConfig, TrustGuardAudit, EscrowDeposit } from '@/types';
-import { initialMaintenance, initialTransactions, initialConfig, initialTrustAudits, initialEscrows } from '@/data/mockData';
+import type { Building, Room, NewRoom, Tenant, Contract, Invoice, MaintenanceTicket, Transaction, SystemConfig, EscrowDeposit } from '@/types';
+import { initialMaintenance, initialTransactions, initialConfig, initialEscrows } from '@/data/mockData';
 import { createOwnerApartment, getOwnerApartments, getOwnerProperties, setApartmentPublication } from '@/services/apartments/ownerApartmentService';
 import { ownerTenancies, ownerInvoices, tenancyViews, invoiceView, sendInvoice } from '@/services/billing/billingService';
 import type { Tenancy } from '@/types/billing';
@@ -28,7 +28,6 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
   const [tickets, setTickets] = useState<MaintenanceTicket[]>(initialMaintenance);
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [config, setConfig] = useState<SystemConfig>(initialConfig);
-  const [audits, setAudits] = useState<TrustGuardAudit[]>(initialTrustAudits);
   const [escrows, setEscrows] = useState<EscrowDeposit[]>(initialEscrows);
 
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
@@ -163,48 +162,8 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
     setTickets(initialMaintenance);
     setTransactions(initialTransactions);
     setConfig(initialConfig);
-    setAudits(initialTrustAudits);
     setEscrows(initialEscrows);
     onReset();
-  };
-
-  // TrustGuard Audit Handlers
-  const handleApproveAudit = (auditId: string) => {
-    setAudits((prev) =>
-      prev.map((a) =>
-        a.id === auditId
-          ? {
-              ...a,
-              auditStatus: 'verified',
-              trustScore: 99,
-              auditedAt: new Date().toLocaleDateString('vi-VN'),
-              notes: `${a.notes} [Đã phê duyệt đạt chuẩn An Cư TrustGuard™]`,
-            }
-          : a
-      )
-    );
-  };
-
-  const handleReleaseEscrow = (escrowId: string) => {
-    setEscrows((prev) =>
-      prev.map((e) =>
-        e.id === escrowId
-          ? {
-              ...e,
-              status: 'released',
-              releasedAt: new Date().toLocaleDateString('vi-VN'),
-            }
-          : e
-      )
-    );
-  };
-
-  const handleCreateEscrow = (newEscrow: Omit<EscrowDeposit, 'id'>) => {
-    const item: EscrowDeposit = {
-      ...newEscrow,
-      id: `esc-${Date.now()}`,
-    };
-    setEscrows((prev) => [item, ...prev]);
   };
 
   // Reserve room with escrow deposit
@@ -259,14 +218,14 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
     ...tx, id: `tx-${Date.now()}`, code: `${tx.type === 'income' ? 'THU' : 'CHI'}-0926-${Math.floor(100 + Math.random() * 900)}`,
   }, ...prev]);
   return {
-    rooms, tenants, contracts, invoices, tickets, transactions, config, audits, escrows,
+    rooms, tenants, contracts, invoices, tickets, transactions, config, escrows,
     tenancies, billingError, billingLoading, invoicePage, setInvoicePage, invoiceTotalPages,
     reloadBilling: () => setBillingRevision(value => value + 1), handleSendInvoice,
     buildings, inventoryError, inventoryLoading, reloadInventory: () => setInventoryRevision(value => value + 1),
     selectedRoom, setSelectedRoom, selectedInvoice, setSelectedInvoice,
     handleMarkPaid, handleAddTenant, handleAddContract, handleAddRoom, handleAddProperty, handlePrices, handlePublication, handleCheckOut,
-    handleUpdateIndices, handleUpdateTicketStatus, handleResetData, handleApproveAudit,
-    handleReleaseEscrow, handleCreateEscrow, handleReserveEscrow, handleAddTicket,
+    handleUpdateIndices, handleUpdateTicketStatus, handleResetData,
+    handleReserveEscrow, handleAddTicket,
     handleSendResidentTicket, handleCreateInvoice, handleAddTransaction, handleSaveConfig: setConfig,
     currentResidentTenant, currentResidentRoom, currentResidentContract, residentInvoices, residentTickets,
     unpaidCount, maintenanceCount, expiringCount,
