@@ -410,11 +410,26 @@
           }
         },
         "required": [
-          "version",
-          "monthlyRent",
-          "electricityUnitPrice",
-          "waterUnitPrice"
-        ]
+          "version"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "monthlyRent"
+            ]
+          },
+          {
+            "required": [
+              "electricityUnitPrice"
+            ]
+          },
+          {
+            "required": [
+              "waterUnitPrice"
+            ]
+          }
+        ],
+        "description": "Partial PATCH: version and at least one price. Omitted prices remain unchanged, including null legacy utilities. Explicit null/empty prices rejected; zero utilities allowed. Owner, version, VACANT and no-PENDING checks unchanged."
       },
       "ConsentInput": {
         "type": "object",

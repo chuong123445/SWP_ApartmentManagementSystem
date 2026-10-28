@@ -16,7 +16,7 @@ function fieldValue(a:ApartmentDetail,field:Field):string {
   if(field==='amenities')return a.amenities.join(', ');
   return a[field]??'';
 }
-// Mỗi trường lưu riêng; payload giữ các giá trị còn lại từ phiên bản mới nhất của API.
+// Giá dùng PATCH từng trường; Backend giữ nguyên các giá không được gửi.
 export function OwnerApartmentField({apartment:a,field,onSaved,children}:{apartment:ApartmentDetail;field:Field;onSaved:()=>Promise<void>;children:ReactNode}){
   const id=useId();const [open,setOpen]=useState(false);const [value,setValue]=useState('');const [busy,setBusy]=useState(false);const [error,setError]=useState('');
   const price=field==='monthlyRent'||field==='electricityUnitPrice'||field==='waterUnitPrice';
@@ -24,7 +24,7 @@ export function OwnerApartmentField({apartment:a,field,onSaved,children}:{apartm
   async function save(){
     if(busy||locked)return;setBusy(true);setError('');
     try{
-      const body=price?{version:a.version,monthlyRent:a.advertisedMonthlyRent,electricityUnitPrice:a.electricityUnitPrice??'',waterUnitPrice:a.waterUnitPrice??'',[field]:value}:
+      const body=price?{version:a.version,[field]:value}:
         {version:a.version,title:a.title,description:a.description,maxOccupants:a.management!.maxOccupants??2,amenities:a.amenities,[field]:field==='maxOccupants'?Number(value):field==='amenities'?value.split(',').map(s=>s.trim()).filter(Boolean):value};
       await saveAssetCommand(`/me/apartments/${a.id}${price?'/prices':''}`,'PATCH',body);await onSaved();setOpen(false);
     }catch(e){setError(e instanceof Error?e.message:'Không thể lưu thay đổi.');}finally{setBusy(false);}

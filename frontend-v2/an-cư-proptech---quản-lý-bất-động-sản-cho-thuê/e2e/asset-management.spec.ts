@@ -1,12 +1,13 @@
 import {test,expect,type Page} from '@playwright/test';
 import {mkdirSync} from 'node:fs';
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j7i8AAAAASUVORK5CYII=','base64');
-async function fixture(page:Page,options:{customer?:boolean;foreign?:boolean;pending?:boolean;sourceFailure?:boolean;expired?:boolean}={}){
+async function fixture(page:Page,options:{customer?:boolean;foreign?:boolean;pending?:boolean;sourceFailure?:boolean;expired?:boolean;missingPrices?:boolean}={}){
   let role=options.customer?'CUSTOMER':'OWNER';let consent=false;let imported=false;let sourceFailure=!!options.sourceFailure;let sourceReads=0;let edits=0;let prices=0;let galleryWrites=0;
   const errors:string[]=[],unexpected:string[]=[],logs:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')logs.push(`${m.text()} [${m.location().url}]`);});page.on('requestfailed',r=>{if(r.failure()?.errorText!=='net::ERR_ABORTED')unexpected.push(r.url());});
   const user=()=>({id:options.foreign?'42':'41',fullName:'TRẦN QUANG MINH',email:'fixture@example.invalid',roles:[role],accountStatus:'ACTIVE',contactVerificationStatus:'VERIFIED',version:0});
   const property:any={id:'7',name:'Nhà cho thuê Nguyễn Văn Linh',address:'168 Nguyễn Văn Linh, Đà Nẵng',city:'Đà Nẵng',district:'Hải Châu',ward:null,rentalMode:'SINGLE_UNIT',approvalStatus:'APPROVED',version:0,verificationSource:null,rightType:'AUTHORIZATION',onboardingApplication:true};
   const unit:any={id:'9',propertyId:'7',ownerId:'41',propertyName:property.name,title:'Căn hộ A1205',description:'Nội dung đã lưu từ Backend.',roomNumber:'A1205',floor:12,areaM2:'68.50',advertisedMonthlyRent:'5000000',deposit:'5000000',electricityUnitPrice:'3500',waterUnitPrice:'15000',electricityIndex:120,waterIndex:30,maxOccupants:4,bedrooms:2,bathrooms:2,amenities:['Máy lạnh'],availability:'VACANT',publicationStatus:'PUBLISHED',propertyApprovalStatus:'APPROVED',thumbnail:'/api/v1/property-images/11',version:0};
+  if(options.missingPrices){unit.electricityUnitPrice=null;unit.waterUnitPrice=null;}
   let gallery=[{id:'11',url:'/api/v1/property-images/11'}];
   const detail=()=>({...unit,address:property.address,city:property.city,district:property.district,images:gallery.map(i=>i.url),lessorRelationship:property.rightType,rentalRightsAvailable:!options.expired,publicOwner:{id:'41',displayName:'TRẦN QUANG MINH',contactVerified:false},management:options.foreign?null:{propertyId:'7',propertyVersion:property.version,approvalStatus:property.approvalStatus,verificationSource:property.verificationSource,canEdit:true,pricesEditable:!options.pending,priceLockReason:options.pending?'Cần xử lý tất cả yêu cầu thuê đang chờ trước khi đổi giá.':null,gallery,roomNumber:unit.roomNumber,maxOccupants:unit.maxOccupants}});
   await page.route('**/api/**',async route=>{
@@ -41,7 +42,7 @@ async function fixture(page:Page,options:{customer?:boolean;foreign?:boolean;pen
       expect(options.foreign).not.toBe(true);expect(body().version).toBe(unit.version);expect(body().ownerId).toBeUndefined();Object.assign(unit,body(),{version:unit.version+1});edits++;return route.fulfill({status:204});
     }
     if(path==='/api/v1/me/apartments/9/prices'){
-      expect(options.pending).not.toBe(true);expect(body().version).toBe(unit.version);unit.advertisedMonthlyRent=body().monthlyRent;unit.electricityUnitPrice=body().electricityUnitPrice;unit.waterUnitPrice=body().waterUnitPrice;unit.version++;prices++;return route.fulfill({json:unit});
+      expect(options.pending).not.toBe(true);expect(body().version).toBe(unit.version);const patch=body();expect(Object.keys(patch)).toHaveLength(2);for(const [key,value] of Object.entries(patch)){if(key==='version')continue;expect(['monthlyRent','electricityUnitPrice','waterUnitPrice']).toContain(key);expect(value).not.toBe('');expect(value).not.toBeNull();unit[key==='monthlyRent'?'advertisedMonthlyRent':key]=value;}unit.version++;prices++;return route.fulfill({json:unit});
     }
     if(path==='/api/v1/me/property-images'){expect(req.headers().authorization).toBe('Bearer asset-portal-test');return route.fulfill({status:201,json:[{id:'12',url:'/api/v1/property-images/12'}]});}
     if(path==='/api/v1/me/properties/7/images'){
@@ -99,4 +100,15 @@ for(const width of [1440,390])test(`Contextual editors cancel without writing an
   await page.getByRole('button',{name:'Chỉnh sửa mô tả',exact:true}).click();await page.getByLabel('Mô tả căn hộ',{exact:true}).fill('Không lưu phần này');await page.getByRole('button',{name:'Hủy sửa mô tả',exact:true}).click();expect(f.edits()).toBe(2);
   await page.getByRole('button',{name:'Thêm / quản lý ảnh',exact:true}).click();await page.getByRole('button',{name:'Bỏ ảnh đã lưu 1',exact:true}).click();await page.getByRole('button',{name:'Lưu thay đổi ảnh',exact:true}).click();await expect(page.getByRole('alert')).toContainText('1 đến 4 ảnh');expect(f.galleryWrites()).toBe(0);await page.getByRole('button',{name:'Hủy sửa ảnh',exact:true}).click();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);f.check();
+});
+
+for(const width of [1440,390])test(`Missing utility prices can be saved independently and survive reload at ${width}px`,async({page})=>{
+  const f=await fixture(page,{missingPrices:true});await page.setViewportSize({width,height:950});await page.goto('/apartments/9');
+  await expect(page.getByText('Điện: Chưa có giá/kWh',{exact:true})).toBeVisible();await expect(page.getByText('Nước: Chưa có giá/m³',{exact:true})).toBeVisible();
+  for(const [field,label,value,display] of [['giá thuê','Giá thuê mỗi tháng (đ)','7000000','7.000.000 đ'],['giá điện','Đơn giá điện (đ/kWh)','3500','Điện: 3.500 đ/kWh'],['giá nước','Đơn giá nước (đ/m³)','18000','Nước: 18.000 đ/m³']]){
+    await page.getByRole('button',{name:`Chỉnh sửa ${field}`,exact:true}).click();await page.getByLabel(label,{exact:true}).fill(value);await page.getByRole('button',{name:`Lưu ${field}`,exact:true}).click();await expect(page.getByText(display,{exact:true})).toBeVisible();
+    if(field!=='giá nước')await expect(page.getByText('Nước: Chưa có giá/m³',{exact:true})).toBeVisible();
+  }
+  await page.reload();await expect(page.getByText('Điện: 3.500 đ/kWh',{exact:true})).toBeVisible();await expect(page.getByText('Nước: 18.000 đ/m³',{exact:true})).toBeVisible();await expect(page.getByText('7.000.000 đ',{exact:true})).toBeVisible();expect(f.prices()).toBe(3);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);mkdirSync('test-results/visual',{recursive:true});await page.screenshot({path:`test-results/visual/missing-prices-${width}.png`,fullPage:true});f.check();
 });
