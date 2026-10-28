@@ -13,6 +13,11 @@ export function WorkspacePage() {
   const canManage = hasManagementRole(user!);
   const navigation = useWorkspaceNavigation(canManage);
   const workspace = useRentalWorkspace(canManage, navigation.resetToDashboard, navigation.selectedBuildingId);
+  const reloadInventory = workspace.reloadInventory;
+  useEffect(() => {
+    if (canManage && (navigation.activeTab === 'tenants' || navigation.activeTab === 'invoices' || navigation.isCreateInvoiceOpen))
+      reloadInventory();
+  }, [canManage, navigation.activeTab, navigation.isCreateInvoiceOpen, reloadInventory]);
   const propertyId = navigation.selectedBuildingId;
   const rooms = propertyId === 'all' ? workspace.rooms : workspace.rooms.filter(r => r.buildingId === propertyId);
   const roomIds = new Set(rooms.map(r => r.id));

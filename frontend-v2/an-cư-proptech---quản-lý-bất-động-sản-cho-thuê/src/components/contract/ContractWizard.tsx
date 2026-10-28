@@ -1,17 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Check, FileText, Plus, Trash2, X } from 'lucide-react';
 import { AssetReview, ContractReview, PartyReview, ReceivingAccountReview } from '@/components/contract/ContractReview';
-import { getContractContext, saveContract } from '@/services/contract/contractService';
+import { getContractContext, getRenewalContext, saveContract, saveRenewal } from '@/services/contract/contractService';
 import { ApiError } from '@/services/http/client';
 import { validateContractTerms } from '@/utils/contract';
 import type { ContractContext, ContractDraft, ContractTerms } from '@/types/contract';
+import { ContractDocument } from '@/components/contract/ContractDocument';
 
 const steps = ['Chọn mẫu', 'Bên cho thuê', 'Bên thuê', 'Tài sản & điều kiện thuê', 'Điều khoản', 'Xem lại'];
 const button = 'rounded-lg px-4 py-2 text-sm font-semibold border border-slate-300 disabled:opacity-50';
 const primary = `${button} bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700`;
 const input = 'w-full rounded-lg border border-slate-300 p-3 text-sm bg-white focus:outline-emerald-600';
+const templates = [
+  { id: 'HOUSE', title: 'Nhà nguyên căn', description: 'Thuê nhà riêng, nhà phố, biệt thự.' },
+  { id: 'APARTMENT', title: 'Chung cư / Căn hộ', description: 'Thuê căn hộ chung cư.' },
+  { id: 'ROOM', title: 'Phòng trọ', description: 'Thuê phòng trọ, nhà trọ.' },
+  { id: 'BUSINESS', title: 'Mặt bằng kinh doanh', description: 'Thuê mặt bằng; cần rà soát quyền và mục đích sử dụng phù hợp.' },
+  { id: 'SHARED', title: 'Ở ghép / Share phòng', description: 'Thuê phòng ở ghép, chia sẻ không gian.' },
+] as const;
 
-export function ContractWizard({ requestId, onClose, onSaved }: { requestId: string; onClose: () => void; onSaved: () => void }) {
+export function ContractWizard({ requestId, renewalOf, onClose, onSaved }: { requestId?: string; renewalOf?: ContractDraft; onClose: () => void; onSaved: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const scrollArea = useRef<HTMLDivElement>(null);
   const [context, setContext] = useState<ContractContext | null>(null);
@@ -27,16 +35,21 @@ export function ContractWizard({ requestId, onClose, onSaved }: { requestId: str
   useEffect(() => { dialog.current?.showModal();return () => { dialog.current?.close(); }; }, []);
   useEffect(() => {
     let active = true;setContext(null);setError('');setConflict(false);setSavedNotice(false);
-    getContractContext(requestId).then(c => {
+    (renewalOf ? getRenewalContext(renewalOf.id) : getContractContext(requestId!)).then(c => {
       if (!active) return;
       setContext(c);setExisting(c.existingDraft);setDirty(false);
-      setTerms(c.existingDraft ? extractTerms(c.existingDraft) : {
-        startDate: '', endDate: '', monthlyRent: c.advertisedMonthlyRent, deposit: c.suggestedDeposit ?? '', electricityUnitPrice: '', waterUnitPrice: '',
+      const nextStart = renewalOf ? new Date(`${renewalOf.endDate}T00:00:00Z`) : null;
+      if (nextStart) nextStart.setUTCDate(nextStart.getUTCDate() + 1);
+      setTerms(c.existingDraft ? extractTerms(c.existingDraft) : renewalOf ? {
+        ...extractTerms(renewalOf), startDate: nextStart!.toISOString().slice(0, 10), endDate: '',
+        clauses: c.templateClauses.map(clause => ({ ...clause })),
+      } : {
+        templateType: 'APARTMENT', startDate: '', endDate: '', monthlyRent: c.advertisedMonthlyRent, deposit: c.suggestedDeposit ?? '', electricityUnitPrice: '', waterUnitPrice: '',
         paymentDay: 5, paymentMethod: 'Chuyển khoản', usagePurpose: 'Để ở', clauses: c.templateClauses.map(clause => ({ ...clause })),
       });setStep(c.existingDraft ? 5 : 0);
     }).catch(e => { if (active) setError(e instanceof Error ? e.message : 'Không thể tải thông tin hợp đồng.'); });
     return () => { active = false; };
-  }, [requestId, reloadKey]);
+  }, [requestId, renewalOf?.id, reloadKey]);
   useEffect(() => { scrollArea.current?.scrollTo({ top: 0 }); }, [step]);
   const close = () => { if (!saving && (!dirty || window.confirm('Đóng sẽ bỏ các thay đổi chưa lưu. Bạn có muốn đóng?'))) onClose(); };
   const change = <K extends keyof ContractTerms>(key: K, value: ContractTerms[K]) => {
@@ -56,7 +69,7 @@ export function ContractWizard({ requestId, onClose, onSaved }: { requestId: str
     if (!context || !terms || saving) return;
     const problem = validateContractTerms(terms);if (problem) { setError(problem);return; }
     setSaving(true);setError('');
-    try { const result = await saveContract(context, terms, existing);setExisting(result);setTerms(extractTerms(result));setDirty(false);setSavedNotice(true);onSaved(); }
+    try { const result = renewalOf && !existing ? await saveRenewal(renewalOf.id, context, terms) : await saveContract(context, terms, existing);setExisting(result);setTerms(extractTerms(result));setDirty(false);setSavedNotice(true);onSaved(); }
     catch (e) { setError(e instanceof Error ? e.message : 'Không thể lưu hợp đồng.');if (e instanceof ApiError && e.status === 409) setConflict(true); }
     finally { setSaving(false); }
   };
@@ -65,15 +78,16 @@ export function ContractWizard({ requestId, onClose, onSaved }: { requestId: str
     const clauses = [...terms.clauses];[clauses[from], clauses[to]] = [clauses[to], clauses[from]];change('clauses', clauses);
   };
   const snapshot = existing?.snapshot ?? context?.snapshot;
+  const locked = !!existing && (existing.status !== 'DRAFT' || !!existing.signing?.ownerSignedAt || !!existing.signing?.customerSignedAt);
   return <dialog ref={dialog} aria-labelledby="contract-wizard-title" onCancel={event => { event.preventDefault();close(); }} className="m-auto p-0 rounded-2xl w-[calc(100%-1rem)] max-w-4xl max-h-[94dvh] bg-white shadow-2xl backdrop:bg-slate-900/50">
     <div className="flex flex-col max-h-[94dvh]">
-      <header className="flex justify-between items-start gap-3 border-b border-slate-200 p-4 sm:p-6 shrink-0"><div><h2 id="contract-wizard-title" className="text-lg sm:text-xl font-bold text-slate-900">{existing ? 'Rà soát hợp đồng đã lưu' : 'Tạo hợp đồng thuê căn hộ'}</h2><p className="text-xs text-slate-500 mt-1">Thông tin hai bên và tài sản được lấy từ hồ sơ đã lưu.</p></div><button type="button" onClick={close} disabled={saving} aria-label="Đóng trình tạo hợp đồng" className="p-2 rounded-lg hover:bg-slate-100"><X className="w-5 h-5" /></button></header>
+      <header className="flex justify-between items-start gap-3 border-b border-slate-200 p-4 sm:p-6 shrink-0"><div><h2 id="contract-wizard-title" className="text-lg sm:text-xl font-bold text-slate-900">{existing ? 'Xem hợp đồng đã lưu' : renewalOf ? 'Ký tiếp hợp đồng ' + renewalOf.contractNumber : 'Tạo hợp đồng thuê'}</h2><p className="text-xs text-slate-500 mt-1">Thông tin hai bên và tài sản được lấy từ hồ sơ đã lưu.</p></div><button type="button" onClick={close} disabled={saving} aria-label="Đóng trình tạo hợp đồng" className="p-2 rounded-lg hover:bg-slate-100"><X className="w-5 h-5" /></button></header>
       <div ref={scrollArea} className="overflow-y-auto p-4 sm:p-6 space-y-6 min-h-0">
         {!context && !error && <p role="status">Đang tải thông tin đã lưu...</p>}
         {context && terms && snapshot && <>
           {context.rightsValidUntil&&<p className="text-sm bg-amber-50 text-amber-900 rounded-lg p-3">Thời hạn được phép cho thuê hiện hành: {context.rightsValidFrom} đến hết {context.rightsValidUntil}. Ngày kết thúc hợp đồng không được vượt giới hạn này.</p>}
           <ol aria-label="Tiến trình tạo hợp đồng" className="grid grid-cols-3 sm:grid-cols-6 gap-2">{steps.map((label, index) => <li key={label} aria-current={step === index ? 'step' : undefined} className={`text-center rounded-lg p-2 text-[11px] ${step === index ? 'bg-emerald-50 text-emerald-800 font-bold' : 'text-slate-500'}`}><span className={`w-7 h-7 mx-auto mb-1 rounded-full border flex items-center justify-center ${index < step ? 'bg-emerald-600 text-white border-emerald-600' : ''}`}>{index < step ? <Check className="w-4 h-4" /> : index + 1}</span>{label}</li>)}</ol>
-          {step === 0 && <section className="space-y-5"><h3 className="text-lg font-bold">Chọn mẫu hợp đồng</h3><div className="border-2 border-emerald-600 bg-emerald-50 rounded-xl p-5 flex gap-3"><FileText className="text-emerald-700 shrink-0" /><div><h4 className="font-bold">Chung cư / Căn hộ</h4><p className="mt-1 text-sm text-slate-600">Mẫu thuê căn hộ có {context.templateClauses.length} điều khoản gợi ý. Bạn có thể sửa, xóa hoặc thay bằng điều khoản riêng ở bước 5.</p></div></div><p className="text-sm text-slate-500">Đúng căn hộ và khách thuê của yêu cầu đã chấp nhận; số hợp đồng được hệ thống tạo khi lưu.</p></section>}
+          {step === 0 && <section className="space-y-5"><h3 className="text-lg font-bold">Chọn mẫu hợp đồng</h3><p className="text-sm text-slate-500">Chọn loại tài sản, sau đó rà soát hai bên và điều khoản phù hợp.</p><div className="grid sm:grid-cols-2 gap-3">{templates.map(template => <button key={template.id} type="button" aria-pressed={(terms.templateType ?? 'APARTMENT') === template.id} onClick={() => change('templateType', template.id)} className={`text-left border-2 rounded-xl p-4 flex gap-3 ${(terms.templateType ?? 'APARTMENT') === template.id ? 'border-emerald-600 bg-emerald-50' : 'border-slate-200 bg-white hover:border-emerald-300'}`}><FileText className="text-emerald-700 shrink-0" /><div><h4 className="font-bold text-sm">{template.title}</h4><p className="mt-1 text-xs text-slate-600">{template.description}</p></div></button>)}</div><p className="text-sm text-slate-500">Có {context.templateClauses.length} điều khoản gợi ý để sửa ở bước 5. Hợp đồng gắn với tài sản và khách thuê của yêu cầu đã chấp nhận; số hợp đồng được tạo khi lưu.</p></section>}
           {step === 1 && <PartyReview party={snapshot.owner} title="Thông tin bên cho thuê (Bên A)" />}
           {step === 2 && <PartyReview party={snapshot.customer} title="Thông tin bên thuê (Bên B)" />}
           {step === 3 && <div className="space-y-6"><AssetReview snapshot={snapshot} /><ReceivingAccountReview snapshot={snapshot} />
@@ -90,19 +104,19 @@ export function ContractWizard({ requestId, onClose, onSaved }: { requestId: str
             </section>)}<button type="button" className={button} disabled={terms.clauses.length >= 30} onClick={() => change('clauses', [...terms.clauses, { title: '', body: '' }])}><Plus className="inline w-4 h-4 mr-2" />Thêm điều khoản</button>
             <p className="text-xs text-slate-500">Mẫu tham khảo: <a href="https://homedy.com/news/6-luu-y-khi-lap-hop-dong-thue-can-ho-ne4363" target="_blank" rel="noreferrer" className="underline">Homedy</a>, <a href="https://thuecanho123.com/hop-dong-cho-thue-can-ho-chung-cu-day-du-don-gian-post6.html" target="_blank" rel="noreferrer" className="underline">Thuecanho123</a>.</p>
           </section>}
-          {step === 5 && <><ContractReview snapshot={snapshot} terms={terms} number={existing?.contractNumber} status={existing?.status} />{existing && <p className="text-xs text-slate-500">Thông tin hồ sơ là bản lưu tại thời điểm tạo hợp đồng. Chỉnh sửa bản nháp chỉ thay đổi điều kiện thuê và điều khoản.</p>}</>}
+          {step === 5 && <>{existing && !dirty ? <ContractDocument draft={existing} onUpdated={updated => { setExisting(updated); setTerms(extractTerms(updated)); onSaved(); }} /> : <><ContractReview snapshot={snapshot} terms={terms} number={existing?.contractNumber} status={existing?.status} /><p className="text-sm bg-amber-50 text-amber-900 rounded-xl p-4">Đây là bản rà soát nội dung. Bấm “{existing ? 'Lưu thay đổi' : 'Tạo hợp đồng PDF'}” để xem PDF A4 và ký xác nhận.</p></>}{locked && <p className="text-xs text-slate-500">Nội dung đã được khóa vì hợp đồng có chữ ký. Bạn chỉ có thể xem, tải PDF hoặc ký cho bên của mình.</p>}</>}
         </>}
-        {savedNotice && <p role="status" className="bg-emerald-50 text-emerald-800 rounded-lg p-4">Đã lưu bản nháp. Khách thuê được chọn có thể rà soát trong “Hợp đồng của tôi”.</p>}
+        {savedNotice && <p role="status" className="bg-emerald-50 text-emerald-800 rounded-lg p-4">Đã tạo và lưu hợp đồng. Bạn có thể xem PDF, tải xuống và ký trong khung bên trên; khách thuê mở “Hợp đồng của tôi” để ký phần của mình.</p>}
         {error && <div role="alert" className="bg-rose-50 text-rose-700 p-4 rounded-xl space-y-3"><p>{error}</p>{(!context || conflict) && <button type="button" className={button} onClick={() => { if (!dirty || window.confirm('Tải lại sẽ bỏ thay đổi chưa lưu. Tiếp tục?')) setReloadKey(n => n + 1); }}>Tải lại thông tin</button>}</div>}
       </div>
-      <footer className="border-t border-slate-200 p-4 sm:px-6 flex flex-wrap justify-between gap-3 shrink-0"><button type="button" className={button} disabled={saving} onClick={() => { if (step === 0) close();else { setError('');setStep(s => s - 1); } }}>{step === 0 ? 'Đóng' : 'Quay lại'}</button>
-        {context && terms && <div className="flex flex-wrap gap-2">{step === 5 ? <><button type="button" className={button} disabled={saving || existing?.status !== 'DRAFT' && !!existing} onClick={() => setStep(3)}>Chỉnh sửa</button><button type="button" className={primary} disabled={saving || conflict || !!existing && (!dirty || existing.status !== 'DRAFT')} onClick={() => void save()}>{saving ? 'Đang lưu...' : existing ? 'Lưu thay đổi' : 'Lưu bản nháp'}</button></> : <button type="button" className={primary} disabled={saving} onClick={next}>Tiếp theo →</button>}</div>}
+      <footer className="border-t border-slate-200 p-4 sm:px-6 flex flex-wrap justify-between gap-3 shrink-0"><button type="button" className={button} disabled={saving} onClick={() => { if (step === 0 || locked) close();else { setError('');setStep(s => s - 1); } }}>{step === 0 || locked ? 'Đóng' : 'Quay lại'}</button>
+        {context && terms && !locked && <div className="flex flex-wrap gap-2">{step === 5 ? <><button type="button" className={button} disabled={saving} onClick={() => setStep(3)}>Chỉnh sửa</button><button type="button" className={primary} disabled={saving || conflict || !!existing && !dirty} onClick={() => void save()}>{saving ? 'Đang lưu...' : existing ? 'Lưu thay đổi' : 'Tạo hợp đồng PDF'}</button></> : <button type="button" className={primary} disabled={saving} onClick={next}>Tiếp theo →</button>}</div>}
       </footer>
     </div>
   </dialog>;
 }
 function extractTerms(draft: ContractDraft): ContractTerms {
-  return { startDate: draft.startDate, endDate: draft.endDate, monthlyRent: draft.monthlyRent, deposit: draft.deposit,
+  return { templateType: draft.templateType ?? 'APARTMENT', startDate: draft.startDate, endDate: draft.endDate, monthlyRent: draft.monthlyRent, deposit: draft.deposit,
     electricityUnitPrice: draft.electricityUnitPrice, waterUnitPrice: draft.waterUnitPrice, paymentDay: draft.paymentDay,
     paymentMethod: draft.paymentMethod, usagePurpose: draft.usagePurpose, clauses: draft.clauses.map(c => ({ ...c })) };
 }

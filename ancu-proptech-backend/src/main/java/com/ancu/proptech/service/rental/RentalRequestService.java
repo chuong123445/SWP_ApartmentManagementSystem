@@ -27,6 +27,7 @@ public class RentalRequestService {
     private final RentalRequestRepository requests;
     private final AccountAccessService access;
     private final AccountVerificationPolicy verification;
+    private final com.ancu.proptech.repository.contract.ContractDraftRepository drafts;
     private final com.ancu.proptech.service.property.PropertyRightsPolicy rights;
 
     @Transactional
@@ -61,7 +62,9 @@ public class RentalRequestService {
 
     private java.util.List<RentalRequest> activeRequests(Long customerId, Long apartmentId) {
         return requests.findByCustomerIdAndApartmentIdAndStatusInOrderByCreatedAtDescIdDesc(customerId, apartmentId,
-                java.util.List.of(RentalRequest.Status.PENDING, RentalRequest.Status.ACCEPTED));
+                java.util.List.of(RentalRequest.Status.PENDING, RentalRequest.Status.ACCEPTED)).stream()
+            .filter(r->r.getStatus()!=RentalRequest.Status.ACCEPTED || drafts.findByRentalRequestId(r.getId())
+                .map(d->d.getContract().getStatus()!=com.ancu.proptech.model.contract.RentalContract.Status.ENDED).orElse(true)).toList();
     }
 
     @Transactional

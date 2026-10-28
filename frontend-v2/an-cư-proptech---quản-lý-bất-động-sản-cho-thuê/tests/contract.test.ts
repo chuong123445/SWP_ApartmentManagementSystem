@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { saveContract } from '../src/services/contract/contractService.ts';
+import { saveContract, signContract, getContractPdf } from '../src/services/contract/contractService.ts';
 import { validateContractTerms } from '../src/utils/contract.ts';
 import { tenancyViews } from '../src/services/billing/billingService.ts';
 import { setAccessToken } from '../src/services/http/client.ts';
@@ -19,6 +19,29 @@ test('Draft edit submits only terms and independent content version', async () =
   globalThis.fetch = async (url, init) => { assert.equal(url, '/api/v1/owner/contracts/draft-id/draft');assert.equal(init?.method, 'PUT');assert.deepEqual(JSON.parse(init!.body as string), { ...terms, version: 3 });return Response.json({ id: 'draft-id' }); };
   await saveContract({} as ContractContext, terms, { id: 'draft-id', version: 3, snapshot: { customer: { fullName: 'Private' } } } as ContractDraft);
 });
+
+test('Signature command binds to the saved version and hash without allowing a caller-selected signer', async () => {
+  setAccessToken('signer-token');
+  globalThis.fetch = async (url, init) => {
+    assert.equal(url, '/api/v1/contracts/42/signatures');assert.equal(init?.method, 'POST');
+    assert.equal(new Headers(init?.headers).get('Authorization'), 'Bearer signer-token');
+    assert.deepEqual(JSON.parse(init!.body as string), { version: 3, contentHash: 'a'.repeat(64), signature: 'data:image/png;base64,sample', consent: true });
+    return Response.json({ id: '42' });
+  };
+  await signContract({ id: '42', version: 3, signing: { contentHash: 'a'.repeat(64) } } as ContractDraft, 'data:image/png;base64,sample');
+});
+
+test('PDF is fetched privately as a real PDF blob and server errors are not rendered as documents', async () => {
+  globalThis.fetch = async (url, init) => {
+    assert.equal(url, '/api/v1/contracts/42/pdf');assert.equal(init?.cache, 'no-store');
+    return new Response('%PDF-1.7 sample', { headers: { 'Content-Type': 'application/pdf' } });
+  };
+  assert.equal((await getContractPdf('42')).type, 'application/pdf');
+  globalThis.fetch = async () => Response.json({ code: 'RESOURCE_NOT_FOUND', message: 'Không tìm thấy hợp đồng.' }, { status: 404 });
+  await assert.rejects(getContractPdf('42'), /Không tìm thấy hợp đồng/);
+  globalThis.fetch = async () => new Response('<html>error</html>', { headers: { 'Content-Type': 'text/html' } });
+  await assert.rejects(getContractPdf('42'), /chưa trả về tệp PDF/);
+});
 test('Contract validation prevents incomplete/decreasing dates and implicit zero prices while permitting explicit zero', () => {
   assert.equal(validateContractTerms(terms), '');
   for (const values of [{ endDate: terms.startDate }, { electricityUnitPrice: '' }, { deposit: '-1' }, { monthlyRent: '1.001' }, { waterUnitPrice: '10000000000000' }, { paymentDay: 29 }, { clauses: [{ title: ' ', body: 'Body' }] }]) assert.notEqual(validateContractTerms({ ...terms, ...values }), '');
@@ -27,34 +50,3 @@ test('Contract validation prevents incomplete/decreasing dates and implicit zero
 test('DRAFT cannot be mapped as ended or create an active Tenant relationship', () => {
   const result = tenancyViews([{ id: 'draft', status: 'DRAFT' } as never]);assert.equal(result.contracts[0].status, 'draft');assert.equal(result.tenants.length, 0);
 });
-test('Contract PDF export generates valid legal document containing audit code, parties, and digital signatures', async () => {
-  const { generateContractHtml } = await import('../src/utils/contractPdf.ts');
-  const sampleContract = {
-    id: 'test-contract-id',
-    contractNumber: 'HD-9bbb5425',
-    roomId: 'room-1',
-    roomNumber: 'T.102',
-    buildingName: 'Tòa nhà kiểm thử',
-    paymentCycle: 1,
-    tenantId: 'tenant-1',
-    tenantName: 'Khách thuê Hai',
-    startDate: '2026-10-01',
-    endDate: '2027-09-30',
-    monthlyRent: 6500000,
-    deposit: 0,
-    status: 'active' as const,
-    signingMethod: 'VNPT SmartCA' as const,
-    escrowCode: 'MBBANK-ESCROW-88899977',
-    trustGuardAuditCode: 'TG-AUD-2025-08912',
-    signedDate: '15/01/2025 09:32:15'
-  };
-  const html = generateContractHtml(sampleContract);
-  assert.ok(html.includes('HD-9bbb5425'));
-  assert.ok(html.includes('TG-AUD-2025-08912'));
-  assert.ok(html.includes('Khách thuê Hai'));
-  assert.ok(html.includes('T.102'));
-  assert.ok(html.includes('6.500.000'));
-  assert.ok(html.includes('CHỨNG THƯ SỐ VNPT-CA'));
-  assert.ok(html.includes('eKYC CHIP & DIGITAL OTP'));
-});
-
