@@ -7,14 +7,10 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.JsonNode;
 import java.net.*;
-import java.net.http.*;
-import java.time.Duration;
 import java.util.*;
 @Component
 public class SepayBankClient {
  private final ObjectMapper json;
- private HttpClient http;
- private synchronized HttpClient client(){if(http==null)http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).followRedirects(HttpClient.Redirect.NEVER).build();return http;}
  private final String base;
  public SepayBankClient(ObjectMapper json,@Value("${app.payment.sepay-mode:live}") String mode){this.json=json;this.base=switch(mode){case "live"->"https://userapi.sepay.vn/v2";case "sandbox"->"https://userapi-sandbox.sepay.vn/v2";default->throw new IllegalArgumentException("SePay mode must be live or sandbox");};}
  public BankPage banks(String token,int page){var body=get(token,"/bank-accounts?active=1&per_page=100&page="+page);var list=new ArrayList<BankAccount>();for(var n:body.path("data"))if(active(n))list.add(bank(n));return new BankPage(list,page,body.path("meta").path("pagination").path("has_more").asBoolean());}
@@ -27,13 +23,24 @@ public class SepayBankClient {
  private static String text(JsonNode n,String field,int max){String s=n.path(field).asText();if(s.isBlank()||s.length()>max)throw bad("SePay trả về thông tin tài khoản chưa đầy đủ.");return s;}
  private JsonNode get(String token,String path){
   if(token.isBlank()||token.length()>4096||!token.chars().allMatch(c->c>=33&&c<=126))throw bad("API Token không hợp lệ.");
-  try{var req=HttpRequest.newBuilder(URI.create(base+path)).timeout(Duration.ofSeconds(10)).header("Authorization","Bearer "+token).header("Accept","application/json").GET().build();
-   var response=client().send(req,HttpResponse.BodyHandlers.ofInputStream());try(var stream=response.body()){
-    if(response.statusCode()==401||response.statusCode()==403)throw bad("SePay từ chối API Token. Kiểm tra token và chế độ Live/Test.");
-    if(response.statusCode()!=200)throw unavailable();byte[] data=stream.readNBytes(262145);if(data.length>262144)throw unavailable();var node=json.readTree(data);if(node==null||!"success".equals(node.path("status").asText())||!node.has("data"))throw unavailable();return node;
+  HttpURLConnection connection=null;
+  try{
+   connection=open(URI.create(base+path));connection.setConnectTimeout(5000);connection.setReadTimeout(10000);
+   connection.setInstanceFollowRedirects(false);connection.setRequestMethod("GET");
+   connection.setRequestProperty("Authorization","Bearer "+token);connection.setRequestProperty("Accept","application/json");
+   int status=connection.getResponseCode();
+   if(status==401||status==403)throw bad("SePay từ chối API Token. Kiểm tra token và chế độ Live/Test.");
+   if(status==429)throw new ApiException(HttpStatus.TOO_MANY_REQUESTS,"SEPAY_RATE_LIMITED","SePay giới hạn tần suất. Chờ vài giây rồi thử lại.");
+   if(status!=200)throw unavailable();
+   try(var stream=connection.getInputStream()){
+    byte[] data=stream.readNBytes(262145);if(data.length>262144)throw unavailable();var node=json.readTree(data);
+    if(node==null||!"success".equals(node.path("status").asText())||!node.has("data"))throw unavailable();return node;
    }
-  }catch(InterruptedException e){Thread.currentThread().interrupt();throw unavailable();}catch(java.io.IOException|java.io.UncheckedIOException|tools.jackson.core.JacksonException|IllegalArgumentException e){throw unavailable();}
+  }catch(java.io.IOException|tools.jackson.core.JacksonException|IllegalArgumentException e){throw unavailable();}
+  finally{if(connection!=null)connection.disconnect();}
  }
+ // Dùng transport đồng bộ như adapter nguồn dữ liệu hiện có; tránh phụ thuộc selector/loopback của JDK HttpClient trên Windows.
+ HttpURLConnection open(URI uri)throws java.io.IOException{return (HttpURLConnection)uri.toURL().openConnection();}
  private static ApiException bad(String message){return new ApiException(HttpStatus.BAD_REQUEST,"SEPAY_ACCOUNT_INVALID",message);}
  private static ApiException unavailable(){return new ApiException(HttpStatus.SERVICE_UNAVAILABLE,"SEPAY_UNAVAILABLE","Chưa đọc được tài khoản từ SePay. Vui lòng thử lại sau.");}
 }
