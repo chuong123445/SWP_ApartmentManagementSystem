@@ -23,6 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ExternalAccountSecurityIntegrationTests {
     @Autowired MockMvc mvc;@Autowired AuthAccountRepository accounts;@Autowired ExternalIdentityRepository identities;
     @Autowired AccountReauthenticationRepository proofs;@Autowired AuthService auth;
+    @Autowired org.springframework.security.crypto.password.PasswordEncoder passwords;
     @MockitoBean ExternalReauthenticationVerifier verifier;@MockitoBean EmailOtpSender sender;
     AuthAccount a;String token,subject;String code;
     @BeforeEach void setup(){
@@ -76,5 +77,12 @@ class ExternalAccountSecurityIntegrationTests {
     @Test void noProofOrPasswordCannotBypassSensitiveCommands()throws Exception{
         post("/api/v1/me/password",token,"{\"newPassword\":\"Established-password!123\",\"version\":"+a.getVersion()+"}").andExpect(status().isForbidden());
         mvc.perform(get("/api/v1/me/security")).andExpect(status().isUnauthorized());
+    }
+    @Test void legacyGooglePasswordStillWorksAndProviderCanReplaceIt()throws Exception{
+        a.setGoogleSubject("legacy-google");a.setPasswordHash(passwords.encode("Existing-password!123"));a.setLocalPasswordEnabled(true);accounts.flush();
+        assertNotNull(auth.login(a.getEmail(),"Existing-password!123"));
+        mvc.perform(get("/api/v1/me/security").header("Authorization","Bearer "+token)).andExpect(jsonPath("$.passwordAvailable").value(true));
+        String p=proof("PASSWORD");post("/api/v1/me/password",token,"{\"reauthenticationProof\":\""+p+"\",\"newPassword\":\"Replacement-password!123\",\"version\":"+a.getVersion()+"}").andExpect(status().isNoContent());
+        assertNotNull(auth.login(a.getEmail(),"Replacement-password!123"));
     }
 }

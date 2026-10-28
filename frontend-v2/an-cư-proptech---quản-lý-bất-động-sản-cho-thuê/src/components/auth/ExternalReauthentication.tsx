@@ -24,7 +24,7 @@ export function ExternalReauthentication({ purpose, capabilities, onProof }: {
     }catch(e){popup?.close();setError(e instanceof Error?e.message:'Không thể xác thực lại.');}finally{setBusy(false);}
   };
   return <section className="border rounded-xl p-4 space-y-3">
-    <h2 className="font-bold">Xác thực lại tài khoản</h2><p className="text-sm text-slate-600">Đăng nhập lại bằng đúng tài khoản đã liên kết để tiếp tục. Quyền có hiệu lực 5 phút và chỉ dùng cho thao tác này.</p>
+    <h2 className="font-bold">Xác thực lại tài khoản</h2><p className="text-sm text-slate-600">Bạn có thể dùng cách này thay cho mật khẩu An Cư hiện tại. Đăng nhập lại bằng đúng tài khoản đã liên kết để tiếp tục. Quyền có hiệu lực 5 phút và chỉ dùng cho thao tác này.</p>
     {done?<p role="status" className="text-emerald-700">Đã xác thực lại. Bạn có thể lưu thay đổi.</p>:<div className="flex flex-wrap gap-3">
       {capabilities.providers.includes('AUTH0')&&<button type="button" disabled={busy||!config?.enabled} onClick={()=>void start('AUTH0')} className="border rounded-lg px-4 py-2 disabled:opacity-50">Xác thực lại bằng VNeID mô phỏng</button>}
       {capabilities.providers.includes('GOOGLE')&&<button type="button" disabled={busy} onClick={()=>void start('GOOGLE')} className="border rounded-lg px-4 py-2 disabled:opacity-50">Xác thực lại bằng Google</button>}

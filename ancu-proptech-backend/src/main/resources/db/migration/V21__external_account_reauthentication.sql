@@ -1,10 +1,10 @@
 IF COL_LENGTH('dbo.auth_accounts','google_subject') IS NULL
  ALTER TABLE dbo.auth_accounts ADD google_subject varchar(255) NULL;
--- Giữ nguyên hash cũ; không coi mật khẩu Google sinh ngẫu nhiên là mật khẩu người dùng đã thiết lập.
+-- Giữ nguyên hash và khả năng đăng nhập cũ: không thể phân biệt hash Google ngẫu nhiên với mật khẩu đã được đặt thủ công.
 IF COL_LENGTH('dbo.auth_accounts','local_password_enabled') IS NULL
 BEGIN
  ALTER TABLE dbo.auth_accounts ADD local_password_enabled bit NOT NULL CONSTRAINT df_local_password_enabled DEFAULT 1;
- EXEC('UPDATE dbo.auth_accounts SET local_password_enabled=0 WHERE password_hash IS NULL OR google_subject IS NOT NULL');
+ EXEC('UPDATE dbo.auth_accounts SET local_password_enabled=0 WHERE password_hash IS NULL');
 END;
 IF OBJECT_ID(N'dbo.account_reauthentications',N'U') IS NULL
 BEGIN
