@@ -1,5 +1,5 @@
 import {OwnerApartmentEditor} from '@/components/apartments/OwnerApartmentEditor';
-import {ApartmentImage} from '@/components/apartments/ApartmentImage';
+import {ApartmentGallery} from '@/components/apartments/ApartmentGallery';
 import {saveAssetCommand} from '@/services/property/assetManagementService';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
@@ -119,7 +119,7 @@ export function ApartmentDetailPage() {
     {loading && <p role="status" className="py-16 text-center text-slate-500">Đang tải thông tin căn hộ...</p>}
     {loadError && <p role="alert" className="p-6 bg-white border border-rose-200 rounded-xl text-rose-700">{loadError}</p>}
     {apartment && !loading && <div className="grid lg:grid-cols-[2fr_1fr] gap-8">
-      <section className="space-y-6"><div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{apartment.images.map((src,index)=><ApartmentImage key={src} src={src} alt={`${apartment.title} - ảnh ${index+1}`} className="w-full h-64 object-cover bg-emerald-50 rounded-2xl" />)}</div>
+      <section className="space-y-6"><ApartmentGallery key={apartment.id} images={apartment.images} title={apartment.title}/>
         <div className="bg-white border border-slate-200 rounded-2xl p-6"><span className="inline-block bg-emerald-50 text-emerald-700 text-xs px-3 py-1 rounded-full mb-3">{availabilityLabel[apartment.availability]}</span>
           <h1 className="text-2xl font-bold text-slate-900">{apartment.title}</h1><p className="flex gap-2 text-sm text-slate-500 mt-3"><MapPin className="w-4 h-4 shrink-0" />{apartment.address}</p>
           <div className="flex flex-wrap gap-5 mt-5 text-sm text-slate-600"><span>{apartment.areaM2} m²</span><span className="flex gap-1.5 items-center"><BedDouble className="w-4 h-4" />{apartment.bedrooms === 0 ? 'Studio' : `${apartment.bedrooms} phòng ngủ`}</span><span className="flex gap-1.5 items-center"><Bath className="w-4 h-4" />{apartment.bathrooms} phòng tắm</span></div>
