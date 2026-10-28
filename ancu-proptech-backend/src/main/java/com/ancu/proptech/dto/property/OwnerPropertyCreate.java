@@ -11,6 +11,7 @@ import java.util.*;
 
 @Getter @Setter @NoArgsConstructor
 public class OwnerPropertyCreate {
+    @NotNull @Size(min=1,max=4) private java.util.List<Long> imageIds;
     @NotBlank @Size(max = 150) private String name;
     @NotBlank @Size(max = 300) private String address;
     @NotBlank @Size(max = 80) private String city;
@@ -34,6 +35,8 @@ public class OwnerPropertyCreate {
         @NotNull @DecimalMin("0.01") @Digits(integer = 10, fraction = 2) private BigDecimal areaM2;
         @NotNull @DecimalMin("0.01") @Digits(integer = 13, fraction = 2) private BigDecimal advertisedMonthlyRent;
         @DecimalMin("0") @Digits(integer = 13, fraction = 2) private BigDecimal deposit;
+        @DecimalMin("0") @Digits(integer=13,fraction=2) private BigDecimal electricityUnitPrice;
+        @DecimalMin("0") @Digits(integer=13,fraction=2) private BigDecimal waterUnitPrice;
         @Min(0) private Integer bedrooms;
         @Min(0) private Integer bathrooms;
         @Min(1) private Integer maxOccupants;

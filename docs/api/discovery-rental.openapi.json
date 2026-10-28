@@ -249,7 +249,7 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             }
           },
           {
@@ -265,7 +265,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             },
             "description": "Intersect exact property with current Owner scope before count/pagination; another Owner or absent property yields empty page."
           }
@@ -305,7 +305,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             }
           }
         ],
@@ -404,7 +404,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             }
           }
         ],
@@ -455,7 +455,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             }
           }
         ],
@@ -514,7 +514,7 @@
         "required": true,
         "schema": {
           "type": "string",
-          "format": "uuid"
+          "pattern": "^[1-9][0-9]*$"
         }
       },
       "Page": {
@@ -585,7 +585,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "title": {
             "type": "string"
@@ -630,7 +630,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "title": {
             "type": "string"
@@ -694,7 +694,7 @@
             "properties": {
               "id": {
                 "type": "string",
-                "format": "uuid"
+                "pattern": "^[1-9][0-9]*$"
               },
               "displayName": {
                 "type": "string"
@@ -711,11 +711,11 @@
         "properties": {
           "id": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "apartmentId": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "apartmentTitle": {
             "type": "string"
@@ -728,7 +728,7 @@
           },
           "customerId": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "customerName": {
             "type": "string"

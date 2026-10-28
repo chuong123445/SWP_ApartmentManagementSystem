@@ -26,10 +26,10 @@ public class EmailChangeService {
         if(previous.isPresent()&&previous.get().getCreatedAt().isAfter(now.minusSeconds(60)))throw limited();
         if(challenges.countByAccountIdAndCreatedAtAfter(a.getId(),now.minusSeconds(900))>=3)throw limited();
         if(!sender.isConfigured()||!hasher.isConfigured())throw error(HttpStatus.SERVICE_UNAVAILABLE,"OTP_DELIVERY_UNAVAILABLE","OTP email chưa được cấu hình đầy đủ hoặc SMTP chưa khả dụng.");
-        UUID id=UUID.randomUUID();String code=String.format(Locale.ROOT,"%06d",random.nextInt(1_000_000));sender.send(email,code);
-        account.invalidate(a.getId());var c=new EmailChangeChallenge();c.setId(id);c.setAccount(a);c.setTargetEmail(email);c.setAccountVersion(a.getVersion());c.setCodeHash(hasher.hash(a.getId(),id,code));c.setCreatedAt(now);c.setExpiresAt(now.plusSeconds(600));return response(challenges.saveAndFlush(c));
+        String code=String.format(Locale.ROOT,"%06d",random.nextInt(1_000_000));sender.send(email,code);
+        account.invalidate(a.getId());var c=new EmailChangeChallenge();c.setAccount(a);c.setTargetEmail(email);c.setAccountVersion(a.getVersion());c.setCodeHash("");c.setCreatedAt(now);c.setExpiresAt(now.plusSeconds(600));challenges.saveAndFlush(c);c.setCodeHash(hasher.hash(a.getId(),c.getId(),code));return response(challenges.saveAndFlush(c));
     }
-    @Transactional(noRollbackFor=AuthException.class) public ProfileResponse confirm(Jwt jwt,UUID id,EmailChangeConfirm input){
+    @Transactional(noRollbackFor=AuthException.class) public ProfileResponse confirm(Jwt jwt,Long id,EmailChangeConfirm input){
         var a=account.locked(jwt);var c=challenges.findByIdAndAccountId(id,a.getId()).orElseThrow(()->error(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy yêu cầu xác minh của bạn."));
         Instant now=Instant.now();if(c.getUsedAt()!=null||c.getInvalidatedAt()!=null)throw error(HttpStatus.BAD_REQUEST,"OTP_NOT_ACTIVE","Mã đã được sử dụng hoặc thay thế.");
         if(!c.getExpiresAt().isAfter(now))throw error(HttpStatus.BAD_REQUEST,"OTP_EXPIRED","Mã đã hết hạn. Hãy yêu cầu mã mới.");

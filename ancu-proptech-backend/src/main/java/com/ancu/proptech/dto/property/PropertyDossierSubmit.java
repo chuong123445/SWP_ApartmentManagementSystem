@@ -11,13 +11,22 @@ public class PropertyDossierSubmit {
     @NotNull @Min(0) private Long propertyVersion;
     @NotNull private PropertyDossier.RightType rightType;
     @NotNull @Valid private ReceivingAccount receivingAccount;
-    @NotNull @Size(min=1,max=20) private List<@NotNull UUID> documentFileIds;
-    @NotNull @Size(max=20) private List<@NotNull UUID> supportingFileIds=new ArrayList<>();
-    @NotNull @Size(max=20) private List<@NotNull UUID> ownerEvidenceFileIds=new ArrayList<>();
+    @NotNull @Size(min=1,max=20) private List<@NotNull Long> documentFileIds;
+    @NotNull @Size(max=20) private List<@NotNull Long> supportingFileIds=new ArrayList<>();
+    @NotNull @Size(max=20) private List<@NotNull Long> ownerEvidenceFileIds=new ArrayList<>();
     @Size(max=100) private String certificateNumber;
     @PastOrPresent private LocalDate certificateIssueDate;
     @Size(max=200) private String certificateIssuePlace;
     @Size(max=1000) private String exploitationRightDescription;
+    private LocalDate rightsValidFrom;
+    private LocalDate rightsValidUntil;
+    private LocalDate originalLeaseFrom;
+    private LocalDate originalLeaseUntil;
+    @Size(max=100) private String principalName;
+    @Pattern(regexp="[0-9]{12}") private String principalDocumentNumber;
+    @NotNull @Size(max=20) private List<@NotNull Long> authorizationFileIds=new ArrayList<>();
+    @NotNull @Size(max=20) private List<@NotNull Long> originalLeaseFileIds=new ArrayList<>();
+    @NotNull @Size(max=20) private List<@NotNull Long> subleaseConsentFileIds=new ArrayList<>();
     @AssertTrue public boolean isCertificateComplete(){
         boolean number=certificateNumber!=null&&!certificateNumber.isBlank(),place=certificateIssuePlace!=null&&!certificateIssuePlace.isBlank();
         return (!number&&certificateIssueDate==null&&!place)||(number&&certificateIssueDate!=null&&place);

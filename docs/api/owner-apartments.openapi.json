@@ -3,7 +3,7 @@
   "info": {
     "title": "An Cu Owner Apartment Inventory",
     "version": "1.2.0",
-    "description": "Implemented verified Owner property+private draft units, inventory, scoped property selection, private dossiers/Admin review and versioned explicit publication. Apartment edit/delete and approval revocation remain unimplemented."
+    "description": "Implemented numeric identity inventory, private drafts/dossiers, explicit publication, property image sets and vacant apartment rent/electricity/water edits. Pending requests block price edits. Other apartment edit/delete and approval revocation remain separate."
   },
   "servers": [
     {
@@ -160,7 +160,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             }
           }
         ],
@@ -251,7 +251,7 @@
         "properties": {
           "propertyId": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "roomNumber": {
             "type": "string",
@@ -341,6 +341,20 @@
               "HIDDEN"
             ],
             "default": "DRAFT"
+          },
+          "electricityUnitPrice": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nonnegative decimal VND per unit."
+          },
+          "waterUnitPrice": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nonnegative decimal VND per unit."
           }
         }
       },
@@ -349,7 +363,7 @@
         "properties": {
           "propertyId": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "roomNumber": {
             "type": "string",
@@ -443,7 +457,7 @@
           },
           "id": {
             "type": "string",
-            "format": "uuid",
+            "pattern": "^[1-9][0-9]*$",
             "readOnly": true
           },
           "propertyName": {
@@ -451,7 +465,7 @@
           },
           "ownerId": {
             "type": "string",
-            "format": "uuid",
+            "pattern": "^[1-9][0-9]*$",
             "readOnly": true
           },
           "availability": {
@@ -491,7 +505,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "name": {
             "type": "string"
@@ -644,6 +658,20 @@
               "minLength": 1,
               "maxLength": 100
             }
+          },
+          "electricityUnitPrice": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nonnegative decimal VND per unit."
+          },
+          "waterUnitPrice": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nonnegative decimal VND per unit."
           }
         }
       },
@@ -692,6 +720,17 @@
             },
             "minItems": 1,
             "maxItems": 50
+          },
+          "imageIds": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            },
+            "description": "Own unused staged property-image IDs. Order determines cover. Bound atomically."
           }
         },
         "required": [
@@ -700,7 +739,8 @@
           "city",
           "district",
           "rentalMode",
-          "apartments"
+          "apartments",
+          "imageIds"
         ]
       },
       "PropertyCreated": {

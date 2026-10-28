@@ -38,6 +38,7 @@ class ContractDraftIntegrationTests {
     @Autowired ContractDraftRepository drafts;
     @Autowired com.ancu.proptech.repository.identity.IdentityProfileRepository identities;
     @Autowired AuthService auth;
+    @Autowired com.ancu.proptech.repository.auth.ExternalIdentityRepository verifiedIdentities;
     @Autowired PasswordEncoder passwords;
     private AuthAccount owner,customer,other;
     private RentalRequest request;
@@ -52,9 +53,23 @@ class ContractDraftIntegrationTests {
         var a=new Apartment();a.setProperty(p);a.setTitle("Căn hộ kiểm thử");a.setDescription("Đã lưu");a.setRoomNumber("A.101");a.setAreaM2(new BigDecimal("42.50"));a.setAdvertisedMonthlyRent(new BigDecimal("6000000"));a.setPublicationStatus(Apartment.PublicationStatus.PUBLISHED);a.setAvailability(Apartment.Availability.CONTRACT_IN_PROGRESS);a.setCreatedAt(Instant.now());apartments.saveAndFlush(a);
         request=new RentalRequest();request.setApartment(a);request.setCustomer(customer);request.setStatus(RentalRequest.Status.ACCEPTED);request.setMessage("");request.setCreatedAt(Instant.now());requests.saveAndFlush(request);
     }
-    private AuthAccount account(AuthAccount.Role role) { var a=new AuthAccount();a.setEmail(UUID.randomUUID()+"@example.invalid");a.setFullName("Thông tin đã lưu "+role);a.setPhone("0912345678");a.setAddress("Địa chỉ hồ sơ");a.setPasswordHash(hash);a.setRole(role);a.setStatus(AuthAccount.Status.ACTIVE);a.setEmailVerified(true);a.setContactVerified(true);return accounts.saveAndFlush(a); }
+    private AuthAccount account(AuthAccount.Role role) { var a=new AuthAccount();a.setEmail(com.ancu.proptech.support.TestIds.next()+"@example.invalid");a.setFullName("Thông tin đã lưu "+role);a.setPhone("0912345678");a.setAddress("Địa chỉ hồ sơ");a.setPasswordHash(hash);a.setRole(role);a.setStatus(AuthAccount.Status.ACTIVE);a.setEmailVerified(true);a.setContactVerified(true);return accounts.saveAndFlush(a); }
     private String bearer(AuthAccount a) { return "Bearer "+auth.login(a.getEmail(),PASSWORD).tokens().accessToken(); }
     private String context() throws Exception { return mvc.perform(get("/api/v1/owner/rental-requests/"+request.getId()+"/contract-context").header("Authorization",token)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString(); }
+    @Test void newContractContextUsesVerifiedCitizenWithoutRequiringManualIdentity()throws Exception{
+        var verified=com.ancu.proptech.support.VerifiedIdentityFixtures.bind(verifiedIdentities,owner);
+        String context=context();assertEquals(verified.getDocumentNumber(),JsonPath.read(context,"$.snapshot.owner.documentNumber"));assertEquals("VERIFIED",JsonPath.read(context,"$.snapshot.owner.identityVerificationStatus"));
+        assertNull(JsonPath.read(context,"$.snapshot.owner.documentIssueDate"));assertEquals(verified.getLegalName(),JsonPath.read(context,"$.snapshot.owner.fullName"));
+    }
+    @Test void cannotCreateContractBeyondApprovedRights()throws Exception{
+        var p=request.getApartment().getProperty();p.setRightType(PropertyDossier.RightType.AUTHORIZATION);p.setRightsValidFrom(LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).minusDays(1));p.setRightsValidUntil(LocalDate.of(2027,10,31));properties.flush();
+        create(token,body(context())).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONTRACT_EXCEEDS_PROPERTY_RIGHTS"));
+    }
+    @Test void contractEndingOnRightsEndIsAllowedButUpdateBeyondItIsRejected()throws Exception{
+        var p=request.getApartment().getProperty();p.setRightType(PropertyDossier.RightType.AUTHORIZATION);p.setRightsValidFrom(LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).minusDays(1));p.setRightsValidUntil(LocalDate.of(2027,11,1));properties.flush();
+        String saved=create(token,body(context())).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        update(id(saved),0,terms().replace("2027-11-01","2027-11-02")).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONTRACT_EXCEEDS_PROPERTY_RIGHTS"));
+    }
     private String terms() { return """
         "startDate":"2026-11-01","endDate":"2027-11-01","monthlyRent":"6200000.50","electricityUnitPrice":"3500","waterUnitPrice":"15000","deposit":"10000000","paymentDay":5,"paymentMethod":"Chuyển khoản","usagePurpose":"Để ở","clauses":[{"title":"Điều khoản riêng","body":"Không hút thuốc trong căn hộ."}]
         """.strip(); }
@@ -70,7 +85,7 @@ class ContractDraftIntegrationTests {
         mvc.perform(get("/api/v1/owner/rental-requests/"+request.getId()+"/contract-context").header("Authorization",token)).andExpect(header().string("Cache-Control","no-store"));
     }
     @Test void draftPersistsAcceptedSelectionAndNeverActivatesApartmentOrInventsBaselines() throws Exception {
-        String result=create();var c=contracts.findById(UUID.fromString(id(result))).orElseThrow();
+        String result=create();var c=contracts.findById(Long.valueOf(id(result))).orElseThrow();
         assertEquals(RentalContract.Status.DRAFT,c.getStatus());assertFalse(c.isLocalFixture());assertNull(c.getElectricityBaseline());assertNull(c.getWaterBaseline());
         assertEquals(Apartment.Availability.CONTRACT_IN_PROGRESS,request.getApartment().getAvailability());assertEquals(customer.getId(),c.getCustomer().getId());
         assertEquals("Điều khoản riêng",JsonPath.read(result,"$.clauses[0].title"));assertEquals("10000000",JsonPath.read(result,"$.deposit"));
@@ -79,7 +94,7 @@ class ContractDraftIntegrationTests {
     @Test void snapshotIsStableAfterAccountAndAssetChangesAndAfterEditingTermsOnly() throws Exception {
         String result=create();owner.setFullName("Tên mới");accounts.saveAndFlush(owner);request.getApartment().getProperty().setAddress("Địa chỉ mới");properties.saveAndFlush(request.getApartment().getProperty());
         update(id(result),0,terms().replace("Không hút thuốc","Điều khoản mới")).andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1)).andExpect(jsonPath("$.snapshot.owner.fullName").value("Thông tin đã lưu OWNER")).andExpect(jsonPath("$.snapshot.asset.address").value("12 Đường Kiểm Thử"));
-        assertEquals(0,contracts.findById(UUID.fromString(id(result))).orElseThrow().getBillingVersion());
+        assertEquals(0,contracts.findById(Long.valueOf(id(result))).orElseThrow().getBillingVersion());
     }
     @Test void partiesOnlyCanReadAndOnlyOwnerCanEdit() throws Exception {
         String result=create();String id=id(result);
@@ -91,7 +106,7 @@ class ContractDraftIntegrationTests {
     }
     @Test void listsStayScopedAndPropertyFilterNeverExpandsOwnership() throws Exception {
         create();mvc.perform(get("/api/v1/owner/contract-drafts").header("Authorization",otherToken)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
-        mvc.perform(get("/api/v1/owner/contract-drafts").header("Authorization",token).param("propertyId",UUID.randomUUID().toString())).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get("/api/v1/owner/contract-drafts").header("Authorization",token).param("propertyId",com.ancu.proptech.support.TestIds.next().toString())).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
         mvc.perform(get("/api/v1/me/contract-drafts").header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
         mvc.perform(get("/api/v1/me/contract-drafts").header("Authorization",bearer(account(AuthAccount.Role.CUSTOMER)))).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
     }
@@ -120,7 +135,7 @@ class ContractDraftIntegrationTests {
     }
     @Test void staleEditsAndNonDraftContractsCannotChangeContent() throws Exception {
         String result=create();update(id(result),0,terms().replace("6200000.50","6500000")).andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));update(id(result),0,terms()).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("STALE_VERSION"));
-        var c=contracts.findById(UUID.fromString(id(result))).orElseThrow();c.setStatus(RentalContract.Status.ENDED);contracts.saveAndFlush(c);update(id(result),1,terms()).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONTRACT_NOT_DRAFT"));
+        var c=contracts.findById(Long.valueOf(id(result))).orElseThrow();c.setStatus(RentalContract.Status.ENDED);contracts.saveAndFlush(c);update(id(result),1,terms()).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONTRACT_NOT_DRAFT"));
     }
     @Test void approvedDossierReceivingAccountIsReusedWithoutPrivateEvidence() throws Exception {
         var d=new PropertyDossier();d.setProperty(request.getApartment().getProperty());d.setApplicantName(owner.getFullName());d.setRightType(PropertyDossier.RightType.AUTHORIZATION);d.setBank("Ngân hàng đã lưu");d.setAccountNumber("123456789");d.setAccountHolderName(owner.getFullName());d.setStatus(PropertyDossier.Status.APPROVED);d.setSubmittedAt(Instant.now());dossiers.saveAndFlush(d);
@@ -136,7 +151,7 @@ class ContractDraftIntegrationTests {
         mvc.perform(get("/api/v1/contracts/"+id(result)).header("Authorization",otherToken)).andExpect(status().isNotFound());
     }
     @Test void legacyStoredSnapshotsWithoutNewLegalFieldsRemainReadable() throws Exception {
-        String result=create();var draft=drafts.findByContractId(UUID.fromString(id(result))).orElseThrow();
+        String result=create();var draft=drafts.findByContractId(Long.valueOf(id(result))).orElseThrow();
         draft.setSnapshotJson(draft.getSnapshotJson().replaceAll(",\"(?:documentNumber|documentIssueDate|documentIssuePlace|permanentAddress|identityVerificationStatus|localFixture|certificateNumber|certificateIssueDate|certificateIssuePlace|exploitationRightDescription)\":null",""));drafts.saveAndFlush(draft);
         mvc.perform(get("/api/v1/contracts/"+id(result)).header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.snapshot.owner.fullName").value(owner.getFullName())).andExpect(jsonPath("$.snapshot.asset.certificateNumber").isEmpty());
     }

@@ -28,15 +28,17 @@ class PropertyDossierIntegrationTests {
     @Autowired MockMvc mvc;@Autowired AuthAccountRepository accounts;@Autowired PropertyRepository properties;
     @Autowired ApartmentRepository apartments;@Autowired PropertyDossierRepository dossiers;@Autowired PropertyEvidenceFileRepository files;
     @Autowired PasswordEncoder passwords;@Autowired AuthService auth;
+    @Autowired com.ancu.proptech.repository.auth.ExternalIdentityRepository externalIdentities;
     private AuthAccount owner,other,admin,customer;private Property property,foreignProperty;private String ownerToken,adminToken;private byte[] png;
     private static String passwordHash;
     @BeforeEach void fixture()throws Exception{
         if(passwordHash==null)passwordHash=passwords.encode("Dossier-test!12345");
         owner=account(AuthAccount.Role.OWNER);other=account(AuthAccount.Role.OWNER);admin=account(AuthAccount.Role.ADMIN);customer=account(AuthAccount.Role.CUSTOMER);
+        com.ancu.proptech.support.VerifiedIdentityFixtures.bind(externalIdentities,owner);com.ancu.proptech.support.VerifiedIdentityFixtures.bind(externalIdentities,other);
         property=property(owner);foreignProperty=property(other);ownerToken=token(owner);adminToken=token(admin);
         var output=new ByteArrayOutputStream();ImageIO.write(new BufferedImage(2,2,BufferedImage.TYPE_INT_RGB),"png",output);png=output.toByteArray();
     }
-    private AuthAccount account(AuthAccount.Role role){var a=new AuthAccount();a.setEmail("dossier-"+UUID.randomUUID()+"@example.invalid");a.setFullName("Nguyễn Kiểm Thử");a.setPasswordHash(passwordHash);a.setRole(role);a.setStatus(AuthAccount.Status.ACTIVE);a.setEmailVerified(role!=AuthAccount.Role.ADMIN);a.setContactVerified(role!=AuthAccount.Role.ADMIN);return accounts.saveAndFlush(a);}
+    private AuthAccount account(AuthAccount.Role role){var a=new AuthAccount();a.setEmail("dossier-"+com.ancu.proptech.support.TestIds.next()+"@example.invalid");a.setFullName("Nguyễn Kiểm Thử");a.setPasswordHash(passwordHash);a.setRole(role);a.setStatus(AuthAccount.Status.ACTIVE);a.setEmailVerified(role!=AuthAccount.Role.ADMIN);a.setContactVerified(role!=AuthAccount.Role.ADMIN);return accounts.saveAndFlush(a);}
     private Property property(AuthAccount owner){var p=new Property();p.setOwner(owner);p.setName("Tài sản kiểm thử");p.setAddress("12 Đường kiểm thử");p.setCity("City");p.setDistrict("District");p.setApprovalStatus(Property.ApprovalStatus.DRAFT);return properties.saveAndFlush(p);}
     private String token(AuthAccount a){return auth.login(a.getEmail(),"Dossier-test!12345").tokens().accessToken();}
     private ResultActions upload(String token,Property p,String purpose,byte[] bytes)throws Exception{return mvc.perform(multipart("/api/v1/owner/properties/"+p.getId()+"/evidence-files").file(new MockMultipartFile("file","../../giay-to.png","image/png",bytes)).param("purpose",purpose).header("Authorization","Bearer "+token));}
@@ -60,7 +62,7 @@ class PropertyDossierIntegrationTests {
     @Test void legacyPendingPropertyWithoutDossierCanSubmitRealEvidenceWithoutReset()throws Exception{
         property.setApprovalStatus(Property.ApprovalStatus.PENDING_APPROVAL);properties.saveAndFlush(property);
         long before=property.getVersion();String file=uploadRight();String id=send(file);
-        assertNotNull(dossiers.findById(UUID.fromString(id)).orElseThrow());
+        assertNotNull(dossiers.findById(Long.valueOf(id)).orElseThrow());
         assertEquals(Property.ApprovalStatus.PENDING_APPROVAL,property.getApprovalStatus());assertEquals(before,property.getVersion());
         submit(ownerToken,property,body(file,before)).andExpect(status().isConflict());
         upload(ownerToken,property,"RIGHT_DOCUMENT",png).andExpect(status().isConflict());
@@ -70,7 +72,7 @@ class PropertyDossierIntegrationTests {
         mvc.perform(get("/api/v1/property-evidence-files/"+id).header("Authorization","Bearer "+token(other))).andExpect(status().isNotFound());
         mvc.perform(get("/api/v1/property-evidence-files/"+id).header("Authorization","Bearer "+adminToken)).andExpect(status().isNotFound());
         mvc.perform(get("/api/v1/property-evidence-files/"+id).header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store")).andExpect(header().string("X-Content-Type-Options","nosniff")).andExpect(content().contentType("image/png"));
-        assertFalse(files.findById(UUID.fromString(id)).orElseThrow().getFilename().contains("/"));send(id);
+        assertFalse(files.findById(Long.valueOf(id)).orElseThrow().getFilename().contains("/"));send(id);
         mvc.perform(get("/api/v1/property-evidence-files/"+id).header("Authorization","Bearer "+adminToken)).andExpect(status().isOk());
     }
     @Test void fakeUnsupportedEmptyOversizedAndForeignUploadsAreRejected()throws Exception{

@@ -6,14 +6,15 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.Nationalized;
 import java.time.Instant;
-import java.util.UUID;
+
 
 @Entity @Table(name = "rental_requests") @Getter @Setter @NoArgsConstructor
 public class RentalRequest {
     public enum Status { PENDING, ACCEPTED, REJECTED, CANCELLED }
-    @Id @GeneratedValue(strategy = GenerationType.UUID) private UUID id;
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "apartment_id", nullable = false)
     private Apartment apartment;
+    @Column(precision=15,scale=2) private java.math.BigDecimal quotedMonthlyRent;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "customer_id", nullable = false)
     private AuthAccount customer;
     @Nationalized @Column(nullable = false, length = 2000) private String message;

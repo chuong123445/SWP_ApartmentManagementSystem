@@ -35,11 +35,10 @@ export interface RegistrationInput {
   email: string;
   password: string;
   phone?: string;
-  requestedRole: 'OWNER' | 'CUSTOMER';
 }
 export async function register(input: RegistrationInput): Promise<AuthUser> {
   return (await authRequest('register', { fullName: input.fullName.trim(), email: input.email.trim(),
-    password: input.password, phone: input.phone?.trim() || undefined, requestedRole: input.requestedRole })).json();
+    password: input.password, phone: input.phone?.trim() || undefined })).json();
 }
 
 // A single refresh request per browser tab prevents rotation/reuse races in StrictMode

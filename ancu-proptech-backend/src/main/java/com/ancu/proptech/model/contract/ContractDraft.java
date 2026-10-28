@@ -6,12 +6,12 @@ import lombok.*;
 import org.hibernate.annotations.Nationalized;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.UUID;
+
 
 /** Additive authoring data; legacy ACTIVE fixtures do not acquire invented snapshots. */
 @Entity @Table(name="contract_drafts") @Getter @Setter @NoArgsConstructor
 public class ContractDraft {
-    @Id @GeneratedValue(strategy=GenerationType.UUID) private UUID id;
+    @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
     @OneToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="contract_id",nullable=false,unique=true)
     private RentalContract contract;
     @OneToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="rental_request_id",nullable=false,unique=true)
