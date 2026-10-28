@@ -1,4 +1,4 @@
-import {OwnerApartmentEditor} from '@/components/apartments/OwnerApartmentEditor';
+import {OwnerApartmentField, OwnerApartmentPhotos} from '@/components/apartments/OwnerApartmentEditor';
 import {ApartmentGallery} from '@/components/apartments/ApartmentGallery';
 import {saveAssetCommand} from '@/services/property/assetManagementService';
 import { useEffect, useState } from 'react';
@@ -18,7 +18,7 @@ import { rightLabels } from '@/types/dossier';
 export function ApartmentDetailPage() {
   const { id = '' } = useParams();
   const { user, loading:authLoading } = useAuth();
-  const [editing,setEditing]=useState(false);const [ownerNotice,setOwnerNotice]=useState('');
+  const [ownerNotice,setOwnerNotice]=useState('');
   const [apartment, setApartment] = useState<ApartmentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -119,24 +119,30 @@ export function ApartmentDetailPage() {
     {loading && <p role="status" className="py-16 text-center text-slate-500">Đang tải thông tin căn hộ...</p>}
     {loadError && <p role="alert" className="p-6 bg-white border border-rose-200 rounded-xl text-rose-700">{loadError}</p>}
     {apartment && !loading && <div className="grid lg:grid-cols-[2fr_1fr] gap-8">
-      <section className="space-y-6"><ApartmentGallery key={apartment.id} images={apartment.images} title={apartment.title}/>
+      <section className="space-y-6"><div className="space-y-3"><ApartmentGallery key={apartment.id} images={apartment.images} title={apartment.title}/>{apartment.management&&<OwnerApartmentPhotos key={`${apartment.id}-photos`} apartment={apartment} onSaved={reloadApartment}/>}</div>
         <div className="bg-white border border-slate-200 rounded-2xl p-6"><span className="inline-block bg-emerald-50 text-emerald-700 text-xs px-3 py-1 rounded-full mb-3">{availabilityLabel[apartment.availability]}</span>
-          <h1 className="text-2xl font-bold text-slate-900">{apartment.title}</h1><p className="flex gap-2 text-sm text-slate-500 mt-3"><MapPin className="w-4 h-4 shrink-0" />{apartment.address}</p>
+          <OwnerApartmentField key={`${apartment.id}-title`} apartment={apartment} field="title" onSaved={reloadApartment}><h1 className="text-2xl font-bold text-slate-900 break-words">{apartment.title}</h1></OwnerApartmentField><p className="flex gap-2 text-sm text-slate-500 mt-3"><MapPin className="w-4 h-4 shrink-0" />{apartment.address}</p>
           <div className="flex flex-wrap gap-5 mt-5 text-sm text-slate-600"><span>{apartment.areaM2} m²</span><span className="flex gap-1.5 items-center"><BedDouble className="w-4 h-4" />{apartment.bedrooms === 0 ? 'Studio' : `${apartment.bedrooms} phòng ngủ`}</span><span className="flex gap-1.5 items-center"><Bath className="w-4 h-4" />{apartment.bathrooms} phòng tắm</span></div>
+          {apartment.management&&<div className="mt-4"><OwnerApartmentField key={`${apartment.id}-occupants`} apartment={apartment} field="maxOccupants" onSaved={reloadApartment}><span className="text-sm">Số người tối đa: {apartment.management.maxOccupants??'Chưa có'}</span></OwnerApartmentField></div>}
         </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-6"><h2 className="font-bold mb-3">Thông tin căn hộ</h2><p className="text-sm text-slate-600 whitespace-pre-wrap leading-7">{apartment.description}</p><h2 className="font-bold mt-6 mb-3">Tiện ích</h2><div className="flex flex-wrap gap-2">{apartment.amenities.map((amenity, index) => <span key={index} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs">{amenity}</span>)}</div></div>
-        {apartment.management&&editing&&apartment.management.canEdit&&<OwnerApartmentEditor key={`${apartment.version}-${apartment.management.propertyVersion}`} apartment={apartment} onSaved={reloadApartment}/>}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-3">
+          <OwnerApartmentField key={`${apartment.id}-description`} apartment={apartment} field="description" onSaved={reloadApartment}><h2 className="font-bold">Thông tin căn hộ</h2></OwnerApartmentField>
+          <p className="text-sm text-slate-600 whitespace-pre-wrap break-words leading-7">{apartment.description}</p>
+          <OwnerApartmentField key={`${apartment.id}-amenities`} apartment={apartment} field="amenities" onSaved={reloadApartment}><h2 className="font-bold mt-3">Tiện ích</h2></OwnerApartmentField>
+          <div className="flex flex-wrap gap-2">{apartment.amenities.map((amenity,index)=><span key={index} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs break-words">{amenity}</span>)}</div>
+        </div>
       </section>
       <aside className="space-y-5"><div className="bg-white border border-slate-200 rounded-2xl p-6 lg:sticky lg:top-24">
-        <p className="text-sm text-slate-500">Giá niêm yết / tháng</p><p className="text-3xl font-bold text-emerald-700 mt-2">{formatRent(apartment.advertisedMonthlyRent)}</p>
+        <p className="text-sm text-slate-500">Giá niêm yết / tháng</p><OwnerApartmentField key={`${apartment.id}-rent`} apartment={apartment} field="monthlyRent" onSaved={reloadApartment}><p className="text-3xl font-bold text-emerald-700 mt-2">{formatRent(apartment.advertisedMonthlyRent)}</p></OwnerApartmentField>
         {apartment.lessorRelationship&&apartment.lessorRelationship!=='UNSPECIFIED'&&<p className="text-sm mt-2">Bên cho thuê: {rightLabels[apartment.lessorRelationship]}</p>}
         {apartment.rightsValidUntil&&<p className="text-sm mt-1">Quyền cho thuê đến hết: {apartment.rightsValidUntil}</p>}
-        {apartment.electricityUnitPrice != null && <p className="text-sm mt-2">Điện: {formatRent(apartment.electricityUnitPrice)}/kWh</p>}
-        {apartment.waterUnitPrice != null && <p className="text-sm mt-1">Nước: {formatRent(apartment.waterUnitPrice)}/m³</p>}
+        {(apartment.electricityUnitPrice != null||apartment.management?.canEdit)&&<OwnerApartmentField key={`${apartment.id}-electricity`} apartment={apartment} field="electricityUnitPrice" onSaved={reloadApartment}><p className="text-sm mt-2">Điện: {apartment.electricityUnitPrice!=null?formatRent(apartment.electricityUnitPrice):'Chưa có giá'}/kWh</p></OwnerApartmentField>}
+        {(apartment.waterUnitPrice != null||apartment.management?.canEdit)&&<OwnerApartmentField key={`${apartment.id}-water`} apartment={apartment} field="waterUnitPrice" onSaved={reloadApartment}><p className="text-sm mt-2">Nước: {apartment.waterUnitPrice!=null?formatRent(apartment.waterUnitPrice):'Chưa có giá'}/m³</p></OwnerApartmentField>}
+        {apartment.management?.priceLockReason&&<p className="text-sm text-amber-800 mt-3">{apartment.management.priceLockReason}</p>}
         <div className="my-5 border-y border-slate-100 py-4"><p className="text-xs text-slate-500 mb-1">Chủ nhà</p><p className="font-semibold">{apartment.publicOwner.displayName}</p><p className="text-xs text-slate-500 mt-1">{apartment.propertyName}</p></div>
         {error && <p role="alert" className="text-sm text-rose-700 mb-3">{error}</p>}
         {apartment.management?<section className="space-y-4" aria-label="Quản lý căn hộ của bạn"><h2 className="font-bold text-lg">Căn hộ của bạn</h2><p className="text-sm">{apartment.management.approvalStatus==='APPROVED'?(apartment.management.verificationSource?'Đã xác thực tài sản từ VNeID':'Tài sản đã được Admin duyệt'):`Trạng thái hồ sơ: ${apartment.management.approvalStatus}`}</p><p className="text-sm">{apartment.publicationStatus==='PUBLISHED'?'Đang công khai':apartment.publicationStatus==='HIDDEN'?'Đã ẩn tin':'Tin nháp'}</p>
-          {apartment.management.canEdit?<button type="button" onClick={()=>setEditing(v=>!v)} className="border border-emerald-600 text-emerald-800 rounded-lg px-4 py-2">{editing?'Đóng chỉnh sửa':'Chỉnh sửa thông tin, ảnh và giá'}</button>:<Link to="/account/verification" className="underline">Xác thực tài khoản để chỉnh sửa</Link>}
+          {!apartment.management.canEdit&&<Link to="/account/verification" className="underline">Xác thực tài khoản để chỉnh sửa</Link>}
           {apartment.management.canEdit&&apartment.management.approvalStatus==='APPROVED'&&user?.roles.includes('OWNER')&&<button type="button" disabled={saving||(apartment.publicationStatus!=='PUBLISHED'&&apartment.rentalRightsAvailable===false)} className="block border rounded-lg px-4 py-2 disabled:opacity-50" onClick={async()=>{setSaving(true);setError('');try{await saveAssetCommand(`/owner/apartments/${id}/publication`,'POST',{version:apartment.version,publicationStatus:apartment.publicationStatus==='PUBLISHED'?'HIDDEN':'PUBLISHED'});await reloadApartment();}catch(e){setError(e instanceof Error?e.message:'Không thể đổi trạng thái công khai.');}finally{setSaving(false);}}}>{apartment.publicationStatus==='PUBLISHED'?'Ẩn tin cho thuê':'Công khai căn hộ'}</button>}
           {!apartment.management.verificationSource&&<Link to="/account/rental-properties" state={{openPropertyId:apartment.management.propertyId}} className="block underline text-sm">Hồ sơ và giấy tờ tài sản</Link>}{ownerNotice&&<p role="status" className="text-emerald-700">{ownerNotice}</p>}
         </section>:checkingVerification ? <p role="status">Đang kiểm tra xác thực tài khoản...</p>
