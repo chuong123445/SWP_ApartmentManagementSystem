@@ -1,3 +1,4 @@
+import { SourceReceivingAccountForm } from '@/components/contract/SourceReceivingAccountForm';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Check, FileText, Plus, Trash2, X } from 'lucide-react';
 import { AssetReview, ContractReview, PartyReview, ReceivingAccountReview } from '@/components/contract/ContractReview';
@@ -77,6 +78,7 @@ export function ContractWizard({ requestId, onClose, onSaved }: { requestId: str
           {step === 1 && <PartyReview party={snapshot.owner} title="Thông tin bên cho thuê (Bên A)" />}
           {step === 2 && <PartyReview party={snapshot.customer} title="Thông tin bên thuê (Bên B)" />}
           {step === 3 && <div className="space-y-6"><AssetReview snapshot={snapshot} /><ReceivingAccountReview snapshot={snapshot} />
+            {!existing && snapshot.evidence?.source === 'AUTH0_VNEID_SIMULATION' && <SourceReceivingAccountForm snapshot={snapshot} onSaved={async () => { const latest=await getContractContext(requestId);setContext(latest);setError(''); }} />}
             <section className="rounded-xl border border-slate-200 p-4 space-y-5"><h3 className="font-bold text-lg">Điều kiện thuê</h3><p className="text-xs text-slate-500">Owner xác định các điều kiện cho hợp đồng này. Giá niêm yết chỉ là gợi ý; nhập rõ đơn giá điện, nước và tiền cọc, kể cả khi bằng 0.</p><div className="grid sm:grid-cols-2 gap-4">
               {([['startDate', 'Ngày bắt đầu', 'date'], ['endDate', 'Ngày kết thúc', 'date'], ['monthlyRent', 'Tiền thuê mỗi tháng (VND)', 'number'], ['deposit', 'Tiền đặt cọc (VND)', 'number'], ['electricityUnitPrice', 'Đơn giá điện (VND/kWh)', 'number'], ['waterUnitPrice', 'Đơn giá nước (VND/m³)', 'number']] as const).map(([key, label, type]) => <label key={key} className="block text-sm font-medium space-y-2">{label}<input type={type} required value={terms[key]} min={type === 'number' ? (key === 'monthlyRent' ? '0.01' : '0') : key==='startDate' ? context.rightsValidFrom||undefined : terms.startDate||context.rightsValidFrom||undefined} max={type==='date'?context.rightsValidUntil||undefined:undefined} step={type === 'number' ? '0.01' : undefined} onChange={event => change(key, event.target.value)} className={input} /></label>)}
               <label className="block text-sm font-medium space-y-2">Ngày thanh toán mỗi tháng<input type="number" min={1} max={28} step={1} value={terms.paymentDay || ''} onChange={event => change('paymentDay', Number(event.target.value))} className={input} /></label>
