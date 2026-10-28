@@ -43,6 +43,20 @@ Cả nhóm dùng chung tenant thì chỉ cần một người thêm một lần.
 
 Nếu đã import bộ email "ownerNN@example.com" trước đó, sửa email trên các user Auth0 đã có và giữ user_id/metadata; không import thêm bản thứ hai cùng CCCD. Task này chỉ cập nhật file local, chưa đổi tài khoản trên Auth0.
 
+## Đã tạo user nhưng Auth0 báo sai tài khoản/mật khẩu
+
+`users.json` không chứa mật khẩu. Dùng file này hoặc JSON tự chỉnh không gán các mật khẩu trong `TAI-KHOAN-VA-MAT-KHAU.md` lên Auth0. Mỗi tài khoản trong bộ private có mật khẩu riêng; mật khẩu đã tự đặt trên Auth0 cũng có thể khác bộ private.
+
+Với tài khoản đã tồn tại, giữ nguyên user và metadata, không xóa/import lại:
+
+1. Auth0 Dashboard → User Management → Users → chọn đúng email.
+2. Tab Details → kéo xuống Danger Zone → Change Password → Change.
+3. Đặt mật khẩu bằng giá trị tương ứng trong file private `TAI-KHOAN-VA-MAT-KHAU.md`, hoặc mật khẩu mới do bạn chọn; Save. Không chép hai dấu backtick bao quanh mật khẩu trong Markdown.
+4. Nếu tự chọn mật khẩu mới, dùng mật khẩu mới đó khi đăng nhập; file local không tự cập nhật.
+5. Thử lại qua nút VNeID của ứng dụng. Việc đổi mật khẩu không yêu cầu tạo lại tài sản/CCCD hoặc thay user_id.
+
+Email `example.com` của bộ này không nhận thư: dùng thao tác đặt mật khẩu trực tiếp trong Dashboard, không dùng chức năng gửi email quên mật khẩu. Hướng dẫn chính thức: [Change Users' Passwords](https://auth0.com/docs/authenticate/database-connections/password-change).
+
 ## Test trong ứng dụng
 
 1. Giữ Action `docs/setup/vneid-post-login.js` đã Deploy trong Post Login; đọc `app_metadata.vneid.citizen`.
