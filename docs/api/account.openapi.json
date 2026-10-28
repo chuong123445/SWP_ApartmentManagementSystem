@@ -1,0 +1,863 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "An Cu Account Profile and Security",
+    "version": "1.1.0",
+    "description": "Implemented private Self profile, password/phone settings, real SMTP email OTP challenge/confirmation. Gmail delivery is not confirmed until credentials configured and inbox verification performed. No local-code API, SMS verification, registration or forgot-password reset. Update28October: authenticated external accounts can re-confirm exact linked Auth0/Google identity then set internal password/change phone/request email OTP. No logged-out local-password recovery, SMS or automatic account linking. Internal password or one-time purpose/session/version-bound proof is required for sensitive commands."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/me/profile": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Private current-account profile; no password/hash/OTP secret.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "patch": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updates personal fields only. Account version required; retains sessions.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/me/password": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Password changed; all sessions revoked and refresh/CSRF cookies cleared."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/me/phone": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhoneChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stores unverified phone contact; normalizes 0-prefix Vietnamese numbers/E.164. Revokes sessions. No SMS or unproven identity reservation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/me/email-change": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Latest current-account challenge metadata only; no OTP code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Challenge"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No challenge exists."
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/me/email-changes": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "SMTP accepted send. Keeps current email until confirmation; expires in 10 minutes, one send per 60 sec, maximum 3/15 minutes. Invalidates old challenges only after successful SMTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Challenge"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/me/email-changes/{id}/confirm": {
+      "post": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailConfirm"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Own valid challenge only; 5 attempts, no reuse/expiry/stale version/locked-account activation. Updates email verified, invalidates other challenges and revokes sessions.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/me/security": {
+      "get": {
+        "summary": "Read current-account password/provider capabilities",
+        "responses": {
+          "200": {
+            "description": "Private result. No provider token persisted.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityCapabilities"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session unavailable"
+          },
+          "403": {
+            "description": "Wrong/stale/reused proof or provider identity, missing auth_time/nonce, expired challenge"
+          },
+          "409": {
+            "description": "Provider unavailable for current account or concurrent credential reuse"
+          },
+          "429": {
+            "description": "Too many challenges"
+          }
+        }
+      }
+    },
+    "/api/v1/me/reauthentications": {
+      "post": {
+        "summary": "Start five-minute exact-session reauthentication; max10 challenges/15minutes",
+        "responses": {
+          "200": {
+            "description": "Private result. No provider token persisted.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReauthenticationChallenge"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session unavailable"
+          },
+          "403": {
+            "description": "Wrong/stale/reused proof or provider identity, missing auth_time/nonce, expired challenge"
+          },
+          "409": {
+            "description": "Provider unavailable for current account or concurrent credential reuse"
+          },
+          "429": {
+            "description": "Too many challenges"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReauthenticationRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/reauthentications/{id}/confirm": {
+      "post": {
+        "summary": "Confirm exact linked provider; max5 attempts, no email-based linking or login session creation",
+        "responses": {
+          "200": {
+            "description": "Private result. No provider token persisted.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReauthenticationProof"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session unavailable"
+          },
+          "403": {
+            "description": "Wrong/stale/reused proof or provider identity, missing auth_time/nonce, expired challenge"
+          },
+          "409": {
+            "description": "Provider unavailable for current account or concurrent credential reuse"
+          },
+          "429": {
+            "description": "Too many challenges"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReauthenticationConfirm"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "JSON code/message; Retry-After=60 for 429. No secrets or private provider details.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Profile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 20
+          },
+          "fullName": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "dateOfBirth": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 300
+          },
+          "bio": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 1000
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "ADMIN",
+                "OWNER",
+                "CUSTOMER"
+              ]
+            }
+          },
+          "accountStatus": {
+            "type": "string"
+          },
+          "contactVerificationStatus": {
+            "type": "string",
+            "enum": [
+              "VERIFIED",
+              "UNVERIFIED"
+            ]
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "phoneVerified": {
+            "type": "boolean"
+          },
+          "emailOtpAvailable": {
+            "type": "boolean",
+            "description": "Configuration readiness only, not proof that Gmail has delivered mail."
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "ProfileUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fullName",
+          "version"
+        ],
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "dateOfBirth": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 300
+          },
+          "bio": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 1000
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "PasswordChange": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "newPassword",
+          "version"
+        ],
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "writeOnly": true
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128,
+            "writeOnly": true,
+            "description": "At most 72 UTF-8 bytes, different from current; never trimmed."
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reauthenticationProof": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Opaque one-time proof from confirm endpoint; expires five minutes after challenge creation. Only hashed on server. Alternative to currentPassword."
+          }
+        },
+        "anyOf": [
+          {
+            "required": [
+              "currentPassword"
+            ]
+          },
+          {
+            "required": [
+              "reauthenticationProof"
+            ]
+          }
+        ]
+      },
+      "PhoneChange": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version"
+        ],
+        "properties": {
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 20
+          },
+          "currentPassword": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "writeOnly": true
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reauthenticationProof": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Opaque one-time proof from confirm endpoint; expires five minutes after challenge creation. Only hashed on server. Alternative to currentPassword."
+          }
+        },
+        "anyOf": [
+          {
+            "required": [
+              "currentPassword"
+            ]
+          },
+          {
+            "required": [
+              "reauthenticationProof"
+            ]
+          }
+        ]
+      },
+      "EmailRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "email",
+          "version"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254
+          },
+          "currentPassword": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "writeOnly": true
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reauthenticationProof": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Opaque one-time proof from confirm endpoint; expires five minutes after challenge creation. Only hashed on server. Alternative to currentPassword."
+          }
+        },
+        "anyOf": [
+          {
+            "required": [
+              "currentPassword"
+            ]
+          },
+          {
+            "required": [
+              "reauthenticationProof"
+            ]
+          }
+        ]
+      },
+      "EmailConfirm": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[0-9]{6}$",
+            "writeOnly": true
+          }
+        }
+      },
+      "Challenge": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "destinationHint": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "USED",
+              "INVALIDATED",
+              "EXPIRED"
+            ]
+          }
+        }
+      },
+      "SecurityCapabilities": {
+        "type": "object",
+        "properties": {
+          "passwordAvailable": {
+            "type": "boolean"
+          },
+          "providers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "AUTH0",
+                "GOOGLE"
+              ]
+            }
+          }
+        },
+        "required": [
+          "passwordAvailable",
+          "providers"
+        ]
+      },
+      "ReauthenticationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "PASSWORD",
+              "PHONE",
+              "EMAIL"
+            ]
+          }
+        },
+        "required": [
+          "purpose"
+        ]
+      },
+      "ReauthenticationChallenge": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "nonce": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "nonce",
+          "expiresAt"
+        ]
+      },
+      "ReauthenticationConfirm": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "AUTH0",
+              "GOOGLE"
+            ]
+          },
+          "credential": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16384,
+            "description": "Fresh signed ID token, never internal Bearer/access token. Auth0: SPA audience, max_age=0, signed auth_time after challenge. Google: verified issuer/audience/email and challenge nonce."
+          }
+        },
+        "required": [
+          "provider",
+          "credential"
+        ]
+      },
+      "ReauthenticationProof": {
+        "type": "object",
+        "properties": {
+          "proof": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "proof",
+          "expiresAt"
+        ]
+      }
+    }
+  }
+}

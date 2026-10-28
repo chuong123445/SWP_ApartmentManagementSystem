@@ -4,6 +4,8 @@ Ngày: **28/10/2026**. Baseline: nhánh `chuong`, commit `1641109`, working tree
 
 **Cập nhật sau audit:** F01 đã đóng API Escrow legacy ở `c56330c`; F02 đã escape HTML xuất/in ở `0df9bd4`; F09 và gate CCCD Customer đã chỉnh ở `8831c74`. Chi tiết và giới hạn tại [bản tổng kết sửa lỗi](security-customer-auth0-fixes-2026-10-28.md). Phần dưới giữ nguyên kết quả review tại baseline; các phát hiện khác chưa được coi là đã sửa.
 
+**Cập nhật F07/F08/F09:** đã sửa nguồn snapshot hợp đồng (d538d1c), thêm xác thực lại external (c1f1529) và mở rộng/hồi quy redirect (9e6e7af). Xem [tổng kết và giới hạn kiểm thử](f07-f08-f09-fixes-2026-10-28.md). F10 unique Google vẫn riêng; chỉ bổ sung cột google_subject nếu thiếu để V21 chạy được.
+
 ## 1. Kết luận
 
 Hệ thống đã có nền tảng đăng nhập, xác thực, tài sản, yêu cầu thuê, hợp đồng nháp và lập/gửi hóa đơn. Tuy nhiên **chưa khép kín một vòng thuê mới → hợp đồng hiệu lực → bàn giao → thu tiền → kết thúc → cho thuê lại**. Một số màn hình quản lý vẫn là prototype, có thao tác chỉ đổi React state nhưng báo thành công.
