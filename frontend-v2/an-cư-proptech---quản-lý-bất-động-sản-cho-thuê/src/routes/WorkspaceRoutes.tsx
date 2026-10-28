@@ -1,9 +1,7 @@
+import {Navigate} from 'react-router';
 import type { RentalWorkspace } from '@/hooks/useRentalWorkspace';
 import type { WorkspaceNavigation } from '@/hooks/useWorkspaceNavigation';
-import { ResidentPortalPage } from '@/pages/resident/ResidentPortalPage';
-import { ApartmentListingPage } from '@/pages/customer/ApartmentListingPage';
 import { DashboardPage } from '@/pages/owner/DashboardPage';
-import { RoomsPage } from '@/pages/owner/RoomsPage';
 import { TenantsPage } from '@/pages/owner/TenantsPage';
 import { ContractsPage } from '@/pages/owner/ContractsPage';
 import { InvoicesPage } from '@/pages/owner/billing/InvoicesPage';
@@ -11,47 +9,18 @@ import { UtilitiesPage } from '@/pages/owner/billing/UtilitiesPage';
 import { MaintenancePage } from '@/pages/owner/MaintenancePage';
 import { FinancePage } from '@/pages/owner/finance/FinancePage';
 import { ReportsPage } from '@/pages/owner/finance/ReportsPage';
-import { SettingsPage } from '@/pages/owner/SettingsPage';
 import { RentalRequestsPage } from '@/pages/owner/RentalRequestsPage';
-import { PropertiesPage } from '@/pages/owner/PropertiesPage';
-import { HomePage } from '@/pages/customer/HomePage';
 
 export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWorkspace; navigation: WorkspaceNavigation }) {
-  const { activeTab, selectTab: setActiveTab, setIsAddRoomOpen, setIsCreateInvoiceOpen } = navigation;
-  const { rooms, tenants, contracts, invoices, tickets, transactions, config,
-    buildings: initialBuildings, setSelectedRoom, setSelectedInvoice, currentResidentRoom, currentResidentTenant,
-    currentResidentContract, residentInvoices, residentTickets, handleMarkPaid, handleAddTenant, handleAddContract,
-    handleUpdateIndices, handleUpdateTicketStatus,
-    handleReserveEscrow, handleResetData, handleSaveConfig: setConfig, handleAddTicket, handleSendResidentTicket,
-    handleAddTransaction } = workspace;
+  const { activeTab, selectTab: setActiveTab, setIsCreateInvoiceOpen } = navigation;
+  const { rooms, tenants, contracts, invoices, tickets, transactions, config, buildings: initialBuildings,
+    setSelectedRoom, setSelectedInvoice, handleMarkPaid, handleAddTenant, handleUpdateIndices, handleUpdateTicketStatus,
+    handleAddTicket, handleAddTransaction } = workspace;
   return <>
-          {activeTab === 'home' && <HomePage embedded />}
-          {activeTab === 'properties' && <PropertiesPage properties={initialBuildings} onReload={workspace.reloadInventory} onDossier={navigation.setPropertyForDossierId} onAdd={() => navigation.setIsAddPropertyOpen(true)} onSelect={id => { navigation.setSelectedBuildingId(id);setActiveTab('rooms'); }} />}
+          {activeTab === 'home' && <Navigate to="/"/>}
+          {['properties','rooms','settings'].includes(activeTab)&&<Navigate to="/account/properties"/>}
           {activeTab === 'rental_requests' && <RentalRequestsPage key={navigation.selectedBuildingId} propertyId={navigation.selectedBuildingId === 'all' ? undefined : navigation.selectedBuildingId} onDecision={workspace.reloadInventory} />}
-          {activeTab === 'resident_portal' && (!currentResidentRoom || !currentResidentTenant || !currentResidentContract || !residentInvoices[0]) && <section className="bg-white p-6 rounded-xl border"><h1 className="text-xl font-bold">Cổng cư dân</h1><p className="mt-3 text-slate-500">Chưa có đủ quan hệ thuê và hóa đơn đã gửi để xem màn hình này.</p></section>}
-          {activeTab === 'resident_portal' && currentResidentRoom && currentResidentTenant && currentResidentContract && residentInvoices[0] && (
-            <ResidentPortalPage
-              currentRoom={currentResidentRoom}
-              currentTenant={currentResidentTenant}
-              contract={currentResidentContract}
-              invoice={residentInvoices[0]}
-              tickets={residentTickets}
-              config={config}
-              onSendTicket={handleSendResidentTicket}
-              onPayInvoice={handleMarkPaid}
-              onOpenApartmentMarket={() => setActiveTab('market')}
-            />
-          )}
-
-          {activeTab === 'market' && (
-            <ApartmentListingPage
-              rooms={rooms}
-              buildings={initialBuildings}
-              config={config}
-              onSelectRoom={(rm) => setSelectedRoom(rm)}
-              onReserveRoom={handleReserveEscrow}
-            />
-          )}
+          {['market','resident_portal'].includes(activeTab)&&<Navigate to="/"/>}
 
           {activeTab === 'dashboard' && (
             <DashboardPage
@@ -63,15 +32,6 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
               onNavigateTab={setActiveTab}
               onOpenInvoiceModal={(inv) => setSelectedInvoice(inv)}
               onOpenRoomModal={(rm) => setSelectedRoom(rm)}
-            />
-          )}
-
-          {activeTab === 'rooms' && (
-            <RoomsPage
-              rooms={rooms}
-              tenants={tenants}
-              onOpenRoomModal={(rm) => setSelectedRoom(rm)}
-              onOpenAddRoomModal={() => setIsAddRoomOpen(true)}
             />
           )}
 
@@ -130,12 +90,6 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
 
           {activeTab === 'reports' && <ReportsPage />}
 
-          {activeTab === 'settings' && (
-            <SettingsPage
-              config={config}
-              onSaveConfig={setConfig}
-              onResetData={handleResetData}
-            />
-          )}
+
         </>;
 }

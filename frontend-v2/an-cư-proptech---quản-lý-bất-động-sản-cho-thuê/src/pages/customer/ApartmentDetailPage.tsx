@@ -1,3 +1,6 @@
+import {OwnerApartmentEditor} from '@/components/apartments/OwnerApartmentEditor';
+import {ApartmentImage} from '@/components/apartments/ApartmentImage';
+import {saveAssetCommand} from '@/services/property/assetManagementService';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { MapPin, BedDouble, Bath, CheckCircle2, ArrowLeft, ShieldCheck, X } from 'lucide-react';
@@ -14,7 +17,8 @@ import { rightLabels } from '@/types/dossier';
 
 export function ApartmentDetailPage() {
   const { id = '' } = useParams();
-  const { user } = useAuth();
+  const { user, loading:authLoading } = useAuth();
+  const [editing,setEditing]=useState(false);const [ownerNotice,setOwnerNotice]=useState('');
   const [apartment, setApartment] = useState<ApartmentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -31,7 +35,7 @@ export function ApartmentDetailPage() {
   const [checking, setChecking] = useState(true);
   const [requestError, setRequestError] = useState('');
   const [revision, setRevision] = useState(0);
-  const canRent = Boolean(user?.roles.some(role => role === 'CUSTOMER' || role === 'OWNER'));
+  const canRent = Boolean(apartment&&!apartment.management&&user?.roles.some(role => role === 'CUSTOMER' || role === 'OWNER'));
   const currentVerification = verification?.accountId === user?.id && verification?.version === user?.version ? verification : null;
   const checkingVerification = canRent && !currentVerification;
   const verificationError = currentVerification?.error ?? '';
@@ -73,12 +77,14 @@ export function ApartmentDetailPage() {
     return () => { active = false;window.clearInterval(timer);window.removeEventListener('focus', visibleRefresh);document.removeEventListener('visibilitychange', visibleRefresh); };
   }, [id, user?.id, customer, revision]);
   useEffect(() => {
+    if(authLoading)return;
     const controller = new AbortController();
     setLoading(true); setLoadError(''); setApartment(null); setSubmitted(null); setMessage(''); setError('');
     getApartment(id, controller.signal).then(setApartment).catch(err => { if (!controller.signal.aborted) setLoadError(err instanceof Error ? err.message : 'Không thể tải căn hộ.'); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [id]);
+  }, [id,user?.id,authLoading]);
+  const reloadApartment=async()=>{setApartment(await getApartment(id));setOwnerNotice('Đã lưu thay đổi.');};
   const send = async (event: React.FormEvent) => {
     event.preventDefault();
     if (saving || submitted || checking || checkingVerification || verificationError || requestError) return;
@@ -109,16 +115,17 @@ export function ApartmentDetailPage() {
     finally { setSaving(false); }
   };
   return <CustomerLayout><main className="max-w-7xl mx-auto px-5 py-8">
-    <Link to="/" className="inline-flex items-center gap-2 text-sm text-slate-500 mb-6"><ArrowLeft className="w-4 h-4" />Danh sách căn hộ</Link>
+    <Link to={apartment?.management?'/account/properties':'/'} className="inline-flex items-center gap-2 text-sm text-slate-500 mb-6"><ArrowLeft className="w-4 h-4" />{apartment?.management?'Quản lý tài sản':'Danh sách căn hộ'}</Link>
     {loading && <p role="status" className="py-16 text-center text-slate-500">Đang tải thông tin căn hộ...</p>}
     {loadError && <p role="alert" className="p-6 bg-white border border-rose-200 rounded-xl text-rose-700">{loadError}</p>}
     {apartment && !loading && <div className="grid lg:grid-cols-[2fr_1fr] gap-8">
-      <section className="space-y-6"><div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{apartment.images.map((src,index)=><img key={src} src={src} alt={`${apartment.title} - ảnh ${index+1}`} className="w-full h-64 object-cover bg-emerald-50 rounded-2xl" />)}</div>
+      <section className="space-y-6"><div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{apartment.images.map((src,index)=><ApartmentImage key={src} src={src} alt={`${apartment.title} - ảnh ${index+1}`} className="w-full h-64 object-cover bg-emerald-50 rounded-2xl" />)}</div>
         <div className="bg-white border border-slate-200 rounded-2xl p-6"><span className="inline-block bg-emerald-50 text-emerald-700 text-xs px-3 py-1 rounded-full mb-3">{availabilityLabel[apartment.availability]}</span>
           <h1 className="text-2xl font-bold text-slate-900">{apartment.title}</h1><p className="flex gap-2 text-sm text-slate-500 mt-3"><MapPin className="w-4 h-4 shrink-0" />{apartment.address}</p>
           <div className="flex flex-wrap gap-5 mt-5 text-sm text-slate-600"><span>{apartment.areaM2} m²</span><span className="flex gap-1.5 items-center"><BedDouble className="w-4 h-4" />{apartment.bedrooms === 0 ? 'Studio' : `${apartment.bedrooms} phòng ngủ`}</span><span className="flex gap-1.5 items-center"><Bath className="w-4 h-4" />{apartment.bathrooms} phòng tắm</span></div>
         </div>
         <div className="bg-white border border-slate-200 rounded-2xl p-6"><h2 className="font-bold mb-3">Thông tin căn hộ</h2><p className="text-sm text-slate-600 whitespace-pre-wrap leading-7">{apartment.description}</p><h2 className="font-bold mt-6 mb-3">Tiện ích</h2><div className="flex flex-wrap gap-2">{apartment.amenities.map((amenity, index) => <span key={index} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs">{amenity}</span>)}</div></div>
+        {apartment.management&&editing&&apartment.management.canEdit&&<OwnerApartmentEditor key={`${apartment.version}-${apartment.management.propertyVersion}`} apartment={apartment} onSaved={reloadApartment}/>}
       </section>
       <aside className="space-y-5"><div className="bg-white border border-slate-200 rounded-2xl p-6 lg:sticky lg:top-24">
         <p className="text-sm text-slate-500">Giá niêm yết / tháng</p><p className="text-3xl font-bold text-emerald-700 mt-2">{formatRent(apartment.advertisedMonthlyRent)}</p>
@@ -128,7 +135,11 @@ export function ApartmentDetailPage() {
         {apartment.waterUnitPrice != null && <p className="text-sm mt-1">Nước: {formatRent(apartment.waterUnitPrice)}/m³</p>}
         <div className="my-5 border-y border-slate-100 py-4"><p className="text-xs text-slate-500 mb-1">Chủ nhà</p><p className="font-semibold">{apartment.publicOwner.displayName}</p><p className="text-xs text-slate-500 mt-1">{apartment.propertyName}</p></div>
         {error && <p role="alert" className="text-sm text-rose-700 mb-3">{error}</p>}
-        {checkingVerification ? <p role="status">Đang kiểm tra xác thực tài khoản...</p>
+        {apartment.management?<section className="space-y-4" aria-label="Quản lý căn hộ của bạn"><h2 className="font-bold text-lg">Căn hộ của bạn</h2><p className="text-sm">{apartment.management.approvalStatus==='APPROVED'?(apartment.management.verificationSource?'Đã xác thực tài sản từ VNeID':'Tài sản đã được Admin duyệt'):`Trạng thái hồ sơ: ${apartment.management.approvalStatus}`}</p><p className="text-sm">{apartment.publicationStatus==='PUBLISHED'?'Đang công khai':apartment.publicationStatus==='HIDDEN'?'Đã ẩn tin':'Tin nháp'}</p>
+          {apartment.management.canEdit?<button type="button" onClick={()=>setEditing(v=>!v)} className="border border-emerald-600 text-emerald-800 rounded-lg px-4 py-2">{editing?'Đóng chỉnh sửa':'Chỉnh sửa thông tin, ảnh và giá'}</button>:<Link to="/account/verification" className="underline">Xác thực tài khoản để chỉnh sửa</Link>}
+          {apartment.management.canEdit&&apartment.management.approvalStatus==='APPROVED'&&user?.roles.includes('OWNER')&&<button type="button" disabled={saving||(apartment.publicationStatus!=='PUBLISHED'&&apartment.rentalRightsAvailable===false)} className="block border rounded-lg px-4 py-2 disabled:opacity-50" onClick={async()=>{setSaving(true);setError('');try{await saveAssetCommand(`/owner/apartments/${id}/publication`,'POST',{version:apartment.version,publicationStatus:apartment.publicationStatus==='PUBLISHED'?'HIDDEN':'PUBLISHED'});await reloadApartment();}catch(e){setError(e instanceof Error?e.message:'Không thể đổi trạng thái công khai.');}finally{setSaving(false);}}}>{apartment.publicationStatus==='PUBLISHED'?'Ẩn tin cho thuê':'Công khai căn hộ'}</button>}
+          {!apartment.management.verificationSource&&<Link to="/account/rental-properties" state={{openPropertyId:apartment.management.propertyId}} className="block underline text-sm">Hồ sơ và giấy tờ tài sản</Link>}{ownerNotice&&<p role="status" className="text-emerald-700">{ownerNotice}</p>}
+        </section>:checkingVerification ? <p role="status">Đang kiểm tra xác thực tài khoản...</p>
           : verificationError ? <div role="alert" className="text-sm text-rose-700"><p>{verificationError}</p><button type="button" onClick={() => setRevision(value => value + 1)} className="underline mt-2">Tải lại trạng thái xác thực</button></div>
           : checking ? <p role="status">Đang tải trạng thái yêu cầu...</p> : requestError ? <div role="alert"><p>{requestError}</p><button onClick={() => setRevision(value => value + 1)} className="underline mt-2">Thử lại</button></div> : submitted ? <div role="status" className="bg-emerald-50 border border-emerald-200 rounded-xl p-4"><CheckCircle2 className="w-6 h-6 text-emerald-600 mb-2" /><p className="font-semibold text-emerald-800">Đã gửi yêu cầu thuê</p><p className="text-sm text-emerald-700 mt-2">{submitted.status === 'ACCEPTED' ? 'Chủ nhà đã chấp nhận yêu cầu thuê.' : 'Yêu cầu đang chờ chủ nhà xử lý.'}</p>{activeRequests.map(request => <div key={request.id} className="mt-3"><p className="text-sm">{requestStatusLabel[request.status]}</p>{request.status === 'PENDING' && <button type="button" disabled={saving} onClick={() => cancel(request)} className="border border-rose-300 text-rose-700 rounded-lg px-4 py-2 mt-2 text-sm disabled:opacity-50">{saving ? 'Đang hủy...' : 'Hủy yêu cầu thuê'}</button>}</div>)}<Link to="/my/rental-requests" className="inline-block text-sm text-emerald-800 underline mt-3">Xem yêu cầu của tôi</Link></div>
           : apartment.availability !== 'VACANT' || apartment.rentalRightsAvailable===false ? <p className="text-sm text-amber-700 bg-amber-50 rounded-lg p-4">Căn hộ hiện không còn nhận yêu cầu thuê hoặc quyền cho thuê chưa có hiệu lực/đã hết hạn.</p>

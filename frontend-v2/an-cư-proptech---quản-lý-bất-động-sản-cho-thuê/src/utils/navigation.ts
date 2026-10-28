@@ -6,7 +6,7 @@ const returnPages = new Set([
   '/', '/app', '/my/rental-requests', '/my/invoices', '/my/contracts',
   '/account/verification', '/account/profile', '/account/settings',
   '/account/settings/password', '/account/settings/email', '/account/settings/phone', '/account/settings/identity',
-  '/account/owner-upgrade', '/account/rental-properties', '/account/property-notices',
+  '/account/properties', '/account/owner-upgrade', '/account/rental-properties', '/account/property-notices',
   '/account/properties/new', '/account/properties/new/ownership', '/account/properties/new/authorization', '/account/properties/new/sublease',
 ]);
 export function loginDestination(user: AuthUser, returnTo: unknown) {

@@ -1,3 +1,4 @@
+import {AssetManagementPage} from '@/pages/customer/AssetManagementPage';
 import type { ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router';
 import { useAuth } from '@/hooks/useAuth';
@@ -61,8 +62,9 @@ export function AppRoutes() {
     <Route path="/account/verification" element={<RequireAccount verified={false}><AccountVerificationPage /></RequireAccount>} />
     <Route path="/account/profile" element={<RequireAccount verified={false}><ProfilePage /></RequireAccount>} />
     <Route path="/account/settings" element={<RequireAccount verified={false}><AccountSettingsPage /></RequireAccount>} />
+    <Route path="/account/properties" element={<RequireAccount role="CUSTOMER" verified={false}><AssetManagementPage /></RequireAccount>} />
     <Route path="/account/owner-upgrade" element={<RequireAccount verified={false}><OwnerUpgradePage /></RequireAccount>} />
-    <Route path="/account/properties/new/:relationship?" element={<RequireAccount verified={false}><PropertyCreatePage /></RequireAccount>} />
+    <Route path="/account/properties/new/:relationship?" element={<RequireAccount role="CUSTOMER" verified={false}><PropertyCreatePage /></RequireAccount>} />
     <Route path="/account/rental-properties" element={<RequireAccount verified={false}><PropertyApplicationsPage /></RequireAccount>} />
     <Route path="/account/property-notices" element={<RequireAccount verified={false}><PropertyNoticesPage /></RequireAccount>} />
     <Route path="/account/settings/identity" element={<RequireAccount verified={false}><IdentityPage /></RequireAccount>} />

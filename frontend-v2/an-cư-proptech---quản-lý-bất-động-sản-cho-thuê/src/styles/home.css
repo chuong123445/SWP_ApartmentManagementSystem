@@ -7,3 +7,6 @@
 @media(max-width:850px){.home-wrap{padding-left:22px;padding-right:22px}.customer-header-inner{min-height:90px;flex-wrap:wrap;padding-top:16px;padding-bottom:16px;gap:16px}.home-cities{grid-template-columns:repeat(2,minmax(0,1fr))}.home-city{height:220px}.home-listings{grid-template-columns:repeat(2,minmax(0,1fr))}.home-hero h1{font-size:28px}.customer-footer{flex-wrap:wrap}}
 @media(max-width:500px){.home-wrap{padding-left:16px;padding-right:16px}.customer-logo{font-size:19px}.customer-mark{width:34px;height:38px}.customer-nav{gap:12px;flex-wrap:wrap;justify-content:flex-end}.customer-header-inner{gap:15px}.customer-register{padding:10px 12px}.home-cities{gap:12px}.home-city{height:190px;padding:16px}.home-city strong{font-size:16px}.home-city .home-city-arrow{display:none}.home-heading{align-items:flex-start;gap:14px}.home-heading h2{font-size:19px}.home-badge{white-space:normal;text-align:center;max-width:90px}.home-filters{padding:18px;gap:15px;grid-template-columns:minmax(0,1fr)}.home-listings{grid-template-columns:minmax(0,1fr)}.home-results{scroll-margin-top:140px}}
 @media(prefers-reduced-motion:reduce){.home-city img{transition:none}}
+
+/* Kho tài sản dùng shell Customer; không để shorthand .home-wrap xóa khoảng cách dọc. */
+.asset-page{padding-top:32px;padding-bottom:48px}

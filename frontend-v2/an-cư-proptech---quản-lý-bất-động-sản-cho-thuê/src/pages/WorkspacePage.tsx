@@ -5,6 +5,7 @@ import { hasManagementRole } from '@/utils/auth';
 import { ManagementLayout } from '@/layouts/ManagementLayout';
 import { WorkspaceRoutes } from '@/routes/WorkspaceRoutes';
 import { WorkspaceModals } from '@/components/workspace/WorkspaceModals';
+import { Link } from 'react-router';
 import { useEffect } from 'react';
 
 // Owner navigation retains shared workspace data while switching management tabs.
@@ -53,7 +54,7 @@ export function WorkspacePage() {
         <h1 className="text-2xl font-bold">Thêm tài sản cho thuê</h1>
         <p className="text-slate-600">Bạn chưa có tài sản. Bắt đầu với một căn/nhà cho thuê nguyên căn hoặc tài sản gồm nhiều căn/phòng.</p>
         <p className="text-sm text-slate-500">Tài sản mới được lưu nháp và cần kiểm duyệt trước khi công khai.</p>
-        <button onClick={() => navigation.setIsAddPropertyOpen(true)} className="bg-emerald-600 text-white px-4 py-3 rounded-lg font-semibold">Thêm tài sản cho thuê</button>
+        <Link to="/account/properties" className="inline-block bg-emerald-600 text-white px-4 py-3 rounded-lg font-semibold">Mở quản lý tài sản</Link>
       </section> : <>
         {navigation.activeTab !== 'home' && propertyId !== 'all' && <p className="mb-4 text-sm text-slate-600">Tài sản đang chọn: <strong>{workspace.buildings.find(p => p.id === propertyId)?.name}</strong></p>}
         <WorkspaceRoutes workspace={scoped} navigation={navigation} />
