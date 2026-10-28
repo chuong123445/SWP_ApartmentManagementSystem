@@ -39,7 +39,7 @@ public class LocalBillingDataService {
         var apartment=apartments.findByPropertyIdAndRoomNumber(property.getId(),number).orElseGet(()->{
             Apartment a=new Apartment();a.setProperty(property);a.setRoomNumber(number);a.setTitle("Căn hộ thuê local — "+number);a.setDescription("Căn hộ local có tài khoản thuê và hợp đồng mẫu để thử luồng hóa đơn.");a.setFloor(1);a.setAreaM2(new BigDecimal("35"));a.setAdvertisedMonthlyRent(rent);a.setElectricityIndex(electric.intValueExact());a.setWaterIndex(water.intValueExact());a.setMaxOccupants(2);a.setBedrooms(1);a.setBathrooms(1);a.setAmenities(new ArrayList<>(List.of("Máy lạnh","Bếp riêng")));a.setCoverImagePath("/images/apartment-placeholder.svg");a.setPublicationStatus(Apartment.PublicationStatus.PUBLISHED);a.setAvailability(Apartment.Availability.OCCUPIED);a.setCreatedAt(Instant.now());return apartments.save(a);
         });
-        if(contracts.findByApartmentIdAndCustomerId(apartment.getId(),customer.getId()).isPresent())return;
+        if(contracts.findFirstByApartmentIdAndCustomerIdOrderByStartDateDescIdDesc(apartment.getId(),customer.getId()).isPresent())return;
         if(!contracts.findByApartmentId(apartment.getId()).isEmpty())throw new IllegalStateException("Fixture apartment already has another tenancy; no reassignment performed.");
         RentalContract c=new RentalContract();c.setApartment(apartment);c.setCustomer(customer);c.setStatus(RentalContract.Status.ACTIVE);c.setLocalFixture(true);
         LocalDate start=YearMonth.now().atDay(1);c.setStartDate(start);c.setEndDate(YearMonth.from(start).plusMonths(11).atEndOfMonth());c.setBaselineDate(start);

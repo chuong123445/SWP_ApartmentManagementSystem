@@ -1,6 +1,6 @@
 import { updateApartmentPrices } from '@/services/apartments/ownerApartmentService';
 import type { PriceInput } from '@/components/rooms/ApartmentPriceForm';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Building, Room, NewRoom, Tenant, Contract, Invoice, MaintenanceTicket, Transaction, SystemConfig, EscrowDeposit } from '@/types';
 import { initialMaintenance, initialTransactions, initialConfig, initialEscrows } from '@/data/mockData';
 import { createOwnerApartment, getOwnerApartments, getOwnerProperties, setApartmentPublication } from '@/services/apartments/ownerApartmentService';
@@ -32,6 +32,15 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
 
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const reloadInventory = useCallback(() => setInventoryRevision(value => value + 1), []);
+  useEffect(() => {
+    if (!canManage) return;
+    const refresh = () => { if (document.visibilityState === 'visible') reloadInventory(); };
+    window.addEventListener('focus', refresh);
+    window.addEventListener('ancu:tenancy-changed', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => { window.removeEventListener('focus', refresh);window.removeEventListener('ancu:tenancy-changed', refresh); document.removeEventListener('visibilitychange', refresh); };
+  }, [canManage, reloadInventory]);
   useEffect(() => {
     if (!canManage) return;
     let active = true;
@@ -221,7 +230,7 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
     rooms, tenants, contracts, invoices, tickets, transactions, config, escrows,
     tenancies, billingError, billingLoading, invoicePage, setInvoicePage, invoiceTotalPages,
     reloadBilling: () => setBillingRevision(value => value + 1), handleSendInvoice,
-    buildings, inventoryError, inventoryLoading, reloadInventory: () => setInventoryRevision(value => value + 1),
+    buildings, inventoryError, inventoryLoading, reloadInventory,
     selectedRoom, setSelectedRoom, selectedInvoice, setSelectedInvoice,
     handleMarkPaid, handleAddTenant, handleAddContract, handleAddRoom, handleAddProperty, handlePrices, handlePublication, handleCheckOut,
     handleUpdateIndices, handleUpdateTicketStatus, handleResetData,
