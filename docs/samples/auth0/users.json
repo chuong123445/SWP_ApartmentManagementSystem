@@ -1,0 +1,808 @@
+[
+  {
+    "email": "owner03@example.com",
+    "email_verified": false,
+    "name": "NGUYỄN MINH KHANG",
+    "user_metadata": {},
+    "app_metadata": {
+      "vneid": {
+        "citizen": {
+          "cccd_number": "999000000003",
+          "full_name": "NGUYỄN MINH KHANG",
+          "dob": "12/03/1988",
+          "gender": "Nam",
+          "address": "28 Nguyễn Văn Linh, Hải Châu, Đà Nẵng"
+        },
+        "assets": [
+          {
+            "external_asset_id": "ANCU-20261028-U03-P01",
+            "name": "Căn hộ An Phú A.1206",
+            "address": "18 Đường An Phú, Thanh Khê, Đà Nẵng",
+            "property_mode": "SINGLE_UNIT",
+            "right_type": "OWNERSHIP",
+            "ownership_type": "SOLE_OWNER",
+            "certificate": {
+              "number": "SWP-GCN-03-01-2024",
+              "issued_date": "2024-03-15",
+              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 03"
+            },
+            "units": [
+              {
+                "external_unit_id": "ANCU-20261028-U03-P01-UNIT01",
+                "code": "A.1206",
+                "floor_area_m2": 68.5,
+                "bedrooms": 2,
+                "bathrooms": 2
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "email": "owner04@example.com",
+    "email_verified": false,
+    "name": "TRẦN THỊ THU HÀ",
+    "user_metadata": {},
+    "app_metadata": {
+      "vneid": {
+        "citizen": {
+          "cccd_number": "999000000004",
+          "full_name": "TRẦN THỊ THU HÀ",
+          "dob": "21/09/1992",
+          "gender": "Nữ",
+          "address": "54 Hoàng Diệu, Hải Châu, Đà Nẵng"
+        },
+        "assets": [
+          {
+            "external_asset_id": "ANCU-20261028-U04-P01",
+            "name": "Nhà cho thuê Thu Hà",
+            "address": "45 Đường Bình An, Cẩm Lệ, Đà Nẵng",
+            "property_mode": "MULTI_UNIT",
+            "right_type": "OWNERSHIP",
+            "ownership_type": "SOLE_OWNER",
+            "certificate": {
+              "number": "SWP-GCN-04-01-2024",
+              "issued_date": "2024-04-15",
+              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 04"
+            },
+            "units": [
+              {
+                "external_unit_id": "ANCU-20261028-U04-P01-UNIT01",
+                "code": "P.101",
+                "floor_area_m2": 24,
+                "bedrooms": 0,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U04-P01-UNIT02",
+                "code": "P.201",
+                "floor_area_m2": 26.5,
+                "bedrooms": 0,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U04-P01-UNIT03",
+                "code": "P.301",
+                "floor_area_m2": 28,
+                "bedrooms": 0,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U04-P01-UNIT04",
+                "code": "P.401",
+                "floor_area_m2": 30,
+                "bedrooms": 0,
+                "bathrooms": 1
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "email": "owner05@example.com",
+    "email_verified": false,
+    "name": "LÊ QUỐC BẢO",
+    "user_metadata": {},
+    "app_metadata": {
+      "vneid": {
+        "citizen": {
+          "cccd_number": "999000000005",
+          "full_name": "LÊ QUỐC BẢO",
+          "dob": "15/05/1985",
+          "gender": "Nam",
+          "address": "17 Trần Phú, Nha Trang, Khánh Hòa"
+        },
+        "assets": [
+          {
+            "external_asset_id": "ANCU-20261028-U05-P01",
+            "name": "Căn hộ Biển Xanh B.805",
+            "address": "22 Đường Biển Xanh, Nha Trang, Khánh Hòa",
+            "property_mode": "SINGLE_UNIT",
+            "right_type": "OWNERSHIP",
+            "ownership_type": "SOLE_OWNER",
+            "certificate": {
+              "number": "SWP-GCN-05-01-2024",
+              "issued_date": "2024-05-15",
+              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 05"
+            },
+            "units": [
+              {
+                "external_unit_id": "ANCU-20261028-U05-P01-UNIT01",
+                "code": "B.805",
+                "floor_area_m2": 54,
+                "bedrooms": 1,
+                "bathrooms": 1
+              }
+            ]
+          },
+          {
+            "external_asset_id": "ANCU-20261028-U05-P02",
+            "name": "Nhà nguyên căn Quốc Bảo",
+            "address": "71 Đường Hoa Biển, Nha Trang, Khánh Hòa",
+            "property_mode": "SINGLE_UNIT",
+            "right_type": "OWNERSHIP",
+            "ownership_type": "SOLE_OWNER",
+            "certificate": {
+              "number": "SWP-GCN-05-02-2024",
+              "issued_date": "2024-05-15",
+              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 05"
+            },
+            "units": [
+              {
+                "external_unit_id": "ANCU-20261028-U05-P02-UNIT01",
+                "code": "NHA.01",
+                "floor_area_m2": 112,
+                "bedrooms": 3,
+                "bathrooms": 3
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "email": "owner06@example.com",
+    "email_verified": false,
+    "name": "PHẠM NGỌC ANH",
+    "user_metadata": {},
+    "app_metadata": {
+      "vneid": {
+        "citizen": {
+          "cccd_number": "999000000006",
+          "full_name": "PHẠM NGỌC ANH",
+          "dob": "08/11/1994",
+          "gender": "Nữ",
+          "address": "36 Nguyễn Trãi, Thanh Xuân, Hà Nội"
+        },
+        "assets": [
+          {
+            "external_asset_id": "ANCU-20261028-U06-P01",
+            "name": "Căn hộ Ngọc Anh C.1502",
+            "address": "30 Đường Hoa Mai, Thanh Xuân, Hà Nội",
+            "property_mode": "SINGLE_UNIT",
+            "right_type": "OWNERSHIP",
+            "ownership_type": "SOLE_OWNER",
+            "certificate": {
+              "number": "SWP-GCN-06-01-2024",
+              "issued_date": "2024-06-15",
+              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 06"
+            },
+            "units": [
+              {
+                "external_unit_id": "ANCU-20261028-U06-P01-UNIT01",
+                "code": "C.1502",
+                "floor_area_m2": 82.3,
+                "bedrooms": 3,
+                "bathrooms": 2
+              }
+            ]
+          },
+          {
+            "external_asset_id": "ANCU-20261028-U06-P02",
+            "name": "Nhà studio Ngọc Anh",
+            "address": "12 Ngõ Bình Minh, Cầu Giấy, Hà Nội",
+            "property_mode": "MULTI_UNIT",
+            "right_type": "OWNERSHIP",
+            "ownership_type": "SOLE_OWNER",
+            "certificate": {
+              "number": "SWP-GCN-06-02-2024",
+              "issued_date": "2024-06-15",
+              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 06"
+            },
+            "units": [
+              {
+                "external_unit_id": "ANCU-20261028-U06-P02-UNIT01",
+                "code": "ST.101",
+                "floor_area_m2": 22,
+                "bedrooms": 0,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U06-P02-UNIT02",
+                "code": "ST.201",
+                "floor_area_m2": 25,
+                "bedrooms": 0,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U06-P02-UNIT03",
+                "code": "ST.301",
+                "floor_area_m2": 27.5,
+                "bedrooms": 1,
+                "bathrooms": 1
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "email": "owner07@example.com",
+    "email_verified": false,
+    "name": "VÕ HOÀNG NAM",
+    "user_metadata": {},
+    "app_metadata": {
+      "vneid": {
+        "citizen": {
+          "cccd_number": "999000000007",
+          "full_name": "VÕ HOÀNG NAM",
+          "dob": "26/02/1980",
+          "gender": "Nam",
+          "address": "102 Lê Văn Việt, Thủ Đức, TP. Hồ Chí Minh"
+        },
+        "assets": [
+          {
+            "external_asset_id": "ANCU-20261028-U07-P01",
+            "name": "Căn hộ Hoàng Nam A.1809",
+            "address": "48 Đường Bình Hòa, Thủ Đức, TP. Hồ Chí Minh",
+            "property_mode": "SINGLE_UNIT",
+            "right_type": "OWNERSHIP",
+            "ownership_type": "SOLE_OWNER",
+            "certificate": {
+              "number": "SWP-GCN-07-01-2024",
+              "issued_date": "2024-07-15",
+              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 07"
+            },
+            "units": [
+              {
+                "external_unit_id": "ANCU-20261028-U07-P01-UNIT01",
+                "code": "A.1809",
+                "floor_area_m2": 76,
+                "bedrooms": 2,
+                "bathrooms": 2
+              }
+            ]
+          },
+          {
+            "external_asset_id": "ANCU-20261028-U07-P02",
+            "name": "Nhà nguyên căn Hoàng Nam",
+            "address": "96 Đường An Lạc, Thủ Đức, TP. Hồ Chí Minh",
+            "property_mode": "SINGLE_UNIT",
+            "right_type": "OWNERSHIP",
+            "ownership_type": "SOLE_OWNER",
+            "certificate": {
+              "number": "SWP-GCN-07-02-2024",
+              "issued_date": "2024-07-15",
+              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 07"
+            },
+            "units": [
+              {
+                "external_unit_id": "ANCU-20261028-U07-P02-UNIT01",
+                "code": "NHA.02",
+                "floor_area_m2": 135,
+                "bedrooms": 4,
+                "bathrooms": 3
+              }
+            ]
+          },
+          {
+            "external_asset_id": "ANCU-20261028-U07-P03",
+            "name": "Khu căn hộ Nam Phát",
+            "address": "55 Đường Phú Thịnh, Dĩ An, TP. Hồ Chí Minh",
+            "property_mode": "MULTI_UNIT",
+            "right_type": "OWNERSHIP",
+            "ownership_type": "SOLE_OWNER",
+            "certificate": {
+              "number": "SWP-GCN-07-03-2024",
+              "issued_date": "2024-07-15",
+              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 07"
+            },
+            "units": [
+              {
+                "external_unit_id": "ANCU-20261028-U07-P03-UNIT01",
+                "code": "NP.101",
+                "floor_area_m2": 28,
+                "bedrooms": 0,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U07-P03-UNIT02",
+                "code": "NP.201",
+                "floor_area_m2": 31,
+                "bedrooms": 1,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U07-P03-UNIT03",
+                "code": "NP.301",
+                "floor_area_m2": 34,
+                "bedrooms": 1,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U07-P03-UNIT04",
+                "code": "NP.401",
+                "floor_area_m2": 38,
+                "bedrooms": 1,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U07-P03-UNIT05",
+                "code": "NP.501",
+                "floor_area_m2": 42,
+                "bedrooms": 2,
+                "bathrooms": 1
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "email": "owner08@example.com",
+    "email_verified": false,
+    "name": "ĐẶNG THỊ MAI LAN",
+    "user_metadata": {},
+    "app_metadata": {
+      "vneid": {
+        "citizen": {
+          "cccd_number": "999000000008",
+          "full_name": "ĐẶNG THỊ MAI LAN",
+          "dob": "19/07/1990",
+          "gender": "Nữ",
+          "address": "24 Phan Đình Phùng, Đà Lạt, Lâm Đồng"
+        },
+        "assets": [
+          {
+            "external_asset_id": "ANCU-20261028-U08-P01",
+            "name": "Biệt thự Mai Lan",
+            "address": "19 Đường Đồi Thông, Xuân Hương, Đà Lạt",
+            "property_mode": "SINGLE_UNIT",
+            "right_type": "OWNERSHIP",
+            "ownership_type": "SOLE_OWNER",
+            "certificate": {
+              "number": "SWP-GCN-08-01-2024",
+              "issued_date": "2024-08-15",
+              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 08"
+            },
+            "units": [
+              {
+                "external_unit_id": "ANCU-20261028-U08-P01-UNIT01",
+                "code": "VILLA.01",
+                "floor_area_m2": 185,
+                "bedrooms": 4,
+                "bathrooms": 4
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "email": "owner09@example.com",
+    "email_verified": false,
+    "name": "BÙI GIA HUY",
+    "user_metadata": {},
+    "app_metadata": {
+      "vneid": {
+        "citizen": {
+          "cccd_number": "999000000009",
+          "full_name": "BÙI GIA HUY",
+          "dob": "03/12/1987",
+          "gender": "Nam",
+          "address": "65 Đống Đa, Hải Châu, Đà Nẵng"
+        },
+        "assets": [
+          {
+            "external_asset_id": "ANCU-20261028-U09-P01",
+            "name": "Căn hộ duplex Gia Huy",
+            "address": "60 Đường Hòa Bình, Sơn Trà, Đà Nẵng",
+            "property_mode": "SINGLE_UNIT",
+            "right_type": "OWNERSHIP",
+            "ownership_type": "SOLE_OWNER",
+            "certificate": {
+              "number": "SWP-GCN-09-01-2024",
+              "issued_date": "2024-09-15",
+              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 09"
+            },
+            "units": [
+              {
+                "external_unit_id": "ANCU-20261028-U09-P01-UNIT01",
+                "code": "DUP.2101",
+                "floor_area_m2": 128.5,
+                "bedrooms": 3,
+                "bathrooms": 3
+              }
+            ]
+          },
+          {
+            "external_asset_id": "ANCU-20261028-U09-P02",
+            "name": "Nhà căn hộ Huy Phúc",
+            "address": "27 Đường An Hải, Sơn Trà, Đà Nẵng",
+            "property_mode": "MULTI_UNIT",
+            "right_type": "OWNERSHIP",
+            "ownership_type": "SOLE_OWNER",
+            "certificate": {
+              "number": "SWP-GCN-09-02-2024",
+              "issued_date": "2024-09-15",
+              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 09"
+            },
+            "units": [
+              {
+                "external_unit_id": "ANCU-20261028-U09-P02-UNIT01",
+                "code": "HP.101",
+                "floor_area_m2": 23,
+                "bedrooms": 0,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U09-P02-UNIT02",
+                "code": "HP.201",
+                "floor_area_m2": 24.5,
+                "bedrooms": 0,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U09-P02-UNIT03",
+                "code": "HP.301",
+                "floor_area_m2": 29,
+                "bedrooms": 1,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U09-P02-UNIT04",
+                "code": "HP.401",
+                "floor_area_m2": 32,
+                "bedrooms": 1,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U09-P02-UNIT05",
+                "code": "HP.501",
+                "floor_area_m2": 36,
+                "bedrooms": 1,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U09-P02-UNIT06",
+                "code": "HP.601",
+                "floor_area_m2": 44,
+                "bedrooms": 2,
+                "bathrooms": 1
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "email": "owner10@example.com",
+    "email_verified": false,
+    "name": "ĐỖ THỊ KHÁNH LINH",
+    "user_metadata": {},
+    "app_metadata": {
+      "vneid": {
+        "citizen": {
+          "cccd_number": "999000000010",
+          "full_name": "ĐỖ THỊ KHÁNH LINH",
+          "dob": "30/04/1995",
+          "gender": "Nữ",
+          "address": "41 Tố Hữu, An Cựu, Huế"
+        },
+        "assets": [
+          {
+            "external_asset_id": "ANCU-20261028-U10-P01",
+            "name": "Căn hộ Sông Hương A.603",
+            "address": "11 Đường Sông Hương, Thuận Hóa, Huế",
+            "property_mode": "SINGLE_UNIT",
+            "right_type": "OWNERSHIP",
+            "ownership_type": "SOLE_OWNER",
+            "certificate": {
+              "number": "SWP-GCN-10-01-2024",
+              "issued_date": "2024-10-15",
+              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 10"
+            },
+            "units": [
+              {
+                "external_unit_id": "ANCU-20261028-U10-P01-UNIT01",
+                "code": "A.603",
+                "floor_area_m2": 61,
+                "bedrooms": 2,
+                "bathrooms": 1
+              }
+            ]
+          },
+          {
+            "external_asset_id": "ANCU-20261028-U10-P02",
+            "name": "Nhà căn hộ Khánh Linh",
+            "address": "26 Đường Vườn Mai, An Cựu, Huế",
+            "property_mode": "MULTI_UNIT",
+            "right_type": "OWNERSHIP",
+            "ownership_type": "SOLE_OWNER",
+            "certificate": {
+              "number": "SWP-GCN-10-02-2024",
+              "issued_date": "2024-10-15",
+              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 10"
+            },
+            "units": [
+              {
+                "external_unit_id": "ANCU-20261028-U10-P02-UNIT01",
+                "code": "KL.101",
+                "floor_area_m2": 26,
+                "bedrooms": 0,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U10-P02-UNIT02",
+                "code": "KL.102",
+                "floor_area_m2": 28,
+                "bedrooms": 0,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U10-P02-UNIT03",
+                "code": "KL.201",
+                "floor_area_m2": 35.5,
+                "bedrooms": 1,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U10-P02-UNIT04",
+                "code": "KL.202",
+                "floor_area_m2": 39,
+                "bedrooms": 1,
+                "bathrooms": 1
+              }
+            ]
+          },
+          {
+            "external_asset_id": "ANCU-20261028-U10-P03",
+            "name": "Nhà nguyên căn Khánh Linh",
+            "address": "73 Đường Bình Minh, Vỹ Dạ, Huế",
+            "property_mode": "SINGLE_UNIT",
+            "right_type": "OWNERSHIP",
+            "ownership_type": "SOLE_OWNER",
+            "certificate": {
+              "number": "SWP-GCN-10-03-2024",
+              "issued_date": "2024-10-15",
+              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 10"
+            },
+            "units": [
+              {
+                "external_unit_id": "ANCU-20261028-U10-P03-UNIT01",
+                "code": "NHA.03",
+                "floor_area_m2": 95,
+                "bedrooms": 3,
+                "bathrooms": 2
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "email": "owner11@example.com",
+    "email_verified": false,
+    "name": "HUỲNH THANH TÙNG",
+    "user_metadata": {},
+    "app_metadata": {
+      "vneid": {
+        "citizen": {
+          "cccd_number": "999000000011",
+          "full_name": "HUỲNH THANH TÙNG",
+          "dob": "17/10/1983",
+          "gender": "Nam",
+          "address": "72 Nguyễn Huệ, Quy Nhơn, Gia Lai"
+        },
+        "assets": [
+          {
+            "external_asset_id": "ANCU-20261028-U11-P01",
+            "name": "Căn hộ Thanh Tùng B.1203",
+            "address": "29 Đường Hải Âu, Quy Nhơn, Gia Lai",
+            "property_mode": "SINGLE_UNIT",
+            "right_type": "OWNERSHIP",
+            "ownership_type": "SOLE_OWNER",
+            "certificate": {
+              "number": "SWP-GCN-11-01-2024",
+              "issued_date": "2024-11-15",
+              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 11"
+            },
+            "units": [
+              {
+                "external_unit_id": "ANCU-20261028-U11-P01-UNIT01",
+                "code": "B.1203",
+                "floor_area_m2": 72.8,
+                "bedrooms": 2,
+                "bathrooms": 2
+              }
+            ]
+          },
+          {
+            "external_asset_id": "ANCU-20261028-U11-P02",
+            "name": "Nhà vườn Thanh Tùng",
+            "address": "64 Đường Vườn Dừa, Quy Nhơn Nam, Gia Lai",
+            "property_mode": "SINGLE_UNIT",
+            "right_type": "OWNERSHIP",
+            "ownership_type": "SOLE_OWNER",
+            "certificate": {
+              "number": "SWP-GCN-11-02-2024",
+              "issued_date": "2024-11-15",
+              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 11"
+            },
+            "units": [
+              {
+                "external_unit_id": "ANCU-20261028-U11-P02-UNIT01",
+                "code": "VUON.01",
+                "floor_area_m2": 156,
+                "bedrooms": 3,
+                "bathrooms": 3
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "email": "owner12@example.com",
+    "email_verified": false,
+    "name": "PHAN THỊ NGỌC DIỆP",
+    "user_metadata": {},
+    "app_metadata": {
+      "vneid": {
+        "citizen": {
+          "cccd_number": "999000000012",
+          "full_name": "PHAN THỊ NGỌC DIỆP",
+          "dob": "06/06/1989",
+          "gender": "Nữ",
+          "address": "88 Nguyễn Văn Cừ, Ninh Kiều, Cần Thơ"
+        },
+        "assets": [
+          {
+            "external_asset_id": "ANCU-20261028-U12-P01",
+            "name": "Căn hộ Ngọc Diệp A.902",
+            "address": "38 Đường Sen Hồng, Ninh Kiều, Cần Thơ",
+            "property_mode": "SINGLE_UNIT",
+            "right_type": "OWNERSHIP",
+            "ownership_type": "SOLE_OWNER",
+            "certificate": {
+              "number": "SWP-GCN-12-01-2024",
+              "issued_date": "2024-12-15",
+              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 12"
+            },
+            "units": [
+              {
+                "external_unit_id": "ANCU-20261028-U12-P01-UNIT01",
+                "code": "A.902",
+                "floor_area_m2": 66,
+                "bedrooms": 2,
+                "bathrooms": 2
+              }
+            ]
+          },
+          {
+            "external_asset_id": "ANCU-20261028-U12-P02",
+            "name": "Nhà studio Ngọc Diệp",
+            "address": "15 Đường Bờ Hồ, Cái Răng, Cần Thơ",
+            "property_mode": "MULTI_UNIT",
+            "right_type": "OWNERSHIP",
+            "ownership_type": "SOLE_OWNER",
+            "certificate": {
+              "number": "SWP-GCN-12-02-2024",
+              "issued_date": "2024-12-15",
+              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 12"
+            },
+            "units": [
+              {
+                "external_unit_id": "ANCU-20261028-U12-P02-UNIT01",
+                "code": "ND.101",
+                "floor_area_m2": 25,
+                "bedrooms": 0,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U12-P02-UNIT02",
+                "code": "ND.201",
+                "floor_area_m2": 29.5,
+                "bedrooms": 1,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U12-P02-UNIT03",
+                "code": "ND.301",
+                "floor_area_m2": 33,
+                "bedrooms": 1,
+                "bathrooms": 1
+              }
+            ]
+          },
+          {
+            "external_asset_id": "ANCU-20261028-U12-P03",
+            "name": "Nhà nguyên căn Ngọc Diệp",
+            "address": "83 Đường Bình Thủy, Bình Thủy, Cần Thơ",
+            "property_mode": "SINGLE_UNIT",
+            "right_type": "OWNERSHIP",
+            "ownership_type": "SOLE_OWNER",
+            "certificate": {
+              "number": "SWP-GCN-12-03-2024",
+              "issued_date": "2024-12-15",
+              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 12"
+            },
+            "units": [
+              {
+                "external_unit_id": "ANCU-20261028-U12-P03-UNIT01",
+                "code": "NHA.04",
+                "floor_area_m2": 118,
+                "bedrooms": 3,
+                "bathrooms": 3
+              }
+            ]
+          },
+          {
+            "external_asset_id": "ANCU-20261028-U12-P04",
+            "name": "Khu căn hộ Sen Vàng",
+            "address": "52 Đường Sen Vàng, Ô Môn, Cần Thơ",
+            "property_mode": "MULTI_UNIT",
+            "right_type": "OWNERSHIP",
+            "ownership_type": "SOLE_OWNER",
+            "certificate": {
+              "number": "SWP-GCN-12-04-2024",
+              "issued_date": "2024-12-15",
+              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 12"
+            },
+            "units": [
+              {
+                "external_unit_id": "ANCU-20261028-U12-P04-UNIT01",
+                "code": "SV.101",
+                "floor_area_m2": 27,
+                "bedrooms": 0,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U12-P04-UNIT02",
+                "code": "SV.102",
+                "floor_area_m2": 29,
+                "bedrooms": 0,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U12-P04-UNIT03",
+                "code": "SV.201",
+                "floor_area_m2": 36,
+                "bedrooms": 1,
+                "bathrooms": 1
+              },
+              {
+                "external_unit_id": "ANCU-20261028-U12-P04-UNIT04",
+                "code": "SV.202",
+                "floor_area_m2": 48,
+                "bedrooms": 2,
+                "bathrooms": 2
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+]
