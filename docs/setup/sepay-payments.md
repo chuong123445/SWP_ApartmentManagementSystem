@@ -58,7 +58,7 @@ Mã hóa đơn do ứng dụng sinh dài 28 ký tự bắt đầu ANCU. Backend 
 
 ## 5. Áp dụng mã nguồn
 
-Nhánh feature/sepay-payments. Khởi động lại Spring Boot và Vite. Có V23 additive cho ba bảng; không xóa/tạo lại database. Local Hibernate update tạo bảng từ entity; với schema quản lý thủ công chạy `src/main/resources/db/migration/V23__sepay_invoice_payments.sql` theo quy trình của môi trường. Script chạy lặp được và bổ sung FK; không có lệnh reset.
+Nhánh feature/sepay-payments. Khởi động lại Spring Boot và Vite. Có V23/V24 additive cho ba bảng và khóa chống trùng theo chủ nhà; không xóa/tạo lại database. Local Hibernate update tạo bảng từ entity; với schema quản lý thủ công chạy `src/main/resources/db/migration/V23__sepay_invoice_payments.sql` theo quy trình của môi trường. Chạy tiếp `V24__sepay_owner_event_dedup.sql` để bảo đảm transaction ID được chống trùng theo từng chủ nhà. Các script chạy lặp được và bổ sung FK; không có lệnh reset.
 
 ## Nguồn chính thức đã đối chiếu
 

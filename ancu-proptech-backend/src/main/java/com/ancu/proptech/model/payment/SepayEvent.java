@@ -3,10 +3,10 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.Instant;
-@Entity @Table(name="sepay_events") @Getter @Setter @NoArgsConstructor
+@Entity @Table(name="sepay_events",uniqueConstraints=@UniqueConstraint(name="ux_sepay_event_owner_transaction",columnNames={"owner_id","transaction_id"})) @Getter @Setter @NoArgsConstructor
 public class SepayEvent {
  @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
- @Column(nullable=false,unique=true) private Long transactionId;
+ @Column(nullable=false) private Long transactionId;
  @Column(nullable=false) private Long ownerId;
  private Long invoiceId;
  @Column(nullable=false,length=32) private String result;

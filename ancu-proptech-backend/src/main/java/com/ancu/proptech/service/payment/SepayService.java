@@ -87,7 +87,7 @@ public class SepayService {
   var c=connections.lockOwner(ownerId).orElseThrow(SepayService::unauthorized);
   String supplied=authorization!=null&&authorization.startsWith("Apikey ")?authorization.substring(7):"";
   if(supplied.length()>256||!MessageDigest.isEqual(c.getSecretHash().getBytes(StandardCharsets.US_ASCII),hash(supplied).getBytes(StandardCharsets.US_ASCII)))throw unauthorized();
-  var existing=events.findByTransactionId(w.id());if(existing.isPresent()){if(!existing.get().getOwnerId().equals(ownerId))throw unauthorized();return;}
+  if(events.findByOwnerIdAndTransactionId(ownerId,w.id()).isPresent())return;
   c.setLastWebhookAt(Instant.now());
   var e=new SepayEvent();e.setOwnerId(ownerId);e.setTransactionId(w.id());e.setAmount(w.transferAmount());e.setReceivedAt(Instant.now());e.setResult("UNMATCHED");
   if(!c.isEnabled())e.setResult("DISABLED");

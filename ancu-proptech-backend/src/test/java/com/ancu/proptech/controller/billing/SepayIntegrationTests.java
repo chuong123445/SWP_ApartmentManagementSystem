@@ -115,6 +115,12 @@ class SepayIntegrationTests {
         mvc.perform(get("/api/v1/invoices/"+id+"/payment").header("Authorization","Bearer "+tenantToken)).andExpect(jsonPath("$.status").value("NOT_CONFIGURED"));
         deliver(key,webhook(85001,code,"5540000","1234567890","96247123456789","in")).andExpect(status().isOk());assertNull(payments.findByInvoiceId(Long.valueOf(id)).orElseThrow().getPaidAt());
     }
+
+    @Test void anotherOwnersUnmatchedWebhookNeverConsumesTheRightOwnersTransaction()throws Exception{
+        String id=prepare();String code=JsonPath.read(ticket(tenantToken,id),"$.paymentCode");String otherKey=JsonPath.read(setup(token(otherOwner),"bank1","va1",0),"$.webhookSecret");String body=webhook(86001,code,"5540000","1234567890","96247123456789","in");
+        mvc.perform(post("/api/v1/payments/sepay/webhooks/"+otherOwner.getId()).header("Authorization","Apikey "+otherKey).contentType("application/json").content(body)).andExpect(status().isOk());assertNull(payments.findByInvoiceId(Long.valueOf(id)).orElseThrow().getPaidAt());
+        deliver(key,body).andExpect(status().isOk());assertNotNull(payments.findByInvoiceId(Long.valueOf(id)).orElseThrow().getPaidAt());assertEquals("UNMATCHED",events.findTop20ByOwnerIdOrderByReceivedAtDescIdDesc(otherOwner.getId()).get(0).getResult());
+    }
     @Autowired jakarta.persistence.EntityManager entityManager;
     @Test void concurrentWebhookRetriesCommitOnePaymentEvent()throws Exception{
         String id=prepare();String code=JsonPath.read(ticket(tenantToken,id),"$.paymentCode");String body=webhook(83001,code,"5540000","1234567890","96247123456789","in");TestTransaction.flagForCommit();TestTransaction.end();var pool=Executors.newFixedThreadPool(2);var gate=new CountDownLatch(1);

@@ -17,14 +17,14 @@ Token API SePay và khóa webhook khác nhau. Token chỉ dùng cho request thi�
 - Config một tài khoản nhận mặc định cho mỗi Owner, phục vụ nhiều căn hộ/hóa đơn. Đổi cấu hình không sửa snapshot/QR đã cấp, không sửa ngân hàng trong hợp đồng đã lưu. Cần đối chiếu với người thuê khi đổi ngân hàng.
 - Webhook POST JSON có `Authorization: Apikey <key>`. Chain riêng chỉ cho đường webhook, không dùng cookie/JWT/CSRF; các API người dùng vẫn dùng Security/JWT và AccountAccessService.
 - Secret random 32 byte, so sánh hash constant-time, hiển thị khi tạo/rotate; GET không trả secret/hash. Rotate có version và vô hiệu khóa cũ. URL được tạo từ APP_PUBLIC_BASE_URL, không lấy Host header.
-- Transaction khóa connection → contract; webhook cùng Owner được tuần tự hóa. transaction_id UNIQUE toàn hệ thống; invoice_id/payment_code UNIQUE. Nhận lại cùng event trả success, không ghi nhận lại. DB foreign keys giữ tham chiếu; server không cần queue/network trong webhook.
+- Transaction khóa connection → contract; webhook cùng Owner được tuần tự hóa. (owner_id, transaction_id) UNIQUE theo kết nối chủ nhà; invoice_id/payment_code UNIQUE. Nhận lại cùng event trả success, không ghi nhận lại. DB foreign keys giữ tham chiếu; server không cần queue/network trong webhook.
 - Đúng bank + account/VA snapshot, đúng một mã hóa đơn và đúng toàn bộ số tiền, transferType=in, invoice SENT → paidAt. Không sửa SENT thành PAID: paymentStatus riêng để giữ chuỗi chỉ số/thời kỳ hóa đơn.
 - Sai tài khoản/số tiền, tiền ra, mã không khớp/mơ hồ, hóa đơn đã trả hoặc connection tắt: lưu kết quả đối soát, trả success sau commit để không retry vô ích; không tự cộng dồn/hoàn tiền/đánh dấu đã trả. Lỗi xác thực 401; lỗi server thực sự không ack để SePay retry.
 - Khóa webhook là credential tin cậy; chủ nhà không được gửi thử bằng mã hóa đơn thật. `lastWebhookAt` chỉ chứng minh đã nhận thông báo hợp lệ, không xác minh pháp lý tài khoản ngân hàng hoặc khẳng định giao dịch thật.
 
 ## Database
 
-V23 thêm sepay_connections (người nhận + hash key + trạng thái/version), invoice_payments (snapshot QR + paidAt), sepay_events (external transaction ID + kết quả/amount/time). Không lưu raw payload/số dư/người chuyển. 20 events mới nhất chỉ Owner đó xem. Migration additive/idempotent, không reset dữ liệu. Project hiện Hibernate ddl-auto=update ở local; script V23 dùng để quản lý schema rõ ràng, chưa cài Flyway mới.
+V23/V24 thêm sepay_connections (người nhận + hash key + trạng thái/version), invoice_payments (snapshot QR + paidAt), sepay_events (external transaction ID + kết quả/amount/time). Không lưu raw payload/số dư/người chuyển. 20 events mới nhất chỉ Owner đó xem. Migration additive/idempotent, không reset dữ liệu. Project hiện Hibernate ddl-auto=update ở local; script V23 dùng để quản lý schema rõ ràng, chưa cài Flyway mới.
 
 ## Ngoài phạm vi
 
