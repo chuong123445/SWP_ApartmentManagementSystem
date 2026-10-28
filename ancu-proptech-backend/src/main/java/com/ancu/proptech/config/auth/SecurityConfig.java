@@ -102,7 +102,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/owner/properties/*/evidence-files", "/api/v1/owner/properties/*/verification-dossiers", "/api/v1/property-evidence-files/*", "/api/v1/admin/property-dossiers", "/api/v1/admin/property-dossiers/*", "/api/v1/admin/property-dossiers/*/decisions", "/api/v1/owner/apartments/*/publication", "/api/v1/owner/apartments/*/prices").authenticated()
                         .requestMatchers("/api/v1/owner/tenancies", "/api/v1/me/tenancies", "/api/v1/owner/contracts/*/billing-context", "/api/v1/owner/contracts/*/invoices", "/api/v1/owner/invoices", "/api/v1/owner/invoices/*/send", "/api/v1/me/invoices", "/api/v1/invoices/*").authenticated()
                         .requestMatchers("/api/v1/owner/rental-requests/*/contract-context", "/api/v1/owner/rental-requests/*/contract", "/api/v1/owner/contract-drafts", "/api/v1/me/contract-drafts", "/api/v1/contracts/*", "/api/v1/owner/contracts/*/draft").authenticated()
-                        .requestMatchers("/api/trustguard/**").hasAnyRole("OWNER", "ADMIN")
+                        // API ký quỹ cũ chưa có ownership/provider hợp lệ: đóng mọi truy cập,
+                        // kể cả Owner/Admin, thay vì chỉ kiểm tra role rồi cho đọc/sửa toàn bộ.
+                        .requestMatchers("/api/trustguard/escrow", "/api/trustguard/escrow/**").denyAll()
                         .anyRequest().denyAll())
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((request, response, error) -> writeError(response, 401, "UNAUTHENTICATED", "Vui lòng đăng nhập lại."))
