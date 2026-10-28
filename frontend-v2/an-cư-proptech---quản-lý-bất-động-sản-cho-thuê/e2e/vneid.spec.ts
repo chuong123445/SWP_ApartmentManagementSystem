@@ -21,6 +21,7 @@ test.afterEach(async ({ page }) => {
 });
 
 test('Unconfigured VNeID stays disabled on desktop/mobile and callback explains it', async ({ page }) => {
+  await page.route('**/api/v1/auth/vneid-config', route => route.fulfill({ json: { enabled: false } }));
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
@@ -74,6 +75,7 @@ async function oauthFixture(page: Page, intent: 'login' | 'verify', reject = fal
       nonce = url.searchParams.get('nonce')!;
       expect(url.searchParams.get('audience')).toBe('test-api');
       expect(url.searchParams.get('code_challenge_method')).toBe('S256');
+      expect(url.searchParams.get('prompt')).toBe('login');
       return route.fulfill({ status: 302, headers: { location: `${url.searchParams.get('redirect_uri')}?code=fixture-code&state=${encodeURIComponent(url.searchParams.get('state')!)}` } });
     }
     if (url.pathname === '/oauth/token') {
@@ -116,5 +118,22 @@ test('Existing-email rejection is visible and returns to login without creating 
   expect(fixture.commands()).toBe(1);
   await page.getByRole('link', { name: 'Quay lại để thử lại' }).click();
   await expect(page.getByRole('heading', { name: 'Chào mừng trở lại' })).toBeVisible();
+  expect(fixture.errors).toEqual([]);
+});
+
+test('Remembered Auth0 SSO session still requests explicit reauthentication before a backend login', async ({ page }) => {
+  const fixture = await oauthFixture(page, 'login');
+  await page.context().addCookies([{ name: 'auth0', value: 'remembered-account-a', domain: 'auth0-test.invalid', path: '/', secure: true, httpOnly: true, sameSite: 'Lax' }]);
+  await page.route('https://auth0-test.invalid/authorize*', async route => {
+    const url = new URL(route.request().url());
+    expect((await route.request().allHeaders()).cookie).toContain('auth0=remembered-account-a');
+    expect(url.searchParams.get('prompt')).toBe('login');
+    expect(url.searchParams.has('login_hint')).toBe(false);
+    return route.fulfill({ contentType: 'text/html; charset=utf-8', body: '<html><head><title>Auth0 test login</title></head><body><h1>Đăng nhập lại Auth0</h1><p>Nhập tài khoản muốn kiểm thử.</p></body></html>' });
+  });
+  await page.goto('/login');await page.getByRole('button', { name: 'Đăng nhập bằng VNeID mô phỏng' }).click();
+  await expect(page).toHaveURL(/^https:\/\/auth0-test\.invalid\/authorize\?/);
+  await expect(page.getByRole('heading', { name: 'Đăng nhập lại Auth0' })).toBeVisible();
+  expect(fixture.commands()).toBe(0);
   expect(fixture.errors).toEqual([]);
 });

@@ -1,4 +1,11 @@
 # Kết nối Auth0 VNeID
+## Đổi tài khoản khi kiểm thử — 28/10/2026
+
+Auth0 giữ phiên SSO tại domain riêng, độc lập phiên JWT/refresh nội bộ An Cư. Vì vậy logout nội bộ có thể vẫn để lại SSO Auth0.
+
+Nút đăng nhập, đăng ký và xác thực VNeID hiện gửi `authorizationParams: { connection: config.connection, prompt: 'login' }` khi gọi `loginWithRedirect`. Mỗi lần chủ động bấm nút yêu cầu Auth0 xác thực lại; không đặt prompt lên provider/global hoặc các lần lấy token nền. Không đổi cách thu hồi phiên nội bộ, không logout toàn bộ Auth0/ứng dụng khác, không auto-link tài khoản. Nếu Auth0 còn điền sẵn email, chọn “Not you?”/dùng tài khoản khác trên màn hình Auth0 rồi nhập user cần test.
+
+Test browser dùng SDK thật và provider giả lập, xác nhận prompt trong authorize, cookie SSO cũ vẫn yêu cầu reauthentication, callback/verify/error/token-storage hồi quy. Đây không phải lần đăng nhập Auth0 thật hoặc bằng chứng phương thức đăng nhập bên ngoài bắt buộc nhập mật khẩu; hành vi cụ thể còn tùy connection. Project dùng database connection Username-Password-Authentication.
 ## Cập nhật 28/10/2026 — cấu hình nhóm đã có sẵn
 
 `application-local.properties` đã chứa mặc định công khai của tenant VNeID-Mock: bật luồng VNeID local, issuer, SPA Client ID, audience, connection và M2M Client ID. Người khác pull code không cần chép lại các giá trị này hoặc tạo Auth0 riêng. `.env.example` cũng đã đồng bộ. Global/non-local vẫn opt-in; môi trường triển khai cần cấu hình rõ ràng.
