@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "An Cư — selection-bound contract drafts",
-    "version": "1.0.0",
-    "description": "Implemented 14 October 2026. Private DRAFT authoring/review; no signing, activation, payment or release endpoints. Snapshots are server-derived and immutable. Monthly rent must be positive; all other money nonnegative. Existing legacy ACTIVE fixtures are not backfilled into these authoring routes. Legal identity/certificate fields are server-derived and frozen at creation; old snapshots remain unchanged and readable. Explicit local samples are marked; no eKYC or legal evidence proof."
+    "version": "1.1.0",
+    "description": "Implemented 14 October 2026. Private DRAFT authoring/review; no signing, activation, payment or release endpoints. Snapshots are server-derived and immutable. Monthly rent must be positive; all other money nonnegative. Existing legacy ACTIVE fixtures are not backfilled into these authoring routes. Legal identity/certificate fields are server-derived and frozen at creation; old snapshots remain unchanged and readable. Explicit local samples are marked; no eKYC or legal evidence proof. Update27October: new contexts prefer persisted VERIFIED Auth0 citizen; missing issue fields stay null, old snapshots unchanged. Context includes current rightsValidFrom/Until. Server locks/rechecks rights and rejects contract beyond approved window or expired rights."
   },
   "servers": [
     {
@@ -26,7 +26,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             }
           }
         ],
@@ -169,7 +169,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             }
           }
         ],
@@ -322,7 +322,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             }
           }
         ],
@@ -475,7 +475,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             }
           }
         ],
@@ -617,7 +617,7 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             }
           }
         ],
@@ -1076,7 +1076,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "format": "uuid"
+            "description": "Frozen identifier string: legacy UUID or new numeric ID; snapshot unchanged."
           },
           "fullName": {
             "type": "string"
@@ -1144,11 +1144,11 @@
         "properties": {
           "apartmentId": {
             "type": "string",
-            "format": "uuid"
+            "description": "Frozen identifier string: legacy UUID or new numeric ID; snapshot unchanged."
           },
           "propertyId": {
             "type": "string",
-            "format": "uuid"
+            "description": "Frozen identifier string: legacy UUID or new numeric ID; snapshot unchanged."
           },
           "propertyName": {
             "type": "string"
@@ -1201,8 +1201,8 @@
           },
           "approvedDossierId": {
             "type": "string",
-            "format": "uuid",
-            "nullable": true
+            "nullable": true,
+            "description": "Frozen identifier string: legacy UUID or new numeric ID; snapshot unchanged."
           },
           "exploitationRight": {
             "type": "string",
@@ -1365,11 +1365,11 @@
           },
           "id": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "rentalRequestId": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "contractNumber": {
             "type": "string"
@@ -1421,7 +1421,7 @@
         "properties": {
           "rentalRequestId": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "requestVersion": {
             "type": "integer",
@@ -1459,6 +1459,16 @@
                 "$ref": "#/components/schemas/Draft"
               }
             ]
+          },
+          "rightsValidFrom": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "rightsValidUntil": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
           }
         },
         "required": [

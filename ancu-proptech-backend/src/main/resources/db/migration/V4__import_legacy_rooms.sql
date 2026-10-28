@@ -1,6 +1,6 @@
 -- Explicit user decision: transfer the archived rooms to owner@ancu.local as drafts.
 -- Preserve room UUIDs so existing room references are not changed.
-IF OBJECT_ID('dbo.legacy_rooms_archive', 'U') IS NOT NULL
+IF OBJECT_ID('dbo.legacy_rooms_archive', 'U') IS NOT NULL AND EXISTS(SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.rental_apartments') AND name='id' AND system_type_id=36)
 BEGIN
     EXEC sp_executesql N'
     IF EXISTS (SELECT 1 FROM dbo.legacy_rooms_archive r WHERE NOT EXISTS

@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "An Cu Private Property Dossiers and Admin Review",
-    "version": "1.0.0",
-    "description": "Implemented private image evidence, owner dossier/history, ACTIVE Admin review and supplementary property/publication workflow. PDF/storage scanning/revocation/retention remain unsupported; no legal/provider verification claim."
+    "version": "1.1.0",
+    "description": "Implemented private PDF/JPEG/PNG up to10MB, VNeID-verified submissions, AUTHORIZATION/SUBLEASE typed papers and validity, Admin confirmation/promotion, append-only renewal. SQL binary private storage, no malware-scan/OCR claim. Self application/expiry endpoints are described in property-rights.openapi.json."
   },
   "servers": [
     {
@@ -26,11 +26,11 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             }
           }
         ],
-        "description": "Exact verified Owner property; DRAFT/NEEDS_INFORMATION/REJECTED or legacy pending with no dossier. Genuine PNG/JPEG, 5MB and 20M pixels, decoded/re-encoded without metadata. Max200 stored uploads/property; no PDF/SVG/public URL.",
+        "description": "Exact verified Owner property; DRAFT/NEEDS_INFORMATION/REJECTED or legacy pending with no dossier. Genuine PDF/JPEG/PNG, 5MB and 20M pixels, decoded/re-encoded without metadata. Max200 stored uploads/property; no PDF/SVG/public URL.",
         "requestBody": {
           "required": true,
           "content": {
@@ -44,7 +44,10 @@
                     "enum": [
                       "RIGHT_DOCUMENT",
                       "SUPPORTING",
-                      "OWNER_IDENTITY"
+                      "OWNER_IDENTITY",
+                      "AUTHORIZATION_DOCUMENT",
+                      "ORIGINAL_LEASE",
+                      "SUBLEASE_CONSENT"
                     ]
                   },
                   "file": {
@@ -144,7 +147,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             }
           }
         ],
@@ -241,7 +244,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             }
           }
         ],
@@ -332,14 +335,14 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             }
           }
         ],
-        "description": "Owning verified Owner; ACTIVE Admin only when referenced in submitted dossier. Authenticated attachment/no-store/nosniff; no public URL.",
+        "description": "Exact submitting applicant or owning Owner; ACTIVE Admin only for files referenced by submitted dossiers. Private attachment/no-store/nosniff; no public URL.",
         "responses": {
           "200": {
-            "description": "Canonical raster attachment",
+            "description": "Validated PDF or canonical raster attachment",
             "content": {
               "image/png": {
                 "schema": {
@@ -348,6 +351,12 @@
                 }
               },
               "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/pdf": {
                 "schema": {
                   "type": "string",
                   "format": "binary"
@@ -506,7 +515,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             }
           }
         ],
@@ -594,7 +603,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             }
           }
         ],
@@ -699,14 +708,17 @@
         "properties": {
           "id": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "purpose": {
             "type": "string",
             "enum": [
               "RIGHT_DOCUMENT",
               "SUPPORTING",
-              "OWNER_IDENTITY"
+              "OWNER_IDENTITY",
+              "AUTHORIZATION_DOCUMENT",
+              "ORIGINAL_LEASE",
+              "SUBLEASE_CONSENT"
             ]
           },
           "filename": {
@@ -770,7 +782,8 @@
             "type": "string",
             "enum": [
               "OWNERSHIP",
-              "AUTHORIZATION"
+              "AUTHORIZATION",
+              "SUBLEASE"
             ]
           },
           "receivingAccount": {
@@ -780,7 +793,7 @@
             "type": "array",
             "items": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             },
             "minItems": 1,
             "maxItems": 20
@@ -789,7 +802,7 @@
             "type": "array",
             "items": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             },
             "minItems": 0,
             "maxItems": 20
@@ -798,7 +811,7 @@
             "type": "array",
             "items": {
               "type": "string",
-              "format": "uuid"
+              "pattern": "^[1-9][0-9]*$"
             },
             "minItems": 0,
             "maxItems": 20
@@ -822,6 +835,72 @@
             "type": "string",
             "maxLength": 1000,
             "nullable": true
+          },
+          "rightsValidFrom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "rightsValidUntil": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "originalLeaseFrom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "originalLeaseUntil": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "principalName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "principalDocumentNumber": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9]{12}$"
+          },
+          "authorizationFileIds": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          },
+          "originalLeaseFileIds": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          },
+          "subleaseConsentFileIds": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
           }
         },
         "required": [
@@ -830,7 +909,7 @@
           "receivingAccount",
           "documentFileIds"
         ],
-        "description": "Optional certificate group: provide all number/date/place or none. Issue date must not be in the future. localFixture is server-only and rejected as input."
+        "description": "AUTHORIZATION requires rightsValidFrom/Until, principalName/CCCD, original ownership documentFileIds and authorizationFileIds. SUBLEASE additionally requires originalLeaseFrom/Until, originalLeaseFileIds and separate subleaseConsentFileIds. Rights range must be inside original lease, not expired; no automatic one-year inference. All papers must belong to exact property with exact purpose; max20 total. VERIFIED Auth0 required."
       },
       "DossierDecision": {
         "type": "object",
@@ -855,6 +934,11 @@
             ],
             "maxLength": 2000,
             "description": "Nonblank required for non-approval."
+          },
+          "rightsConfirmed": {
+            "type": "boolean",
+            "default": false,
+            "description": "Required true for APPROVE of AUTHORIZATION/SUBLEASE after human checks scope and dates."
           }
         },
         "required": [
@@ -868,11 +952,11 @@
         "properties": {
           "id": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "propertyId": {
             "type": "string",
-            "format": "uuid"
+            "pattern": "^[1-9][0-9]*$"
           },
           "propertyName": {
             "type": "string"
@@ -887,7 +971,8 @@
             "type": "string",
             "enum": [
               "OWNERSHIP",
-              "AUTHORIZATION"
+              "AUTHORIZATION",
+              "SUBLEASE"
             ]
           },
           "bank": {
@@ -961,6 +1046,58 @@
             "type": "boolean",
             "readOnly": true,
             "description": "Explicit local illustrative dossier; not a real Admin evidence review."
+          },
+          "rightsValidFrom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "rightsValidUntil": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "originalLeaseFrom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "originalLeaseUntil": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "principalName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "principalDocumentNumber": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9]{12}$"
+          },
+          "applicantDocumentNumber": {
+            "description": "Private persisted verified citizen number; never public listing.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "renewal": {
+            "type": "boolean"
           }
         },
         "required": [

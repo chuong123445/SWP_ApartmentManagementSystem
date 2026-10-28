@@ -4,12 +4,12 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.*;
-import java.util.UUID;
+
 @Entity @Table(name="rental_invoices",uniqueConstraints=@UniqueConstraint(name="ux_invoice_contract_period",columnNames={"contract_id","period"}))
 @Getter @Setter @NoArgsConstructor
 public class RentalInvoice {
     public enum Status { DRAFT, SENT }
-    @Id @GeneratedValue(strategy=GenerationType.UUID) private UUID id;
+    @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
     @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="contract_id",nullable=false) private RentalContract contract;
     @Column(nullable=false,length=7) private String period;
     @Column(nullable=false) private LocalDate dueDate;

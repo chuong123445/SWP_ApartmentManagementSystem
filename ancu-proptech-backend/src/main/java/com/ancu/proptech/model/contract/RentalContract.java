@@ -5,11 +5,11 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.UUID;
+
 @Entity @Table(name="rental_contracts") @Getter @Setter @NoArgsConstructor
 public class RentalContract {
     public enum Status { DRAFT, ACTIVE, ENDED }
-    @Id @GeneratedValue(strategy=GenerationType.UUID) private UUID id;
+    @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
     @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="apartment_id",nullable=false) private Apartment apartment;
     @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="customer_id",nullable=false) private AuthAccount customer;
     @Enumerated(EnumType.STRING) @Column(nullable=false,length=24) private Status status;

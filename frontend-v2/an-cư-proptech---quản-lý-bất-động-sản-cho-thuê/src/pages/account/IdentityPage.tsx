@@ -2,12 +2,18 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { AccountLayout } from '@/layouts/AccountLayout';
 import { IdentityImage } from '@/components/identity/IdentityImage';
+import { VerifiedCitizenPanel } from '@/components/identity/VerifiedCitizenDetails';
 import { getIdentity, saveIdentity } from '@/services/identity/identityService';
 import { ApiError } from '@/services/http/client';
 import type { IdentityFields, IdentityProfile } from '@/types/identity';
+import { useAccountVerification } from '@/hooks/useAccountVerification';
+import { useAuth } from '@/hooks/useAuth';
 
 const empty: IdentityFields = { legalName: '', documentNumber: '', dateOfBirth: '', issueDate: '', issuePlace: '', permanentAddress: '', currentAddress: '' };
 export function IdentityPage() {
+  const verification = useAccountVerification();
+  const { user } = useAuth();
+  const verified = verification.data?.vneid.status === 'VERIFIED';
   const location = useLocation();
   const returnTo = typeof location.state?.returnTo === 'string' ? location.state.returnTo : '/account/settings';
   const isFromApartment = typeof location.state?.returnTo === 'string' && location.state.returnTo.startsWith('/apartments');
@@ -28,6 +34,8 @@ export function IdentityPage() {
   const [error, setError] = useState('');const [notice, setNotice] = useState('');const [revision, setRevision] = useState(0);
   const form = useRef<HTMLFormElement>(null);const maxDate = new Date().toLocaleDateString('en-CA');
   useEffect(() => {
+    // Chỉ mở hồ sơ tự khai sau khi đã biết tài khoản chưa có căn cước xác thực.
+    if (!verification.data || verified) return;
     const controller = new AbortController();setLoading(true);setReady(false);setError('');setNotice('');
     getIdentity(controller.signal).then(profile => {
       if (controller.signal.aborted) return;
@@ -36,7 +44,7 @@ export function IdentityPage() {
     }).catch(e => { if (!controller.signal.aborted) setError(e instanceof Error ? e.message : 'Không tải được hồ sơ.'); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [revision]);
+  }, [revision, verified, verification.data, user?.id]);
   const change = (field: keyof IdentityFields, value: string) => setFields(previous => ({ ...previous, [field]: value }));
   const inputClass = 'w-full min-w-0 border border-slate-300 rounded-lg px-3 py-2 mt-1';
   const fileChange = (file: File | undefined, side: 'front' | 'back') => {
@@ -49,6 +57,10 @@ export function IdentityPage() {
   return <AccountLayout>
     <Link to={returnTo} className="text-emerald-700 underline text-sm">{returnLabel}</Link>
     <h1 className="text-2xl font-bold mt-4 mb-3">Xác thực danh tính</h1>
+    <VerifiedCitizenPanel state={verification} />
+    {verified && <p className="text-slate-600">Bạn đã xác thực căn cước qua VNeID. Không cần nhập lại thông tin hoặc tải ảnh căn cước để thêm tài sản cho thuê.</p>}
+    {!verification.loading && !verification.error && verification.data && !verified && <>
+    <h2 className="text-lg font-semibold mb-2">Hồ sơ ảnh giấy tờ tự khai</h2>
     <p className="text-slate-600 mb-4">Cung cấp thông tin căn cước và địa chỉ để chuẩn bị thông tin cá nhân khi thuê nhà. Hãy nhập đúng nội dung trên giấy tờ.</p>
     <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5">
       {saved?.localFixture && <p className="font-bold mb-2">Dữ liệu mẫu — không có giá trị xác minh hoặc làm giấy tờ pháp lý.</p>}
@@ -106,5 +118,6 @@ export function IdentityPage() {
         <button type="submit" disabled={saving || stale} className="bg-emerald-600 text-white rounded-lg px-5 py-2 disabled:opacity-50">{saving ? 'Đang lưu hồ sơ...' : 'Lưu hồ sơ danh tính'}</button>
       </fieldset>
     </form>}
+    </>}
   </AccountLayout>;
 }
