@@ -32,3 +32,6 @@ Escrow/đặt cọc, hoàn tiền, thanh toán một phần/gộp, đối soát 
 
 
 Bật/tắt nhận thanh toán: sau khi cấu hình, dùng nút Tạm dừng/Bật lại bằng phiên nội bộ và version, không cần token SePay. Khi tắt, không cấp QR mới hay tự đối soát giao dịch; trạng thái các hóa đơn đã thanh toán vẫn giữ nguyên. Thông báo nhận trong lúc tắt lưu DISABLED, không tự phát lại để thanh toán sau khi bật.
+
+
+29/10/2026 — ngrok inspector xác nhận SePay Gửi thử dùng id=0. Sau xác thực key, chỉ cập nhật lastWebhookAt rồi ack success, không lưu event ID 0 hoặc đối soát hóa đơn. ID âm/missing và các ràng buộc payload khác vẫn bị từ chối; ID dương xử lý theo quy tắc hiện có.

@@ -88,6 +88,9 @@ public class SepayService {
   var c=connections.lockOwner(ownerId).orElseThrow(SepayService::unauthorized);
   String supplied=authorization!=null&&authorization.startsWith("Apikey ")?authorization.substring(7):"";
   if(supplied.length()>256||!MessageDigest.isEqual(c.getSecretHash().getBytes(StandardCharsets.US_ASCII),hash(supplied).getBytes(StandardCharsets.US_ASCII)))throw unauthorized();
+  // SePay Gửi thử dùng id=0. Chỉ xác nhận kết nối sau kiểm tra khóa;
+  // không tạo giao dịch, đọc mã hóa đơn hay ghi nhận thanh toán từ bản tin thử.
+  if(w.id()==0){c.setLastWebhookAt(Instant.now());return;}
   if(events.findByOwnerIdAndTransactionId(ownerId,w.id()).isPresent())return;
   c.setLastWebhookAt(Instant.now());
   var e=new SepayEvent();e.setOwnerId(ownerId);e.setTransactionId(w.id());e.setAmount(w.transferAmount());e.setReceivedAt(Instant.now());e.setResult("UNMATCHED");

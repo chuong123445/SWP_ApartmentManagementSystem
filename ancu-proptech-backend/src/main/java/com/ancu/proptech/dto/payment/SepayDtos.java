@@ -22,7 +22,7 @@ public final class SepayDtos {
  public record Event(String transactionId,String invoiceId,String result,String amount,Instant receivedAt){}
  // SePay có thể thêm trường mới: chỉ đọc các dữ liệu cần đối soát, không tin trạng thái do client gửi.
  @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown=true)
- public record Webhook(@NotNull @Positive Long id,@NotBlank @Size(max=100) String gateway,
+ public record Webhook(@NotNull @PositiveOrZero Long id,@NotBlank @Size(max=100) String gateway,
   @NotBlank @Size(max=40) String accountNumber,@Size(max=40) String subAccount,
   @Size(max=100) String code,@NotNull @Size(max=5000) String content,
   @NotBlank @Pattern(regexp="in|out") String transferType,

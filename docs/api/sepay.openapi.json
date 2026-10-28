@@ -676,7 +676,8 @@
           "id": {
             "type": "integer",
             "format": "int64",
-            "minimum": 1
+            "minimum": 0,
+            "description": "0 is the observed SePay Gửi thử connectivity probe: API key still required; only lastWebhookAt updated, no ledger/invoice payment writes. Real transaction IDs must be positive."
           },
           "gateway": {
             "type": "string"

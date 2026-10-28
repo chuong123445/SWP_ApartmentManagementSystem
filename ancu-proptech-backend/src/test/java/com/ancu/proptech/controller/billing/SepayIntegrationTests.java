@@ -121,6 +121,17 @@ class SepayIntegrationTests {
         mvc.perform(post("/api/v1/payments/sepay/webhooks/"+otherOwner.getId()).header("Authorization","Apikey "+otherKey).contentType("application/json").content(body)).andExpect(status().isOk());assertNull(payments.findByInvoiceId(Long.valueOf(id)).orElseThrow().getPaidAt());
         deliver(key,body).andExpect(status().isOk());assertNotNull(payments.findByInvoiceId(Long.valueOf(id)).orElseThrow().getPaidAt());assertEquals("UNMATCHED",events.findTop20ByOwnerIdOrderByReceivedAtDescIdDesc(otherOwner.getId()).get(0).getResult());
     }
+
+    @Test void zeroIdProviderTestAcknowledgesConnectionWithoutPayingEvenMatchingInvoice()throws Exception{
+        String id=prepare();String code=JsonPath.read(ticket(tenantToken,id),"$.paymentCode");String body=webhook(0,code,"5540000","1234567890","96247123456789","in");
+        deliver(key,body).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true));deliver(key,body).andExpect(status().isOk());
+        assertNotNull(connections.findByOwnerId(owner.getId()).orElseThrow().getLastWebhookAt());assertTrue(events.findTop20ByOwnerIdOrderByReceivedAtDescIdDesc(owner.getId()).isEmpty());assertNull(payments.findByInvoiceId(Long.valueOf(id)).orElseThrow().getPaidAt());
+        mvc.perform(get("/api/v1/invoices/"+id).header("Authorization","Bearer "+tenantToken)).andExpect(jsonPath("$.paymentStatus").value("UNPAID"));
+    }
+    @Test void zeroIdTestStillRequiresCorrectKeyAndNegativeIdIsInvalid()throws Exception{
+        prepare();deliver("wrong-key",webhook(0,"TEST","1","1234567890","96247123456789","in")).andExpect(status().isUnauthorized());
+        deliver(key,webhook(-1,"TEST","1","1234567890","96247123456789","in")).andExpect(status().isBadRequest());assertNull(connections.findByOwnerId(owner.getId()).orElseThrow().getLastWebhookAt());assertTrue(events.findTop20ByOwnerIdOrderByReceivedAtDescIdDesc(owner.getId()).isEmpty());
+    }
     @Autowired jakarta.persistence.EntityManager entityManager;
     @Test void concurrentWebhookRetriesCommitOnePaymentEvent()throws Exception{
         String id=prepare();String code=JsonPath.read(ticket(tenantToken,id),"$.paymentCode");String body=webhook(83001,code,"5540000","1234567890","96247123456789","in");TestTransaction.flagForCommit();TestTransaction.end();var pool=Executors.newFixedThreadPool(2);var gate=new CountDownLatch(1);

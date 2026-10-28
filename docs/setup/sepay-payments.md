@@ -50,7 +50,7 @@ Mã hóa đơn do ứng dụng sinh dài 28 ký tự bắt đầu ANCU. Backend 
 
 ## 4. Kiểm tra
 
-- Dùng Gửi thử trên SePay với mã giả, không dùng mã hóa đơn thật: xem Đã nhận webhook gần nhất và lịch sử UNMATCHED. Gửi thử không chứng minh giao dịch ngân hàng thật.
+- Dùng Gửi thử trên SePay với mã giả, không dùng mã hóa đơn thật: bản tin thử SePay có id=0 sẽ cập nhật Đã nhận webhook gần nhất sau khi kiểm tra khóa; không tạo dòng giao dịch và không đánh dấu thanh toán. Nếu gửi thử bằng một ID dương với mã giả, lịch sử sẽ có UNMATCHED. Gửi thử không chứng minh giao dịch ngân hàng thật.
 - Mở hóa đơn SENT thuộc đúng người thuê → Hiển thị QR thanh toán SePay. Số tiền và nội dung được server cấp, không tự tạo QR hàng tháng.
 - Kiểm tra một giao dịch thật vào đúng tài khoản/VA, đúng toàn bộ số tiền và giữ nội dung. Ứng dụng cập nhật khi nhận webhook (trang chi tiết tự kiểm tra mỗi 10 giây khi đang mở, hoặc bấm Kiểm tra trạng thái).
 - Webhook retry cùng transaction ID không ghi nhận lần hai. Chuyển thiếu/thừa, sai VA/ngân hàng hoặc mã không khớp nằm trong lịch sử để đối soát, chưa có nút tự xác nhận/hoàn tiền.
@@ -71,3 +71,8 @@ Nhánh feature/sepay-payments. Khởi động lại Spring Boot và Vite. Có V2
 
 
 Bật/tắt nhận thanh toán: sau khi cấu hình, dùng nút Tạm dừng/Bật lại bằng phiên nội bộ và version, không cần token SePay. Khi tắt, không cấp QR mới hay tự đối soát giao dịch; trạng thái các hóa đơn đã thanh toán vẫn giữ nguyên. Thông báo nhận trong lúc tắt lưu DISABLED, không tự phát lại để thanh toán sau khi bật.
+
+
+## Chẩn đoán Gửi thử HTTP 400 (29/10/2026)
+
+Đã quan sát request thực của SePay qua ngrok inspector: JSON hợp lệ, header API-key có mặt, nhưng id=0. Backend trước đây dùng @Positive và từ chối bản tin thử trước khi kiểm tra khóa. Đã sửa nhận ID 0 theo nhánh kiểm tra kết nối sau xác thực, giữ ID âm/missing không hợp lệ và không chạy đối soát hóa đơn cho ID 0. Khởi động lại Spring Boot sau khi pull bản sửa rồi Gửi thử lại. Mở URL ngrok gốc bằng GET nhận UNAUTHENTICATED là bình thường; webhook là POST vào đường dẫn đầy đủ kèm khóa.
