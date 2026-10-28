@@ -10,7 +10,11 @@ export function VneidButton({ intent, label }: { intent: 'login' | 'verify'; lab
     if (!config?.enabled || busy) return;
     if (intent === 'verify' && !user) { setError('Vui lòng đăng nhập tài khoản cần xác thực.'); return; }
     setBusy(true); setError('');
-    try { await loginWithRedirect({ appState: { intent, accountId: intent === 'verify' ? user!.id : undefined }, authorizationParams: { connection: config.connection } }); }
+    try {
+      // Phiên SSO Auth0 có thể còn sau logout nội bộ; yêu cầu nhập lại tài khoản khi bấm nút.
+      await loginWithRedirect({ appState: { intent, accountId: intent === 'verify' ? user!.id : undefined },
+        authorizationParams: { connection: config.connection, prompt: 'login' } });
+    }
     catch { setError('Không thể mở đăng nhập VNeID. Vui lòng thử lại.'); setBusy(false); }
   };
   return <div className="mt-5">
