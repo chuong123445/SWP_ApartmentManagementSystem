@@ -28,4 +28,5 @@ public class MaintenanceTicket {
     @Nationalized @Column(length=200) private String technicianName;
     @Column(length=30) private String technicianPhone;
     @Column(columnDefinition="datetime2(6)") private Instant scheduledAt;
+    @Nationalized @Column(length=3000) private String repairResult;
 }

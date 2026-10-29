@@ -46,12 +46,24 @@ class MaintenanceIntegrationTests {
   mvc.perform(post("/api/v1/me/maintenance-tickets").header("Authorization",token(customer)).contentType("application/json").content(body)).andExpect(status().isNotFound());
   mvc.perform(post("/api/v1/owner/maintenance-tickets").header("Authorization",token(owner)).contentType("application/json").content(body.replace("Đèn hành lang"," "))).andExpect(status().isBadRequest());
   String path="/api/v1/owner/maintenance-tickets/"+t.getId()+"/actions";
-  String accept="{\"version\":0,\"action\":\"ACCEPT\"}";
+  t.setTenant(customer);tickets.saveAndFlush(t);long initial=t.getVersion();
+  String accept="{\"version\":"+initial+",\"action\":\"ACCEPT\"}";
   mvc.perform(post(path).header("Authorization",token(other)).contentType("application/json").content(accept)).andExpect(status().isNotFound());
   mvc.perform(post(path).header("Authorization",token(customer)).contentType("application/json").content(accept)).andExpect(status().isForbidden());
   mvc.perform(post(path).header("Authorization",token(owner)).contentType("application/json").content(accept)).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACCEPTED"));
   mvc.perform(post(path).header("Authorization",token(owner)).contentType("application/json").content(accept)).andExpect(status().isConflict());
-  mvc.perform(post(path).header("Authorization",token(owner)).contentType("application/json").content("{\"version\":1,\"action\":\"ASSIGN\",\"technicianName\":\"Thợ kiểm thử\",\"technicianPhone\":\"0900000000\",\"scheduledAt\":\"2026-11-01T08:00:00Z\"}"))
+  mvc.perform(post(path).header("Authorization",token(owner)).contentType("application/json").content("{\"version\":"+(initial+1)+",\"action\":\"ASSIGN\",\"technicianName\":\"Thợ kiểm thử\",\"technicianPhone\":\"0900000000\",\"scheduledAt\":\"2026-11-01T08:00:00Z\"}"))
    .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("IN_PROGRESS")).andExpect(jsonPath("$.history.length()").value(2));
+  mvc.perform(post(path).header("Authorization",token(owner)).contentType("application/json").content("{\"version\":"+t.getVersion()+",\"action\":\"READY\",\"note\":\"Đã thay máy bơm\"}"))
+   .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("AWAITING_CONFIRMATION"));
+  String confirm="{\"version\":"+t.getVersion()+",\"action\":\"CONFIRM\"}";
+  mvc.perform(post(path).header("Authorization",token(owner)).contentType("application/json").content(confirm)).andExpect(status().isConflict());
+  String customerPath="/api/v1/me/maintenance-tickets/"+t.getId()+"/actions";
+  mvc.perform(post(customerPath).header("Authorization",token(other)).contentType("application/json").content(confirm)).andExpect(status().isNotFound());
+  mvc.perform(post(customerPath).header("Authorization",token(customer)).contentType("application/json").content("{\"version\":"+t.getVersion()+",\"action\":\"REOPEN\",\"note\":\"Vẫn rò nước\"}"))
+   .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("IN_PROGRESS"));
+  mvc.perform(post(path).header("Authorization",token(owner)).contentType("application/json").content("{\"version\":"+t.getVersion()+",\"action\":\"READY\",\"note\":\"Đã sửa lại\"}")).andExpect(status().isOk());
+  mvc.perform(post(customerPath).header("Authorization",token(customer)).contentType("application/json").content("{\"version\":"+t.getVersion()+",\"action\":\"CONFIRM\"}"))
+   .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("RESOLVED"));
  }
 }
