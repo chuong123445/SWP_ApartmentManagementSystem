@@ -18,6 +18,7 @@ public class MaintenanceController {
     private final AccountAccessService access;
     private final com.ancu.proptech.repository.maintenance.MaintenanceEventRepository events;
     private final jakarta.persistence.EntityManager entities;
+    private final com.ancu.proptech.repository.maintenance.MaintenanceImageRepository images;
     private final com.ancu.proptech.repository.property.PropertyRepository properties;
     private final com.ancu.proptech.repository.apartment.ApartmentRepository apartments;
     private final com.ancu.proptech.repository.contract.RentalContractRepository contracts;
@@ -58,7 +59,7 @@ public class MaintenanceController {
     public record Ticket(String id,String propertyId,String apartmentId,String roomNumber,String reporterName,
                          String title,String description,String category,String priority,String status,Instant createdAt,long version,
                          String technicianName,String technicianPhone,Instant scheduledAt,boolean canConfirm,String repairResult,
-                         String actualCost,String customerCost,String costResponsibility,java.util.List<History> history) {}
+                         String actualCost,String customerCost,String costResponsibility,java.util.List<History> history,java.util.List<MaintenanceImageController.Image> images) {}
     public enum CostResponsibility { OWNER, CUSTOMER, SHARED }
     public enum Action { ACCEPT, REJECT, ASSIGN, CANCEL, READY, CONFIRM, REOPEN }
     public record Change(@jakarta.validation.constraints.NotNull @jakarta.validation.constraints.PositiveOrZero Long version,
@@ -117,5 +118,6 @@ public class MaintenanceController {
         t.getReporter().getFullName(),t.getTitle(),t.getDescription(),t.getCategory().name(),t.getPriority().name(),t.getStatus().name(),t.getCreatedAt(),t.getVersion(),
         t.getTechnicianName(),t.getTechnicianPhone(),t.getScheduledAt(),t.getTenant()!=null,t.getRepairResult(),
         t.getActualCost()==null?null:t.getActualCost().toPlainString(),t.getCustomerCost()==null?null:t.getCustomerCost().toPlainString(),t.getCostResponsibility(),
-        events.findByTicketIdOrderByIdAsc(t.getId()).stream().map(e->new History(e.getAction(),e.getNote(),e.getCreatedAt())).toList());}
+        events.findByTicketIdOrderByIdAsc(t.getId()).stream().map(e->new History(e.getAction(),e.getNote(),e.getCreatedAt())).toList(),
+        images.findByTicketIdOrderByIdAsc(t.getId()).stream().map(i->new MaintenanceImageController.Image(i.getId().toString(),i.getKind())).toList());}
 }
