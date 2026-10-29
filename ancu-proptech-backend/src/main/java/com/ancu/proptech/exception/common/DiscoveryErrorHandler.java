@@ -5,7 +5,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.*;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
-@RestControllerAdvice(basePackages = {"com.ancu.proptech.controller.identity", "com.ancu.proptech.controller.apartment", "com.ancu.proptech.controller.rental", "com.ancu.proptech.controller.property", "com.ancu.proptech.controller.billing", "com.ancu.proptech.controller.contract"})
+@RestControllerAdvice(basePackages = {"com.ancu.proptech.controller.identity", "com.ancu.proptech.controller.apartment", "com.ancu.proptech.controller.rental", "com.ancu.proptech.controller.property", "com.ancu.proptech.controller.billing", "com.ancu.proptech.controller.contract", "com.ancu.proptech.controller.maintenance"})
 public class DiscoveryErrorHandler {
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     ResponseEntity<?> conflict(Exception e) { return error(HttpStatus.CONFLICT,"RESOURCE_CONFLICT","Dữ liệu đã tồn tại hoặc vừa thay đổi. Hãy tải lại trước khi thử tiếp."); }
