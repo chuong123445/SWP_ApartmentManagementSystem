@@ -129,9 +129,12 @@ public class RentalRequestService {
     }
 
     private RentalRequestResponse response(RentalRequest r) {
+        var draft = drafts.findByRentalRequestId(r.getId()).orElse(null);
+        boolean completed = draft != null && draft.getOwnerSignedAt() != null && draft.getCustomerSignedAt() != null;
         return new RentalRequestResponse(r.getId(), r.getApartment().getId(), r.getApartment().getTitle(), r.getApartment().getProperty().getAddress(),
                 (r.getQuotedMonthlyRent()==null?r.getApartment().getAdvertisedMonthlyRent():r.getQuotedMonthlyRent()).toPlainString(), r.getCustomer().getId(), r.getCustomer().getFullName(), r.getCustomer().getEmail(),
-                r.getMessage(), r.getStatus().name(), r.getCreatedAt(), r.getVersion(), r.getDecisionReason());
+                r.getMessage(), r.getStatus().name(), r.getCreatedAt(), r.getVersion(), r.getDecisionReason(),
+                draft == null ? null : draft.getContract().getId().toString(), completed);
     }
     private static ApiException notFound() { return new ApiException(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Không tìm thấy căn hộ đang được đăng công khai."); }
 }
