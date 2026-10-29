@@ -1,3 +1,4 @@
+import { MaintenanceActions } from '@/components/maintenance/MaintenanceActions';
 import { useState } from 'react';
 import type { MaintenanceTicket } from '@/types';
 import { MaintenanceForm, type MaintenancePlace } from '@/components/maintenance/MaintenanceForm';
@@ -16,6 +17,6 @@ export function MaintenancePage({ tickets, loading, error, onReload, owner=true,
   {error && <p role="alert" className="bg-rose-50 text-rose-700 p-4 rounded-xl">{error}</p>}
   {loading && <p role="status" className="p-6 text-slate-500">Đang tải sự cố từ máy chủ...</p>}
   {!loading && !error && !visible.length && <p className="bg-white border rounded-xl p-8 text-center text-slate-500">{tickets.length?'Không có sự cố ở trạng thái này.':'Chưa có sự cố nào được ghi nhận.'}</p>}
-  {!loading && !error && <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{visible.map(t=><article key={t.id} className="bg-white border rounded-xl p-5 space-y-3"><div className="flex justify-between gap-3 text-xs"><span className="font-semibold">{t.roomNumber}</span><span>{priorities[t.priority]}</span></div><h2 className="font-bold">{t.title}</h2><p className="whitespace-pre-wrap text-sm text-slate-600">{t.description}</p><p className="text-xs text-slate-500">Người báo: {t.tenantName}</p><p className="text-xs text-slate-500">Thời gian báo: {new Date(t.createdAt).toLocaleString('vi-VN')}</p><p className="text-sm font-semibold text-emerald-700">{labels[t.apiStatus??'']??'Không xác định'}</p></article>)}</div>}
+  {!loading && !error && <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{visible.map(t=><article key={t.id} className="bg-white border rounded-xl p-5 space-y-3"><div className="flex justify-between gap-3 text-xs"><span className="font-semibold">{t.roomNumber}</span><span>{priorities[t.priority]}</span></div><h2 className="font-bold">{t.title}</h2><p className="whitespace-pre-wrap text-sm text-slate-600">{t.description}</p><p className="text-xs text-slate-500">Người báo: {t.tenantName}</p><p className="text-xs text-slate-500">Thời gian báo: {new Date(t.createdAt).toLocaleString('vi-VN')}</p><p className="text-sm font-semibold text-emerald-700">{labels[t.apiStatus??'']??'Không xác định'}</p><MaintenanceActions ticket={t} owner={owner} onReload={onReload}/></article>)}</div>}
  </section>;
 }
