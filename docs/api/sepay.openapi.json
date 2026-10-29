@@ -221,7 +221,7 @@
     },
     "/api/v1/owner/payments/sepay/events": {
       "get": {
-        "summary": "Own latest 20 events; transactionId/invoiceId/result/amount/receivedAt",
+        "summary": "Own latest 20 events; transactionId/invoiceId/testPaymentId/result/amount/receivedAt; exactly one receipt reference for matched payment",
         "responses": {
           "200": {
             "description": "Saved/private result; Cache-Control no-store"
@@ -445,6 +445,87 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/Status"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/owner/payments/sepay/test-payments": {
+      "get": {
+        "summary": "Owner-only latest 20 test receipts; independent of rental debts/revenue",
+        "responses": {
+          "200": {
+            "description": "Saved/private result; Cache-Control no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TestReceipt"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or provider token/data"
+          },
+          "401": {
+            "description": "Missing/invalid session or webhook API key"
+          },
+          "403": {
+            "description": "Role/account verification denied"
+          },
+          "404": {
+            "description": "Not exact invoice party"
+          },
+          "409": {
+            "description": "Stale version, invoice not SENT, missing config/public URL, fractional VND"
+          },
+          "503": {
+            "description": "Provider unavailable"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a real-money test QR with custom whole VND amount; requires enabled configuration and HTTPS URL. Each POST creates a new receipt.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestPaymentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "400": {
+            "description": "Invalid input or provider token/data"
+          },
+          "401": {
+            "description": "Missing/invalid session or webhook API key"
+          },
+          "403": {
+            "description": "Role/account verification denied"
+          },
+          "404": {
+            "description": "Not exact invoice party"
+          },
+          "409": {
+            "description": "Stale version, invoice not SENT, missing config/public URL, fractional VND"
+          },
+          "503": {
+            "description": "Provider unavailable"
+          },
+          "201": {
+            "description": "New private real-money test receipt; Cache-Control no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestReceipt"
+                }
               }
             }
           }
@@ -727,6 +808,40 @@
           "version": {
             "type": "integer",
             "minimum": 0
+          }
+        }
+      },
+      "TestPaymentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "amount"
+        ],
+        "properties": {
+          "amount": {
+            "type": "string",
+            "pattern": "^[0-9]{1,9}$",
+            "description": "Whole VND 1..999999999; zero is rejected. Real transfer, not a rental invoice."
+          }
+        }
+      },
+      "TestReceipt": {
+        "type": "object",
+        "required": [
+          "id",
+          "createdAt",
+          "payment"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "payment": {
+            "$ref": "#/components/schemas/Payment"
           }
         }
       }

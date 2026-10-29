@@ -9,6 +9,7 @@ public class SepayEvent {
  @Column(nullable=false) private Long transactionId;
  @Column(nullable=false) private Long ownerId;
  private Long invoiceId;
+ @Column private Long testPaymentId;
  @Column(nullable=false,length=32) private String result;
  @Column(nullable=false,precision=31,scale=4) private BigDecimal amount;
  @Column(nullable=false,columnDefinition="datetime2(6)") private Instant receivedAt;

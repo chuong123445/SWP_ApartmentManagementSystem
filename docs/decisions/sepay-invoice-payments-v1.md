@@ -35,3 +35,7 @@ Bật/tắt nhận thanh toán: sau khi cấu hình, dùng nút Tạm dừng/B�
 
 
 29/10/2026 — ngrok inspector xác nhận SePay Gửi thử dùng id=0. Sau xác thực key, chỉ cập nhật lastWebhookAt rồi ack success, không lưu event ID 0 hoặc đối soát hóa đơn. ID âm/missing và các ràng buộc payload khác vẫn bị từ chối; ID dương xử lý theo quy tắc hiện có.
+
+## Bổ sung 29/10/2026 — phiếu thử số tiền tùy nhập
+
+User cần thử khoản nhỏ. Owner được tạo phiếu thử nguyên VND (1..999999999), snapshot người nhận/mã/tiền bất biến. Bảng riêng BIGINT IDENTITY `sepay_test_payments`; event có `test_payment_id` nullable. Không thay đổi RentalInvoice/SENT/billing chain, không giả lập hợp đồng hoặc công nợ. POST tạo mới mỗi lần, UI chặn bấm lặp trong lúc xử lý nhưng không tuyên bố POST idempotent. QR cùng adapter; webhook dùng cùng khóa owner, lock connection, dedup owner+transaction và kiểm tra recipient/amount. Mã ANCUTEST+24hex phân biệt với ANCU+24hex; nếu nhiều mã thì không đối soát. id=0 vẫn chỉ kiểm tra kết nối. Không có API xác nhận đã trả từ browser. Dữ liệu thử là tiền thật và không tự hoàn tiền. V25 additive; chưa xác minh chuyển khoản thật.
