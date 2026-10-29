@@ -61,6 +61,7 @@ export function AppRoutes() {
     <Route path="/my/invoices" element={<RequireAccount role="CUSTOMER"><MyInvoicesPage /></RequireAccount>} />
     <Route path="/my/contracts" element={<RequireAccount role="CUSTOMER"><MyContractsPage /></RequireAccount>} />
     <Route path="/my/contracts/:id" element={<RequireAccount role="CUSTOMER"><ContractDetailPage /></RequireAccount>} />
+    <Route path="/my/invoices/additional/:id" element={<RequireAccount role="CUSTOMER"><InvoiceDetailPage additional /></RequireAccount>} />
     <Route path="/my/invoices/:id" element={<RequireAccount role="CUSTOMER"><InvoiceDetailPage /></RequireAccount>} />
     <Route path="/account/verification" element={<RequireAccount verified={false}><AccountVerificationPage /></RequireAccount>} />
     <Route path="/account/profile" element={<RequireAccount verified={false}><ProfilePage /></RequireAccount>} />

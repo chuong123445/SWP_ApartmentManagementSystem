@@ -43,3 +43,7 @@ User cần thử khoản nhỏ. Owner được tạo phiếu thử nguyên VND (
 ## Bổ sung — phiếu thử gửi tenant
 
 `TestPaymentRequest.contractId` optional để giữ API phiếu owner-only; owner UI cho chọn own ACTIVE contract hoặc tự thử. Khóa connection→contract, kiểm tra exact owner/status và derive customerId server, không lấy customerId từ client. Lưu contractId/customerId bất biến, FK nullable/index V26, không tự gán phiếu cũ. Tenant GET /me/payments/sepay/test-payments chỉ query exact persisted customerId (CUSTOMER hoặc OWNER trong vai trò thuê); không cần quyền owner của nguồn nhận. Không cung cấp POST tenant hay mark-paid. Sau khi hợp đồng hết hiệu lực, phiếu đã gửi vẫn đọc được bởi đúng người nhận. Nhãn tên/phòng hiển thị từ hợp đồng hiện tại, không tuyên bố là snapshot pháp lý của hóa đơn. Gửi là ghi nhận trong tài khoản ứng dụng, không gửi email/SMS. Phiếu thử tách khỏi công nợ và billing chain.
+
+## Override 29/10/2026 — tenant xem như hóa đơn thông thường
+
+User không muốn tách mục phiếu thử. MyInvoices đọc nguồn khoản thu nhận được và nguồn hóa đơn thuê, hiển thị cùng màn hình/thẻ/chi tiết và panel thanh toán; bỏ link mục phụ khỏi luồng chính. Khoản thu dùng `/my/invoices/additional/{id}` + exact-recipient GET `/me/payments/sepay/test-payments/{id}`; tách namespace tránh IDENTITY của hai bảng trùng ID. Điều hướng sau login giữ numeric ID, truy cập chi tiết không phụ thuộc top20. Dữ liệu đã gửi giữ nguyên, không chuyển bảng hay đưa khoản thử vào billing chain/doanh thu hóa đơn thuê. Không đặt giá thử vào giá hợp đồng hoặc giả công tơ/kỳ hóa đơn.

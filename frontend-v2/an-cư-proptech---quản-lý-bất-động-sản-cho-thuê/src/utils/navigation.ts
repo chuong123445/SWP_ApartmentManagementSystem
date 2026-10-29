@@ -12,6 +12,6 @@ const returnPages = new Set([
 export function loginDestination(user: AuthUser, returnTo: unknown) {
   if (returnTo === '/admin/property-dossiers' && user.roles.includes('ADMIN')) return returnTo;
   if (user.roles.includes('ADMIN') && (!returnTo || returnTo === '/app')) return '/admin/property-dossiers';
-  if (typeof returnTo === 'string' && (/^\/(?:apartments|my\/invoices|my\/contracts)\/[1-9][0-9]*$/.test(returnTo) || returnPages.has(returnTo))) return returnTo;
+  if (typeof returnTo === 'string' && (/^\/(?:apartments|my\/invoices(?:\/additional)?|my\/contracts)\/[1-9][0-9]*$/.test(returnTo) || returnPages.has(returnTo))) return returnTo;
   return hasManagementRole(user) ? '/app' : '/';
 }
