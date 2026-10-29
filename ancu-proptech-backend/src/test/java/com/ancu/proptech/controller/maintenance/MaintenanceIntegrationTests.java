@@ -45,5 +45,13 @@ class MaintenanceIntegrationTests {
   mvc.perform(post("/api/v1/owner/maintenance-tickets").header("Authorization",token(other)).contentType("application/json").content(body)).andExpect(status().isNotFound());
   mvc.perform(post("/api/v1/me/maintenance-tickets").header("Authorization",token(customer)).contentType("application/json").content(body)).andExpect(status().isNotFound());
   mvc.perform(post("/api/v1/owner/maintenance-tickets").header("Authorization",token(owner)).contentType("application/json").content(body.replace("Đèn hành lang"," "))).andExpect(status().isBadRequest());
+  String path="/api/v1/owner/maintenance-tickets/"+t.getId()+"/actions";
+  String accept="{\"version\":0,\"action\":\"ACCEPT\"}";
+  mvc.perform(post(path).header("Authorization",token(other)).contentType("application/json").content(accept)).andExpect(status().isNotFound());
+  mvc.perform(post(path).header("Authorization",token(customer)).contentType("application/json").content(accept)).andExpect(status().isForbidden());
+  mvc.perform(post(path).header("Authorization",token(owner)).contentType("application/json").content(accept)).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACCEPTED"));
+  mvc.perform(post(path).header("Authorization",token(owner)).contentType("application/json").content(accept)).andExpect(status().isConflict());
+  mvc.perform(post(path).header("Authorization",token(owner)).contentType("application/json").content("{\"version\":1,\"action\":\"ASSIGN\",\"technicianName\":\"Thợ kiểm thử\",\"technicianPhone\":\"0900000000\",\"scheduledAt\":\"2026-11-01T08:00:00Z\"}"))
+   .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("IN_PROGRESS")).andExpect(jsonPath("$.history.length()").value(2));
  }
 }

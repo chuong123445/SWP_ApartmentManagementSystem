@@ -107,6 +107,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/owner/rental-requests/*/contract-context", "/api/v1/owner/rental-requests/*/contract", "/api/v1/owner/contract-drafts", "/api/v1/me/contract-drafts", "/api/v1/contracts/*", "/api/v1/owner/contracts/*/draft").authenticated()
                         .requestMatchers("/api/trustguard/**").hasAnyRole("OWNER", "ADMIN")
                         .requestMatchers("/api/v1/owner/maintenance-tickets", "/api/v1/me/maintenance-tickets").authenticated()
+                        .requestMatchers("/api/v1/owner/maintenance-tickets/*/actions").authenticated()
                         .anyRequest().denyAll())
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((request, response, error) -> writeError(response, 401, "UNAUTHENTICATED", "Vui lòng đăng nhập lại."))

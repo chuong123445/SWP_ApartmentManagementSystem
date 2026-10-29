@@ -24,4 +24,8 @@ public class MaintenanceTicket {
     @Enumerated(EnumType.STRING) @Column(nullable=false,length=24) private Status status;
     @Column(nullable=false,columnDefinition="datetime2(6)") private Instant createdAt;
     @Version private long version;
+    @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="tenant_id") private AuthAccount tenant;
+    @Nationalized @Column(length=200) private String technicianName;
+    @Column(length=30) private String technicianPhone;
+    @Column(columnDefinition="datetime2(6)") private Instant scheduledAt;
 }
