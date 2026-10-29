@@ -118,7 +118,9 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
             {summary.averageRevenuePerRoomFormatted}
           </div>
           <span className="text-xs text-slate-400 mt-1 block">
-            Bao gồm tiền phòng & phụ phí dịch vụ
+            {summary.invoiceCount > 0
+              ? 'Bao gồm tiền phòng & phụ phí dịch vụ'
+              : 'Trung bình trên các phòng đang cho thuê'}
           </span>
         </div>
 

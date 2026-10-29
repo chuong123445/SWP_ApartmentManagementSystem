@@ -84,6 +84,30 @@ test('calculateMonthlyRevenueData calculates revenue and operating profit from i
   assert.equal(oct.profit, 0);
 });
 
+test('calculateMonthlyRevenueData projects active contract baseline when no invoices are created yet', () => {
+  const ref = new Date(2026, 9, 15);
+  const activeContracts: Contract[] = [
+    {
+      id: 'c-1', contractNumber: 'HD-01', tenantId: 't-1', tenantName: 'A',
+      roomId: 'r-1', roomNumber: '101', buildingName: 'B1', startDate: '2026-01-01', endDate: '2026-12-31',
+      monthlyRent: 5000000, deposit: 5000000, paymentCycle: 1, status: 'active',
+    },
+    {
+      id: 'c-2', contractNumber: 'HD-02', tenantId: 't-2', tenantName: 'B',
+      roomId: 'r-2', roomNumber: '102', buildingName: 'B2', startDate: '2026-01-01', endDate: '2026-12-31',
+      monthlyRent: 6500000, deposit: 6500000, paymentCycle: 1, status: 'active',
+    },
+  ];
+
+  const data = calculateMonthlyRevenueData([], activeContracts, 6, ref);
+  assert.equal(data.length, 6);
+  // Trailing months have visible bars projected from active contracts (11.5M total)
+  const currentMonth = data.find((d) => d.month === 'T10');
+  assert.ok(currentMonth);
+  assert.equal(currentMonth.revenue, 11.5); // 11.5M VNĐ
+  assert.ok(currentMonth.profit > 0);
+});
+
 test('calculateRevenueStructure computes exact percentages from invoices', () => {
   const sampleInvoices: Invoice[] = [
     {
