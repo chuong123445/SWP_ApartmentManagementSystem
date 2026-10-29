@@ -7,4 +7,6 @@ export async function paymentApi<T>(path:string,method='GET',body?:unknown,signa
  if(!response.ok)throw await readApiError(response);return response.json();
 }
 
-export interface TestReceipt {id:string;createdAt:string;payment:InvoicePayment}
+export interface TestReceipt {id:string;createdAt:string;payment:InvoicePayment;contractId:string|null;tenantName:string|null;roomNumber:string|null;ownerName:string|null}
+
+export interface TestRecipient {contractId:string;tenantName:string;roomNumber:string}

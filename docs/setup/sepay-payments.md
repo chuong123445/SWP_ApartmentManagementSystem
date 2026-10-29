@@ -86,3 +86,15 @@ Bật/tắt nhận thanh toán: sau khi cấu hình, dùng nút Tạm dừng/B�
 - Webhook đúng khóa, chủ nhà, ngân hàng/tài khoản/VA, mã và số tiền mới ghi nhận. “Gửi thử” id=0 trên SePay chỉ xác nhận kết nối, không thanh toán phiếu.
 - Phiếu thử lưu riêng ở `sepay_test_payments`, không cập nhật hóa đơn thuê, công nợ hoặc tổng doanh thu hóa đơn. Lịch sử webhook hiển thị **Phiếu thử** thay cho **Hóa đơn**.
 - Sau khi cập nhật code: khởi động lại Backend và tải lại Frontend. Local `ddl-auto=update` bổ sung bảng/cột; môi trường quản lý schema chạy migration **V25__sepay_test_payments.sql** sau V23/V24. Không xóa hay tạo lại dữ liệu.
+
+## Gửi phiếu thử cho người thuê (bổ sung 29/10/2026)
+
+1. Owner vào **Hóa đơn → Tạo phiếu thanh toán thử**.
+2. Tại **Gửi đến người thuê**, chọn tên người thuê/căn hộ/hợp đồng đang hoạt động của chính mình. Giữ **Chỉ thử trên tài khoản của tôi** nếu không muốn gửi ai.
+3. Nhập **1.000 đồng**, bấm **Tạo và gửi phiếu thử**. Phiếu được lưu và hiển thị trong tài khoản tenant ngay; không gửi email/SMS.
+4. Đăng nhập tài khoản người thuê đã chọn → **Hóa đơn của tôi → Phiếu thanh toán thử**. Mở phiếu, quét QR bằng ứng dụng ngân hàng và giữ nguyên mã/số tiền. Owner không cần gửi ảnh QR thủ công.
+5. Cả hai phía tự tải trạng thái mỗi 10 giây khi trang đang mở hoặc bấm tải lại. Chỉ webhook hợp lệ mới ghi nhận đã thanh toán; không có nút tự xác nhận.
+
+Nếu danh sách trống: Owner chưa có hợp đồng **ACTIVE** phù hợp; tính năng không tự kích hoạt hợp đồng hoặc tạo dữ liệu mẫu. Người thuê khác không xem được phiếu. Phiếu cũ không có người nhận vẫn chỉ xuất hiện cho Owner; tạo phiếu mới để gửi tenant. Không đổi công nợ/giá hợp đồng/hóa đơn thuê.
+
+Khởi động lại Backend và tải lại Frontend. V26 chỉ thêm `customer_id`, `contract_id` nullable/index/FK vào `sepay_test_payments`, không sửa dữ liệu cũ. Local Hibernate update thêm cột; môi trường quản lý schema chạy V26 sau V25. Giữ nguyên webhook/key/ngrok hiện tại.

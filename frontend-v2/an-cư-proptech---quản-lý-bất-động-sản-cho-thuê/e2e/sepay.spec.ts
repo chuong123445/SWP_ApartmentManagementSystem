@@ -4,7 +4,7 @@ async function setup(page:Page,options:{tenant?:boolean;multiple?:boolean;noUrl?
  const user={id:'41',fullName:'NGUYEN VAN A',email:'payment@example.invalid',roles:[options.tenant?'CUSTOMER':'OWNER'],accountStatus:'ACTIVE',contactVerificationStatus:'VERIFIED',version:0};
  const connection:any={configured:!!options.tenant,bank:'Vietcombank',accountNumber:'1234567890',accountHolderName:'NGUYEN VAN A',virtualAccount:null,enabled:true,version:0,webhookUrl:options.noUrl?null:'https://payments.example.invalid/api/v1/payments/sepay/webhooks/41',lastWebhookAt:null,webhookSecret:null};
  const banks=[{id:'b1',bank:'Vietcombank',accountNumber:'1234567890',accountHolderName:'NGUYEN VAN A'},...(options.multiple?[{id:'b2',bank:'BIDV',accountNumber:'9876543210',accountHolderName:'NGUYEN VAN A'}]:[])];
- let paid=false,created=false,outage=!!options.outage;let writes=0;const unexpected:string[]=[],errors:string[]=[],logs:string[]=[];
+ let paid=false,created=false,outage=!!options.outage;let sent=false;let writes=0;const unexpected:string[]=[],errors:string[]=[],logs:string[]=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')logs.push(m.text());});page.on('requestfailed',r=>{if(r.failure()?.errorText!=='net::ERR_ABORTED')unexpected.push(r.url());});
  await page.route('https://vietqr.app/img?**',r=>r.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="280" height="280"><rect width="280" height="280" fill="#dcfce7"/><text x="40" y="140">QR TEST</text></svg>'}));
  await page.route('**/api/**',r=>{const req=r.request(),path=new URL(req.url()).pathname;const body=()=>req.postDataJSON();
@@ -13,10 +13,12 @@ async function setup(page:Page,options:{tenant?:boolean;multiple?:boolean;noUrl?
   if(path==='/api/v1/auth/refresh')return r.fulfill({json:{accessToken:'sepay-internal-test',tokenType:'Bearer',expiresIn:900,user}});
   if(path==='/api/v1/me')return r.fulfill({json:user});
   if(path==='/api/v1/me/tenancies')return r.fulfill({json:[]});
-  if(path==='/api/v1/owner/payments/sepay/test-payments'){
-   if(req.method()==='POST'){expect(body()).toEqual({amount:'1000'});created=true;writes++;}
-   const receipt={id:'51',createdAt:'2026-10-29T00:00:00Z',payment:{status:paid?'PAID':'UNPAID',amount:'1000',bank:'Vietcombank',accountNumber:'1234567890',accountHolderName:'NGUYEN VAN A',paymentCode:'ANCUTEST1234567890ABCDEF12345678',qrUrl:paid?null:'https://vietqr.app/img?bank=Vietcombank&acc=1234567890&amount=1000&des=ANCUTEST1234567890ABCDEF12345678',paidAt:paid?'2026-10-29T01:00:00Z':null}};
-   return r.fulfill({status:req.method()==='POST'?201:200,json:req.method()==='POST'?receipt:created?[receipt]:[]});
+  if(path==='/api/v1/owner/payments/sepay/test-recipients')return r.fulfill({json:[{contractId:'8',tenantName:'TRAN THI B',roomNumber:'A101'}]});
+  if(path==='/api/v1/me/invoices')return r.fulfill({json:{items:[],page:0,totalPages:0,totalElements:0}});
+  if(path==='/api/v1/owner/payments/sepay/test-payments'||path==='/api/v1/me/payments/sepay/test-payments'){
+   if(req.method()==='POST'){expect(body()).toEqual(body().contractId?{amount:'1000',contractId:'8'}:{amount:'1000'});sent=!!body().contractId;created=true;writes++;}
+   const receipt={id:'51',contractId:sent?'8':null,tenantName:sent?'TRAN THI B':null,roomNumber:sent?'A101':null,ownerName:sent?'NGUYEN VAN A':null,createdAt:'2026-10-29T00:00:00Z',payment:{status:paid?'PAID':'UNPAID',amount:'1000',bank:'Vietcombank',accountNumber:'1234567890',accountHolderName:'NGUYEN VAN A',paymentCode:'ANCUTEST1234567890ABCDEF12345678',qrUrl:paid?null:'https://vietqr.app/img?bank=Vietcombank&acc=1234567890&amount=1000&des=ANCUTEST1234567890ABCDEF12345678',paidAt:paid?'2026-10-29T01:00:00Z':null}};
+   return r.fulfill({status:req.method()==='POST'?201:200,json:req.method()==='POST'?receipt:created&&(path.includes('/owner/')||sent)?[receipt]:[]});
   }
   if(path==='/api/v1/owner/payments/sepay/bank-accounts'){
    expect(body().apiToken).toBe('test-sepay-api-token');if(outage)return r.fulfill({status:503,json:{message:'Chưa đọc được tài khoản từ SePay.'}});return r.fulfill({json:{items:banks,page:1,hasMore:false}});
@@ -36,7 +38,7 @@ async function setup(page:Page,options:{tenant?:boolean;multiple?:boolean;noUrl?
   }
   unexpected.push(`${req.method()} ${path}`);return r.fulfill({status:404});
  });
- return {setPaid:()=>{paid=true;},online:()=>{outage=false;},writes:()=>writes,check:()=>{expect(errors).toEqual([]);expect(unexpected).toEqual([]);expect(logs.filter(s=>!(options.outage&&s.includes('503')))).toEqual([]);}};
+ return {asTenant:()=>{user.id='42';user.roles=['CUSTOMER'];},setPaid:()=>{paid=true;},online:()=>{outage=false;},writes:()=>writes,check:()=>{expect(errors).toEqual([]);expect(unexpected).toEqual([]);expect(logs.filter(s=>!(options.outage&&s.includes('503')))).toEqual([]);}};
 }
 for(const width of [1440,390])test(`Owner imports single linked bank automatically, saves and rotates one-time key at ${width}px`,async({page})=>{
  const f=await setup(page);await page.setViewportSize({width,height:1000});await page.goto('/account/settings/payments');await page.getByLabel('API Token SePay',{exact:true}).fill('test-sepay-api-token');await page.getByRole('button',{name:'Lấy tài khoản từ SePay',exact:true}).click();await expect(page.getByLabel('Tài khoản ngân hàng nhận tiền',{exact:true})).toHaveValue('b1');await expect(page.getByText('Đã tự chọn tài khoản ngân hàng duy nhất.',{exact:true})).toBeVisible();
@@ -61,5 +63,12 @@ for(const width of [1440,390])test(`Owner creates 1000 VND test receipt, retains
  await page.getByRole('button',{name:'Tạo phiếu và QR thử',exact:true}).click();await expect(page.getByRole('img',{name:'QR chuyển khoản phiếu thử SePay'})).toBeVisible();await expect(page.getByRole('region',{name:'Chi tiết phiếu thử'})).toContainText('1.000');expect(f.writes()).toBe(1);
  await page.reload();await expect(page.getByRole('img',{name:'QR chuyển khoản phiếu thử SePay'})).toBeVisible();await expect(page.getByText('Đã thanh toán qua SePay',{exact:true})).toHaveCount(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);mkdirSync('test-results/visual',{recursive:true});await page.screenshot({path:`test-results/visual/sepay-test-payment-${width}.png`,fullPage:true});
+ f.setPaid();await page.getByRole('button',{name:'Tải lại trạng thái phiếu thử',exact:true}).click();await expect(page.getByText('Đã thanh toán qua SePay',{exact:true})).toBeVisible();await expect(page.getByRole('img',{name:'QR chuyển khoản phiếu thử SePay'})).toHaveCount(0);expect(f.writes()).toBe(1);f.check();
+});
+
+for(const width of [1440,390])test(`Owner sends small receipt and tenant opens QR from My invoices at ${width}px`,async({page})=>{
+ const f=await setup(page);await page.setViewportSize({width,height:1000});await page.goto('/account/settings/payments/test');await page.getByLabel('Gửi đến người thuê',{exact:true}).selectOption('8');await page.getByRole('button',{name:'Tạo và gửi phiếu thử',exact:true}).click();await expect(page.getByText('Đã gửi cho: TRAN THI B',{exact:false})).toBeVisible();expect(f.writes()).toBe(1);
+ f.asTenant();await page.goto('/my/invoices');await page.getByRole('link',{name:'Phiếu thanh toán thử',exact:true}).click();await expect(page.getByRole('heading',{name:'Phiếu thanh toán thử của tôi',exact:true})).toBeVisible();await expect(page.getByRole('img',{name:'QR chuyển khoản phiếu thử SePay'})).toBeVisible();await expect(page.getByRole('region',{name:'Chi tiết phiếu thử'})).toContainText('1.000');await expect(page.getByText('Chủ nhà: NGUYEN VAN A',{exact:false})).toBeVisible();await expect(page.getByLabel('Số tiền thử (đồng)',{exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Tạo và gửi phiếu thử',exact:true})).toHaveCount(0);
+ await page.reload();await expect(page.getByRole('img',{name:'QR chuyển khoản phiếu thử SePay'})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);mkdirSync('test-results/visual',{recursive:true});await page.screenshot({path:`test-results/visual/sepay-tenant-test-payment-${width}.png`,fullPage:true});
  f.setPaid();await page.getByRole('button',{name:'Tải lại trạng thái phiếu thử',exact:true}).click();await expect(page.getByText('Đã thanh toán qua SePay',{exact:true})).toBeVisible();await expect(page.getByRole('img',{name:'QR chuyển khoản phiếu thử SePay'})).toHaveCount(0);expect(f.writes()).toBe(1);f.check();
 });
