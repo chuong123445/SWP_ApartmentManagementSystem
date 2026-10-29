@@ -16,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
@@ -39,5 +40,10 @@ class MaintenanceIntegrationTests {
   mvc.perform(get("/api/v1/me/maintenance-tickets").header("Authorization",token(other))).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
   mvc.perform(get("/api/v1/owner/maintenance-tickets").header("Authorization",token(customer))).andExpect(status().isForbidden());
   mvc.perform(get("/api/v1/owner/maintenance-tickets?size=0").header("Authorization",token(owner))).andExpect(status().isBadRequest());
+  String body="{\"propertyId\":"+p.getId()+",\"title\":\"Đèn hành lang\",\"description\":\"Đèn không sáng\",\"category\":\"ELECTRIC\",\"priority\":\"NORMAL\"}";
+  mvc.perform(post("/api/v1/owner/maintenance-tickets").header("Authorization",token(owner)).contentType("application/json").content(body)).andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("PENDING")).andExpect(jsonPath("$.roomNumber").value("Toàn tòa"));
+  mvc.perform(post("/api/v1/owner/maintenance-tickets").header("Authorization",token(other)).contentType("application/json").content(body)).andExpect(status().isNotFound());
+  mvc.perform(post("/api/v1/me/maintenance-tickets").header("Authorization",token(customer)).contentType("application/json").content(body)).andExpect(status().isNotFound());
+  mvc.perform(post("/api/v1/owner/maintenance-tickets").header("Authorization",token(owner)).contentType("application/json").content(body.replace("Đèn hành lang"," "))).andExpect(status().isBadRequest());
  }
 }

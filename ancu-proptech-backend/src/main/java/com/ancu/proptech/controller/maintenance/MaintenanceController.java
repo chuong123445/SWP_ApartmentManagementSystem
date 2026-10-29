@@ -16,6 +16,40 @@ import java.time.Instant;
 public class MaintenanceController {
     private final MaintenanceTicketRepository tickets;
     private final AccountAccessService access;
+    private final com.ancu.proptech.repository.property.PropertyRepository properties;
+    private final com.ancu.proptech.repository.apartment.ApartmentRepository apartments;
+    private final com.ancu.proptech.repository.contract.RentalContractRepository contracts;
+    public record Create(Long propertyId,Long apartmentId,
+        @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max=200) String title,
+        @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max=3000) String description,
+        @jakarta.validation.constraints.NotNull MaintenanceTicket.Category category,
+        @jakarta.validation.constraints.NotNull MaintenanceTicket.Priority priority) {}
+    @PostMapping({"/api/v1/owner/maintenance-tickets", "/api/v1/me/maintenance-tickets"}) @Transactional
+    public org.springframework.http.ResponseEntity<Ticket> create(@AuthenticationPrincipal Jwt jwt,
+        @jakarta.validation.Valid @RequestBody Create input,jakarta.servlet.http.HttpServletRequest request) {
+        boolean ownerRoute=request.getRequestURI().startsWith("/api/v1/owner/");
+        var account=ownerRoute?access.owner(jwt):access.customer(jwt);
+        com.ancu.proptech.model.apartment.Apartment apartment=null;
+        com.ancu.proptech.model.property.Property property;
+        if(input.apartmentId()!=null){
+            apartment=apartments.findForRequest(input.apartmentId()).orElseThrow(MaintenanceController::missing);
+            property=apartment.getProperty();
+            if(input.propertyId()!=null && !input.propertyId().equals(property.getId()))throw missing();
+            if(ownerRoute){if(!property.getOwner().getId().equals(account.getId()))throw missing();}
+            else {
+                var lease=contracts.findByApartmentId(apartment.getId()).stream().filter(c->c.getStatus()==com.ancu.proptech.model.contract.RentalContract.Status.ACTIVE && c.getCustomer().getId().equals(account.getId()) && !c.getStartDate().isAfter(java.time.LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh")))).findFirst().orElseThrow(MaintenanceController::missing);
+                if(apartment.getAvailability()!=com.ancu.proptech.model.apartment.Apartment.Availability.OCCUPIED)throw missing();
+            }
+        }else{
+            if(!ownerRoute || input.propertyId()==null)throw missing();
+            property=properties.findById(input.propertyId()).filter(p->p.getOwner().getId().equals(account.getId())).orElseThrow(MaintenanceController::missing);
+        }
+        var t=new MaintenanceTicket();t.setProperty(property);t.setApartment(apartment);t.setReporter(account);
+        t.setTitle(input.title().strip());t.setDescription(input.description().strip());t.setCategory(input.category());t.setPriority(input.priority());t.setStatus(MaintenanceTicket.Status.PENDING);t.setCreatedAt(Instant.now());
+        tickets.saveAndFlush(t);
+        return org.springframework.http.ResponseEntity.status(201).body(view(t));
+    }
+    private static com.ancu.proptech.exception.common.ApiException missing(){return new com.ancu.proptech.exception.common.ApiException(org.springframework.http.HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy phòng hoặc quan hệ thuê thuộc tài khoản của bạn.");}
     public record Ticket(String id,String propertyId,String apartmentId,String roomNumber,String reporterName,
                          String title,String description,String category,String priority,String status,Instant createdAt,long version) {}
     @GetMapping("/api/v1/owner/maintenance-tickets") @Transactional(readOnly=true)
