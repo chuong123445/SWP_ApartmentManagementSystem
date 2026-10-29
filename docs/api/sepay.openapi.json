@@ -607,6 +607,52 @@
           }
         }
       }
+    },
+    "/api/v1/me/payments/sepay/test-payments/{id}": {
+      "get": {
+        "summary": "Exact recipient detail for unified invoice screen, independent of latest-20 list; no-store; foreign or owner-only receipt returns404",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Saved/private result; Cache-Control no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or provider token/data"
+          },
+          "401": {
+            "description": "Missing/invalid session or webhook API key"
+          },
+          "403": {
+            "description": "Role/account verification denied"
+          },
+          "404": {
+            "description": "Not exact invoice party"
+          },
+          "409": {
+            "description": "Stale version, invoice not SENT, missing config/public URL, fractional VND"
+          },
+          "503": {
+            "description": "Provider unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
