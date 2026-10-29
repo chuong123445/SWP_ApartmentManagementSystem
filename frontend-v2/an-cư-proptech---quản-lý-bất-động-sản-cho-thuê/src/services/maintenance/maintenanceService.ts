@@ -4,7 +4,7 @@ import type { MaintenanceTicket } from '@/types';
 interface RecordView {
  id: string; propertyId: string; roomNumber: string; reporterName: string; title: string; description: string;
  category: string; priority: string; status: string; createdAt: string;
- version:number;technicianName:string|null;technicianPhone:string|null;scheduledAt:string|null;canConfirm:boolean;history:{action:string;note:string;createdAt:string}[];
+ version:number;technicianName:string|null;technicianPhone:string|null;scheduledAt:string|null;canConfirm:boolean;repairResult:string|null;history:{action:string;note:string;createdAt:string}[];
 }
 export async function ownerMaintenance(propertyId: string, owner = true): Promise<MaintenanceTicket[]> {
  const result: MaintenanceTicket[] = [];
@@ -15,7 +15,7 @@ export async function ownerMaintenance(propertyId: string, owner = true): Promis
   if (!response.ok) throw await readApiError(response);
   const data: PageResult<RecordView> = await response.json();
   result.push(...data.items.map(t => ({ id: t.id, propertyId: t.propertyId, roomNumber: t.roomNumber, tenantName: t.reporterName,
-   apiVersion:t.version,technicianName:t.technicianName,technicianPhone:t.technicianPhone,scheduledAt:t.scheduledAt,canConfirm:t.canConfirm,history:t.history,
+   apiVersion:t.version,technicianName:t.technicianName,technicianPhone:t.technicianPhone,scheduledAt:t.scheduledAt,canConfirm:t.canConfirm,repairResult:t.repairResult,history:t.history,
    title: t.title, description: t.description, category: t.category.toLowerCase() as MaintenanceTicket['category'], priority: t.priority.toLowerCase() as MaintenanceTicket['priority'],
    status: (t.status === 'PENDING' ? 'pending' : ['RESOLVED','CANCELLED','REJECTED'].includes(t.status) ? 'resolved' : 'in_progress') as MaintenanceTicket['status'], createdAt: t.createdAt, apiStatus: t.status })));
   if (page + 1 >= data.totalPages) return result;
