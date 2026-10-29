@@ -115,9 +115,9 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
           {activeTab === 'maintenance' && (
             <MaintenancePage
               tickets={tickets}
-              rooms={rooms}
-              onUpdateTicketStatus={handleUpdateTicketStatus}
-              onAddTicket={handleAddTicket}
+              loading={workspace.maintenanceLoading}
+              error={workspace.maintenanceError}
+              onReload={workspace.reloadInventory}
             />
           )}
 

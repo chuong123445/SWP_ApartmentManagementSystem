@@ -129,6 +129,8 @@ export interface UtilityReading {
 }
 
 export interface MaintenanceTicket {
+  propertyId?: string;
+  apiStatus?: string;
   id: string;
   title: string;
   roomNumber: string;
