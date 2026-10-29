@@ -6,7 +6,6 @@ import { useTenancyContext } from '@/contexts/TenancyContext';
 import { billingMoney } from '@/services/billing/billingService';
 import { roomInvoices,roomMaintenance } from '@/services/resident/residentService';
 import { MaintenancePage } from '@/pages/owner/MaintenancePage';
-import { MaintenanceForm } from '@/components/maintenance/MaintenanceForm';
 import type { BillingInvoice } from '@/types/billing';
 import type { MaintenanceTicket } from '@/types';
 import '@/styles/operations.css';
@@ -61,14 +60,13 @@ function ResidentHomeContent(){
           <button onClick={()=>selectTab('contract')} className="resident-action"><span className="op-stat-icon blue"><FileText size={21}/></span><strong>Hợp đồng của phòng</strong><p>Xem PDF, chữ ký, thời hạn và điều khoản thuê.</p><span className="op-link">Mở hợp đồng<ArrowUpRight size={14}/></span></button>
         </div>
         {(invoiceError||ticketError)&&<p role="alert" className="op-error">{invoiceError||ticketError} Bạn có thể nhấn Làm mới để thử lại.</p>}
-        <div className="op-note">Chỉ hiển thị dữ liệu thuộc tài khoản của bạn tại nơi ở được chọn. Các yêu cầu và hợp đồng cũ nằm trong mục Yêu cầu & hợp đồng.</div>
+        <p className="text-xs text-slate-400 mt-5">Xem hồ sơ thuê cũ và lịch sử tại <Link className="text-emerald-700 underline" to="/my/rental-requests">Yêu cầu & hợp đồng</Link>.</p>
       </>}
       {tab==='invoices'&&<section className="op-panel"><div className="op-toolbar"><div><h2 className="font-bold">Hóa đơn phòng {selected.roomNumber}</h2><p className="text-xs text-slate-500 mt-1">Các kỳ đã gửi đến bạn tại phòng này. “Đã gửi” không xác nhận đã thanh toán.</p></div></div>
         {busy?<p role="status" className="op-empty">Đang tải hóa đơn...</p>:invoiceError?<p role="alert" className="op-error">{invoiceError}</p>:!invoices.length?<div className="op-empty"><ReceiptText size={28}/><strong>Chưa có hóa đơn cho phòng này.</strong>Hóa đơn xuất hiện khi chủ nhà gửi đến bạn.</div>:<div className="resident-invoices">{invoices.map(i=><Link key={i.id} to={`/my/invoices/${i.id}?from=home`} className="resident-invoice"><div><span className="op-badge green">Đã gửi</span><h3>Kỳ {i.period}</h3><p>Hạn đóng: {i.dueDate}</p></div><div><strong>{billingMoney(i.totalAmount)}</strong><span className="op-link">Chi tiết & thông tin thanh toán<ArrowUpRight size={13}/></span></div></Link>)}</div>}
       </section>}
       {tab==='maintenance'&&<>
-        {params.get('report')==='1'&&canReport&&<MaintenanceForm key={selected.apartmentId} owner={false} places={places} onSaved={reload} onClose={()=>setParams(p=>{p.delete('report');return p;})}/>}
-        <MaintenancePage key={selected.apartmentId} owner={false} tickets={busy?[]:tickets} places={places} loading={busy} error={ticketError} onReload={reload}/>
+        <MaintenancePage key={`${selected.apartmentId}-${params.get('report')}`} initialCreating={params.get('report')==='1'&&canReport} owner={false} tickets={busy?[]:tickets} places={places} loading={busy} error={ticketError} onReload={reload}/>
       </>}
       {tab==='contract'&&<section className="op-panel p-6 space-y-4"><span className="op-badge green">Hợp đồng hiện tại</span><h2 className="text-xl font-bold">Phòng {selected.roomNumber} · {selected.propertyName}</h2><p className="text-sm text-slate-500">Thời hạn: {selected.startDate} → {selected.endDate}</p><p className="font-semibold">Giá thuê: {billingMoney(selected.monthlyRent)} / tháng</p><div className="op-buttons"><Link className="op-button op-button-primary" to={`/contracts/${selected.id}`}>Xem PDF / ký và bàn giao<ArrowUpRight size={14}/></Link><Link className="op-button" to="/my/rental-requests">Xem toàn bộ hồ sơ thuê</Link></div></section>}
     </>}
