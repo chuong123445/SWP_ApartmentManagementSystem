@@ -2,7 +2,8 @@ import { updateApartmentPrices } from '@/services/apartments/ownerApartmentServi
 import type { PriceInput } from '@/components/rooms/ApartmentPriceForm';
 import { useCallback, useEffect, useState } from 'react';
 import type { Building, Room, NewRoom, Tenant, Contract, Invoice, MaintenanceTicket, Transaction, SystemConfig, EscrowDeposit } from '@/types';
-import { initialMaintenance, initialTransactions, initialConfig, initialEscrows } from '@/data/mockData';
+import { initialTransactions, initialConfig, initialEscrows } from '@/data/mockData';
+import { ownerMaintenance } from '@/services/maintenance/maintenanceService';
 import { createOwnerApartment, getOwnerApartments, getOwnerProperties, setApartmentPublication } from '@/services/apartments/ownerApartmentService';
 import { ownerTenancies, ownerInvoices, tenancyViews, invoiceView, sendInvoice } from '@/services/billing/billingService';
 import type { Tenancy } from '@/types/billing';
@@ -25,7 +26,19 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
   const [billingRevision, setBillingRevision] = useState(0);
   const [invoicePage, setInvoicePage] = useState(0);
   const [invoiceTotalPages, setInvoiceTotalPages] = useState(0);
-  const [tickets, setTickets] = useState<MaintenanceTicket[]>(initialMaintenance);
+  const [tickets, setTickets] = useState<MaintenanceTicket[]>([]);
+  const [maintenanceError, setMaintenanceError] = useState('');
+  const [maintenanceLoading, setMaintenanceLoading] = useState(false);
+  useEffect(() => {
+    let active = true;
+    setTickets([]);
+    if (!canManage) return;
+    setMaintenanceLoading(true);setMaintenanceError('');
+    ownerMaintenance(selectedPropertyId).then(items => { if (active) setTickets(items); })
+      .catch(error => { if (active) setMaintenanceError(error instanceof Error ? error.message : 'Không thể tải sự cố.'); })
+      .finally(() => { if (active) setMaintenanceLoading(false); });
+    return () => { active = false; };
+  }, [canManage, selectedPropertyId, inventoryRevision]);
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [config, setConfig] = useState<SystemConfig>(initialConfig);
   const [escrows, setEscrows] = useState<EscrowDeposit[]>(initialEscrows);
@@ -168,7 +181,7 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
   const handleResetData = () => {
     setInventoryRevision(value => value + 1);
     setBillingRevision(value => value + 1);
-    setTickets(initialMaintenance);
+    setTickets([]);
     setTransactions(initialTransactions);
     setConfig(initialConfig);
     setEscrows(initialEscrows);
@@ -227,7 +240,7 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
     ...tx, id: `tx-${Date.now()}`, code: `${tx.type === 'income' ? 'THU' : 'CHI'}-0926-${Math.floor(100 + Math.random() * 900)}`,
   }, ...prev]);
   return {
-    rooms, tenants, contracts, invoices, tickets, transactions, config, escrows,
+    rooms, tenants, contracts, invoices, tickets, transactions, config, escrows, maintenanceError, maintenanceLoading,
     tenancies, billingError, billingLoading, invoicePage, setInvoicePage, invoiceTotalPages,
     reloadBilling: () => setBillingRevision(value => value + 1), handleSendInvoice,
     buildings, inventoryError, inventoryLoading, reloadInventory,
