@@ -136,6 +136,7 @@ export interface MaintenanceTicket {
   technicianPhone?: string | null;
   scheduledAt?: string | null;
   canConfirm?: boolean;
+  repairResult?: string | null;
   history?: {action:string;note:string;createdAt:string}[];
   id: string;
   title: string;
