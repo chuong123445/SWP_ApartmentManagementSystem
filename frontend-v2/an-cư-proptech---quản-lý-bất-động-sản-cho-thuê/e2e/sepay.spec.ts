@@ -13,6 +13,11 @@ async function setup(page:Page,options:{tenant?:boolean;multiple?:boolean;noUrl?
   if(path==='/api/v1/auth/refresh')return r.fulfill({json:{accessToken:'sepay-internal-test',tokenType:'Bearer',expiresIn:900,user}});
   if(path==='/api/v1/me')return r.fulfill({json:user});
   if(path==='/api/v1/me/tenancies')return r.fulfill({json:[]});
+  if(path==='/api/v1/owner/payments/sepay/test-payments'){
+   if(req.method()==='POST'){expect(body()).toEqual({amount:'1000'});created=true;writes++;}
+   const receipt={id:'51',createdAt:'2026-10-29T00:00:00Z',payment:{status:paid?'PAID':'UNPAID',amount:'1000',bank:'Vietcombank',accountNumber:'1234567890',accountHolderName:'NGUYEN VAN A',paymentCode:'ANCUTEST1234567890ABCDEF12345678',qrUrl:paid?null:'https://vietqr.app/img?bank=Vietcombank&acc=1234567890&amount=1000&des=ANCUTEST1234567890ABCDEF12345678',paidAt:paid?'2026-10-29T01:00:00Z':null}};
+   return r.fulfill({status:req.method()==='POST'?201:200,json:req.method()==='POST'?receipt:created?[receipt]:[]});
+  }
   if(path==='/api/v1/owner/payments/sepay/bank-accounts'){
    expect(body().apiToken).toBe('test-sepay-api-token');if(outage)return r.fulfill({status:503,json:{message:'Chưa đọc được tài khoản từ SePay.'}});return r.fulfill({json:{items:banks,page:1,hasMore:false}});
   }
@@ -48,4 +53,13 @@ test('Multiple banks require selection; VA is read from SePay for BIDV',async({p
 });
 test('Provider outage can retry; missing public HTTPS is explicitly shown',async({page})=>{
  const f=await setup(page,{outage:true,noUrl:true});await page.goto('/account/settings/payments');await page.getByLabel('API Token SePay',{exact:true}).fill('test-sepay-api-token');await page.getByRole('button',{name:'Lấy tài khoản từ SePay',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Chưa đọc được');f.online();await page.getByRole('button',{name:'Lấy tài khoản từ SePay',exact:true}).click();await page.getByRole('button',{name:'Lưu cấu hình SePay',exact:true}).click();await expect(page.getByText('Chưa có URL HTTPS công khai.',{exact:false})).toBeVisible();f.check();
+});
+
+for(const width of [1440,390])test(`Owner creates 1000 VND test receipt, retains QR on reload and receives server settlement at ${width}px`,async({page})=>{
+ const f=await setup(page);await page.setViewportSize({width,height:1000});await page.goto('/account/settings/payments');await page.getByRole('link',{name:'Tạo phiếu thanh toán thử',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Tạo phiếu thanh toán thử'})).toBeVisible();await expect(page.getByText('Chuyển khoản bằng tiền thật.',{exact:false})).toBeVisible();await expect(page.getByLabel('Số tiền thử (đồng)',{exact:true})).toHaveValue('1000');
+ await page.getByRole('button',{name:'Tạo phiếu và QR thử',exact:true}).click();await expect(page.getByRole('img',{name:'QR chuyển khoản phiếu thử SePay'})).toBeVisible();await expect(page.getByRole('region',{name:'Chi tiết phiếu thử'})).toContainText('1.000');expect(f.writes()).toBe(1);
+ await page.reload();await expect(page.getByRole('img',{name:'QR chuyển khoản phiếu thử SePay'})).toBeVisible();await expect(page.getByText('Đã thanh toán qua SePay',{exact:true})).toHaveCount(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);mkdirSync('test-results/visual',{recursive:true});await page.screenshot({path:`test-results/visual/sepay-test-payment-${width}.png`,fullPage:true});
+ f.setPaid();await page.getByRole('button',{name:'Tải lại trạng thái phiếu thử',exact:true}).click();await expect(page.getByText('Đã thanh toán qua SePay',{exact:true})).toBeVisible();await expect(page.getByRole('img',{name:'QR chuyển khoản phiếu thử SePay'})).toHaveCount(0);expect(f.writes()).toBe(1);f.check();
 });

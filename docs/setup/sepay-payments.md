@@ -76,3 +76,13 @@ Bật/tắt nhận thanh toán: sau khi cấu hình, dùng nút Tạm dừng/B�
 ## Chẩn đoán Gửi thử HTTP 400 (29/10/2026)
 
 Đã quan sát request thực của SePay qua ngrok inspector: JSON hợp lệ, header API-key có mặt, nhưng id=0. Backend trước đây dùng @Positive và từ chối bản tin thử trước khi kiểm tra khóa. Đã sửa nhận ID 0 theo nhánh kiểm tra kết nối sau xác thực, giữ ID âm/missing không hợp lệ và không chạy đối soát hóa đơn cho ID 0. Khởi động lại Spring Boot sau khi pull bản sửa rồi Gửi thử lại. Mở URL ngrok gốc bằng GET nhận UNAUTHENTICATED là bình thường; webhook là POST vào đường dẫn đầy đủ kèm khóa.
+
+## Thử chuyển khoản với số tiền nhỏ
+
+- Vào **Hóa đơn → Tạo phiếu thanh toán thử**, hoặc **Cài đặt tài khoản → Thanh toán SePay → Tạo phiếu thanh toán thử**.
+- Nhập số tiền nguyên từ **1 đến 999.999.999 đồng** (mặc định **1.000 đồng**), bấm **Tạo phiếu và QR thử**. Mỗi lần tạo cấp một phiếu/mã mới.
+- Dùng ứng dụng ngân hàng khác quét QR và chuyển đúng số tiền, giữ nguyên nội dung `ANCUTEST...`. Đây là **tiền thật**, không phải sandbox ngân hàng.
+- Trang giữ 20 phiếu gần nhất, tự kiểm tra trạng thái mỗi 10 giây khi đang mở; có nút tải lại. Phiếu đã trả tiền không còn QR.
+- Webhook đúng khóa, chủ nhà, ngân hàng/tài khoản/VA, mã và số tiền mới ghi nhận. “Gửi thử” id=0 trên SePay chỉ xác nhận kết nối, không thanh toán phiếu.
+- Phiếu thử lưu riêng ở `sepay_test_payments`, không cập nhật hóa đơn thuê, công nợ hoặc tổng doanh thu hóa đơn. Lịch sử webhook hiển thị **Phiếu thử** thay cho **Hóa đơn**.
+- Sau khi cập nhật code: khởi động lại Backend và tải lại Frontend. Local `ddl-auto=update` bổ sung bảng/cột; môi trường quản lý schema chạy migration **V25__sepay_test_payments.sql** sau V23/V24. Không xóa hay tạo lại dữ liệu.

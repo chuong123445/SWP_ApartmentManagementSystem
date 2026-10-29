@@ -1,3 +1,4 @@
+import {SepayTestPaymentsPage} from '@/pages/account/SepayTestPaymentsPage';
 import {SepaySettingsPage} from '@/pages/account/SepaySettingsPage';
 import {AssetManagementPage} from '@/pages/customer/AssetManagementPage';
 import type { ReactNode } from 'react';
@@ -62,6 +63,7 @@ export function AppRoutes() {
     <Route path="/my/invoices/:id" element={<RequireAccount role="CUSTOMER"><InvoiceDetailPage /></RequireAccount>} />
     <Route path="/account/verification" element={<RequireAccount verified={false}><AccountVerificationPage /></RequireAccount>} />
     <Route path="/account/profile" element={<RequireAccount verified={false}><ProfilePage /></RequireAccount>} />
+    <Route path="/account/settings/payments/test" element={<RequireAccount role="MANAGER"><SepayTestPaymentsPage /></RequireAccount>} />
     <Route path="/account/settings/payments" element={<RequireAccount role="MANAGER"><SepaySettingsPage /></RequireAccount>} />
     <Route path="/account/settings" element={<RequireAccount verified={false}><AccountSettingsPage /></RequireAccount>} />
     <Route path="/account/properties" element={<RequireAccount role="CUSTOMER" verified={false}><AssetManagementPage /></RequireAccount>} />
