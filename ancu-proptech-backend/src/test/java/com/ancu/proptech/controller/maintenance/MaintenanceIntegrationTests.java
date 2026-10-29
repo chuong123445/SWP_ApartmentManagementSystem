@@ -28,8 +28,22 @@ class MaintenanceIntegrationTests {
  @Autowired MaintenanceTicketRepository tickets;
  @Autowired AuthService auth;
  @Autowired PasswordEncoder encoder;
+ @Autowired com.ancu.proptech.repository.apartment.ApartmentRepository apartments;
+ @Autowired com.ancu.proptech.repository.contract.RentalContractRepository contracts;
  private AuthAccount account(AuthAccount.Role role){var a=new AuthAccount();a.setEmail(com.ancu.proptech.support.TestIds.next()+"@example.invalid");a.setFullName("Kiểm thử bảo trì");a.setPasswordHash(encoder.encode("Test!12345678"));a.setRole(role);a.setStatus(AuthAccount.Status.ACTIVE);a.setEmailVerified(true);a.setContactVerified(true);return accounts.saveAndFlush(a);}
  private String token(AuthAccount a){return "Bearer "+auth.login(a.getEmail(),"Test!12345678").tokens().accessToken();}
+ @Test void customerCanOnlyReportOccupiedApartmentWithOwnActiveLease()throws Exception{
+  var owner=account(AuthAccount.Role.OWNER);var customer=account(AuthAccount.Role.CUSTOMER);var outsider=account(AuthAccount.Role.CUSTOMER);
+  var p=new Property();p.setOwner(owner);p.setName("Tòa thử quan hệ thuê");p.setAddress("Địa chỉ thử");p.setCity("Test");p.setDistrict("Test");p.setApprovalStatus(Property.ApprovalStatus.APPROVED);properties.saveAndFlush(p);
+  var a=new com.ancu.proptech.model.apartment.Apartment();a.setProperty(p);a.setTitle("Phòng thử");a.setRoomNumber("A.101");a.setDescription("Thử");a.setAreaM2(new java.math.BigDecimal("20"));a.setAdvertisedMonthlyRent(new java.math.BigDecimal("1000000"));a.setPublicationStatus(com.ancu.proptech.model.apartment.Apartment.PublicationStatus.PUBLISHED);a.setAvailability(com.ancu.proptech.model.apartment.Apartment.Availability.OCCUPIED);a.setCreatedAt(Instant.now());apartments.saveAndFlush(a);
+  var c=new com.ancu.proptech.model.contract.RentalContract();c.setApartment(a);c.setCustomer(customer);c.setStatus(com.ancu.proptech.model.contract.RentalContract.Status.ACTIVE);c.setStartDate(java.time.LocalDate.of(2020,1,1));c.setEndDate(java.time.LocalDate.of(2030,1,1));c.setMonthlyRent(new java.math.BigDecimal("1000000"));c.setElectricityUnitPrice(java.math.BigDecimal.ZERO);c.setWaterUnitPrice(java.math.BigDecimal.ZERO);contracts.saveAndFlush(c);
+  String body="{\"apartmentId\":"+a.getId()+",\"title\":\"Vòi nước hỏng\",\"description\":\"Không khóa được\",\"category\":\"WATER\",\"priority\":\"HIGH\"}";
+  mvc.perform(post("/api/v1/me/maintenance-tickets").header("Authorization",token(outsider)).contentType("application/json").content(body)).andExpect(status().isNotFound());
+  mvc.perform(post("/api/v1/me/maintenance-tickets").header("Authorization",token(customer)).contentType("application/json").content(body)).andExpect(status().isCreated()).andExpect(jsonPath("$.apartmentId").value(a.getId().toString())).andExpect(jsonPath("$.canConfirm").value(true));
+  c.setStatus(com.ancu.proptech.model.contract.RentalContract.Status.ENDED);contracts.saveAndFlush(c);
+  mvc.perform(post("/api/v1/me/maintenance-tickets").header("Authorization",token(customer)).contentType("application/json").content(body)).andExpect(status().isNotFound());
+  mvc.perform(get("/api/v1/me/maintenance-tickets").header("Authorization",token(customer))).andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store")).andExpect(jsonPath("$.totalElements").value(1));
+ }
  @Test void listsArePrivateScopedAndPersisted()throws Exception{
   var owner=account(AuthAccount.Role.OWNER);var other=account(AuthAccount.Role.OWNER);var customer=account(AuthAccount.Role.CUSTOMER);
   var p=new Property();p.setOwner(owner);p.setName("Tòa kiểm thử");p.setAddress("Địa chỉ kiểm thử");p.setCity("Test");p.setDistrict("Test");p.setApprovalStatus(Property.ApprovalStatus.APPROVED);properties.saveAndFlush(p);
