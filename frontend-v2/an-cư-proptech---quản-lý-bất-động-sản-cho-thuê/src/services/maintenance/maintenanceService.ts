@@ -5,12 +5,12 @@ interface RecordView {
  id: string; propertyId: string; roomNumber: string; reporterName: string; title: string; description: string;
  category: string; priority: string; status: string; createdAt: string;
 }
-export async function ownerMaintenance(propertyId: string): Promise<MaintenanceTicket[]> {
+export async function ownerMaintenance(propertyId: string, owner = true): Promise<MaintenanceTicket[]> {
  const result: MaintenanceTicket[] = [];
  for (let page = 0; ; page++) {
   const query = new URLSearchParams({ page: String(page), size: '100' });
   if (propertyId !== 'all') query.set('propertyId', propertyId);
-  const response = await apiFetch(`/api/v1/owner/maintenance-tickets?${query}`);
+  const response = await apiFetch(`/api/v1/${owner?'owner':'me'}/maintenance-tickets?${query}`);
   if (!response.ok) throw await readApiError(response);
   const data: PageResult<RecordView> = await response.json();
   result.push(...data.items.map(t => ({ id: t.id, propertyId: t.propertyId, roomNumber: t.roomNumber, tenantName: t.reporterName,
@@ -18,4 +18,9 @@ export async function ownerMaintenance(propertyId: string): Promise<MaintenanceT
    status: (t.status === 'PENDING' ? 'pending' : ['RESOLVED','CANCELLED','REJECTED'].includes(t.status) ? 'resolved' : 'in_progress') as MaintenanceTicket['status'], createdAt: t.createdAt, apiStatus: t.status })));
   if (page + 1 >= data.totalPages) return result;
  }
+}
+export async function createMaintenance(owner: boolean, input: {propertyId?:string; apartmentId?:string; title:string; description:string; category:string; priority:string}) {
+ const response=await apiFetch(`/api/v1/${owner?'owner':'me'}/maintenance-tickets`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});
+ if(!response.ok)throw await readApiError(response);
+ return response.json();
 }

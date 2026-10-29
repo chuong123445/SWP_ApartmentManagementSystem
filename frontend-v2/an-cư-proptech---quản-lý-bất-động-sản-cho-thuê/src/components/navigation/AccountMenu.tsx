@@ -40,6 +40,7 @@ export function AccountMenu({ account, onLogout, isLoggingOut, authError, isTena
       {manager && <Link to="/app" onClick={() => setOpen(false)} className={linkClass}><LayoutDashboard className="w-4 h-4" />Trang quản lý</Link>}
       {canRent && <Link to="/my/rental-requests" onClick={() => setOpen(false)} className={linkClass}><ClipboardList className="w-4 h-4" />Yêu cầu của tôi</Link>}
       {canRent && <Link to="/my/contracts" onClick={() => setOpen(false)} className={linkClass}><ClipboardList className="w-4 h-4" />Hợp đồng của tôi</Link>}
+      {canRent && <Link to="/my/maintenance" onClick={() => setOpen(false)} className={linkClass}><ClipboardList className="w-4 h-4" />Sự cố của tôi</Link>}
       {canRent && <Link to="/my/invoices" onClick={() => setOpen(false)} className={linkClass}><ReceiptText className="w-4 h-4" />Hóa đơn của tôi</Link>}
       <Link to="/account/profile" onClick={() => setOpen(false)} className={linkClass}><UserRound className="w-4 h-4" />Hồ sơ cá nhân</Link>
       <Link to="/account/settings" onClick={() => setOpen(false)} className={linkClass}><Settings className="w-4 h-4" />Cài đặt tài khoản</Link>
