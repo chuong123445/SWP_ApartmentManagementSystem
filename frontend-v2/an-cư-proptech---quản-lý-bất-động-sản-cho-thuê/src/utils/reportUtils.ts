@@ -1,9 +1,27 @@
 import { Room, Building, Contract, Invoice } from '@/types';
 
+// ---------------------------------------------------------------------------
+// NOTE (2026-10): Frontend Invoice.status ('paid'|'unpaid'|'overdue') is a
+// UI-derived mapping and does NOT match backend statuses (DRAFT, SENT).
+// All revenue calculations MUST use apiInvoice.status (backend source of truth).
+// When backend adds PAID / OVERDUE / CANCELLED, update the EXCLUDE_FROM_REVENUE
+// constant below — do not hardcode 'SENT' anywhere in revenue logic.
+//
+// Period source of truth: apiInvoice.period (format "YYYY-MM").
+// inv.monthYear ("MM/YYYY") is for display only.
+// ---------------------------------------------------------------------------
+
+/** Backend invoice statuses excluded from accrual revenue recognition. */
+const EXCLUDE_FROM_REVENUE = new Set(['DRAFT']);
+
 export interface MonthlyChartItem {
   month: string;
   revenue: number;
   profit: number;
+  /** True when this month is strictly after the current calendar month. */
+  isFuture: boolean;
+  /** True when this month equals the current calendar month (invoice may not exist yet). */
+  isCurrent: boolean;
 }
 
 export interface RevenueStructureItem {
@@ -32,163 +50,203 @@ export interface ReportsSummary {
   buildingOccupancy: BuildingPerformanceItem[];
 }
 
+// ---------------------------------------------------------------------------
+// Period helpers
+// ---------------------------------------------------------------------------
+
 /**
- * Generate the trailing N months (format: YYYY-MM) ending at the specified reference date.
+ * Returns the canonical billing period ("YYYY-MM") for an invoice.
+ * Prefers apiInvoice.period; falls back to parsing inv.monthYear ("MM/YYYY").
+ * Returns null if period cannot be determined.
+ */
+export function getInvoicePeriod(inv: Invoice): string | null {
+  if (inv.apiInvoice?.period) return inv.apiInvoice.period;
+  // Parse "MM/YYYY" → "YYYY-MM"
+  if (inv.monthYear) {
+    const parts = inv.monthYear.split('/');
+    if (parts.length === 2 && parts[0].length <= 2 && parts[1].length === 4) {
+      return `${parts[1]}-${parts[0].padStart(2, '0')}`;
+    }
+  }
+  return null;
+}
+
+/**
+ * Returns true when an invoice should be counted as accrual revenue.
+ * Excludes DRAFT and any future excluded statuses (e.g. CANCELLED).
+ * If apiInvoice is absent (UI-only invoice), includes by default.
+ */
+export function isRevenueInvoice(inv: Invoice): boolean {
+  const backendStatus = inv.apiInvoice?.status;
+  if (!backendStatus) return true; // UI-only invoice: include by default
+  return !EXCLUDE_FROM_REVENUE.has(backendStatus);
+}
+
+/**
+ * Generate the trailing N months ("YYYY-MM") ending at the reference date.
+ * Used for Dashboard short-term view (default 6 months).
  */
 export function getTrailingMonths(count = 6, refDate = new Date()): string[] {
   const months: string[] = [];
   const year = refDate.getFullYear();
   const month = refDate.getMonth(); // 0-indexed
-
   for (let i = count - 1; i >= 0; i--) {
     const d = new Date(year, month - i, 1);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    months.push(`${y}-${m}`);
+    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
   }
   return months;
 }
 
 /**
- * Calculates trailing monthly revenue and profit from invoices and active contracts.
- * When specific monthly invoices have not been created yet in the DB, it computes
- * from active contracts in the system so the chart reflects actual tenant lease agreements.
+ * Generate all 12 months of the given year ("YYYY-MM"), January through December.
+ * Used for the annual Reports page view.
  */
-export function calculateMonthlyRevenueData(
-  invoices: Invoice[] = [],
-  contracts: Contract[] = [],
-  monthCount = 6,
+export function getCurrentYearMonths(year = new Date().getFullYear()): string[] {
+  return Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`);
+}
+
+// ---------------------------------------------------------------------------
+// Chart data builders
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds MonthlyChartItem[] from a list of canonical periods and revenue invoices.
+ * - Months after the current calendar month → isFuture=true, revenue=0.
+ * - Current month → isCurrent=true (may have 0 if not yet invoiced).
+ * - Only invoices passing isRevenueInvoice() (accrual, status ≠ DRAFT) are counted.
+ */
+function _buildMonthlyItems(
+  periods: string[],
+  invoices: Invoice[],
   refDate = new Date()
 ): MonthlyChartItem[] {
-  const trailingPeriods = getTrailingMonths(monthCount, refDate);
-  const activeContracts = contracts.filter((c) => c.status === 'active');
-  const baselineMonthlyRent = activeContracts.reduce((sum, c) => sum + (c.monthlyRent || 0), 0);
+  const currentPeriod = `${refDate.getFullYear()}-${String(refDate.getMonth() + 1).padStart(2, '0')}`;
+  const revenueInvoices = invoices.filter(isRevenueInvoice);
 
-  return trailingPeriods.map((period, index) => {
+  return periods.map((period) => {
     const [, monthNum] = period.split('-');
     const label = `T${monthNum}`;
+    const isFuture = period > currentPeriod;
+    const isCurrent = period === currentPeriod;
 
-    const periodInvoices = invoices.filter(
-      (inv) => inv.monthYear === period || inv.apiInvoice?.period === period
-    );
-
-    // 1. If real invoices exist for this month in DB, compute exact invoice sums
-    if (periodInvoices.length > 0) {
-      const totalRev = periodInvoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
-
-      const netProfit = periodInvoices.reduce((sum, inv) => {
-        const elec =
-          inv.items.find((it) => it.name.includes('điện'))?.amount ??
-          Number(inv.apiInvoice?.electricityAmount || 0);
-        const water =
-          inv.items.find((it) => it.name.includes('nước'))?.amount ??
-          Number(inv.apiInvoice?.waterAmount || 0);
-        const rent =
-          inv.items.find((it) => it.name.includes('thuê'))?.amount ??
-          Number(inv.apiInvoice?.monthlyRent || 0);
-
-        if (rent > 0) return sum + rent;
-        return sum + Math.max(0, (inv.totalAmount || 0) - elec - water);
-      }, 0);
-
-      return {
-        month: label,
-        revenue: Number((totalRev / 1_000_000).toFixed(1)),
-        profit: Number((netProfit / 1_000_000).toFixed(1)),
-      };
+    if (isFuture) {
+      return { month: label, revenue: 0, profit: 0, isFuture: true, isCurrent: false };
     }
 
-    // 2. When invoices have not been created yet, project from active lease contracts in DB
-    if (baselineMonthlyRent > 0) {
-      // Progressive curve for trailing 6 months reflecting occupancy growth
-      const rampFactors = [0.85, 0.88, 0.92, 0.96, 1.0, 1.0];
-      const factor = rampFactors[index] ?? 1.0;
-      const projectedRev = baselineMonthlyRent * factor;
-      const projectedProfit = projectedRev * 0.76;
+    const periodInvoices = revenueInvoices.filter((inv) => getInvoicePeriod(inv) === period);
 
-      return {
-        month: label,
-        revenue: Number((projectedRev / 1_000_000).toFixed(1)),
-        profit: Number((projectedProfit / 1_000_000).toFixed(1)),
-      };
+    if (periodInvoices.length === 0) {
+      return { month: label, revenue: 0, profit: 0, isFuture: false, isCurrent };
     }
+
+    const totalRev = periodInvoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
+
+    const netProfit = periodInvoices.reduce((sum, inv) => {
+      const elecAmt = Number(inv.apiInvoice?.electricityAmount || 0) ||
+        inv.items.find((it) => it.name.includes('điện'))?.amount || 0;
+      const waterAmt = Number(inv.apiInvoice?.waterAmount || 0) ||
+        inv.items.find((it) => it.name.includes('nước'))?.amount || 0;
+      const rentAmt = Number(inv.apiInvoice?.monthlyRent || 0) ||
+        inv.items.find((it) => it.name.includes('thuê'))?.amount || 0;
+      if (rentAmt > 0) return sum + rentAmt;
+      return sum + Math.max(0, (inv.totalAmount || 0) - elecAmt - waterAmt);
+    }, 0);
 
     return {
       month: label,
-      revenue: 0,
-      profit: 0,
+      revenue: Number((totalRev / 1_000_000).toFixed(1)),
+      profit: Number((netProfit / 1_000_000).toFixed(1)),
+      isFuture: false,
+      isCurrent,
     };
   });
 }
 
 /**
- * Calculates breakdown of revenue sources (Room Rent, Electricity, Water, Others).
- * Uses real invoice item distributions if present, or active contract utility baseline.
+ * Calculates trailing N-month revenue for the Dashboard.
+ * No fallback from contracts — only accrual invoices (status ≠ DRAFT).
  */
-export function calculateRevenueStructure(
+export function calculateMonthlyRevenueData(
   invoices: Invoice[] = [],
-  contracts: Contract[] = []
-): RevenueStructureItem[] {
-  let rentSum = 0;
-  let elecSum = 0;
-  let waterSum = 0;
-  let otherSum = 0;
-
-  for (const inv of invoices) {
-    const elec =
-      inv.items.find((it) => it.name.includes('điện'))?.amount ??
-      Number(inv.apiInvoice?.electricityAmount || 0);
-    const water =
-      inv.items.find((it) => it.name.includes('nước'))?.amount ??
-      Number(inv.apiInvoice?.waterAmount || 0);
-    const rent =
-      inv.items.find((it) => it.name.includes('thuê'))?.amount ??
-      Number(inv.apiInvoice?.monthlyRent || 0);
-
-    const total = inv.totalAmount || 0;
-    rentSum += rent;
-    elecSum += elec;
-    waterSum += water;
-    otherSum += Math.max(0, total - (rent + elec + water));
-  }
-
-  const grandTotal = rentSum + elecSum + waterSum + otherSum;
-
-  if (grandTotal > 0) {
-    const rentPct = Math.round((rentSum / grandTotal) * 100);
-    const elecPct = Math.round((elecSum / grandTotal) * 100);
-    const waterPct = Math.round((waterSum / grandTotal) * 100);
-    const otherPct = Math.max(0, 100 - rentPct - elecPct - waterPct);
-
-    return [
-      { name: 'Tiền thuê phòng', value: rentPct, color: '#059669' },
-      { name: 'Tiền điện', value: elecPct, color: '#f59e0b' },
-      { name: 'Tiền nước', value: waterPct, color: '#0284c7' },
-      { name: 'Internet & Dịch vụ', value: otherPct, color: '#8b5cf6' },
-    ];
-  }
-
-  // Fallback when no invoices yet: active contracts provide expected market breakdown
-  const hasActiveContracts = contracts.some((c) => c.status === 'active');
-  if (hasActiveContracts) {
-    return [
-      { name: 'Tiền thuê phòng', value: 82, color: '#059669' },
-      { name: 'Tiền điện (dự kiến)', value: 10, color: '#f59e0b' },
-      { name: 'Tiền nước (dự kiến)', value: 5, color: '#0284c7' },
-      { name: 'Internet & Dịch vụ', value: 3, color: '#8b5cf6' },
-    ];
-  }
-
-  return [
-    { name: 'Tiền thuê phòng', value: 0, color: '#059669' },
-    { name: 'Tiền điện', value: 0, color: '#f59e0b' },
-    { name: 'Tiền nước', value: 0, color: '#0284c7' },
-    { name: 'Internet & Dịch vụ', value: 0, color: '#8b5cf6' },
-  ];
+  _contracts: Contract[] = [],
+  monthCount = 6,
+  refDate = new Date()
+): MonthlyChartItem[] {
+  return _buildMonthlyItems(getTrailingMonths(monthCount, refDate), invoices, refDate);
 }
 
 /**
- * Calculates occupancy rate, room count, and revenue per building from database records.
+ * Calculates revenue for all 12 months of a given year.
+ * Future months are flagged isFuture=true so the chart can render them differently.
+ */
+export function calculateYearlyRevenueData(
+  invoices: Invoice[] = [],
+  year = new Date().getFullYear(),
+  refDate = new Date()
+): MonthlyChartItem[] {
+  return _buildMonthlyItems(getCurrentYearMonths(year), invoices, refDate);
+}
+
+// ---------------------------------------------------------------------------
+// Revenue structure
+// ---------------------------------------------------------------------------
+
+/**
+ * Calculates breakdown of revenue sources from accrual invoices (status ≠ DRAFT).
+ * Returns a 100%-rent placeholder when no qualifying invoices exist.
+ */
+export function calculateRevenueStructure(
+  invoices: Invoice[] = [],
+  _contracts: Contract[] = []
+): RevenueStructureItem[] {
+  const revenueInvoices = invoices.filter(isRevenueInvoice);
+  let rentSum = 0, elecSum = 0, waterSum = 0, otherSum = 0;
+
+  for (const inv of revenueInvoices) {
+    const elec = Number(inv.apiInvoice?.electricityAmount || 0) ||
+      inv.items.find((it) => it.name.includes('điện'))?.amount || 0;
+    const water = Number(inv.apiInvoice?.waterAmount || 0) ||
+      inv.items.find((it) => it.name.includes('nước'))?.amount || 0;
+    const rent = Number(inv.apiInvoice?.monthlyRent || 0) ||
+      inv.items.find((it) => it.name.includes('thuê'))?.amount || 0;
+    const total = inv.totalAmount || 0;
+
+    elecSum += elec;
+    waterSum += water;
+    if (rent > 0) {
+      rentSum += rent;
+      otherSum += Math.max(0, total - rent - elec - water);
+    } else {
+      rentSum += Math.max(0, total - elec - water);
+    }
+  }
+
+  const grand = rentSum + elecSum + waterSum + otherSum;
+  if (grand === 0) {
+    return [
+      { name: 'Tiền thuê phòng', value: 100, color: '#059669' },
+      { name: 'Tiền điện', value: 0, color: '#f59e0b' },
+      { name: 'Tiền nước', value: 0, color: '#0284c7' },
+      { name: 'Internet & Dịch vụ', value: 0, color: '#8b5cf6' },
+    ];
+  }
+
+  const pct = (v: number) => Math.round((v / grand) * 100);
+  return [
+    { name: 'Tiền thuê phòng', value: pct(rentSum), color: '#059669' },
+    { name: 'Tiền điện', value: pct(elecSum), color: '#f59e0b' },
+    { name: 'Tiền nước', value: pct(waterSum), color: '#0284c7' },
+    { name: 'Internet & Dịch vụ', value: pct(otherSum), color: '#8b5cf6' },
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// Building occupancy
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-building occupancy and revenue from accrual invoices.
+ * When no invoices exist, shows contracted monthly rent for display.
  */
 export function calculateBuildingOccupancy(
   buildings: Building[] = [],
@@ -196,73 +254,70 @@ export function calculateBuildingOccupancy(
   invoices: Invoice[] = [],
   contracts: Contract[] = []
 ): BuildingPerformanceItem[] {
+  const revenueInvoices = invoices.filter(isRevenueInvoice);
+
   return buildings.map((b) => {
-    const bRooms = rooms.filter((r) => r.buildingId === b.id);
-    const totalRooms = bRooms.length > 0 ? bRooms.length : b.totalRooms || 0;
-    const occupiedCount = bRooms.filter(
+    const buildingRooms = rooms.filter((r) => r.buildingId === b.id);
+    const roomIds = new Set(buildingRooms.map((r) => r.id));
+
+    const occupied = buildingRooms.filter(
       (r) =>
         r.status === 'rented' ||
         r.status === 'expiring' ||
         (r as unknown as { availability?: string }).availability === 'OCCUPIED'
     ).length;
+    const occupancy = buildingRooms.length > 0
+      ? Math.round((occupied / buildingRooms.length) * 100)
+      : 0;
 
-    const occupancy = totalRooms > 0 ? Math.round((occupiedCount / totalRooms) * 100) : 0;
+    const invoiceRevenue = revenueInvoices
+      .filter((inv) => roomIds.has(inv.roomId))
+      .reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
 
-    const bInvoices = invoices.filter((i) => bRooms.some((r) => r.id === i.roomId));
-    let rev = 0;
-    if (bInvoices.length > 0) {
-      rev = bInvoices.reduce((s, i) => s + (i.totalAmount || 0), 0);
-    } else {
-      // Only active contracts count toward active revenue; draft or terminated contracts do not
-      const bContracts = contracts.filter(
-        (c) => c.status === 'active' && bRooms.some((r) => r.id === c.roomId)
-      );
-      rev = bContracts.reduce((s, c) => s + (c.monthlyRent || 0), 0);
-    }
+    const contractRevenue = invoiceRevenue === 0
+      ? contracts
+          .filter((c) => c.status === 'active' && roomIds.has(c.roomId))
+          .reduce((sum, c) => sum + (c.monthlyRent || 0), 0)
+      : 0;
 
     return {
       name: b.name,
       occupancy,
-      rooms: totalRooms,
-      revenue: Number((rev / 1_000_000).toFixed(1)),
+      rooms: buildingRooms.length,
+      revenue: Number(((invoiceRevenue || contractRevenue) / 1_000_000).toFixed(1)),
     };
   });
 }
 
+// ---------------------------------------------------------------------------
+// Aggregate summary
+// ---------------------------------------------------------------------------
+
 /**
- * Comprehensive report summary calculator.
+ * Aggregates all report KPIs for the Reports page.
+ * Cumulative revenue is strictly accrual (status ≠ DRAFT) from real invoices.
+ * Monthly chart shows 12 months of the current year with isFuture flag for visual handling.
  */
 export function calculateReportsSummary(
   rooms: Room[] = [],
   buildings: Building[] = [],
   invoices: Invoice[] = [],
   contracts: Contract[] = [],
-  selectedPropertyId?: string
+  selectedPropertyId = 'all',
+  refDate = new Date()
 ): ReportsSummary {
-  const isAll = !selectedPropertyId || selectedPropertyId === 'all';
-
+  const isAll = selectedPropertyId === 'all';
   const scopedRooms = isAll ? rooms : rooms.filter((r) => r.buildingId === selectedPropertyId);
   const scopedRoomIds = new Set(scopedRooms.map((r) => r.id));
 
-  const scopedInvoices = isAll
-    ? invoices
-    : invoices.filter((i) => scopedRoomIds.has(i.roomId));
+  const scopedInvoices = isAll ? invoices : invoices.filter((i) => scopedRoomIds.has(i.roomId));
+  const scopedContracts = isAll ? contracts : contracts.filter((c) => scopedRoomIds.has(c.roomId));
+  const scopedBuildings = isAll ? buildings : buildings.filter((b) => b.id === selectedPropertyId);
 
-  const scopedContracts = isAll
-    ? contracts
-    : contracts.filter((c) => scopedRoomIds.has(c.roomId));
+  const revenueInvoices = scopedInvoices.filter(isRevenueInvoice);
 
-  const scopedBuildings = isAll
-    ? buildings
-    : buildings.filter((b) => b.id === selectedPropertyId);
-
-  // Cumulative revenue: sum of totalAmount of invoices, or sum of active contract monthly rents
-  let cumulativeRevenue = scopedInvoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
-  if (cumulativeRevenue === 0 && scopedContracts.length > 0) {
-    cumulativeRevenue = scopedContracts
-      .filter((c) => c.status === 'active')
-      .reduce((sum, c) => sum + (c.monthlyRent || 0), 0);
-  }
+  // Cumulative revenue: accrual only — no contract-based projection
+  const cumulativeRevenue = revenueInvoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
 
   const cumulativeRevenueFormatted =
     cumulativeRevenue >= 1_000_000
@@ -272,7 +327,6 @@ export function calculateReportsSummary(
         })} Triệu VNĐ`
       : `${Math.round(cumulativeRevenue).toLocaleString('vi-VN')} đ`;
 
-  // Average revenue per room: based on occupied/rented rooms if any, or total rooms
   const occupiedRoomsCount = scopedRooms.filter(
     (r) =>
       r.status === 'rented' ||
@@ -281,26 +335,14 @@ export function calculateReportsSummary(
   ).length;
   const divisor = occupiedRoomsCount > 0 ? occupiedRoomsCount : scopedRooms.length;
   const averageRevenuePerRoom = divisor > 0 ? cumulativeRevenue / divisor : 0;
-  const averageRevenuePerRoomFormatted = `${Math.round(averageRevenuePerRoom).toLocaleString(
-    'vi-VN'
-  )} đ`;
+  const averageRevenuePerRoomFormatted = `${Math.round(averageRevenuePerRoom).toLocaleString('vi-VN')} đ`;
 
-  // On-time collection rate: invoices not overdue
   let onTimeCollectionRate = 100;
-  if (scopedInvoices.length > 0) {
-    const overdueCount = scopedInvoices.filter((i) => i.status === 'overdue').length;
-    onTimeCollectionRate = ((scopedInvoices.length - overdueCount) / scopedInvoices.length) * 100;
+  if (revenueInvoices.length > 0) {
+    const overdueCount = revenueInvoices.filter((i) => i.status === 'overdue').length;
+    onTimeCollectionRate = ((revenueInvoices.length - overdueCount) / revenueInvoices.length) * 100;
   }
   const onTimeCollectionRateFormatted = `${onTimeCollectionRate.toFixed(1)}%`;
-
-  const monthlyRevenueData = calculateMonthlyRevenueData(scopedInvoices, scopedContracts);
-  const revenueStructure = calculateRevenueStructure(scopedInvoices, scopedContracts);
-  const buildingOccupancy = calculateBuildingOccupancy(
-    scopedBuildings,
-    scopedRooms,
-    scopedInvoices,
-    scopedContracts
-  );
 
   return {
     cumulativeRevenue,
@@ -309,16 +351,17 @@ export function calculateReportsSummary(
     averageRevenuePerRoomFormatted,
     onTimeCollectionRate,
     onTimeCollectionRateFormatted,
-    invoiceCount: scopedInvoices.length,
-    monthlyRevenueData,
-    revenueStructure,
-    buildingOccupancy,
+    invoiceCount: revenueInvoices.length,
+    monthlyRevenueData: calculateYearlyRevenueData(scopedInvoices, refDate.getFullYear(), refDate),
+    revenueStructure: calculateRevenueStructure(scopedInvoices, scopedContracts),
+    buildingOccupancy: calculateBuildingOccupancy(scopedBuildings, scopedRooms, scopedInvoices, scopedContracts),
   };
 }
 
-/**
- * Exports report statistics and invoices to a CSV spreadsheet.
- */
+// ---------------------------------------------------------------------------
+// CSV Export
+// ---------------------------------------------------------------------------
+
 export function exportReportsToCsv(summary: ReportsSummary, buildings: Building[], invoices: Invoice[]) {
   const bom = '\uFEFF';
   const rows: string[] = [
@@ -329,28 +372,30 @@ export function exportReportsToCsv(summary: ReportsSummary, buildings: Building[
     `Doanh thu lũy kế,${summary.cumulativeRevenueFormatted}`,
     `Doanh thu trung bình / phòng,${summary.averageRevenuePerRoomFormatted}`,
     `Tỷ lệ thu hồi đúng hạn,${summary.onTimeCollectionRateFormatted}`,
-    `Tổng số hóa đơn,${summary.invoiceCount}`,
+    `Tổng số hóa đơn phát hành,${summary.invoiceCount}`,
     '',
     'HIỆU SUẤT KHAI THÁC TỪNG TÒA NHÀ',
     'Tên tòa nhà,Quy mô (phòng),Tỷ lệ lấp đầy (%),Doanh thu (Triệu VNĐ/tháng)',
-    ...summary.buildingOccupancy.map(
-      (b) => `"${b.name}",${b.rooms},${b.occupancy}%,${b.revenue}`
-    ),
+    ...summary.buildingOccupancy.map((b) => `"${b.name}",${b.rooms},${b.occupancy}%,${b.revenue}`),
     '',
-    'DOANH THU THEO THÁNG',
-    'Tháng,Tổng thu (Triệu VNĐ),Lợi nhuận ròng (Triệu VNĐ)',
-    ...summary.monthlyRevenueData.map((m) => `${m.month},${m.revenue},${m.profit}`),
+    'DOANH THU THEO THÁNG (hóa đơn phát hành)',
+    'Tháng,Tổng thu (Triệu VNĐ),Lợi nhuận ròng (Triệu VNĐ),Ghi chú',
+    ...summary.monthlyRevenueData.map((m) =>
+      `${m.month},${m.isFuture ? '' : m.revenue},${m.isFuture ? '' : m.profit},${m.isFuture ? 'Chưa đến kỳ' : m.isCurrent ? 'Đang diễn ra' : ''}`
+    ),
     '',
     'CƠ CẤU NGUỒN THU',
     'Khoản thu,Tỷ trọng (%)',
     ...summary.revenueStructure.map((s) => `"${s.name}",${s.value}%`),
     '',
-    'DANH SÁCH HÓA ĐƠN HỆ THỐNG',
-    'Mã hóa đơn,Kỳ,Phòng,Khách thuê,Tổng tiền (VNĐ),Trạng thái,Hạn thanh toán',
-    ...invoices.map(
-      (inv) =>
-        `"${inv.invoiceCode}","${inv.monthYear}","${inv.roomNumber}","${inv.tenantName}",${inv.totalAmount},"${inv.status}","${inv.dueDate}"`
-    ),
+    'DANH SÁCH HÓA ĐƠN PHÁT HÀNH',
+    'Mã hóa đơn,Kỳ,Phòng,Khách thuê,Tổng tiền (VNĐ),Trạng thái backend,Hạn thanh toán',
+    ...invoices
+      .filter(isRevenueInvoice)
+      .map(
+        (inv) =>
+          `"${inv.invoiceCode}","${inv.apiInvoice?.period ?? inv.monthYear}","${inv.roomNumber}","${inv.tenantName}",${inv.totalAmount},"${inv.apiInvoice?.status ?? 'N/A'}","${inv.dueDate}"`
+      ),
   ];
 
   const csvContent = bom + rows.join('\r\n');

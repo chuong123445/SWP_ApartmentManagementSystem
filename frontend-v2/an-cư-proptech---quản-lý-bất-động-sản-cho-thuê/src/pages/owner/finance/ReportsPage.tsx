@@ -23,7 +23,6 @@ import {
   calculateReportsSummary,
   exportReportsToCsv,
 } from '@/utils/reportUtils';
-
 export interface ReportsPageProps {
   rooms?: Room[];
   buildings?: Building[];
@@ -41,11 +40,12 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
   selectedPropertyId = 'all',
   loading = false,
 }) => {
-  const currentYear = new Date().getFullYear();
+  const now = useMemo(() => new Date(), []);
+  const currentYear = now.getFullYear();
 
   const summary = useMemo(
-    () => calculateReportsSummary(rooms, buildings, invoices, contracts, selectedPropertyId),
-    [rooms, buildings, invoices, contracts, selectedPropertyId]
+    () => calculateReportsSummary(rooms, buildings, invoices, contracts, selectedPropertyId, now),
+    [rooms, buildings, invoices, contracts, selectedPropertyId, now]
   );
 
   const handleExport = () => {
@@ -105,8 +105,8 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
           </div>
           <span className="text-xs text-emerald-600 font-medium mt-1 block">
             {summary.invoiceCount > 0
-              ? `↑ Đã tính từ ${summary.invoiceCount} hóa đơn`
-              : '↑ Dự kiến từ các hợp đồng thuê hiệu lực'}
+              ? `↑ Đã tính từ ${summary.invoiceCount} hóa đơn thực tế`
+              : '↑ Chưa có hóa đơn nào được lập trong năm'}
           </span>
         </div>
 
@@ -139,15 +139,24 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
 
       {/* Main Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Chart 1: Revenue vs Expenses trailing 6 months */}
+        {/* Chart 1: Revenue vs Expenses — 12 months of current year */}
         <div className="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
           <h2 className="text-sm font-bold text-slate-900 mb-1">
             Doanh Thu & Lợi Nhuận Thuần Hàng Tháng (Triệu VNĐ)
           </h2>
           <p className="text-xs text-slate-400 mb-4">
-            So sánh doanh thu thực tế và chi phí quản lý vận hành từ dữ liệu hóa đơn
+            Dữ liệu từ hóa đơn thực tế — tháng chưa lập hóa đơn hiển thị cột 0
           </p>
 
+          {summary.invoiceCount === 0 && (
+            <div className="flex flex-col items-center justify-center h-48 text-center text-slate-400 gap-2">
+              <FileSpreadsheet className="w-10 h-10 text-slate-300" />
+              <p className="text-sm font-medium text-slate-500">Chưa có hóa đơn nào trong năm {currentYear}</p>
+              <p className="text-xs">Vào tab <span className="font-semibold text-emerald-600">Hóa đơn</span> để lập hóa đơn hàng tháng cho khách thuê.</p>
+            </div>
+          )}
+
+          {summary.invoiceCount > 0 && (
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={summary.monthlyRevenueData}>
@@ -155,21 +164,50 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
                 <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#64748b' }} />
                 <YAxis tick={{ fontSize: 12, fill: '#64748b' }} />
                 <Tooltip
-                  formatter={(value: any) => [`${value} Tr VNĐ`]}
-                  contentStyle={{
-                    backgroundColor: '#0f172a',
-                    border: 'none',
-                    borderRadius: '8px',
-                    color: '#fff',
-                    fontSize: '12px',
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload?.length) return null;
+                    const item = summary.monthlyRevenueData.find((m) => m.month === label);
+                    if (item?.isFuture) {
+                      return (
+                        <div style={{ backgroundColor: '#0f172a', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#94a3b8' }}>
+                          <p className="font-semibold">{label}</p>
+                          <p>Chưa đến kỳ</p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div style={{ backgroundColor: '#0f172a', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#fff' }}>
+                        <p className="font-semibold mb-1">{label}{item?.isCurrent ? ' (đang diễn ra)' : ''}</p>
+                        {payload.map((p) => (
+                          <p key={p.name} style={{ color: p.color as string }}>{p.name}: {p.value} Tr VNĐ</p>
+                        ))}
+                      </div>
+                    );
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: '12px' }} />
-                <Bar dataKey="revenue" name="Tổng thu" fill="#059669" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="profit" name="Lợi nhuận ròng" fill="#0284c7" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="revenue" name="Tổng thu" radius={[4, 4, 0, 0]}>
+                  {summary.monthlyRevenueData.map((entry, index) => (
+                    <Cell
+                      key={`rev-${index}`}
+                      fill={entry.isFuture ? '#d1fae5' : entry.isCurrent ? '#34d399' : '#059669'}
+                      opacity={entry.isFuture ? 0.35 : 1}
+                    />
+                  ))}
+                </Bar>
+                <Bar dataKey="profit" name="Lợi nhuận ròng" radius={[4, 4, 0, 0]}>
+                  {summary.monthlyRevenueData.map((entry, index) => (
+                    <Cell
+                      key={`prf-${index}`}
+                      fill={entry.isFuture ? '#bae6fd' : '#0284c7'}
+                      opacity={entry.isFuture ? 0.35 : 1}
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
+          )}
         </div>
 
         {/* Chart 2: Revenue breakdown */}
