@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { MaintenanceTicket } from '@/types';
 import { maintenanceAction } from '@/services/maintenance/maintenanceService';
 import { billingMoney } from '@/services/billing/billingService';
+import { MaintenanceImages } from '@/components/maintenance/MaintenanceImages';
 const names:Record<string,string>={CREATED:'Báo sự cố',ACCEPT:'Tiếp nhận',REJECT:'Từ chối',ASSIGN:'Phân công thợ',CANCEL:'Hủy phiếu',READY:'Báo sửa xong',CONFIRM:'Xác nhận hoàn tất',REOPEN:'Yêu cầu sửa lại'};
 export function MaintenanceActions({ticket,owner,onReload}:{ticket:MaintenanceTicket;owner:boolean;onReload:()=>void}){
  const [cost,setCost]=useState(ticket.actualCost??'0');const [payer,setPayer]=useState(ticket.costResponsibility??'OWNER');const [customerCost,setCustomerCost]=useState(ticket.customerCost??'0');
@@ -9,6 +10,7 @@ export function MaintenanceActions({ticket,owner,onReload}:{ticket:MaintenanceTi
  const confirming=ticket.apiStatus==='AWAITING_CONFIRMATION' && (owner?!ticket.canConfirm:ticket.canConfirm);
  const actions=confirming?['CONFIRM','REOPEN']:owner?(ticket.apiStatus==='PENDING'?['ACCEPT','REJECT','CANCEL']:ticket.apiStatus==='ACCEPTED'?['ASSIGN','CANCEL']:ticket.apiStatus==='IN_PROGRESS'?['ASSIGN','READY']:[]):[];
  return <div className="space-y-3 border-t pt-3">
+  <MaintenanceImages ticket={ticket} owner={owner} onReload={onReload}/>
   {ticket.actualCost!=null&&<div className="bg-slate-50 rounded-lg p-3 text-sm space-y-1"><p>Chi phí thực tế: <strong>{billingMoney(ticket.actualCost)}</strong></p><p>Bên chịu: {({OWNER:'Chủ nhà',CUSTOMER:'Khách thuê',SHARED:'Hai bên chia sẻ'} as Record<string,string>)[ticket.costResponsibility??'']}</p><p>Phần khách chịu: {billingMoney(ticket.customerCost??'0')}</p><p className="text-xs text-amber-800">Chỉ đối soát; chưa xác nhận thanh toán hoặc cộng vào hóa đơn.</p></div>}
   {ticket.repairResult&&<p className="text-sm whitespace-pre-wrap">Kết quả sửa chữa: {ticket.repairResult}</p>}
   {owner && ticket.apiStatus==='AWAITING_CONFIRMATION' && ticket.canConfirm && <p className="text-sm text-amber-700">Chờ khách thuê kiểm tra và xác nhận kết quả.</p>}
