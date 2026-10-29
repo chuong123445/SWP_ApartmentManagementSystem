@@ -114,6 +114,7 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
 
           {activeTab === 'maintenance' && (
             <MaintenancePage
+              key={navigation.selectedBuildingId}
               tickets={tickets}
               loading={workspace.maintenanceLoading}
               places={[...initialBuildings.filter(p=>navigation.selectedBuildingId==='all'||p.id===navigation.selectedBuildingId).map(p=>({value:`property-${p.id}`,label:`${p.name} — Toàn tòa`,propertyId:p.id})),...rooms.map(r=>({value:`room-${r.id}`,label:r.roomNumber,propertyId:r.buildingId,apartmentId:r.id}))]}
