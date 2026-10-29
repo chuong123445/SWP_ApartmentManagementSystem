@@ -233,9 +233,14 @@ class ContractDraftIntegrationTests {
         var apartment=request.getApartment();apartment.setElectricityIndex(200);apartment.setWaterIndex(50);apartments.saveAndFlush(apartment);
         String contract=create();String contractId=id(contract);String hash=JsonPath.read(contract,"$.signing.contentHash");
         sign(contract,token,hash,signature(),true).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/me/apartments/"+apartment.getId()+"/rental-requests").header("Authorization",customerToken))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0].contractCompleted").value(false));
         mvc.perform(get("/api/v1/owner/contracts/"+contractId+"/billing-context").header("Authorization",token))
             .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("INVALID_STATE"));
         sign(contract,customerToken,hash,signature(),true).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"));
+        mvc.perform(get("/api/v1/me/apartments/"+apartment.getId()+"/rental-requests").header("Authorization",customerToken))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0].contractCompleted").value(true))
+            .andExpect(jsonPath("$[0].contractId").value(contractId));
         mvc.perform(get("/api/v1/owner/tenancies").header("Authorization",token)).andExpect(status().isOk())
             .andExpect(jsonPath("$[0].id").value(contractId)).andExpect(jsonPath("$[0].customerId").value(customer.getId().toString()))
             .andExpect(jsonPath("$[0].status").value("ACTIVE"));
