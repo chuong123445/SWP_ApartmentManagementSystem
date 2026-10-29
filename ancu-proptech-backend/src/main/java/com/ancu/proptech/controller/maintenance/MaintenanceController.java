@@ -57,12 +57,17 @@ public class MaintenanceController {
     public record History(String action,String note,Instant createdAt) {}
     public record Ticket(String id,String propertyId,String apartmentId,String roomNumber,String reporterName,
                          String title,String description,String category,String priority,String status,Instant createdAt,long version,
-                         String technicianName,String technicianPhone,Instant scheduledAt,boolean canConfirm,String repairResult,java.util.List<History> history) {}
+                         String technicianName,String technicianPhone,Instant scheduledAt,boolean canConfirm,String repairResult,
+                         String actualCost,String customerCost,String costResponsibility,java.util.List<History> history) {}
+    public enum CostResponsibility { OWNER, CUSTOMER, SHARED }
     public enum Action { ACCEPT, REJECT, ASSIGN, CANCEL, READY, CONFIRM, REOPEN }
     public record Change(@jakarta.validation.constraints.NotNull @jakarta.validation.constraints.PositiveOrZero Long version,
         @jakarta.validation.constraints.NotNull Action action,@jakarta.validation.constraints.Size(max=3000) String note,
         @jakarta.validation.constraints.Size(max=200) String technicianName,
-        @jakarta.validation.constraints.Pattern(regexp="[+0-9 ()-]{6,30}") String technicianPhone,Instant scheduledAt) {}
+        @jakarta.validation.constraints.Pattern(regexp="[+0-9 ()-]{6,30}") String technicianPhone,Instant scheduledAt,
+        @jakarta.validation.constraints.DecimalMin("0") @jakarta.validation.constraints.Digits(integer=13,fraction=2) java.math.BigDecimal actualCost,
+        CostResponsibility costResponsibility,
+        @jakarta.validation.constraints.DecimalMin("0") @jakarta.validation.constraints.Digits(integer=13,fraction=2) java.math.BigDecimal customerCost) {}
     @PostMapping({"/api/v1/owner/maintenance-tickets/{id}/actions","/api/v1/me/maintenance-tickets/{id}/actions"}) @Transactional
     public Ticket change(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@jakarta.validation.Valid @RequestBody Change input,jakarta.servlet.http.HttpServletRequest request){
         boolean ownerRoute=request.getRequestURI().startsWith("/api/v1/owner/");
@@ -79,7 +84,14 @@ public class MaintenanceController {
           case ASSIGN -> {if(state!=MaintenanceTicket.Status.ACCEPTED && state!=MaintenanceTicket.Status.IN_PROGRESS)throw conflict("Cần tiếp nhận trước khi giao thợ.");
             if(input.technicianName()==null || input.technicianName().isBlank() || input.technicianPhone()==null || input.scheduledAt()==null)throw conflict("Cần tên thợ, số điện thoại và lịch hẹn.");
             t.setTechnicianName(input.technicianName().strip());t.setTechnicianPhone(input.technicianPhone());t.setScheduledAt(input.scheduledAt());t.setStatus(MaintenanceTicket.Status.IN_PROGRESS);}
-          case READY -> {if(state!=MaintenanceTicket.Status.IN_PROGRESS || note.isBlank())throw conflict("Cần phiếu đang sửa và kết quả sửa chữa.");t.setRepairResult(note);t.setStatus(MaintenanceTicket.Status.AWAITING_CONFIRMATION);}
+          case READY -> {if(state!=MaintenanceTicket.Status.IN_PROGRESS || note.isBlank())throw conflict("Cần phiếu đang sửa và kết quả sửa chữa.");
+            if(input.actualCost()==null || input.costResponsibility()==null)throw conflict("Cần nhập chi phí thực tế và bên chịu phí (nhập 0 nếu không phát sinh).");
+            if(t.getTenant()==null && input.costResponsibility()!=CostResponsibility.OWNER)throw conflict("Không có khách thuê liên quan để phân bổ chi phí.");
+            var share=switch(input.costResponsibility()){case OWNER->java.math.BigDecimal.ZERO;case CUSTOMER->input.actualCost();case SHARED->input.customerCost();};
+            if(share==null || share.compareTo(input.actualCost())>0)throw conflict("Phần chi phí khách chịu phải từ 0 đến tổng chi phí.");
+            t.setActualCost(input.actualCost());t.setCustomerCost(share);t.setCostResponsibility(input.costResponsibility().name());
+            log(t,owner.getId(),"COST_RECORDED","Tổng: "+input.actualCost().toPlainString()+"; phần khách: "+share.toPlainString()+"; bên chịu: "+input.costResponsibility().name());
+            t.setRepairResult(note);t.setStatus(MaintenanceTicket.Status.AWAITING_CONFIRMATION);}
           case CONFIRM -> {if(state!=MaintenanceTicket.Status.AWAITING_CONFIRMATION)throw conflict("Phiếu chưa chờ nghiệm thu.");if(ownerRoute && t.getTenant()!=null)throw conflict("Khách thuê phải tự xác nhận kết quả bằng tài khoản của mình.");t.setStatus(MaintenanceTicket.Status.RESOLVED);}
           case REOPEN -> {if(state!=MaintenanceTicket.Status.AWAITING_CONFIRMATION || note.isBlank())throw conflict("Cần phiếu chờ xác nhận và lý do sửa lại.");if(ownerRoute && t.getTenant()!=null)throw conflict("Khách thuê cần tự gửi yêu cầu sửa lại.");t.setStatus(MaintenanceTicket.Status.IN_PROGRESS);}
         }
@@ -104,5 +116,6 @@ public class MaintenanceController {
         t.getApartment()==null?null:t.getApartment().getId().toString(),t.getApartment()==null?"Toàn tòa":t.getApartment().getTitle(),
         t.getReporter().getFullName(),t.getTitle(),t.getDescription(),t.getCategory().name(),t.getPriority().name(),t.getStatus().name(),t.getCreatedAt(),t.getVersion(),
         t.getTechnicianName(),t.getTechnicianPhone(),t.getScheduledAt(),t.getTenant()!=null,t.getRepairResult(),
+        t.getActualCost()==null?null:t.getActualCost().toPlainString(),t.getCustomerCost()==null?null:t.getCustomerCost().toPlainString(),t.getCostResponsibility(),
         events.findByTicketIdOrderByIdAsc(t.getId()).stream().map(e->new History(e.getAction(),e.getNote(),e.getCreatedAt())).toList());}
 }

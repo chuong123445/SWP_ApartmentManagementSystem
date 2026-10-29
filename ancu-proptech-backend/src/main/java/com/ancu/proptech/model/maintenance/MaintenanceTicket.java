@@ -29,4 +29,7 @@ public class MaintenanceTicket {
     @Column(length=30) private String technicianPhone;
     @Column(columnDefinition="datetime2(6)") private Instant scheduledAt;
     @Nationalized @Column(length=3000) private String repairResult;
+    @Column(precision=15,scale=2) private java.math.BigDecimal actualCost;
+    @Column(precision=15,scale=2) private java.math.BigDecimal customerCost;
+    @Column(length=24) private String costResponsibility;
 }
