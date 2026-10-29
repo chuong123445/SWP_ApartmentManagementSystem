@@ -54,7 +54,7 @@ class MaintenanceIntegrationTests {
   mvc.perform(post(path).header("Authorization",token(owner)).contentType("application/json").content(accept)).andExpect(status().isConflict());
   mvc.perform(post(path).header("Authorization",token(owner)).contentType("application/json").content("{\"version\":"+(initial+1)+",\"action\":\"ASSIGN\",\"technicianName\":\"Thợ kiểm thử\",\"technicianPhone\":\"0900000000\",\"scheduledAt\":\"2026-11-01T08:00:00Z\"}"))
    .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("IN_PROGRESS")).andExpect(jsonPath("$.history.length()").value(2));
-  mvc.perform(post(path).header("Authorization",token(owner)).contentType("application/json").content("{\"version\":"+t.getVersion()+",\"action\":\"READY\",\"note\":\"Đã thay máy bơm\"}"))
+  mvc.perform(post(path).header("Authorization",token(owner)).contentType("application/json").content("{\"version\":"+t.getVersion()+",\"action\":\"READY\",\"actualCost\":\"150000\",\"costResponsibility\":\"OWNER\",\"note\":\"Đã thay máy bơm\"}"))
    .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("AWAITING_CONFIRMATION"));
   String confirm="{\"version\":"+t.getVersion()+",\"action\":\"CONFIRM\"}";
   mvc.perform(post(path).header("Authorization",token(owner)).contentType("application/json").content(confirm)).andExpect(status().isConflict());
@@ -62,8 +62,8 @@ class MaintenanceIntegrationTests {
   mvc.perform(post(customerPath).header("Authorization",token(other)).contentType("application/json").content(confirm)).andExpect(status().isNotFound());
   mvc.perform(post(customerPath).header("Authorization",token(customer)).contentType("application/json").content("{\"version\":"+t.getVersion()+",\"action\":\"REOPEN\",\"note\":\"Vẫn rò nước\"}"))
    .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("IN_PROGRESS"));
-  mvc.perform(post(path).header("Authorization",token(owner)).contentType("application/json").content("{\"version\":"+t.getVersion()+",\"action\":\"READY\",\"note\":\"Đã sửa lại\"}")).andExpect(status().isOk());
+  mvc.perform(post(path).header("Authorization",token(owner)).contentType("application/json").content("{\"version\":"+t.getVersion()+",\"action\":\"READY\",\"actualCost\":\"150000\",\"costResponsibility\":\"OWNER\",\"note\":\"Đã sửa lại\"}")).andExpect(status().isOk());
   mvc.perform(post(customerPath).header("Authorization",token(customer)).contentType("application/json").content("{\"version\":"+t.getVersion()+",\"action\":\"CONFIRM\"}"))
-   .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("RESOLVED"));
+   .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("RESOLVED")).andExpect(jsonPath("$.actualCost").value("150000.00")).andExpect(jsonPath("$.customerCost").value("0.00"));
  }
 }
