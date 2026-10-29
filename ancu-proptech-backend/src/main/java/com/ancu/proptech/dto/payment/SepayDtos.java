@@ -19,8 +19,9 @@ public final class SepayDtos {
  public record Connection(boolean configured,String bank,String accountNumber,String accountHolderName,String virtualAccount,
   boolean enabled,long version,String webhookUrl,Instant lastWebhookAt,String webhookSecret){}
  public record Payment(String status,String paymentCode,String amount,String bank,String accountNumber,String accountHolderName,String qrUrl,Instant paidAt){}
- public record TestPaymentRequest(@NotNull @DecimalMin("1") @Digits(integer=9,fraction=0) BigDecimal amount){}
- public record TestReceipt(String id,Instant createdAt,Payment payment){}
+ public record TestPaymentRequest(@NotNull @DecimalMin("1") @Digits(integer=9,fraction=0) BigDecimal amount,@Positive Long contractId){}
+ public record TestRecipient(String contractId,String tenantName,String roomNumber){}
+ public record TestReceipt(String id,Instant createdAt,Payment payment,String contractId,String tenantName,String roomNumber,String ownerName){}
  public record Event(String transactionId,String invoiceId,String testPaymentId,String result,String amount,Instant receivedAt){}
  // SePay có thể thêm trường mới: chỉ đọc các dữ liệu cần đối soát, không tin trạng thái do client gửi.
  @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown=true)

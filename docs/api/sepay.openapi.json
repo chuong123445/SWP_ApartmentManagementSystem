@@ -489,7 +489,7 @@
         }
       },
       "post": {
-        "summary": "Create a real-money test QR with custom whole VND amount; requires enabled configuration and HTTPS URL. Each POST creates a new receipt.",
+        "summary": "Create real-money test receipt, optionally send atomically to tenant of own ACTIVE contract. Receiver customerId always derives from server contract; no arbitrary account selection or rental debt changes.",
         "requestBody": {
           "required": true,
           "content": {
@@ -528,6 +528,82 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/owner/payments/sepay/test-recipients": {
+      "get": {
+        "summary": "Own ACTIVE contract recipients only; server tenant and room labels",
+        "responses": {
+          "200": {
+            "description": "Saved/private result; Cache-Control no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TestRecipient"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or provider token/data"
+          },
+          "401": {
+            "description": "Missing/invalid session or webhook API key"
+          },
+          "403": {
+            "description": "Role/account verification denied"
+          },
+          "404": {
+            "description": "Not exact invoice party"
+          },
+          "409": {
+            "description": "Stale version, invoice not SENT, missing config/public URL, fractional VND"
+          },
+          "503": {
+            "description": "Provider unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/me/payments/sepay/test-payments": {
+      "get": {
+        "summary": "Exact recipient latest 20 test receipts with QR and webhook-derived status; CUSTOMER or OWNER as tenant; never owner-only old receipts",
+        "responses": {
+          "200": {
+            "description": "Saved/private result; Cache-Control no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TestReceipt"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or provider token/data"
+          },
+          "401": {
+            "description": "Missing/invalid session or webhook API key"
+          },
+          "403": {
+            "description": "Role/account verification denied"
+          },
+          "404": {
+            "description": "Not exact invoice party"
+          },
+          "409": {
+            "description": "Stale version, invoice not SENT, missing config/public URL, fractional VND"
+          },
+          "503": {
+            "description": "Provider unavailable"
           }
         }
       }
@@ -813,7 +889,6 @@
       },
       "TestPaymentRequest": {
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "amount"
         ],
@@ -822,6 +897,14 @@
             "type": "string",
             "pattern": "^[0-9]{1,9}$",
             "description": "Whole VND 1..999999999; zero is rejected. Real transfer, not a rental invoice."
+          },
+          "contractId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[1-9][0-9]*$",
+            "description": "Optional own ACTIVE contract. Server derives exact tenant; omitted means owner-only test."
           }
         }
       },
@@ -842,6 +925,49 @@
           },
           "payment": {
             "$ref": "#/components/schemas/Payment"
+          },
+          "contractId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tenantName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "roomNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ownerName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "TestRecipient": {
+        "type": "object",
+        "required": [
+          "contractId",
+          "tenantName",
+          "roomNumber"
+        ],
+        "properties": {
+          "contractId": {
+            "type": "string"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "roomNumber": {
+            "type": "string"
           }
         }
       }

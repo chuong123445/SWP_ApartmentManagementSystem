@@ -2,6 +2,7 @@ package com.ancu.proptech.service.payment;
 import com.ancu.proptech.dto.payment.SepayDtos.*;
 import com.ancu.proptech.model.payment.*;
 import com.ancu.proptech.model.billing.RentalInvoice;
+import com.ancu.proptech.model.contract.RentalContract;
 import com.ancu.proptech.model.auth.AuthAccount;
 import com.ancu.proptech.repository.payment.*;
 import com.ancu.proptech.repository.billing.RentalInvoiceRepository;
@@ -84,10 +85,22 @@ public class SepayService {
   Long owner=access.owner(jwt).getId();var c=connections.lockOwner(owner).orElse(null);
   if(c==null||!c.isEnabled())throw new ApiException(HttpStatus.CONFLICT,"PAYMENT_NOT_CONFIGURED","Hãy bật cấu hình SePay trước.");
   if(view(c,owner,null).webhookUrl()==null)throw new ApiException(HttpStatus.CONFLICT,"PUBLIC_URL_MISSING","Chưa cấu hình URL HTTPS nhận webhook.");
-  var p=new TestPayment();p.setOwnerId(owner);p.setAmount(input.amount());p.setPaymentCode("ANCUTEST"+randomHex(12));p.setBank(c.getBank());p.setAccountNumber(c.getAccountNumber());p.setVirtualAccount(c.getVirtualAccount());p.setAccountHolderName(c.getAccountHolderName());p.setCreatedAt(Instant.now());testPayments.saveAndFlush(p);return testView(p);
+  RentalContract contract=null;
+  if(input.contractId()!=null){
+   contract=contracts.lockById(input.contractId()).orElseThrow(SepayService::missing);
+   if(!contract.getApartment().getProperty().getOwner().getId().equals(owner))throw missing();
+   if(contract.getStatus()!=RentalContract.Status.ACTIVE||contract.getCustomer().getId().equals(owner))throw new ApiException(HttpStatus.CONFLICT,"TEST_RECIPIENT_INVALID","Chỉ gửi phiếu thử cho người thuê có hợp đồng đang hoạt động của bạn.");
+  }
+  var p=new TestPayment();p.setContractId(contract==null?null:contract.getId());p.setCustomerId(contract==null?null:contract.getCustomer().getId());p.setOwnerId(owner);p.setAmount(input.amount());p.setPaymentCode("ANCUTEST"+randomHex(12));p.setBank(c.getBank());p.setAccountNumber(c.getAccountNumber());p.setVirtualAccount(c.getVirtualAccount());p.setAccountHolderName(c.getAccountHolderName());p.setCreatedAt(Instant.now());testPayments.saveAndFlush(p);return testView(p);
  }
  @Transactional(readOnly=true) public List<TestReceipt> testHistory(Jwt jwt){return testPayments.findTop20ByOwnerIdOrderByIdDesc(access.owner(jwt).getId()).stream().map(this::testView).toList();}
- private TestReceipt testView(TestPayment p){return new TestReceipt(p.getId().toString(),p.getCreatedAt(),paymentView(p.getBank(),p.getAccountNumber(),p.getVirtualAccount(),p.getAccountHolderName(),p.getAmount(),p.getPaymentCode(),p.getPaidAt()));}
+ @Transactional(readOnly=true) public List<TestRecipient> testRecipients(Jwt jwt){return contracts.findByApartmentPropertyOwnerIdAndStatusOrderByStartDateDescIdAsc(access.owner(jwt).getId(),RentalContract.Status.ACTIVE).stream().filter(c->!c.getCustomer().getId().equals(c.getApartment().getProperty().getOwner().getId())).map(c->new TestRecipient(c.getId().toString(),c.getCustomer().getFullName(),c.getApartment().getRoomNumber())).toList();}
+ @Transactional(readOnly=true) public List<TestReceipt> tenantTestHistory(Jwt jwt){return testPayments.findTop20ByCustomerIdOrderByIdDesc(access.customer(jwt).getId()).stream().map(this::testView).toList();}
+ private TestReceipt testView(TestPayment p){
+  var c=p.getContractId()==null?null:contracts.findById(p.getContractId()).orElseThrow(SepayService::missing);
+  return new TestReceipt(p.getId().toString(),p.getCreatedAt(),paymentView(p.getBank(),p.getAccountNumber(),p.getVirtualAccount(),p.getAccountHolderName(),p.getAmount(),p.getPaymentCode(),p.getPaidAt()),c==null?null:c.getId().toString(),c==null?null:c.getCustomer().getFullName(),c==null?null:c.getApartment().getRoomNumber(),c==null?null:c.getApartment().getProperty().getOwner().getFullName());
+ }
+
  private RentalInvoice visible(AuthAccount actor,Jwt jwt,Long id){
   var i=invoices.findWithContractById(id).orElseThrow(SepayService::missing);
   boolean owner=i.getContract().getApartment().getProperty().getOwner().getId().equals(actor.getId());

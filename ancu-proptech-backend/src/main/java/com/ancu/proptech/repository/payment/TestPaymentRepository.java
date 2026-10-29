@@ -5,4 +5,5 @@ import java.util.*;
 public interface TestPaymentRepository extends JpaRepository<TestPayment,Long> {
  Optional<TestPayment> findByPaymentCode(String code);
  List<TestPayment> findTop20ByOwnerIdOrderByIdDesc(Long ownerId);
+ List<TestPayment> findTop20ByCustomerIdOrderByIdDesc(Long customerId);
 }

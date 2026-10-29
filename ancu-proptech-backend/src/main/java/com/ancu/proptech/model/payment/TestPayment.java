@@ -7,6 +7,9 @@ import java.time.Instant;
 public class TestPayment {
  @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
  @Column(nullable=false) private Long ownerId;
+ // Người nhận lấy từ hợp đồng phía server; null cho phiếu thử cũ chỉ của Owner.
+ private Long customerId;
+ private Long contractId;
  @Column(nullable=false,unique=true,length=32) private String paymentCode;
  @Column(nullable=false,length=50) private String bank;
  @Column(nullable=false,length=30) private String accountNumber;

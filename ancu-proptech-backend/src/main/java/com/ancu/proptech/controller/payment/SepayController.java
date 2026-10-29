@@ -20,6 +20,8 @@ public class SepayController {
  @PostMapping("/api/v1/owner/payments/sepay/rotate-key") public ResponseEntity<Connection> rotate(@AuthenticationPrincipal Jwt jwt,@Valid @RequestBody Rotate body){return ok(service.rotate(jwt,body.version()));}
  @GetMapping("/api/v1/owner/payments/sepay/events") public ResponseEntity<List<Event>> events(@AuthenticationPrincipal Jwt jwt){return ok(service.history(jwt));}
  @PostMapping("/api/v1/owner/payments/sepay/test-payments") public ResponseEntity<TestReceipt> createTest(@AuthenticationPrincipal Jwt jwt,@Valid @RequestBody TestPaymentRequest body){return ResponseEntity.status(HttpStatus.CREATED).cacheControl(CacheControl.noStore()).body(service.createTest(jwt,body));}
+ @GetMapping("/api/v1/owner/payments/sepay/test-recipients") public ResponseEntity<List<TestRecipient>> testRecipients(@AuthenticationPrincipal Jwt jwt){return ok(service.testRecipients(jwt));}
+ @GetMapping("/api/v1/me/payments/sepay/test-payments") public ResponseEntity<List<TestReceipt>> tenantTestHistory(@AuthenticationPrincipal Jwt jwt){return ok(service.tenantTestHistory(jwt));}
  @GetMapping("/api/v1/owner/payments/sepay/test-payments") public ResponseEntity<List<TestReceipt>> testHistory(@AuthenticationPrincipal Jwt jwt){return ok(service.testHistory(jwt));}
  @GetMapping("/api/v1/invoices/{id}/payment") public ResponseEntity<Payment> status(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id){return ok(service.status(jwt,id));}
  @PostMapping("/api/v1/invoices/{id}/payment") public ResponseEntity<Payment> payment(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id){return ok(service.payment(jwt,id));}
