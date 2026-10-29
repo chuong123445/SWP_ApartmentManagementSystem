@@ -131,6 +131,12 @@ export interface UtilityReading {
 export interface MaintenanceTicket {
   propertyId?: string;
   apiStatus?: string;
+  apiVersion?: number;
+  technicianName?: string | null;
+  technicianPhone?: string | null;
+  scheduledAt?: string | null;
+  canConfirm?: boolean;
+  history?: {action:string;note:string;createdAt:string}[];
   id: string;
   title: string;
   roomNumber: string;
