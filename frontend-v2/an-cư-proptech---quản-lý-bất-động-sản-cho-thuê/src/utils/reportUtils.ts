@@ -274,7 +274,17 @@ export function calculateBuildingOccupancy(
       .filter((inv) => roomIds.has(inv.roomId))
       .reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
 
-    const contractRevenue = invoiceRevenue === 0
+    // Count distinct months with invoices to compute average monthly revenue
+    const invoiceMonths = new Set(
+      revenueInvoices
+        .filter((inv) => roomIds.has(inv.roomId))
+        .map((inv) => getInvoicePeriod(inv))
+        .filter(Boolean)
+    ).size;
+
+    const monthlyAvgRevenue = invoiceMonths > 0 ? invoiceRevenue / invoiceMonths : 0;
+
+    const contractRevenue = monthlyAvgRevenue === 0
       ? contracts
           .filter((c) => c.status === 'active' && roomIds.has(c.roomId))
           .reduce((sum, c) => sum + (c.monthlyRent || 0), 0)
@@ -284,7 +294,7 @@ export function calculateBuildingOccupancy(
       name: b.name,
       occupancy,
       rooms: buildingRooms.length,
-      revenue: Number(((invoiceRevenue || contractRevenue) / 1_000_000).toFixed(1)),
+      revenue: Number(((monthlyAvgRevenue || contractRevenue) / 1_000_000).toFixed(1)),
     };
   });
 }

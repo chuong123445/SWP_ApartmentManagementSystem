@@ -427,12 +427,28 @@ describe('calculateBuildingOccupancy', () => {
     const rooms: Room[] = [
       { id: 'r-1', roomNumber: '101', buildingId: 'b-1', floor: 1, area: 30, price: 5_000_000, status: 'rented', electricityIndex: 0, waterIndex: 0, amenities: [], maxOccupants: 2 },
     ];
-    const inv = makeInvoice({ period: '2026-10', backendStatus: 'SENT', totalAmount: 5_500_000, roomId: 'r-1' });
+    // 2 invoices in different months — revenue should be average per month, not total
+    const inv1 = makeInvoice({ period: '2026-09', backendStatus: 'SENT', totalAmount: 5_500_000, roomId: 'r-1' });
+    const inv2 = makeInvoice({ period: '2026-10', backendStatus: 'SENT', totalAmount: 5_500_000, roomId: 'r-1' });
     const contracts: Contract[] = [
       { id: 'c-1', contractNumber: 'HD-01', tenantId: 't-1', tenantName: 'A', roomId: 'r-1', roomNumber: '101', buildingName: 'Tòa 1', startDate: '2026-10-01', endDate: '2027-09-30', monthlyRent: 99_000_000, deposit: 0, paymentCycle: 1, status: 'active' },
     ];
-    // Invoice exists → should use invoice revenue (5.5M), not contract (99M)
-    const perf = calculateBuildingOccupancy(buildings, rooms, [inv], contracts);
-    expect(perf[0].revenue).toBe(5.5);
+    // 2 months × 5.5M = 11M total → average = 5.5M/tháng (not 11M)
+    const perf = calculateBuildingOccupancy(buildings, rooms, [inv1, inv2], contracts);
+    expect(perf[0].revenue).toBe(5.5); // average monthly, not cumulative
+  });
+
+  it('falls back to contract monthly rent when no invoices exist', () => {
+    const buildings: Building[] = [
+      { id: 'b-1', name: 'Tòa 1', address: '', totalRooms: 1, pcccCertified: true, legalStatus: 'APPROVED' },
+    ];
+    const rooms: Room[] = [
+      { id: 'r-1', roomNumber: '101', buildingId: 'b-1', floor: 1, area: 30, price: 5_000_000, status: 'rented', electricityIndex: 0, waterIndex: 0, amenities: [], maxOccupants: 2 },
+    ];
+    const contracts: Contract[] = [
+      { id: 'c-1', contractNumber: 'HD-01', tenantId: 't-1', tenantName: 'A', roomId: 'r-1', roomNumber: '101', buildingName: 'Tòa 1', startDate: '2026-10-01', endDate: '2027-09-30', monthlyRent: 6_000_000, deposit: 0, paymentCycle: 1, status: 'active' },
+    ];
+    const perf = calculateBuildingOccupancy(buildings, rooms, [], contracts);
+    expect(perf[0].revenue).toBe(6.0); // contract fallback
   });
 });

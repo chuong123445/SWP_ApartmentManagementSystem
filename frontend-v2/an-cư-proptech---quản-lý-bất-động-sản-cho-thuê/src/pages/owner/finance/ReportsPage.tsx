@@ -105,8 +105,8 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
           </div>
           <span className="text-xs text-emerald-600 font-medium mt-1 block">
             {summary.invoiceCount > 0
-              ? `↑ Đã tính từ ${summary.invoiceCount} hóa đơn thực tế`
-              : '↑ Chưa có hóa đơn nào được lập trong năm'}
+              ? `Đã tính từ ${summary.invoiceCount} hóa đơn phát hành`
+              : 'Chưa có hóa đơn nào được lập trong năm'}
           </span>
         </div>
 
