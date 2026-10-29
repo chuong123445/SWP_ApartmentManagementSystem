@@ -57,16 +57,19 @@ public class MaintenanceController {
     public record History(String action,String note,Instant createdAt) {}
     public record Ticket(String id,String propertyId,String apartmentId,String roomNumber,String reporterName,
                          String title,String description,String category,String priority,String status,Instant createdAt,long version,
-                         String technicianName,String technicianPhone,Instant scheduledAt,boolean canConfirm,java.util.List<History> history) {}
-    public enum Action { ACCEPT, REJECT, ASSIGN, CANCEL }
+                         String technicianName,String technicianPhone,Instant scheduledAt,boolean canConfirm,String repairResult,java.util.List<History> history) {}
+    public enum Action { ACCEPT, REJECT, ASSIGN, CANCEL, READY, CONFIRM, REOPEN }
     public record Change(@jakarta.validation.constraints.NotNull @jakarta.validation.constraints.PositiveOrZero Long version,
         @jakarta.validation.constraints.NotNull Action action,@jakarta.validation.constraints.Size(max=3000) String note,
         @jakarta.validation.constraints.Size(max=200) String technicianName,
         @jakarta.validation.constraints.Pattern(regexp="[+0-9 ()-]{6,30}") String technicianPhone,Instant scheduledAt) {}
-    @PostMapping("/api/v1/owner/maintenance-tickets/{id}/actions") @Transactional
-    public Ticket change(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@jakarta.validation.Valid @RequestBody Change input){
-        var owner=access.owner(jwt);var t=tickets.lock(id).orElseThrow(MaintenanceController::missing);entities.refresh(t);
-        if(!t.getProperty().getOwner().getId().equals(owner.getId()))throw missing();
+    @PostMapping({"/api/v1/owner/maintenance-tickets/{id}/actions","/api/v1/me/maintenance-tickets/{id}/actions"}) @Transactional
+    public Ticket change(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@jakarta.validation.Valid @RequestBody Change input,jakarta.servlet.http.HttpServletRequest request){
+        boolean ownerRoute=request.getRequestURI().startsWith("/api/v1/owner/");
+        var owner=ownerRoute?access.owner(jwt):access.account(jwt);var t=tickets.lock(id).orElseThrow(MaintenanceController::missing);entities.refresh(t);
+        if(ownerRoute){if(!t.getProperty().getOwner().getId().equals(owner.getId()))throw missing();}
+        else if(t.getTenant()==null || !t.getTenant().getId().equals(owner.getId()))throw missing();
+        if(!ownerRoute && input.action()!=Action.CONFIRM && input.action()!=Action.REOPEN)throw new com.ancu.proptech.exception.common.ApiException(org.springframework.http.HttpStatus.FORBIDDEN,"FORBIDDEN","Chỉ chủ nhà được xử lý phiếu.");
         if(t.getVersion()!=input.version())throw conflict("Dữ liệu đã thay đổi. Hãy làm mới trước khi xử lý.");
         var state=t.getStatus();String note=input.note()==null?"":input.note().strip();
         switch(input.action()){
@@ -76,6 +79,9 @@ public class MaintenanceController {
           case ASSIGN -> {if(state!=MaintenanceTicket.Status.ACCEPTED && state!=MaintenanceTicket.Status.IN_PROGRESS)throw conflict("Cần tiếp nhận trước khi giao thợ.");
             if(input.technicianName()==null || input.technicianName().isBlank() || input.technicianPhone()==null || input.scheduledAt()==null)throw conflict("Cần tên thợ, số điện thoại và lịch hẹn.");
             t.setTechnicianName(input.technicianName().strip());t.setTechnicianPhone(input.technicianPhone());t.setScheduledAt(input.scheduledAt());t.setStatus(MaintenanceTicket.Status.IN_PROGRESS);}
+          case READY -> {if(state!=MaintenanceTicket.Status.IN_PROGRESS || note.isBlank())throw conflict("Cần phiếu đang sửa và kết quả sửa chữa.");t.setRepairResult(note);t.setStatus(MaintenanceTicket.Status.AWAITING_CONFIRMATION);}
+          case CONFIRM -> {if(state!=MaintenanceTicket.Status.AWAITING_CONFIRMATION)throw conflict("Phiếu chưa chờ nghiệm thu.");if(ownerRoute && t.getTenant()!=null)throw conflict("Khách thuê phải tự xác nhận kết quả bằng tài khoản của mình.");t.setStatus(MaintenanceTicket.Status.RESOLVED);}
+          case REOPEN -> {if(state!=MaintenanceTicket.Status.AWAITING_CONFIRMATION || note.isBlank())throw conflict("Cần phiếu chờ xác nhận và lý do sửa lại.");if(ownerRoute && t.getTenant()!=null)throw conflict("Khách thuê cần tự gửi yêu cầu sửa lại.");t.setStatus(MaintenanceTicket.Status.IN_PROGRESS);}
         }
         tickets.saveAndFlush(t);log(t,owner.getId(),input.action().name(),note);return view(t);
     }
@@ -97,6 +103,6 @@ public class MaintenanceController {
     private Ticket view(MaintenanceTicket t){return new Ticket(t.getId().toString(),t.getProperty().getId().toString(),
         t.getApartment()==null?null:t.getApartment().getId().toString(),t.getApartment()==null?"Toàn tòa":t.getApartment().getTitle(),
         t.getReporter().getFullName(),t.getTitle(),t.getDescription(),t.getCategory().name(),t.getPriority().name(),t.getStatus().name(),t.getCreatedAt(),t.getVersion(),
-        t.getTechnicianName(),t.getTechnicianPhone(),t.getScheduledAt(),t.getTenant()!=null,
+        t.getTechnicianName(),t.getTechnicianPhone(),t.getScheduledAt(),t.getTenant()!=null,t.getRepairResult(),
         events.findByTicketIdOrderByIdAsc(t.getId()).stream().map(e->new History(e.getAction(),e.getNote(),e.getCreatedAt())).toList());}
 }
