@@ -21,8 +21,8 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
   const { rooms, tenants, contracts, invoices, tickets, transactions, config,
     buildings: initialBuildings, setSelectedRoom, setSelectedInvoice, currentResidentRoom, currentResidentTenant,
     currentResidentContract, residentInvoices, residentTickets, handleMarkPaid, handleAddTenant, handleAddContract,
-    handleUpdateIndices, handleUpdateTicketStatus,
-    handleReserveEscrow, handleResetData, handleSaveConfig: setConfig, handleAddTicket, handleSendResidentTicket,
+    handleUpdateIndices,
+    handleReserveEscrow, handleResetData, handleSaveConfig: setConfig,
     handleAddTransaction } = workspace;
   return <>
           {activeTab === 'home' && <HomePage embedded />}
@@ -37,7 +37,7 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
               invoice={residentInvoices[0]}
               tickets={residentTickets}
               config={config}
-              onSendTicket={handleSendResidentTicket}
+              onSendTicket={() => window.location.assign('/my/maintenance')}
               onPayInvoice={handleMarkPaid}
               onOpenApartmentMarket={() => setActiveTab('market')}
             />

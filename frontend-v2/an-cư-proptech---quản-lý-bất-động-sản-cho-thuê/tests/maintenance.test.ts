@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test, afterEach } from 'node:test';
-import { ownerMaintenance } from '@/services/maintenance/maintenanceService';
+import { ownerMaintenance, maintenanceAction, uploadMaintenanceImage } from '@/services/maintenance/maintenanceService';
 const originalFetch=globalThis.fetch;
 afterEach(()=>{globalThis.fetch=originalFetch;});
 test('Danh sách sự cố tải đủ trang và lọc đúng tài sản',async()=>{
@@ -16,4 +16,12 @@ test('Không chèn dữ liệu mẫu khi danh sách rỗng hoặc máy chủ bá
  globalThis.fetch=async()=>Response.json({items:[],totalPages:0});assert.deepEqual(await ownerMaintenance('all'),[]);
  globalThis.fetch=async()=>Response.json({message:'Không thể tải sự cố'},{status:500});
  await assert.rejects(()=>ownerMaintenance('all'));
+});
+test('Khách nghiệm thu gửi phiên bản và hành động, không tự chọn người ký hoặc trạng thái',async()=>{
+ globalThis.fetch=async(url,options)=>{assert.equal(url,'/api/v1/me/maintenance-tickets/7/actions');assert.deepEqual(JSON.parse(options!.body as string),{version:2,action:'CONFIRM'});return Response.json({status:'RESOLVED'});};
+ await maintenanceAction('7',{version:2,action:'CONFIRM'},false);
+});
+test('Ảnh gửi bằng multipart và không đặt Content-Type JSON',async()=>{
+ globalThis.fetch=async(url,options)=>{assert.equal(url,'/api/v1/maintenance-tickets/7/images?kind=BEFORE');assert.ok(options!.body instanceof FormData);assert.equal(new Headers(options!.headers).has('Content-Type'),false);return Response.json({id:'8',kind:'BEFORE'});};
+ await uploadMaintenanceImage('7','BEFORE',new File(['fixture'],'test.png',{type:'image/png'}));
 });
