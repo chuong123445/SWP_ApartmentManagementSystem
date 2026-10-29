@@ -157,7 +157,23 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
           )}
 
           {summary.invoiceCount > 0 && (
-          <div className="h-64 w-full">
+          <div className="w-full">
+            {/* Custom legend — outside Recharts to avoid Cell color conflict */}
+            <div className="flex gap-5 mb-2 text-xs text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-3 h-3 rounded-sm" style={{ background: '#059669' }} />
+                Tổng thu
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-3 h-3 rounded-sm" style={{ background: '#0284c7' }} />
+                Lợi nhuận ròng
+              </span>
+              <span className="flex items-center gap-1.5 ml-auto opacity-60 italic">
+                <span className="inline-block w-3 h-3 rounded-sm" style={{ background: '#d1fae5' }} />
+                Chưa đến kỳ
+              </span>
+            </div>
+            <div className="h-56 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={summary.monthlyRevenueData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -185,8 +201,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
                     );
                   }}
                 />
-                <Legend wrapperStyle={{ fontSize: '12px' }} />
-                <Bar dataKey="revenue" name="Tổng thu" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="revenue" name="Tổng thu" fill="#059669" radius={[4, 4, 0, 0]}>
                   {summary.monthlyRevenueData.map((entry, index) => (
                     <Cell
                       key={`rev-${index}`}
@@ -195,7 +210,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
                     />
                   ))}
                 </Bar>
-                <Bar dataKey="profit" name="Lợi nhuận ròng" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="profit" name="Lợi nhuận ròng" fill="#0284c7" radius={[4, 4, 0, 0]}>
                   {summary.monthlyRevenueData.map((entry, index) => (
                     <Cell
                       key={`prf-${index}`}
@@ -207,8 +222,9 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({
               </BarChart>
             </ResponsiveContainer>
           </div>
-          )}
         </div>
+        )}
+      </div>
 
         {/* Chart 2: Revenue breakdown */}
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
