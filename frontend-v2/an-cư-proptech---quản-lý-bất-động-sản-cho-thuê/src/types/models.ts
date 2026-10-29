@@ -137,6 +137,9 @@ export interface MaintenanceTicket {
   scheduledAt?: string | null;
   canConfirm?: boolean;
   repairResult?: string | null;
+  actualCost?: string | null;
+  customerCost?: string | null;
+  costResponsibility?: string | null;
   history?: {action:string;note:string;createdAt:string}[];
   id: string;
   title: string;
