@@ -1,5 +1,39 @@
 import type { Contract } from '@/types';
 
+export function normalizeContract(item: any): Contract {
+  if (!item) return {} as Contract;
+  if ('monthlyRent' in item && typeof item.monthlyRent === 'number' && 'tenantName' in item) {
+    return item as Contract;
+  }
+  const draft = item;
+  const snapshot = draft.snapshot || {};
+  const asset = snapshot.asset || {};
+  const customer = snapshot.customer || {};
+  const receivingAccount = snapshot.receivingAccount;
+  const numRent = typeof draft.monthlyRent === 'string' ? parseFloat(draft.monthlyRent) || 0 : (draft.monthlyRent || 0);
+  const numDeposit = typeof draft.deposit === 'string' ? parseFloat(draft.deposit) || 0 : (draft.deposit || 0);
+
+  return {
+    id: draft.id || 'draft-id',
+    contractNumber: draft.contractNumber || 'HD-DRAFT',
+    roomId: asset.apartmentId || 'room-id',
+    roomNumber: asset.roomNumber || asset.title || 'Căn hộ',
+    buildingName: asset.propertyName || 'Tòa nhà An Cư',
+    tenantId: customer.id || 'tenant-id',
+    tenantName: customer.fullName || 'Khách thuê',
+    startDate: draft.startDate || '01/11/2026',
+    endDate: draft.endDate || '31/10/2027',
+    monthlyRent: numRent,
+    deposit: numDeposit,
+    paymentCycle: 1,
+    status: (draft.status === 'ACTIVE' || draft.status === 'active') ? 'active' : 'draft',
+    signingMethod: draft.signingMethod || 'eKYC Chip & Digital OTP',
+    escrowCode: receivingAccount ? `${receivingAccount.bank}-${(draft.contractNumber || 'ESCROW').slice(-8)}` : 'MBBANK-ESCROW-88899977',
+    trustGuardAuditCode: draft.trustGuardAuditCode || `TG-AUD-${draft.contractNumber || '2026-DRAFT'}`,
+    signedDate: draft.signedDate || (draft.status === 'ACTIVE' ? '15/01/2026 09:32:15' : undefined)
+  };
+}
+
 function getContractCss(): string {
   return `
     @page {
@@ -182,7 +216,8 @@ function getContractCss(): string {
   `;
 }
 
-export function generateContractBody(contract: Contract): string {
+export function generateContractBody(contract: Contract, options?: { isDraft?: boolean }): string {
+  const isDraft = options?.isDraft !== undefined ? options.isDraft : contract.status === 'draft';
   const auditCode = contract.trustGuardAuditCode || `TG-AUD-${contract.contractNumber || '2026-08912'}`;
   const signedAt = contract.signedDate || '15/01/2026 09:32:15';
   const rentFormatted = contract.monthlyRent.toLocaleString('vi-VN');
@@ -198,7 +233,10 @@ export function generateContractBody(contract: Contract): string {
   <div class="title-contract">
     <h2>HỢP ĐỒNG CHO THUÊ CĂN HỘ CAO CẤP & BẢO CHỨNG KÝ QUỸ ESCROW</h2>
     <div class="meta">Số hợp đồng điện tử: <strong>${contract.contractNumber}</strong></div>
-    <div><span class="badge-audit">Mã xác thực TrustGuard: ${auditCode}</span></div>
+    <div>
+      <span class="badge-audit">Mã xác thực TrustGuard: ${auditCode}</span>
+      ${isDraft ? '<span style="display:inline-block; margin-left:6px; background:#fff7ed; color:#c2410c; border:1px solid #fdba74; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:bold;">BẢN DỰ THẢO - CHƯA KÝ</span>' : '<span style="display:inline-block; margin-left:6px; background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:bold;">ĐÃ KÝ SỐ ĐIỆN TỬ</span>'}
+    </div>
   </div>
 
   <div class="section-title">I. CĂN CỨ PHÁP LÝ</div>
@@ -214,7 +252,7 @@ export function generateContractBody(contract: Contract): string {
     <strong>BÊN CHO THUÊ (BÊN A):</strong> BQL TÒA NHÀ AN CƯ PROPTECH - LÊ VĂN SỸ<br>
     • Địa chỉ: 284/12 Lê Văn Sỹ, Phường 14, Quận 3, TP. Hồ Chí Minh<br>
     • Đại diện: Ban Quản Lý Tòa Nhà<br>
-    • Tài khoản bảo chứng Escrow: <strong>MBBANK-ESCROW-88899977</strong> (Ngân hàng TMCP Quân Đội)
+    • Tài khoản bảo chứng Escrow: <strong>${contract.escrowCode || 'MBBANK-ESCROW-88899977'}</strong> (Ngân hàng TMCP Quân Đội)
   </div>
 
   <div class="party-box">
@@ -243,17 +281,17 @@ export function generateContractBody(contract: Contract): string {
       <div class="signature-signer">Ký bởi: BAN QUAN LY AN CU</div>
       <div class="signature-seal seal-a">
         <span class="verified-badge">✓ CHỨNG THƯ SỐ VNPT-CA</span>
-        <span>Thời gian: ${signedAt}</span><br>
+        <span>Thời gian: ${isDraft ? '09:00:00 (Đã duyệt dự thảo)' : signedAt}</span><br>
         <span style="font-size: 9px; color: #059669;">Mã chứng thư: VNPT-CA-CORP-2026</span>
       </div>
     </div>
 
-    <div class="signature-card signed-b">
+    <div class="signature-card ${isDraft ? '' : 'signed-b'}" style="${isDraft ? 'border:1.5px dashed #f59e0b; background:#fffbeb;' : ''}">
       <div class="signature-title">BÊN THUÊ (BÊN B)</div>
       <div class="signature-signer">Ký bởi: ${contract.tenantName}</div>
-      <div class="signature-seal seal-b">
-        <span class="verified-badge">✓ eKYC CHIP & DIGITAL OTP</span>
-        <span>Thời gian: ${signedAt}</span><br>
+      <div class="signature-seal ${isDraft ? '' : 'seal-b'}" style="${isDraft ? 'color:#b45309; border-color:#fcd34d;' : ''}">
+        <span class="verified-badge">${isDraft ? '⏳ CHỜ BẠN KÝ SỐ ĐIỆN TỬ' : '✓ eKYC CHIP & DIGITAL OTP'}</span>
+        <span>Thời gian: ${isDraft ? 'Chưa ký số' : signedAt}</span><br>
         <span style="font-size: 9px; color: #2563eb;">Phương thức: ${contract.signingMethod || 'Ký số eKYC Chip'}</span>
       </div>
     </div>
@@ -264,12 +302,12 @@ export function generateContractBody(contract: Contract): string {
       <strong>An Cư TrustGuard™ Protection</strong> • Văn bản điện tử đã khóa niêm phong chống chỉnh sửa.
     </div>
     <div class="hash">
-      SHA-256: 7f83b165...${contract.id.slice(-8)}
+      SHA-256: 7f83b165...${(contract.id || 'id').slice(-8)}
     </div>
   </div>`;
 }
 
-export function generateContractHtml(contract: Contract): string {
+export function generateContractHtml(contract: Contract, options?: { isDraft?: boolean }): string {
   return `<!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -280,12 +318,12 @@ export function generateContractHtml(contract: Contract): string {
   </style>
 </head>
 <body class="contract-print-root">
-  ${generateContractBody(contract)}
+  ${generateContractBody(contract, options)}
 </body>
 </html>`;
 }
 
-export function printContractDocument(contract: Contract): void {
+export function printContractDocument(contract: Contract, options?: { isDraft?: boolean }): void {
   const iframe = document.createElement('iframe');
   iframe.style.position = 'fixed';
   iframe.style.right = '0';
@@ -303,7 +341,7 @@ export function printContractDocument(contract: Contract): void {
   }
 
   doc.open();
-  doc.write(generateContractHtml(contract));
+  doc.write(generateContractHtml(contract, options));
   doc.close();
 
   iframe.contentWindow?.focus();
@@ -317,7 +355,7 @@ export function printContractDocument(contract: Contract): void {
   }, 350);
 }
 
-export async function downloadContractPdfFile(contract: Contract): Promise<void> {
+export async function downloadContractPdfFile(contract: Contract, options?: { isDraft?: boolean }): Promise<void> {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
   const { default: jsPDF } = await import('jspdf');
@@ -338,7 +376,7 @@ export async function downloadContractPdfFile(contract: Contract): Promise<void>
   container.appendChild(styleEl);
 
   const contentEl = document.createElement('div');
-  contentEl.innerHTML = generateContractBody(contract);
+  contentEl.innerHTML = generateContractBody(contract, options);
   container.appendChild(contentEl);
 
   document.body.appendChild(container);
@@ -369,7 +407,8 @@ export async function downloadContractPdfFile(contract: Contract): Promise<void>
       heightLeft -= pageHeight;
     }
 
-    pdf.save(`Hop_Dong_Thue_Can_Ho_${contract.contractNumber}.pdf`);
+    const prefix = options?.isDraft || contract.status === 'draft' ? 'Ban_Thao_Hop_Dong_' : 'Hop_Dong_Thue_Can_Ho_';
+    pdf.save(`${prefix}${contract.contractNumber}.pdf`);
   } finally {
     if (document.body.contains(container)) {
       document.body.removeChild(container);
@@ -377,8 +416,8 @@ export async function downloadContractPdfFile(contract: Contract): Promise<void>
   }
 }
 
-export function downloadContractHtmlFile(contract: Contract): void {
-  const html = generateContractHtml(contract);
+export function downloadContractHtmlFile(contract: Contract, options?: { isDraft?: boolean }): void {
+  const html = generateContractHtml(contract, options);
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
