@@ -140,6 +140,7 @@ export interface MaintenanceTicket {
   actualCost?: string | null;
   customerCost?: string | null;
   costResponsibility?: string | null;
+  images?: {id:string;kind:string}[];
   history?: {action:string;note:string;createdAt:string}[];
   id: string;
   title: string;
