@@ -108,6 +108,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/trustguard/**").hasAnyRole("OWNER", "ADMIN")
                         .requestMatchers("/api/v1/owner/maintenance-tickets", "/api/v1/me/maintenance-tickets").authenticated()
                         .requestMatchers("/api/v1/owner/maintenance-tickets/*/actions", "/api/v1/me/maintenance-tickets/*/actions").authenticated()
+                        .requestMatchers("/api/v1/maintenance-tickets/*/images", "/api/v1/maintenance-images/*").authenticated()
                         .anyRequest().denyAll())
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((request, response, error) -> writeError(response, 401, "UNAUTHENTICATED", "Vui lòng đăng nhập lại."))
