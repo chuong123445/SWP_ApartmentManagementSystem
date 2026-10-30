@@ -167,14 +167,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         })}
       </nav>
 
-      {/* Footer Profile Status */}
-      <div className="p-3 border-t border-slate-800 flex items-center justify-between text-xs bg-slate-950/40">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-          <span className="text-[11px] text-slate-400 font-medium">Hệ thống: Trực tuyến</span>
-        </div>
-        <span className="text-[10px] font-mono text-emerald-400 font-bold">v3.8-PRO</span>
-      </div>
     </aside>
   );
 };

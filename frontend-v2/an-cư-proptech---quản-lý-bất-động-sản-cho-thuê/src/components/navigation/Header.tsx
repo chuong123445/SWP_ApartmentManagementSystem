@@ -3,9 +3,6 @@ import { Link } from 'react-router';
 import {
   Search,
   Bell,
-  Plus,
-  Zap,
-  CreditCard,
 } from 'lucide-react';
 import { UserRole } from '@/types';
 import type { AuthUser } from '@/types/auth';
@@ -57,36 +54,6 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Center/Right Controls */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Quick Action Buttons for Admin */}
-        {userRole === 'admin' && (
-          <div className="hidden md:flex items-center gap-2">
-            <button
-              onClick={() => onQuickAction('add-invoice')}
-              id="btn-header-quick-invoice"
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Tạo Hóa Đơn</span>
-            </button>
-
-            <button
-              onClick={() => onQuickAction('collect-rent')}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
-            >
-              <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Thu Tiền Phòng</span>
-            </button>
-
-            <button
-              onClick={() => onQuickAction('record-meter')}
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-lg text-xs font-semibold transition-colors"
-            >
-              <Zap className="w-3.5 h-3.5 text-amber-600" />
-              <span>Ghi Điện Nước</span>
-            </button>
-          </div>
-        )}
-
         {/* Notifications Popover */}
         <div className="relative">
           <button
