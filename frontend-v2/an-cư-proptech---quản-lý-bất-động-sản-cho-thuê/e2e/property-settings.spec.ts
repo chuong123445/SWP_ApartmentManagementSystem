@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 test('Lưu đơn giá thật, giữ giá 0 và tải lại đúng tài sản',async({page},info)=>{
  let saved={propertyId:'11',propertyName:'Tòa kiểm thử',configured:false,version:0,electricityUnitPrice:null as string|null,waterUnitPrice:null as string|null,internetFee:null as string|null,garbageFee:null as string|null,updatedAt:null,receivingAccount:null};
- const invoice=()=>({});
+ const invoice=(..._args:unknown[])=>({});
     await page.route('**/api/**',async route=>{
       const path=new URL(route.request().url()).pathname;const json=(body:unknown)=>route.fulfill({json:body});
       if(path.endsWith('/refresh'))return json({accessToken:'test-token',tokenType:'Bearer',expiresIn:900,user:{id:'1',email:'owner@example.invalid',fullName:'Chủ nhà kiểm thử',roles:['OWNER'],accountStatus:'ACTIVE',contactVerificationStatus:'VERIFIED',version:0}});

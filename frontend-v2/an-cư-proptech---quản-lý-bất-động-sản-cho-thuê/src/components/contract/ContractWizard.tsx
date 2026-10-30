@@ -44,7 +44,7 @@ export function ContractWizard({ requestId, renewalOf, onClose, onSaved }: { req
         ...extractTerms(renewalOf), startDate: nextStart!.toISOString().slice(0, 10), endDate: '',
         clauses: c.templateClauses.map(clause => ({ ...clause })),
       } : {
-        templateType: 'APARTMENT', startDate: '', endDate: '', monthlyRent: c.advertisedMonthlyRent, deposit: c.suggestedDeposit ?? '', electricityUnitPrice: '', waterUnitPrice: '',
+        templateType: 'APARTMENT', startDate: '', endDate: '', monthlyRent: c.advertisedMonthlyRent, deposit: c.suggestedDeposit ?? '', electricityUnitPrice: c.suggestedRates?.electricityUnitPrice ?? '', waterUnitPrice: c.suggestedRates?.waterUnitPrice ?? '',
         paymentDay: 5, paymentMethod: 'Chuyển khoản', usagePurpose: 'Để ở', clauses: c.templateClauses.map(clause => ({ ...clause })),
       });setStep(c.existingDraft ? 5 : 0);
     }).catch(e => { if (active) setError(e instanceof Error ? e.message : 'Không thể tải thông tin hợp đồng.'); });
