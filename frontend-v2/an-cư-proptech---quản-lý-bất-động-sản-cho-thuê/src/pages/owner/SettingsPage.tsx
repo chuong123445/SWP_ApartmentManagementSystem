@@ -1,204 +1,33 @@
-import React, { useState } from 'react';
-import { Settings, Save, CheckCircle2, QrCode, Building, CreditCard } from 'lucide-react';
-import { SystemConfig } from '@/types';
-
-interface SettingsPageProps {
-  config: SystemConfig;
-  onSaveConfig: (cfg: SystemConfig) => void;
+import { useEffect,useRef,useState } from 'react';
+import { Save,Settings,Landmark,RefreshCw,CheckCircle2 } from 'lucide-react';
+import { getPropertySettings,savePropertySettings,type PropertySettings,type SettingsInput } from '@/services/property/settingsService';
+const fields=[['electricityUnitPrice','Giá điện (đ/kWh)'],['waterUnitPrice','Giá nước (đ/m³)'],['internetFee','Internet (đ/phòng/tháng)'],['garbageFee','Vệ sinh và rác (đ/phòng/tháng)']] as const;
+const empty={electricityUnitPrice:'',waterUnitPrice:'',internetFee:'',garbageFee:''};
+export function SettingsPage({propertyId,onDossier}:{propertyId:string;onDossier:(id:string)=>void}) {
+ const [data,setData]=useState<PropertySettings|null>(null);const [form,setForm]=useState(empty);
+ const [loading,setLoading]=useState(false),[saving,setSaving]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[revision,setRevision]=useState(0);
+ const current=useRef(propertyId);current.current=propertyId;const busy=useRef(false);
+ useEffect(()=>{let active=true;setData(null);setError('');setNotice('');setForm(empty);if(propertyId==='all')return;
+ setLoading(true);getPropertySettings(propertyId).then(d=>{if(active){setData(d);setForm({electricityUnitPrice:d.electricityUnitPrice??'',waterUnitPrice:d.waterUnitPrice??'',internetFee:d.internetFee??'',garbageFee:d.garbageFee??''});}}).catch(e=>{if(active)setError(e instanceof Error?e.message:'Không tải được cài đặt.');}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[propertyId,revision]);
+ async function save(e:React.FormEvent){e.preventDefault();if(!data||busy.current)return;setError('');setNotice('');
+ if(fields.some(([key])=>!/^\d{1,13}(\.\d{1,2})?$/.test(form[key]))){setError('Nhập đủ đơn giá không âm, tối đa 2 chữ số thập phân.');return;}
+ const id=propertyId;busy.current=true;setSaving(true);
+ try{const d=await savePropertySettings(id,{...form,version:data.version} satisfies SettingsInput);if(current.current===id){setData(d);setNotice('Đã lưu cài đặt cho '+d.propertyName+'.');}}
+ catch(e){if(current.current===id)setError(e instanceof Error?e.message:'Không lưu được cài đặt.');}
+ finally{busy.current=false;setSaving(false);}}
+ return <section className="space-y-6 pb-12" aria-label="Cài đặt đơn giá tài sản">
+ <header className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex items-start gap-4"><div className="bg-emerald-50 text-emerald-700 p-3 rounded-xl"><Settings size={23}/></div><div><h1 className="text-xl font-bold text-slate-900">Cài đặt đơn giá & tài khoản nhận tiền</h1><p className="text-sm text-slate-500 mt-2">{data?.propertyName??'Cấu hình riêng cho từng tài sản'}</p></div></header>
+ {propertyId==='all'?<p className="bg-amber-50 text-amber-900 border border-amber-200 rounded-xl p-5">Chọn một tài sản ở thanh bên để xem và sửa cài đặt.</p>:<>
+ {loading&&<p role="status">Đang tải cài đặt...</p>}
+ {error&&<div role="alert" className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl">{error}<button type="button" disabled={saving} className="ml-3 underline" onClick={()=>setRevision(v=>v+1)}>Tải lại cài đặt</button></div>}
+ {data&&!loading&&<form onSubmit={save} className="space-y-6">
+ <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm"><h2 className="font-bold mb-2">Đơn giá mặc định</h2><p className="text-sm text-slate-500 mb-5">Dùng làm gợi ý cho hợp đồng mới. Không thay đổi đơn giá trong hợp đồng đã ký hoặc hóa đơn cũ.</p>
+ {!data.configured&&<p className="text-sm text-amber-800 mb-4">Tài sản chưa có cấu hình. Nhập đủ bốn khoản; nhập 0 nếu không thu phí.</p>}
+ <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">{fields.map(([key,label])=><label key={key} className="text-sm font-medium text-slate-700">{label}<input required type="number" min="0" max="9999999999999.99" step="0.01" value={form[key]} disabled={saving} onChange={e=>{setForm(f=>({...f,[key]:e.target.value}));setNotice('');}} className="mt-2 w-full rounded-lg border border-slate-300 p-3 bg-slate-50 focus:outline-emerald-600"/></label>)}</div></div>
+ <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm"><h2 className="font-bold flex gap-2 items-center"><Landmark size={20} className="text-emerald-700"/>Tài khoản nhận tiền đã duyệt</h2>
+ {data.receivingAccount?<dl className="grid sm:grid-cols-3 gap-5 mt-5 text-sm">{[['Ngân hàng',data.receivingAccount.bank],['Số tài khoản',data.receivingAccount.accountNumber],['Chủ tài khoản',data.receivingAccount.accountHolderName]].map(([label,value])=><div key={label}><dt className="text-slate-500 mb-1">{label}</dt><dd className="font-semibold break-all">{value}</dd></div>)}</dl>:<p className="text-sm text-amber-800 mt-4">Chưa có tài khoản nhận tiền từ hồ sơ đã duyệt.</p>}
+ <p className="text-sm text-slate-500 mt-5">Muốn đổi tài khoản, cập nhật hồ sơ tài sản để được xét duyệt. Hợp đồng đã ký giữ tài khoản đã lưu; QR thanh toán dùng thông tin của từng hóa đơn.</p><button type="button" onClick={()=>onDossier(propertyId)} className="text-emerald-700 font-semibold text-sm mt-3 underline">Xem hồ sơ tài sản</button></div>
+ <div className="flex flex-wrap items-center justify-end gap-4">{notice&&<p role="status" className="text-emerald-700 text-sm flex items-center gap-2"><CheckCircle2 size={17}/>{notice}</p>}<button type="button" disabled={saving} onClick={()=>setRevision(v=>v+1)} className="border border-slate-300 rounded-lg px-4 py-3 text-sm flex gap-2 items-center"><RefreshCw size={16}/>Tải lại</button><button disabled={saving} type="submit" className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold rounded-lg px-5 py-3 text-sm flex gap-2 items-center"><Save size={17}/>{saving?'Đang lưu...':'Lưu thay đổi'}</button></div>
+ </form>}</>}
+ </section>;
 }
-
-export const SettingsPage: React.FC<SettingsPageProps> = ({
-  config,
-  onSaveConfig,
-}) => {
-  const [electricPrice, setElectricPrice] = useState(config.electricPrice.toString());
-  const [waterPrice, setWaterPrice] = useState(config.waterPrice.toString());
-  const [internetPrice, setInternetPrice] = useState(config.internetPrice.toString());
-  const [garbagePrice, setGarbagePrice] = useState(config.garbagePrice.toString());
-  const [bankName, setBankName] = useState(config.bankName);
-  const [bankAccount, setBankAccount] = useState(config.bankAccount);
-  const [accountHolder, setAccountHolder] = useState(config.accountHolder);
-  const [saved, setSaved] = useState(false);
-
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSaveConfig({
-      electricPrice: Number(electricPrice) || 3800,
-      waterPrice: Number(waterPrice) || 28000,
-      internetPrice: Number(internetPrice) || 100000,
-      garbagePrice: Number(garbagePrice) || 50000,
-      bankName,
-      bankAccount,
-      accountHolder,
-      trustGuardEscrowAccount: config.trustGuardEscrowAccount || 'MBBANK-ESCROW-88899977',
-      trustGuardFeePercent: config.trustGuardFeePercent || 1.5,
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-  };
-
-  const previewQrUrl = `https://img.vietqr.io/image/${bankName}-${bankAccount}-compact2.png?amount=5000000&addInfo=TEST%20VIETQR&accountName=${encodeURIComponent(
-    accountHolder
-  )}`;
-
-  return (
-    <div className="space-y-6 pb-12">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <span>Cài Đặt Hệ Thống & Đơn Giá Tiện Ích</span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Cấu hình đơn giá điện, nước, internet và tài khoản ngân hàng thụ hưởng mã VietQR.
-          </p>
-        </div>
-      </div>
-
-      <form onSubmit={handleSave} className="space-y-6">
-        {/* Card 1: Đơn giá tiện ích */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
-          <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 pb-2 border-b border-slate-100">
-            <span>1. Đơn Giá Dịch Vụ & Tiện Ích Áp Dụng Cho Khách Thuê</span>
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-            <div>
-              <label className="font-semibold text-slate-700 block mb-1">
-                Giá Điện Sinh Hoạt (đ / kWh)
-              </label>
-              <input
-                type="number"
-                value={electricPrice}
-                onChange={(e) => setElectricPrice(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="font-semibold text-slate-700 block mb-1">
-                Giá Nước Sinh Hoạt (đ / m³)
-              </label>
-              <input
-                type="number"
-                value={waterPrice}
-                onChange={(e) => setWaterPrice(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="font-semibold text-slate-700 block mb-1">
-                Internet Cáp Quang (đ / phòng / tháng)
-              </label>
-              <input
-                type="number"
-                value={internetPrice}
-                onChange={(e) => setInternetPrice(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="font-semibold text-slate-700 block mb-1">
-                Phí Vệ Sinh & Rác (đ / phòng / tháng)
-              </label>
-              <input
-                type="number"
-                value={garbagePrice}
-                onChange={(e) => setGarbagePrice(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Card 2: VietQR Bank Config */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
-          <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 pb-2 border-b border-slate-100">
-            <span>2. Tài Khoản Ngân Hàng Nhận Tiền Thuê Qua Mã VietQR</span>
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 space-y-3.5 text-xs">
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Ngân hàng thụ hưởng</label>
-                <select
-                  value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-semibold focus:outline-none focus:border-emerald-500"
-                >
-                  <option value="MBBANK">MBBank (Ngân Hàng Quân Đội)</option>
-                  <option value="VCB">Vietcombank (Ngoại Thương Việt Nam)</option>
-                  <option value="ICB">VietinBank (Công Thương)</option>
-                  <option value="TCB">Techcombank (Kỹ Thương)</option>
-                  <option value="BIDV">BIDV (Đầu Tư & Phát Triển)</option>
-                  <option value="ACB">ACB (Á Châu)</option>
-                  <option value="VPB">VPBank (Việt Nam Thịnh Vượng)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">
-                  Số tài khoản ngân hàng
-                </label>
-                <input
-                  type="text"
-                  value={bankAccount}
-                  onChange={(e) => setBankAccount(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 font-mono font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">
-                  Tên chủ tài khoản (In hoa không dấu)
-                </label>
-                <input
-                  type="text"
-                  value={accountHolder}
-                  onChange={(e) => setAccountHolder(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 font-bold text-slate-900 uppercase focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-
-            {/* Live QR Preview */}
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col items-center justify-center text-center">
-              <span className="text-xs font-bold text-slate-700 mb-2 flex items-center gap-1">
-                <QrCode className="w-4 h-4 text-emerald-600" />
-                Xem trước mẫu VietQR
-              </span>
-              <img
-                src={previewQrUrl}
-                alt="QR Preview"
-                className="w-32 h-32 object-contain rounded-lg border border-slate-200 bg-white p-1 shadow-xs"
-                referrerPolicy="no-referrer"
-              />
-              <span className="text-[11px] text-slate-400 mt-2">
-                Tự động điền số tiền & nội dung phòng khi in hóa đơn
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Save button */}
-        <div className="flex items-center justify-between">
-          {saved && (
-            <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
-              <CheckCircle2 className="w-4 h-4" /> Đã cập nhật cài đặt thành công!
-            </span>
-          )}
-          <button
-            type="submit"
-            id="btn-save-settings"
-            className="ml-auto flex items-center gap-1.5 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-md transition-colors"
-          >
-            <Save className="w-4 h-4" />
-            <span>Lưu Thay Đổi Cài Đặt</span>
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-};
