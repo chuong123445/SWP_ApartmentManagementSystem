@@ -41,6 +41,6 @@ export function OwnerPaymentQrPanel({fallback,propertyId='all'}:{fallback:Accoun
  <p className="text-xs text-slate-500">Bấm nút phía trên để chọn ảnh; hệ thống sẽ tự quét sau khi chọn. Ngân hàng và số tài khoản lấy trực tiếp từ mã QR, không lấy theo phỏng đoán AI. Dùng QR không có số tiền cố định; người thuê nhập số tiền và nội dung theo hóa đơn.</p>
  </div></div>}
  {error&&<p role="alert" className="text-rose-700 text-sm">{error}<button type="button" disabled={busy} className="underline ml-3" onClick={()=>setRevision(v=>v+1)}>Tải lại</button></p>}
- {notice&&<p role="status" className="text-emerald-700 text-sm flex items-center gap-2"><CheckCircle2 size={17}/>{notice}</p>}
+ {notice&&<p role="status" aria-label="Kết quả thao tác QR" className="text-emerald-700 text-sm flex items-center gap-2"><CheckCircle2 size={17}/>{notice}</p>}
  </section>;
 }
