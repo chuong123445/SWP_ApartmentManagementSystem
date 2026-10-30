@@ -130,6 +130,7 @@ export interface UtilityReading {
 
 export interface MaintenanceTicket {
   propertyId?: string;
+  apartmentId?: string | null;
   apiStatus?: string;
   apiVersion?: number;
   technicianName?: string | null;

@@ -2,7 +2,7 @@ import { apiFetch, readApiError } from '@/services/http/client';
 import type { PageResult } from '@/types/apartment';
 import type { MaintenanceTicket } from '@/types';
 interface RecordView {
- id: string; propertyId: string; roomNumber: string; reporterName: string; title: string; description: string;
+ id: string; propertyId: string; apartmentId:string|null; roomNumber: string; reporterName: string; title: string; description: string;
  category: string; priority: string; status: string; createdAt: string;
  version:number;technicianName:string|null;technicianPhone:string|null;scheduledAt:string|null;canConfirm:boolean;repairResult:string|null;history:{action:string;note:string;createdAt:string}[];
  actualCost:string|null;customerCost:string|null;costResponsibility:string|null;
@@ -16,7 +16,7 @@ export async function ownerMaintenance(propertyId: string, owner = true): Promis
   const response = await apiFetch(`/api/v1/${owner?'owner':'me'}/maintenance-tickets?${query}`);
   if (!response.ok) throw await readApiError(response);
   const data: PageResult<RecordView> = await response.json();
-  result.push(...data.items.map(t => ({ id: t.id, propertyId: t.propertyId, roomNumber: t.roomNumber, tenantName: t.reporterName,
+  result.push(...data.items.map(t => ({ id: t.id, propertyId: t.propertyId, apartmentId:t.apartmentId, roomNumber: t.roomNumber, tenantName: t.reporterName,
    apiVersion:t.version,technicianName:t.technicianName,technicianPhone:t.technicianPhone,scheduledAt:t.scheduledAt,canConfirm:t.canConfirm,repairResult:t.repairResult,history:t.history,
    actualCost:t.actualCost,customerCost:t.customerCost,costResponsibility:t.costResponsibility,
    images:t.images,

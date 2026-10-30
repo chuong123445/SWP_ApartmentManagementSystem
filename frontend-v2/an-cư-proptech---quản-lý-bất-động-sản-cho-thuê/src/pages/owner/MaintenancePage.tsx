@@ -10,10 +10,10 @@ const priorities: Record<string,string> = { urgent:'Khẩn cấp', high:'Ưu ti�
 const categoryIcons = { electric:Zap, water:Droplets, aircon:Wind, furniture:Armchair, other:Wrench };
 const closedStatuses = ['RESOLVED','CANCELLED','REJECTED'];
 
-export function MaintenancePage({ tickets, loading, error, onReload, owner=true, places=[] }: {
-  tickets:MaintenanceTicket[]; loading:boolean; error:string; onReload:()=>void; owner?:boolean; places?:MaintenancePlace[];
+export function MaintenancePage({ tickets, loading, error, onReload, owner=true, places=[], initialCreating=false }: {
+  tickets:MaintenanceTicket[]; loading:boolean; error:string; onReload:()=>void; owner?:boolean; places?:MaintenancePlace[]; initialCreating?:boolean;
 }) {
-  const [creating,setCreating] = useState(false);
+  const [creating,setCreating] = useState(initialCreating);
   const [filter,setFilter] = useState('');
   const [search,setSearch] = useState('');
   const visible = tickets.filter(t => (!filter || t.apiStatus===filter) && `${t.title} ${t.roomNumber} ${t.tenantName}`.toLowerCase().includes(search.toLowerCase()));
