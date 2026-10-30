@@ -31,6 +31,7 @@ public class ContractDraftService {
     private final RentalRequestRepository requests;
     private final ApartmentRepository apartments;
     private final PropertyDossierRepository dossiers;
+    private final com.ancu.proptech.repository.property.PropertySettingsRepository propertySettings;
     private final AccountAccessService access;
     private final AccountVerificationPolicy verification;
     private final IdentityProfileRepository identities;
@@ -52,7 +53,7 @@ public class ContractDraftService {
         var snapshot=snapshot(request);
         return new ContractContextResponse(requestId,request.getVersion(),sourceVersion(request,snapshot),snapshot,
             a.getAdvertisedMonthlyRent().toPlainString(),a.getDeposit()==null?null:a.getDeposit().toPlainString(),
-            ContractTemplates.apartment(),existing==null?null:response(existing),a.getProperty().getRightsValidFrom(),a.getProperty().getRightsValidUntil());
+            ContractTemplates.apartment(),existing==null?null:response(existing),a.getProperty().getRightsValidFrom(),a.getProperty().getRightsValidUntil(),suggestedRates(a));
     }
 
     @Transactional
@@ -197,6 +198,11 @@ public class ContractDraftService {
         }
         contracts.saveAndFlush(c);drafts.saveAndFlush(d);
         return response(d);
+    }
+    private ContractContextResponse.SuggestedRates suggestedRates(Apartment a) {
+        var s=propertySettings.findById(a.getProperty().getId()).orElse(null);
+        return s==null ? new ContractContextResponse.SuggestedRates(a.getElectricityUnitPrice()==null?null:a.getElectricityUnitPrice().toPlainString(),a.getWaterUnitPrice()==null?null:a.getWaterUnitPrice().toPlainString(),"0","0")
+            : new ContractContextResponse.SuggestedRates(s.getElectricityUnitPrice().toPlainString(),s.getWaterUnitPrice().toPlainString(),s.getInternetFee().toPlainString(),s.getGarbageFee().toPlainString());
     }
     void validateTerms(ContractTerms t) {
         if(!t.getEndDate().isAfter(t.getStartDate())) throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_CONTRACT_DATES","Ngày kết thúc phải sau ngày bắt đầu.");

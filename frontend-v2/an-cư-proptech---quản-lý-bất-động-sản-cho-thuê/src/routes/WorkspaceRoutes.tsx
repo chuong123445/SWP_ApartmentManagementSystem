@@ -22,7 +22,7 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
     buildings: initialBuildings, setSelectedRoom, setSelectedInvoice, currentResidentRoom, currentResidentTenant,
     currentResidentContract, residentInvoices, residentTickets, handleMarkPaid, handleAddTenant, handleAddContract,
     handleUpdateIndices,
-    handleReserveEscrow, 
+    handleReserveEscrow,
     handleAddTransaction } = workspace;
   return <>
           {activeTab === 'home' && <HomePage embedded />}

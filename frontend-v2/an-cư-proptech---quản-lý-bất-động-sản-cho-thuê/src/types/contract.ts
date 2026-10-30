@@ -40,6 +40,7 @@ export interface ContractSigning {
   ownerSignature: string | null; customerSignature: string | null;
 }
 export interface ContractContext {
+  suggestedRates?: {electricityUnitPrice:string|null;waterUnitPrice:string|null;internetFee:string;garbageFee:string}|null;
   rightsValidFrom?: string|null; rightsValidUntil?: string|null;
   rentalRequestId: string; requestVersion: number; sourceVersion: string; snapshot: ContractSnapshot; advertisedMonthlyRent: string;
   suggestedDeposit: string | null; templateClauses: ContractClause[]; existingDraft: ContractDraft | null;
