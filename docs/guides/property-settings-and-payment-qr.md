@@ -10,7 +10,9 @@
 
 ## QR riêng theo tài khoản chủ nhà
 
-- Khu vực QR dùng chung cho các tài sản của một tài khoản, có thể dùng ngay khi đang chọn Tất cả tài sản.
+- Khi chọn Tất cả tài sản, khu vực QR quản lý mã chung của chủ nhà. Chọn một tài sản cụ thể để chọn Dùng QR chung hoặc Dùng QR riêng cho tài sản này.
+- Chuyển chế độ dùng nút Áp dụng lựa chọn cho tài sản; nếu chưa có QR riêng, tải và xác nhận QR riêng sẽ áp dụng trực tiếp. Thay QR chung chỉ ảnh hưởng hợp đồng mới của các tài sản đang chọn dùng chung, không ảnh hưởng tòa nhà dùng QR riêng.
+- Nút Tải QR và điền thông tin luôn mở được hộp chọn ảnh. Chọn ảnh xong có xem trước và tự quét; không cần tìm nút chọn tệp rồi bấm thêm lần nữa.
 - Tải ảnh QR chuyển khoản cá nhân từ ứng dụng ngân hàng: PNG/JPEG tối đa 1 MB, ảnh rõ, chỉ một mã, không gắn số tiền cố định. Chưa hỗ trợ QR ví, QR thẻ hoặc QR thanh toán cửa hàng khác chuẩn chuyển khoản tài khoản NAPAS.
 - Bấm Quét QR và điền thông tin. Ngân hàng/số tài khoản được giải mã từ QR và kiểm tra CRC; giữ nguyên các số 0 đầu tài khoản.
 - Nếu chọn AI, ảnh được gửi tới Gemini bằng cấu hình backend hiện có (DOSSIER_AI_ENABLED, GEMINI_API_KEY, GEMINI_MODEL). AI chỉ gợi ý tên nhìn thấy trên ảnh, không được thay ngân hàng/số tài khoản. Khi không có key, hết hạn mức hoặc không đọc chắc chắn, QR vẫn đọc được ngân hàng/số tài khoản, chủ nhà tự nhập tên.
@@ -21,7 +23,7 @@
 
 ## Dữ liệu và triển khai
 
-- V29 property_settings; V30 cách tính nước; V31 phí hợp đồng/hóa đơn; V32 owner_payment_qrs. Được chạy khi backend khởi động theo cơ chế migration hiện có.
+- V29 property_settings; V30 cách tính nước; V31 phí hợp đồng/hóa đơn; V32 owner_payment_qrs; V33 phạm vi QR theo tài sản và lựa chọn QR riêng. Được chạy khi backend khởi động theo cơ chế migration hiện có.
 - Phiên bản cài đặt 0 là chưa cấu hình, sau lưu là 1 trở lên. Cập nhật phiên bản cũ trả 409 và giữ nội dung đang nhập để rà soát.
 - Hợp đồng/hóa đơn cũ mặc định METERED, phí internet/rác bằng 0. Không tự cộng phí mới vào hóa đơn cũ; mã băm nội dung ký cũ được giữ khi không có khoản mới.
 - Tiền xử lý bằng BigDecimal ở backend; giá và số tiền API trả dạng chuỗi thập phân.
