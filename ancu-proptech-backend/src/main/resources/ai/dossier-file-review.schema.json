@@ -1,0 +1,12 @@
+{
+  "type":"object",
+  "properties":{
+    "fileId":{"type":"string"},
+    "readable":{"type":"boolean"},
+    "documentType":{"type":"string"},
+    "extractedFields":{"type":"array","items":{"type":"object","properties":{"field":{"type":"string","enum":["propertyName","propertyAddress","applicantName","applicantDocumentNumber","principalName","principalDocumentNumber","certificateNumber","certificateIssueDate","certificateIssuePlace","rightsValidFrom","rightsValidUntil","originalLeaseFrom","originalLeaseUntil","bank","accountNumber","accountHolderName","other"]},"value":{"type":"string"}},"required":["field","value"],"additionalProperties":false}},
+    "findings":{"type":"array","items":{"type":"object","properties":{"type":{"type":"string","enum":["MISSING_INFORMATION","MISSING_IMAGE","MISMATCH","UNREADABLE","INCONCLUSIVE"]},"field":{"type":"string"},"message":{"type":"string"},"declaredValue":{"type":"string"},"observedValue":{"type":"string"}},"required":["type","field","message","declaredValue","observedValue"],"additionalProperties":false}}
+  },
+  "required":["fileId","readable","documentType","extractedFields","findings"],
+  "additionalProperties":false
+}
