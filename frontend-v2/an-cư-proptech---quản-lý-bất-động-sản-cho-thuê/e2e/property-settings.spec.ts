@@ -7,6 +7,7 @@ test('Lưu đơn giá thật, giữ giá 0 và tải lại đúng tài sản',as
       if(path.endsWith('/refresh'))return json({accessToken:'test-token',tokenType:'Bearer',expiresIn:900,user:{id:'1',email:'owner@example.invalid',fullName:'Chủ nhà kiểm thử',roles:['OWNER'],accountStatus:'ACTIVE',contactVerificationStatus:'VERIFIED',version:0}});
       if(path.endsWith('/csrf'))return json({headerName:'X-XSRF-TOKEN',token:'test'});
       if(path.endsWith('/vneid-config'))return json({enabled:false});
+      if(path.endsWith('/payment-qr/current'))return route.fulfill({status:204});
       if(path.endsWith('/settings')){if(route.request().method()==='PUT'){const input=route.request().postDataJSON();saved={...saved,...input,configured:true,version:saved.version+1};}return json(saved);}
       if(path.endsWith('/owner/properties'))return json([{id:'11',name:'Tòa kiểm thử',address:'Địa chỉ thử',rentalMode:'MULTI_UNIT',approvalStatus:'APPROVED'}]);
       if(path.endsWith('/owner/apartments'))return json([{id:'21',propertyId:'11',propertyName:'Tòa kiểm thử',ownerId:'1',roomNumber:'T.102',title:'Phòng kiểm thử',areaM2:'20',advertisedMonthlyRent:'6000000',deposit:'10000000',electricityIndex:0,waterIndex:0,amenities:[],publicationStatus:'PUBLISHED',availability:'OCCUPIED',propertyApprovalStatus:'APPROVED',version:0}]);

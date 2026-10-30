@@ -133,7 +133,7 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
           {activeTab === 'reports' && <ReportsPage />}
 
           {activeTab === 'settings' && (
-            <SettingsPage key={navigation.selectedBuildingId} propertyId={navigation.selectedBuildingId} onDossier={navigation.setPropertyForDossierId} />
+            <SettingsPage key={navigation.selectedBuildingId} propertyId={navigation.selectedBuildingId} />
           )}
         </>;
 }

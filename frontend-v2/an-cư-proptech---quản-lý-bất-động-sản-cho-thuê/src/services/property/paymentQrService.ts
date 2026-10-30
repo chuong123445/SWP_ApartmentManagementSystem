@@ -1,0 +1,5 @@
+import {apiFetch,readApiError} from '@/services/http/client';
+export interface PaymentQr {id:string;bank:string;bankBin:string;accountNumber:string;accountHolderName:string;aiStatus:string;confirmed:boolean;createdAt:string;version:number}
+export async function currentPaymentQr():Promise<PaymentQr|null>{const r=await apiFetch('/api/v1/owner/payment-qr/current');if(!r.ok)throw await readApiError(r);return r.status===204?null:r.json();}
+export async function scanPaymentQr(file:File,useAi:boolean):Promise<PaymentQr>{const data=new FormData();data.append('file',file);data.append('useAi',String(useAi));const r=await apiFetch('/api/v1/owner/payment-qr/scan',{method:'POST',body:data});if(!r.ok)throw await readApiError(r);return r.json();}
+export async function confirmPaymentQr(qr:PaymentQr,accountHolderName:string):Promise<PaymentQr>{const r=await apiFetch('/api/v1/owner/payment-qr/'+encodeURIComponent(qr.id)+'/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accountHolderName,version:qr.version,consent:true})});if(!r.ok)throw await readApiError(r);return r.json();}
