@@ -50,6 +50,18 @@ class PropertyDossierIntegrationTests {
     private String send(String file)throws Exception{return JsonPath.read(submit(ownerToken,property,body(file,property.getVersion())).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(),"$.id");}
     private ResultActions decision(String token,String id,String choice,String reason,long version)throws Exception{return mvc.perform(post("/api/v1/admin/property-dossiers/"+id+"/decisions").header("Authorization","Bearer "+token).contentType("application/json").content("{\"decision\":\""+choice+"\",\"reason\":\""+reason+"\",\"version\":"+version+"}"));}
     private String createApartment()throws Exception{var result=mvc.perform(post("/api/v1/owner/apartments").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"propertyId\":\""+property.getId()+"\",\"roomNumber\":\"A.1\",\"title\":\"Căn kiểm thử\",\"floor\":1,\"areaM2\":\"30\",\"advertisedMonthlyRent\":\"5000000\"}")).andExpect(status().isCreated()).andReturn();return JsonPath.read(result.getResponse().getContentAsString(),"$.id");}
+    @Test void manualSubmissionQueuesPrivateAiReviewWithoutChangingApproval()throws Exception{
+        String id=send(uploadRight()),path="/api/v1/admin/property-dossiers/"+id+"/ai-review";
+        mvc.perform(get(path)).andExpect(status().isUnauthorized());
+        mvc.perform(get(path).header("Authorization","Bearer "+ownerToken)).andExpect(status().isForbidden());
+        mvc.perform(get(path).header("Authorization","Bearer "+adminToken)).andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store"))
+            .andExpect(jsonPath("$.status").value("WAITING_CONFIGURATION")).andExpect(jsonPath("$.result").isEmpty());
+        mvc.perform(post(path+"/retry").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"version\":0}")).andExpect(status().isForbidden());
+        mvc.perform(post(path+"/retry").header("Authorization","Bearer "+adminToken).contentType("application/json").content("{\"version\":99}")).andExpect(status().isConflict());
+        mvc.perform(post(path+"/retry").header("Authorization","Bearer "+adminToken).contentType("application/json").content("{\"version\":0}")).andExpect(status().isAccepted());
+        assertEquals(PropertyDossier.Status.PENDING_APPROVAL,dossiers.findById(Long.valueOf(id)).orElseThrow().getStatus());
+        decision(adminToken,id,"REJECT","Admin đối chiếu và từ chối",0).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("REJECTED"));
+    }
     private ResultActions publish(String token,String apartment,long version,String publication)throws Exception{return mvc.perform(post("/api/v1/owner/apartments/"+apartment+"/publication").header("Authorization","Bearer "+token).contentType("application/json").content("{\"publicationStatus\":\""+publication+"\",\"version\":"+version+"}"));}
     @Test void optionalCertificateRequiresWholeGroupAndCannotForgeFixtureFlag()throws Exception{
         String file=uploadRight(),base=body(file,property.getVersion());
