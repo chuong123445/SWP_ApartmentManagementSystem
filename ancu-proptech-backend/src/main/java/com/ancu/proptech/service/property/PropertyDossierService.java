@@ -24,6 +24,7 @@ public class PropertyDossierService {
     private final PropertyRightsPolicy rights;
     private final com.ancu.proptech.repository.auth.AuthAccountRepository accounts;
     private final com.ancu.proptech.repository.auth.ExternalIdentityRepository identities;
+    private final com.ancu.proptech.service.property.ai.DossierAiReviewService aiReviews;
     @Transactional public PropertyDossierResponse submit(Jwt jwt,Long propertyId,PropertyDossierSubmit input){
         var p=applicants.write(jwt,propertyId);var owner=p.getOwner();
         if(p.getVersion()!=input.getPropertyVersion())throw conflict("STALE_VERSION","Tài sản đã thay đổi. Hãy tải lại trước khi gửi hồ sơ.");
@@ -52,7 +53,7 @@ public class PropertyDossierService {
         d.setCertificateIssuePlace(clean(input.getCertificateIssuePlace()));d.setExploitationRightDescription(clean(input.getExploitationRightDescription()));
         var bank=input.getReceivingAccount();d.setBank(bank.getBank().strip());d.setAccountNumber(bank.getAccountNumber());d.setAccountHolderName(bank.getAccountHolderName().strip());
         d.setStatus(PropertyDossier.Status.PENDING_APPROVAL);d.setSubmittedAt(Instant.now());d.setFiles(all);
-        if(!renewal)p.setApprovalStatus(Property.ApprovalStatus.PENDING_APPROVAL);dossiers.saveAndFlush(d);return response(d);
+        if(!renewal)p.setApprovalStatus(Property.ApprovalStatus.PENDING_APPROVAL);dossiers.saveAndFlush(d);aiReviews.enqueue(d);return response(d);
     }
     private void collect(Property p,List<Long> ids,PropertyEvidenceFile.Purpose purpose,Set<Long> seen,List<PropertyEvidenceFile> result){
         for(var id:ids){if(!seen.add(id))throw bad("Chứng từ bị trùng trong hồ sơ.");var f=files.findById(id).orElseThrow(PropertyDossierService::missing);

@@ -100,7 +100,7 @@ export const ResidentPortalPage: React.FC<ResidentPortalPageProps> = ({
 
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setIsTicketModalOpen(true)}
+              onClick={() => window.location.assign('/my/maintenance')}
               className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md transition-colors"
             >
               <Wrench className="w-4 h-4" />
@@ -297,7 +297,7 @@ export const ResidentPortalPage: React.FC<ResidentPortalPageProps> = ({
                 <h3 className="text-sm font-bold text-slate-900">Yêu Cầu Sửa Chữa & Bảo Trì</h3>
               </div>
               <button
-                onClick={() => setIsTicketModalOpen(true)}
+                onClick={() => window.location.assign('/my/maintenance')}
                 className="text-xs text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-1"
               >
                 <Plus className="w-3.5 h-3.5" /> Gửi yêu cầu mới

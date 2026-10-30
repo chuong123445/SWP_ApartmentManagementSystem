@@ -68,7 +68,7 @@ export function RentalRequestsPage({ onDecision, propertyId }: { onDecision: () 
 
   return (
     <section className="space-y-6">
-      {contractRequestId && <ContractWizard key={contractRequestId} requestId={contractRequestId} onClose={() => setContractRequestId(null)} onSaved={onDecision} />}
+      {contractRequestId && <ContractWizard key={contractRequestId} requestId={contractRequestId} onClose={() => { setContractRequestId(null);reload(); }} onSaved={() => { reload();onDecision(); }} />}
       <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-wrap justify-between items-center gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Yêu cầu thuê căn hộ</h1>

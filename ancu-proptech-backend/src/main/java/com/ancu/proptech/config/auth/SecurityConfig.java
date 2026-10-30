@@ -84,6 +84,9 @@ public class SecurityConfig {
                                 || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/property-source-consent")
                                 || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/owner-upgrade")))))
                 .authorizeHttpRequests(a -> a
+                        .requestMatchers("/api/v1/owner/contracts/*/renewal-context", "/api/v1/owner/contracts/*/renewals", "/api/v1/owner/contracts/*/cancel-renewal",
+                            "/api/v1/owner/contracts/*/handover", "/api/v1/owner/contracts/*/handover/cancel", "/api/v1/contracts/*/handover/confirm").authenticated()
+                        .requestMatchers("/api/v1/contracts/*/pdf", "/api/v1/contracts/*/signatures").authenticated()
                         .requestMatchers("/api/v1/auth/google").permitAll()
                         .requestMatchers("/api/v1/auth/csrf", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout", "/error").permitAll()
                         .requestMatchers("/api/v1/me/verifications", "/api/v1/me/verifications/vneid", "/api/v1/me/owner-upgrade").authenticated()
@@ -109,6 +112,10 @@ public class SecurityConfig {
                         // API ký quỹ cũ chưa có ownership/provider hợp lệ: đóng mọi truy cập,
                         // kể cả Owner/Admin, thay vì chỉ kiểm tra role rồi cho đọc/sửa toàn bộ.
                         .requestMatchers("/api/trustguard/escrow", "/api/trustguard/escrow/**").denyAll()
+                        .requestMatchers("/api/v1/owner/maintenance-tickets", "/api/v1/me/maintenance-tickets").authenticated()
+                        .requestMatchers("/api/v1/owner/maintenance-tickets/*/actions", "/api/v1/me/maintenance-tickets/*/actions").authenticated()
+                        .requestMatchers("/api/v1/maintenance-tickets/*/images", "/api/v1/maintenance-images/*").authenticated()
+                        .requestMatchers("/api/v1/admin/property-dossiers/*/ai-review", "/api/v1/admin/property-dossiers/*/ai-review/retry").authenticated()
                         .anyRequest().denyAll())
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((request, response, error) -> writeError(response, 401, "UNAUTHENTICATED", "Vui lòng đăng nhập lại."))

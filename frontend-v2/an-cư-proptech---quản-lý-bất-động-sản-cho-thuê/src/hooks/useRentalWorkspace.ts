@@ -1,8 +1,9 @@
 import { updateApartmentPrices } from '@/services/apartments/ownerApartmentService';
 import type { PriceInput } from '@/components/rooms/ApartmentPriceForm';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Building, Room, NewRoom, Tenant, Contract, Invoice, MaintenanceTicket, Transaction, SystemConfig, EscrowDeposit } from '@/types';
-import { initialMaintenance, initialTransactions, initialConfig, initialEscrows } from '@/data/mockData';
+import { initialTransactions, initialConfig, initialEscrows } from '@/data/mockData';
+import { ownerMaintenance } from '@/services/maintenance/maintenanceService';
 import { createOwnerApartment, getOwnerApartments, getOwnerProperties, setApartmentPublication } from '@/services/apartments/ownerApartmentService';
 import { ownerTenancies, ownerInvoices, tenancyViews, invoiceView, sendInvoice } from '@/services/billing/billingService';
 import type { Tenancy } from '@/types/billing';
@@ -25,13 +26,39 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
   const [billingRevision, setBillingRevision] = useState(0);
   const [invoicePage, setInvoicePage] = useState(0);
   const [invoiceTotalPages, setInvoiceTotalPages] = useState(0);
-  const [tickets, setTickets] = useState<MaintenanceTicket[]>(initialMaintenance);
+  const [tickets, setTickets] = useState<MaintenanceTicket[]>([]);
+  const [maintenanceError, setMaintenanceError] = useState('');
+  const [maintenanceLoading, setMaintenanceLoading] = useState(false);
+  useEffect(() => {
+    let active = true;
+    setTickets([]);
+    if (!canManage) return;
+    setMaintenanceLoading(true);setMaintenanceError('');
+    let inFlight=false;
+    const load=async()=>{
+      if(inFlight || !active)return;inFlight=true;
+      try {const items=await ownerMaintenance(selectedPropertyId);if(active){setTickets(items);setMaintenanceError('');}}
+      catch(error){if(active)setMaintenanceError(error instanceof Error?error.message:'Không thể tải sự cố.');}
+      finally{inFlight=false;if(active)setMaintenanceLoading(false);}
+    };
+    void load();const timer=window.setInterval(()=>{if(document.visibilityState==='visible')void load();},10000);
+    return () => { active = false;window.clearInterval(timer); };
+  }, [canManage, selectedPropertyId, inventoryRevision]);
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [config, setConfig] = useState<SystemConfig>(initialConfig);
   const [escrows, setEscrows] = useState<EscrowDeposit[]>(initialEscrows);
 
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const reloadInventory = useCallback(() => setInventoryRevision(value => value + 1), []);
+  useEffect(() => {
+    if (!canManage) return;
+    const refresh = () => { if (document.visibilityState === 'visible') reloadInventory(); };
+    window.addEventListener('focus', refresh);
+    window.addEventListener('ancu:tenancy-changed', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => { window.removeEventListener('focus', refresh);window.removeEventListener('ancu:tenancy-changed', refresh); document.removeEventListener('visibilitychange', refresh); };
+  }, [canManage, reloadInventory]);
   useEffect(() => {
     if (!canManage) return;
     let active = true;
@@ -117,49 +144,11 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
     );
   };
 
-  // Update ticket status
-  const handleUpdateTicketStatus = (
-    ticketId: string,
-    status: 'pending' | 'in_progress' | 'resolved',
-    cost?: number
-  ) => {
-    setTickets((prev) =>
-      prev.map((t) =>
-        t.id === ticketId
-          ? {
-              ...t,
-              status,
-              cost: cost !== undefined ? cost : t.cost,
-              resolvedAt: status === 'resolved' ? new Date().toLocaleDateString('vi-VN') : undefined,
-            }
-          : t
-      )
-    );
-
-    if (status === 'resolved' && cost && cost > 0) {
-      const ticket = tickets.find((t) => t.id === ticketId);
-      setTransactions((prev) => [
-        {
-          id: `tx-${Date.now()}`,
-          code: `CHI-0926-${Math.floor(100 + Math.random() * 900)}`,
-          date: new Date().toLocaleDateString('vi-VN'),
-          type: 'expense',
-          category: 'Sửa chữa & Bảo trì',
-          amount: cost,
-          roomNumber: ticket?.roomNumber,
-          description: `Chi trả thợ sửa chữa sự cố: ${ticket?.title || ''} (${ticket?.roomNumber || ''})`,
-          paymentMethod: 'Chuyển khoản MBBank',
-        },
-        ...prev,
-      ]);
-    }
-  };
-
   // Reset all data
   const handleResetData = () => {
     setInventoryRevision(value => value + 1);
     setBillingRevision(value => value + 1);
-    setTickets(initialMaintenance);
+    setTickets([]);
     setTransactions(initialTransactions);
     setConfig(initialConfig);
     setEscrows(initialEscrows);
@@ -201,10 +190,6 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
   const expiringCount = contracts.filter((c) => c.status === 'expiring').length;
 
 
-  const handleAddTicket = (ticket: Omit<MaintenanceTicket, 'id' | 'createdAt'>) =>
-    setTickets(prev => [{ ...ticket, id: `sc-${Date.now()}`, createdAt: `${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN')}` }, ...prev]);
-  const handleSendResidentTicket = (ticket: Omit<MaintenanceTicket, 'id' | 'createdAt'>) =>
-    setTickets(prev => [{ ...ticket, id: `tk-${Date.now()}`, createdAt: `${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN')}` }, ...prev]);
   const handleCreateInvoice = (_invoice: Invoice) => setBillingRevision(value => value + 1);
   const handleSendInvoice = async (id: string) => {
     const source = invoices.find(i => i.id === id)?.apiInvoice;
@@ -218,15 +203,15 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
     ...tx, id: `tx-${Date.now()}`, code: `${tx.type === 'income' ? 'THU' : 'CHI'}-0926-${Math.floor(100 + Math.random() * 900)}`,
   }, ...prev]);
   return {
-    rooms, tenants, contracts, invoices, tickets, transactions, config, escrows,
+    rooms, tenants, contracts, invoices, tickets, transactions, config, escrows, maintenanceError, maintenanceLoading,
     tenancies, billingError, billingLoading, invoicePage, setInvoicePage, invoiceTotalPages,
     reloadBilling: () => setBillingRevision(value => value + 1), handleSendInvoice,
-    buildings, inventoryError, inventoryLoading, reloadInventory: () => setInventoryRevision(value => value + 1),
+    buildings, inventoryError, inventoryLoading, reloadInventory,
     selectedRoom, setSelectedRoom, selectedInvoice, setSelectedInvoice,
     handleMarkPaid, handleAddTenant, handleAddContract, handleAddRoom, handleAddProperty, handlePrices, handlePublication, handleCheckOut,
-    handleUpdateIndices, handleUpdateTicketStatus, handleResetData,
-    handleReserveEscrow, handleAddTicket,
-    handleSendResidentTicket, handleCreateInvoice, handleAddTransaction, handleSaveConfig: setConfig,
+    handleUpdateIndices, handleResetData,
+    handleReserveEscrow,
+    handleCreateInvoice, handleAddTransaction, handleSaveConfig: setConfig,
     currentResidentTenant, currentResidentRoom, currentResidentContract, residentInvoices, residentTickets,
     unpaidCount, maintenanceCount, expiringCount,
   };

@@ -129,6 +129,20 @@ export interface UtilityReading {
 }
 
 export interface MaintenanceTicket {
+  propertyId?: string;
+  apartmentId?: string | null;
+  apiStatus?: string;
+  apiVersion?: number;
+  technicianName?: string | null;
+  technicianPhone?: string | null;
+  scheduledAt?: string | null;
+  canConfirm?: boolean;
+  repairResult?: string | null;
+  actualCost?: string | null;
+  customerCost?: string | null;
+  costResponsibility?: string | null;
+  images?: {id:string;kind:string}[];
+  history?: {action:string;note:string;createdAt:string}[];
   id: string;
   title: string;
   roomNumber: string;

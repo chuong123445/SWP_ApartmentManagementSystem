@@ -14,8 +14,8 @@ import { RentalRequestsPage } from '@/pages/owner/RentalRequestsPage';
 export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWorkspace; navigation: WorkspaceNavigation }) {
   const { activeTab, selectTab: setActiveTab, setIsCreateInvoiceOpen } = navigation;
   const { rooms, tenants, contracts, invoices, tickets, transactions, config, buildings: initialBuildings,
-    setSelectedRoom, setSelectedInvoice, handleMarkPaid, handleAddTenant, handleUpdateIndices, handleUpdateTicketStatus,
-    handleAddTicket, handleAddTransaction } = workspace;
+    setSelectedRoom, setSelectedInvoice, handleMarkPaid, handleAddTenant, handleUpdateIndices,
+    handleAddTransaction } = workspace;
   return <>
           {activeTab === 'home' && <Navigate to="/"/>}
           {['properties','rooms','settings'].includes(activeTab)&&<Navigate to="/account/properties"/>}
@@ -74,10 +74,12 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
 
           {activeTab === 'maintenance' && (
             <MaintenancePage
+              key={navigation.selectedBuildingId}
               tickets={tickets}
-              rooms={rooms}
-              onUpdateTicketStatus={handleUpdateTicketStatus}
-              onAddTicket={handleAddTicket}
+              loading={workspace.maintenanceLoading}
+              places={[...initialBuildings.filter(p=>navigation.selectedBuildingId==='all'||p.id===navigation.selectedBuildingId).map(p=>({value:`property-${p.id}`,label:`${p.name} — Toàn tòa`,propertyId:p.id})),...rooms.map(r=>({value:`room-${r.id}`,label:r.roomNumber,propertyId:r.buildingId,apartmentId:r.id}))]}
+              error={workspace.maintenanceError}
+              onReload={workspace.reloadInventory}
             />
           )}
 
