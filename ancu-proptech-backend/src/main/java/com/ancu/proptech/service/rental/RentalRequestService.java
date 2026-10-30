@@ -77,6 +77,7 @@ public class RentalRequestService {
         if (request.getStatus() != RentalRequest.Status.PENDING)
             throw new ApiException(HttpStatus.CONFLICT, "REQUEST_NOT_PENDING", "Chỉ có thể hủy yêu cầu đang chờ chủ nhà xử lý.");
         request.setStatus(RentalRequest.Status.CANCELLED);
+        request.setDecidedAt(Instant.now());
         return response(requests.saveAndFlush(request));
     }
 
@@ -124,6 +125,7 @@ public class RentalRequestService {
         } else if (input.getDecision() == RentalDecision.Decision.REJECT) {
             request.setStatus(RentalRequest.Status.REJECTED);
         }
+        request.setDecidedAt(Instant.now());
         request.setDecisionReason(input.getReason() == null || input.getReason().isBlank() ? null : input.getReason().strip());
         return response(requests.saveAndFlush(request));
     }
