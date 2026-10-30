@@ -12,7 +12,7 @@ export function WorkspacePage() {
   const { user, logout, isLoggingOut, error } = useAuth();
   const canManage = hasManagementRole(user!);
   const navigation = useWorkspaceNavigation(canManage);
-  const workspace = useRentalWorkspace(canManage, navigation.resetToDashboard, navigation.selectedBuildingId);
+  const workspace = useRentalWorkspace(canManage, navigation.selectedBuildingId);
   const reloadInventory = workspace.reloadInventory;
   useEffect(() => {
     if (canManage && (navigation.activeTab === 'tenants' || navigation.activeTab === 'invoices' || navigation.isCreateInvoiceOpen))

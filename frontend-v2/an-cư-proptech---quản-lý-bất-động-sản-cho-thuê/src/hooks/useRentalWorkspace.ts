@@ -10,7 +10,7 @@ import type { Tenancy } from '@/types/billing';
 import { createOwnerProperty } from '@/services/property/ownerPropertyService';
 import type { PropertyCreateInput } from '@/types/property';
 
-export function useRentalWorkspace(canManage: boolean, onReset: () => void, selectedPropertyId = 'all') {
+export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all') {
   // Global Data States
   const [rooms, setRooms] = useState<Room[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
@@ -144,17 +144,6 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
     );
   };
 
-  // Reset all data
-  const handleResetData = () => {
-    setInventoryRevision(value => value + 1);
-    setBillingRevision(value => value + 1);
-    setTickets([]);
-    setTransactions(initialTransactions);
-    setConfig(initialConfig);
-    setEscrows(initialEscrows);
-    onReset();
-  };
-
   // Reserve room with escrow deposit
   const handleReserveEscrow = (roomId: string) => {
     const room = rooms.find((r) => r.id === roomId);
@@ -209,7 +198,7 @@ export function useRentalWorkspace(canManage: boolean, onReset: () => void, sele
     buildings, inventoryError, inventoryLoading, reloadInventory,
     selectedRoom, setSelectedRoom, selectedInvoice, setSelectedInvoice,
     handleMarkPaid, handleAddTenant, handleAddContract, handleAddRoom, handleAddProperty, handlePrices, handlePublication, handleCheckOut,
-    handleUpdateIndices, handleResetData,
+    handleUpdateIndices,
     handleReserveEscrow,
     handleCreateInvoice, handleAddTransaction, handleSaveConfig: setConfig,
     currentResidentTenant, currentResidentRoom, currentResidentContract, residentInvoices, residentTickets,
