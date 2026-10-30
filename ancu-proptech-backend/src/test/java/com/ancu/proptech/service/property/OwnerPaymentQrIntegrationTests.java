@@ -22,6 +22,8 @@ import static org.hamcrest.Matchers.*;
 class OwnerPaymentQrIntegrationTests {
     private static final String URL="/api/v1/owner/cash-entries";
     @Autowired MockMvc mvc;
+    @Autowired com.ancu.proptech.repository.property.OwnerPaymentQrRepository paymentQrs;
+    @Autowired PropertyPaymentQrResolver resolver;
     @Autowired jakarta.persistence.EntityManager em;
     @Autowired AuthAccountRepository accounts;
     @Autowired PropertyRepository properties;
@@ -56,5 +58,21 @@ class OwnerPaymentQrIntegrationTests {
   mvc.perform(get(base+"/"+id+"/image").header("Authorization",t)).andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store")).andExpect(content().contentType("image/png"));
   mvc.perform(post(base+"/"+id+"/confirm").header("Authorization",t).contentType("application/json").content(confirm)).andExpect(status().isConflict());
   mvc.perform(multipart(base+"/scan").file(new org.springframework.mock.web.MockMultipartFile("file","bad.png","image/png","bad".getBytes())).header("Authorization",t)).andExpect(status().isBadRequest());
+ }
+
+ private com.ancu.proptech.model.property.OwnerPaymentQr savedQr(AuthAccount owner,Property property,String account){var q=new com.ancu.proptech.model.property.OwnerPaymentQr();q.setOwnerId(owner.getId());q.setPropertyId(property==null?null:property.getId());q.setBankBin("970422");q.setBank("MBBank");q.setAccountNumber(account);q.setAccountHolderName("OWNER TEST");q.setContentType("image/png");q.setContent(new byte[]{1});q.setAiStatus("NOT_REQUESTED");q.setCreatedAt(java.time.Instant.now());q.setConfirmedAt(java.time.Instant.now());return paymentQrs.saveAndFlush(q);}
+ @Test void propertyUsesSelectedPrivateQrOrSharedWithoutLeakingOtherProperties()throws Exception {
+  var owner=account(AuthAccount.Role.OWNER);var outsider=account(AuthAccount.Role.OWNER);var a=property(owner);var b=property(owner);String t=token(owner);var shared=savedQr(owner,null,"111");var own=savedQr(owner,a,"222");String url="/api/v1/owner/properties/"+a.getId()+"/payment-qr";
+  mvc.perform(get(url).header("Authorization",t)).andExpect(status().isOk()).andExpect(jsonPath("$.mode").value("SHARED"));org.junit.jupiter.api.Assertions.assertEquals(shared.getId(),resolver.resolve(a).getId());assert resolver.resolve(b).getId().equals(shared.getId());
+  mvc.perform(put(url).header("Authorization",t).contentType("application/json").content("{\"mode\":\"PRIVATE\",\"version\":0}")).andExpect(status().isOk()).andExpect(jsonPath("$.mode").value("PRIVATE"));
+  assert resolver.resolve(a).getId().equals(own.getId());assert resolver.resolve(b).getId().equals(shared.getId());
+  var newer=savedQr(owner,null,"333");assert resolver.resolve(a).getId().equals(own.getId());assert resolver.resolve(b).getId().equals(newer.getId());
+  mvc.perform(put(url).header("Authorization",t).contentType("application/json").content("{\"mode\":\"SHARED\",\"version\":0}")).andExpect(status().isConflict());
+  mvc.perform(put(url).header("Authorization",t).contentType("application/json").content("{\"mode\":\"SHARED\",\"version\":1}")).andExpect(status().isOk());assert resolver.resolve(a).getId().equals(newer.getId());
+  mvc.perform(get(url).header("Authorization",token(outsider))).andExpect(status().isNotFound());
+  mvc.perform(multipart("/api/v1/owner/payment-qr/scan").file(qr()).param("propertyId",a.getId().toString()).header("Authorization",token(outsider))).andExpect(status().isNotFound());
+  String scanned=mvc.perform(multipart("/api/v1/owner/payment-qr/scan").file(qr()).param("propertyId",b.getId().toString()).header("Authorization",t)).andExpect(status().isOk()).andExpect(jsonPath("$.propertyId").value(b.getId().toString())).andReturn().getResponse().getContentAsString();
+  String id=com.jayway.jsonpath.JsonPath.read(scanned,"$.id");assert resolver.resolve(b).getId().equals(newer.getId());
+  mvc.perform(post("/api/v1/owner/payment-qr/"+id+"/confirm").header("Authorization",t).contentType("application/json").content("{\"accountHolderName\":\"OWNER TEST\",\"version\":0,\"selectionVersion\":0,\"consent\":true}")).andExpect(status().isOk());assert resolver.resolve(b).getId().equals(Long.valueOf(id));
  }
 }

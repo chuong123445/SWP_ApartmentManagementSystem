@@ -31,7 +31,7 @@ public class ContractDraftService {
     private final RentalRequestRepository requests;
     private final ApartmentRepository apartments;
     private final PropertyDossierRepository dossiers;
-    private final com.ancu.proptech.repository.property.OwnerPaymentQrRepository paymentQrs;
+    private final com.ancu.proptech.service.property.PropertyPaymentQrResolver paymentQrResolver;
     private final com.ancu.proptech.repository.property.PropertySettingsRepository propertySettings;
     private final AccountAccessService access;
     private final AccountVerificationPolicy verification;
@@ -223,7 +223,7 @@ public class ContractDraftService {
         var a=r.getApartment();var p=a.getProperty();
         var approved=dossiers.findByPropertyIdOrderBySubmittedAtDescIdDesc(p.getId()).stream()
             .filter(d->d.getStatus()==PropertyDossier.Status.APPROVED).findFirst().orElse(null);
-        var qr=paymentQrs.findFirstByOwnerIdAndConfirmedAtNotNullOrderByConfirmedAtDescIdDesc(p.getOwner().getId()).orElse(null);
+        var qr=paymentQrResolver.resolve(p);
         return new ContractSnapshot(party(p.getOwner()),party(r.getCustomer()),
             new ContractSnapshot.Asset(a.getId().toString(),p.getId().toString(),p.getName(),a.getTitle(),a.getRoomNumber(),p.getAddress(),p.getCity(),p.getDistrict(),p.getWard(),
                 a.getAreaM2().toPlainString(),a.getFloor(),a.getBedrooms(),a.getBathrooms(),List.copyOf(a.getAmenities()),p.getApprovalStatus().name(),
