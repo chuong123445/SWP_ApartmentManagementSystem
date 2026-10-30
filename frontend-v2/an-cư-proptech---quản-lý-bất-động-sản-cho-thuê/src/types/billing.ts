@@ -4,11 +4,13 @@ export interface Tenancy {
   startDate: string; endDate: string; monthlyRent: string; version: number;
 }
 export interface BillingContext {
+  waterBillingMode?:'METERED'|'PER_PERSON';occupantCount?:number;internetFee?:string;garbageFee?:string;
   contractId: string; apartmentId: string; roomNumber: string; tenantName: string; period: string;
   monthlyRent: string; electricityStartReading: string; electricityUnitPrice: string;
   waterStartReading: string; waterUnitPrice: string; baselineVersion: number;
 }
 export interface BillingInvoice {
+  waterBillingMode?:'METERED'|'PER_PERSON';occupantCount?:number;internetFee?:string;garbageFee?:string;
   id: string; contractId: string; apartmentId: string; customerId: string; roomNumber: string; apartmentTitle: string;
   tenantName: string; period: string; dueDate: string; monthlyRent: string;
   electricityStartReading: string; electricityEndReading: string; electricityQuantity: string; electricityUnitPrice: string; electricityAmount: string;

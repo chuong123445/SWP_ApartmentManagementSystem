@@ -201,14 +201,15 @@ public class ContractDraftService {
     }
     private ContractContextResponse.SuggestedRates suggestedRates(Apartment a) {
         var s=propertySettings.findById(a.getProperty().getId()).orElse(null);
-        return s==null ? new ContractContextResponse.SuggestedRates(a.getElectricityUnitPrice()==null?null:a.getElectricityUnitPrice().toPlainString(),a.getWaterUnitPrice()==null?null:a.getWaterUnitPrice().toPlainString(),"0","0")
-            : new ContractContextResponse.SuggestedRates(s.getElectricityUnitPrice().toPlainString(),s.getWaterUnitPrice().toPlainString(),s.getInternetFee().toPlainString(),s.getGarbageFee().toPlainString());
+        return s==null ? new ContractContextResponse.SuggestedRates(a.getElectricityUnitPrice()==null?null:a.getElectricityUnitPrice().toPlainString(),a.getWaterUnitPrice()==null?null:a.getWaterUnitPrice().toPlainString(),"0","0","METERED")
+            : new ContractContextResponse.SuggestedRates(s.getElectricityUnitPrice().toPlainString(),s.getWaterUnitPrice().toPlainString(),s.getInternetFee().toPlainString(),s.getGarbageFee().toPlainString(),s.getWaterBillingMode().name());
     }
     void validateTerms(ContractTerms t) {
         if(!t.getEndDate().isAfter(t.getStartDate())) throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_CONTRACT_DATES","Ngày kết thúc phải sau ngày bắt đầu.");
     }
     void applyContract(RentalContract c,ContractTerms t) {
         c.setStartDate(t.getStartDate());c.setEndDate(t.getEndDate());c.setMonthlyRent(t.getMonthlyRent());
+        c.setWaterBillingMode(t.getWaterBillingMode());c.setOccupantCount(t.getOccupantCount());c.setInternetFee(t.getInternetFee());c.setGarbageFee(t.getGarbageFee());
         c.setElectricityUnitPrice(t.getElectricityUnitPrice());c.setWaterUnitPrice(t.getWaterUnitPrice());
     }
     void applyDraft(ContractDraft d,ContractTerms t) {
@@ -254,7 +255,7 @@ public class ContractDraftService {
             d.getTemplateType()==null?"APARTMENT":d.getTemplateType(),
             new ContractDraftResponse.Signing(c.getApartment().getProperty().getOwner().getId().toString(),c.getCustomer().getId().toString(),contentHash(d),
                 d.getOwnerSignedAt()!=null && d.getCustomerSignedAt()!=null?"SIGNED":d.getOwnerSignedAt()!=null?"WAITING_CUSTOMER":d.getCustomerSignedAt()!=null?"WAITING_OWNER":"UNSIGNED",
-                d.getOwnerSignedAt(),d.getCustomerSignedAt(),image(d.getOwnerSignature()),image(d.getCustomerSignature())),lifecycle(c));
+                d.getOwnerSignedAt(),d.getCustomerSignedAt(),image(d.getOwnerSignature()),image(d.getCustomerSignature())),lifecycle(c),c.getWaterBillingMode().name(),c.getOccupantCount(),c.getInternetFee().toPlainString(),c.getGarbageFee().toPlainString());
     }
     private ContractDraftResponse.Lifecycle lifecycle(RentalContract c) {
         var next=contracts.findByRenewalOfContractIdAndStatusNot(c.getId(),RentalContract.Status.ENDED).stream().findFirst().orElse(null);
@@ -272,6 +273,9 @@ public class ContractDraftService {
             d.getSnapshotJson(),d.getClausesJson(),c.getStartDate(),c.getEndDate(),c.getMonthlyRent().stripTrailingZeros().toPlainString(),
             c.getElectricityUnitPrice().stripTrailingZeros().toPlainString(),c.getWaterUnitPrice().stripTrailingZeros().toPlainString(),
             d.getDeposit().stripTrailingZeros().toPlainString(),d.getPaymentDay(),d.getPaymentMethod(),d.getUsagePurpose()));
+        // Legacy contracts retain the exact hash when no new charges/mode were agreed.
+        if(c.getWaterBillingMode()!=com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.METERED || c.getInternetFee().signum()!=0 || c.getGarbageFee().signum()!=0)
+            content+="|charges-v1|"+c.getWaterBillingMode()+"|"+c.getOccupantCount()+"|"+c.getInternetFee().stripTrailingZeros().toPlainString()+"|"+c.getGarbageFee().stripTrailingZeros().toPlainString();
         try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content.getBytes(StandardCharsets.UTF_8)));}
         catch(NoSuchAlgorithmException e){throw new IllegalStateException(e);}
     }

@@ -9,6 +9,11 @@ import java.time.*;
 @Getter @Setter @NoArgsConstructor
 public class RentalInvoice {
     public enum Status { DRAFT, SENT }
+
+    @Enumerated(EnumType.STRING) @Column(nullable=false,length=16) private com.ancu.proptech.model.property.PropertySettings.WaterBillingMode waterBillingMode=com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.METERED;
+    @Column(nullable=false) private int occupantCount=1;
+    @Column(nullable=false,precision=15,scale=2) private BigDecimal internetFee=BigDecimal.ZERO;
+    @Column(nullable=false,precision=15,scale=2) private BigDecimal garbageFee=BigDecimal.ZERO;
     @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
     @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="contract_id",nullable=false) private RentalContract contract;
     @Column(nullable=false,length=7) private String period;
