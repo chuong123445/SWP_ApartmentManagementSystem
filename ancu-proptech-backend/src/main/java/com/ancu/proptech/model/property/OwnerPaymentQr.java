@@ -7,6 +7,7 @@ import java.time.Instant;
 public class OwnerPaymentQr {
  @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
  @Column(nullable=false) private Long ownerId;
+ private Long propertyId;
  @Column(nullable=false,length=6) private String bankBin;
  @Column(nullable=false,length=100) private String bank;
  @Column(nullable=false,length=34) private String accountNumber;
