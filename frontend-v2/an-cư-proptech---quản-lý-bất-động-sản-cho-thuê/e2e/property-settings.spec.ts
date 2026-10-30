@@ -7,6 +7,7 @@ test('Lưu đơn giá thật, giữ giá 0 và tải lại đúng tài sản',as
       if(path.endsWith('/refresh'))return json({accessToken:'test-token',tokenType:'Bearer',expiresIn:900,user:{id:'1',email:'owner@example.invalid',fullName:'Chủ nhà kiểm thử',roles:['OWNER'],accountStatus:'ACTIVE',contactVerificationStatus:'VERIFIED',version:0}});
       if(path.endsWith('/csrf'))return json({headerName:'X-XSRF-TOKEN',token:'test'});
       if(path.endsWith('/vneid-config'))return json({enabled:false});
+      if(path.endsWith('/payment-qr'))return json({mode:'SHARED',version:0,sharedQr:null,privateQr:null});
       if(path.endsWith('/payment-qr/current'))return route.fulfill({status:204});
       if(path.endsWith('/settings')){if(route.request().method()==='PUT'){const input=route.request().postDataJSON();saved={...saved,...input,configured:true,version:saved.version+1};}return json(saved);}
       if(path.endsWith('/owner/properties'))return json([{id:'11',name:'Tòa kiểm thử',address:'Địa chỉ thử',rentalMode:'MULTI_UNIT',approvalStatus:'APPROVED'}]);
