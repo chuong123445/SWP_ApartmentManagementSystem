@@ -51,7 +51,7 @@ export function PropertyDossierModal({ propertyId, onClose, onSaved, selfService
     <div className="p-5 space-y-5">
       {loading ? <p role="status">Đang tải hồ sơ...</p> : <>
         <div><h3 className="font-bold break-words">{property?.name}</h3><p className="text-sm text-slate-500 break-words">{property?.address}</p></div>
-        <p className="text-sm bg-slate-50 p-3 rounded-lg">Chứng từ và tài khoản nhận tiền chỉ được xem bởi bạn và Admin kiểm duyệt. OTP email chỉ xác thực liên hệ; Admin đối chiếu hồ sơ tài sản riêng.</p>
+        <p className="text-sm bg-slate-50 p-3 rounded-lg">Chứng từ và tài khoản nhận tiền không công khai. Khi bạn nộp hồ sơ, thông tin khai báo và ảnh/PDF gửi kèm có thể được gửi đến dịch vụ AI đã cấu hình để hỗ trợ đối chiếu. Nhận xét AI chỉ dành cho Admin; việc duyệt hoặc từ chối luôn do Admin thực hiện.</p>
         {history[0] && <DossierDetails dossier={history[0]} />}
         {property?.approvalStatus === 'PENDING_APPROVAL' && history.length === 0 && <p className="text-sm text-amber-900 bg-amber-50 p-3 rounded-lg">Tài sản đang ở trạng thái chờ duyệt cũ nhưng chưa có hồ sơ. Hãy gửi chứng từ để Admin kiểm duyệt; dữ liệu căn hộ hiện có được giữ nguyên.</p>}
         {editable && <form onSubmit={submit} className="space-y-4"><fieldset disabled={busy} className="space-y-4 disabled:opacity-60">
