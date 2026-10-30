@@ -8,6 +8,7 @@ export interface ContractSnapshot {
   receivingAccount: { bank: string; accountNumber: string; accountHolderName: string } | null;
 }
 export interface ContractTerms {
+  waterBillingMode?: 'METERED'|'PER_PERSON';occupantCount?:number;internetFee?:string;garbageFee?:string;
   templateType?: 'APARTMENT' | 'HOUSE' | 'ROOM' | 'BUSINESS' | 'SHARED';
   startDate: string; endDate: string; monthlyRent: string; electricityUnitPrice: string; waterUnitPrice: string; deposit: string;
   paymentDay: number; paymentMethod: string; usagePurpose: string; clauses: ContractClause[];
@@ -40,7 +41,7 @@ export interface ContractSigning {
   ownerSignature: string | null; customerSignature: string | null;
 }
 export interface ContractContext {
-  suggestedRates?: {electricityUnitPrice:string|null;waterUnitPrice:string|null;internetFee:string;garbageFee:string}|null;
+  suggestedRates?: {electricityUnitPrice:string|null;waterUnitPrice:string|null;internetFee:string;garbageFee:string;waterBillingMode?:'METERED'|'PER_PERSON'}|null;
   rightsValidFrom?: string|null; rightsValidUntil?: string|null;
   rentalRequestId: string; requestVersion: number; sourceVersion: string; snapshot: ContractSnapshot; advertisedMonthlyRent: string;
   suggestedDeposit: string | null; templateClauses: ContractClause[]; existingDraft: ContractDraft | null;

@@ -27,7 +27,7 @@ public class InvoiceService {
     private record Source(YearMonth period,BigDecimal electric,BigDecimal water) {}
     @Transactional(readOnly=true) public BillingContext context(Jwt jwt,Long id){
         var owner=access.owner(jwt);var c=contracts.findById(id).orElseThrow(InvoiceService::missing);owned(c,owner.getId());
-        var s=source(c);return new BillingContext(c.getId(),c.getApartment().getId(),c.getApartment().getRoomNumber(),c.getCustomer().getFullName(),s.period().toString(),str(c.getMonthlyRent()),str(s.electric()),str(c.getElectricityUnitPrice()),str(s.water()),str(c.getWaterUnitPrice()),c.getBillingVersion());
+        var s=source(c);return new BillingContext(c.getId(),c.getApartment().getId(),c.getApartment().getRoomNumber(),c.getCustomer().getFullName(),s.period().toString(),str(c.getMonthlyRent()),str(s.electric()),str(c.getElectricityUnitPrice()),str(s.water()),str(c.getWaterUnitPrice()),c.getBillingVersion(),c.getWaterBillingMode().name(),c.getOccupantCount(),str(c.getInternetFee()),str(c.getGarbageFee()));
     }
     @Transactional public InvoiceResponse create(Jwt jwt,Long contractId,InvoiceCreate input){
         var owner=access.owner(jwt);var c=contracts.lockById(contractId).orElseThrow(InvoiceService::missing);owned(c,owner.getId());
@@ -37,11 +37,13 @@ public class InvoiceService {
         try{period=YearMonth.parse(input.getPeriod());}catch(DateTimeParseException e){throw bad("VALIDATION_ERROR","Kỳ hóa đơn không hợp lệ.");}
         if(!period.equals(s.period()))throw conflict("BILLING_SEQUENCE_CONFLICT","Hóa đơn phải theo kỳ kế tiếp: "+s.period());
         if(input.getDueDate().isBefore(period.atDay(1)))throw bad("VALIDATION_ERROR","Hạn đóng không được trước kỳ hóa đơn.");
-        if(input.getElectricityEndReading().compareTo(s.electric())<0||input.getWaterEndReading().compareTo(s.water())<0)throw bad("INVALID_METER_READING","Chỉ số cuối không được nhỏ hơn chỉ số đầu.");
+        if(input.getElectricityEndReading().compareTo(s.electric())<0||(c.getWaterBillingMode()==com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.METERED && input.getWaterEndReading().compareTo(s.water())<0))throw bad("INVALID_METER_READING","Chỉ số cuối không được nhỏ hơn chỉ số đầu.");
         RentalInvoice i=new RentalInvoice();i.setContract(c);i.setPeriod(period.toString());i.setDueDate(input.getDueDate());i.setMonthlyRent(c.getMonthlyRent());
         i.setElectricityStartReading(s.electric());i.setElectricityEndReading(input.getElectricityEndReading());i.setElectricityQuantity(input.getElectricityEndReading().subtract(s.electric()));i.setElectricityUnitPrice(c.getElectricityUnitPrice());i.setElectricityAmount(i.getElectricityQuantity().multiply(i.getElectricityUnitPrice()));
         i.setWaterStartReading(s.water());i.setWaterEndReading(input.getWaterEndReading());i.setWaterQuantity(input.getWaterEndReading().subtract(s.water()));i.setWaterUnitPrice(c.getWaterUnitPrice());i.setWaterAmount(i.getWaterQuantity().multiply(i.getWaterUnitPrice()));
-        i.setTotalAmount(i.getMonthlyRent().add(i.getElectricityAmount()).add(i.getWaterAmount()));i.setStatus(RentalInvoice.Status.DRAFT);i.setCreatedAt(Instant.now());
+        i.setWaterBillingMode(c.getWaterBillingMode());i.setOccupantCount(c.getOccupantCount());i.setInternetFee(c.getInternetFee());i.setGarbageFee(c.getGarbageFee());
+        if(c.getWaterBillingMode()==com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.PER_PERSON){i.setWaterEndReading(s.water());i.setWaterQuantity(BigDecimal.valueOf(c.getOccupantCount()));i.setWaterAmount(i.getWaterQuantity().multiply(i.getWaterUnitPrice()));}
+        i.setTotalAmount(i.getInternetFee().add(i.getGarbageFee()).add(i.getMonthlyRent()).add(i.getElectricityAmount()).add(i.getWaterAmount()));i.setStatus(RentalInvoice.Status.DRAFT);i.setCreatedAt(Instant.now());
         c.setBillingVersion(c.getBillingVersion()+1);return response(invoices.saveAndFlush(i));
     }
     @Transactional public InvoiceResponse send(Jwt jwt,Long id,InvoiceSend input){
@@ -85,5 +87,5 @@ public class InvoiceService {
     private static ApiException missing(){return new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy hóa đơn hoặc hợp đồng thuộc tài khoản của bạn.");}
     private static ApiException conflict(String code,String message){return new ApiException(HttpStatus.CONFLICT,code,message);}
     private static ApiException bad(String code,String message){return new ApiException(HttpStatus.BAD_REQUEST,code,message);}
-    private InvoiceResponse response(RentalInvoice i){var c=i.getContract();var a=c.getApartment();return new InvoiceResponse(i.getId(),c.getId(),a.getId(),c.getCustomer().getId(),a.getRoomNumber(),a.getTitle(),c.getCustomer().getFullName(),i.getPeriod(),i.getDueDate(),str(i.getMonthlyRent()),str(i.getElectricityStartReading()),str(i.getElectricityEndReading()),str(i.getElectricityQuantity()),str(i.getElectricityUnitPrice()),str(i.getElectricityAmount()),str(i.getWaterStartReading()),str(i.getWaterEndReading()),str(i.getWaterQuantity()),str(i.getWaterUnitPrice()),str(i.getWaterAmount()),str(i.getTotalAmount()),i.getStatus().name(),i.getCreatedAt(),i.getSentAt(),i.getVersion());}
+    private InvoiceResponse response(RentalInvoice i){var c=i.getContract();var a=c.getApartment();return new InvoiceResponse(i.getId(),c.getId(),a.getId(),c.getCustomer().getId(),a.getRoomNumber(),a.getTitle(),c.getCustomer().getFullName(),i.getPeriod(),i.getDueDate(),str(i.getMonthlyRent()),str(i.getElectricityStartReading()),str(i.getElectricityEndReading()),str(i.getElectricityQuantity()),str(i.getElectricityUnitPrice()),str(i.getElectricityAmount()),str(i.getWaterStartReading()),str(i.getWaterEndReading()),str(i.getWaterQuantity()),str(i.getWaterUnitPrice()),str(i.getWaterAmount()),str(i.getTotalAmount()),i.getStatus().name(),i.getCreatedAt(),i.getSentAt(),i.getVersion(),i.getWaterBillingMode().name(),i.getOccupantCount(),str(i.getInternetFee()),str(i.getGarbageFee()));}
 }

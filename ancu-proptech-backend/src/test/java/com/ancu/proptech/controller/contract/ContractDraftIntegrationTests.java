@@ -56,6 +56,13 @@ class ContractDraftIntegrationTests {
     }
     private AuthAccount account(AuthAccount.Role role) { var a=new AuthAccount();a.setEmail(com.ancu.proptech.support.TestIds.next()+"@example.invalid");a.setFullName("Thông tin đã lưu "+role);a.setPhone("0912345678");a.setAddress("Địa chỉ hồ sơ");a.setPasswordHash(hash);a.setRole(role);a.setStatus(AuthAccount.Status.ACTIVE);a.setEmailVerified(true);a.setContactVerified(true);return accounts.saveAndFlush(a); }
     private String bearer(AuthAccount a) { return "Bearer "+auth.login(a.getEmail(),PASSWORD).tokens().accessToken(); }
+    @Test void configuredRatesAndServiceChargesArePartOfTheSignedDocument()throws Exception {
+        Long propertyId=request.getApartment().getProperty().getId();
+        mvc.perform(put("/api/v1/owner/properties/"+propertyId+"/settings").header("Authorization",token).contentType("application/json").content("{\"version\":0,\"electricityUnitPrice\":\"3500\",\"waterUnitPrice\":\"50000\",\"internetFee\":\"100000\",\"garbageFee\":\"30000\",\"waterBillingMode\":\"PER_PERSON\"}")).andExpect(status().isOk());
+        String ctx=context();assertEquals("PER_PERSON",JsonPath.read(ctx,"$.suggestedRates.waterBillingMode"));
+        String input=body(ctx).replace("\"waterUnitPrice\":\"15000\"","\"waterUnitPrice\":\"50000\",\"waterBillingMode\":\"PER_PERSON\",\"occupantCount\":2,\"internetFee\":\"100000\",\"garbageFee\":\"30000\"");
+        create(token,input).andExpect(status().isCreated()).andExpect(jsonPath("$.waterBillingMode").value("PER_PERSON")).andExpect(jsonPath("$.occupantCount").value(2));
+    }
     private String context() throws Exception { return mvc.perform(get("/api/v1/owner/rental-requests/"+request.getId()+"/contract-context").header("Authorization",token)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString(); }
     @Test void newContractContextUsesVerifiedCitizenWithoutRequiringManualIdentity()throws Exception{
         var verified=com.ancu.proptech.support.VerifiedIdentityFixtures.bind(verifiedIdentities,owner);
