@@ -9,22 +9,23 @@ import { ContractsPage } from '@/pages/owner/ContractsPage';
 import { InvoicesPage } from '@/pages/owner/billing/InvoicesPage';
 import { UtilitiesPage } from '@/pages/owner/billing/UtilitiesPage';
 import { MaintenancePage } from '@/pages/owner/MaintenancePage';
-import { TrustGuardPage } from '@/pages/owner/TrustGuardPage';
 import { FinancePage } from '@/pages/owner/finance/FinancePage';
 import { ReportsPage } from '@/pages/owner/finance/ReportsPage';
 import { SettingsPage } from '@/pages/owner/SettingsPage';
 import { RentalRequestsPage } from '@/pages/owner/RentalRequestsPage';
 import { PropertiesPage } from '@/pages/owner/PropertiesPage';
+import { HomePage } from '@/pages/customer/HomePage';
 
 export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWorkspace; navigation: WorkspaceNavigation }) {
   const { activeTab, selectTab: setActiveTab, setIsAddRoomOpen, setIsCreateInvoiceOpen } = navigation;
-  const { rooms, tenants, contracts, invoices, tickets, transactions, config, audits, escrows,
+  const { rooms, tenants, contracts, invoices, tickets, transactions, config,
     buildings: initialBuildings, setSelectedRoom, setSelectedInvoice, currentResidentRoom, currentResidentTenant,
     currentResidentContract, residentInvoices, residentTickets, handleMarkPaid, handleAddTenant, handleAddContract,
-    handleUpdateIndices, handleUpdateTicketStatus, handleApproveAudit, handleReleaseEscrow, handleCreateEscrow,
-    handleReserveEscrow, handleResetData, handleSaveConfig: setConfig, handleAddTicket, handleSendResidentTicket,
+    handleUpdateIndices,
+    handleReserveEscrow, handleResetData, handleSaveConfig: setConfig,
     handleAddTransaction } = workspace;
   return <>
+          {activeTab === 'home' && <HomePage embedded />}
           {activeTab === 'properties' && <PropertiesPage properties={initialBuildings} onReload={workspace.reloadInventory} onDossier={navigation.setPropertyForDossierId} onAdd={() => navigation.setIsAddPropertyOpen(true)} onSelect={id => { navigation.setSelectedBuildingId(id);setActiveTab('rooms'); }} />}
           {activeTab === 'rental_requests' && <RentalRequestsPage key={navigation.selectedBuildingId} propertyId={navigation.selectedBuildingId === 'all' ? undefined : navigation.selectedBuildingId} onDecision={workspace.reloadInventory} />}
           {activeTab === 'resident_portal' && (!currentResidentRoom || !currentResidentTenant || !currentResidentContract || !residentInvoices[0]) && <section className="bg-white p-6 rounded-xl border"><h1 className="text-xl font-bold">Cổng cư dân</h1><p className="mt-3 text-slate-500">Chưa có đủ quan hệ thuê và hóa đơn đã gửi để xem màn hình này.</p></section>}
@@ -36,7 +37,7 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
               invoice={residentInvoices[0]}
               tickets={residentTickets}
               config={config}
-              onSendTicket={handleSendResidentTicket}
+              onSendTicket={() => window.location.assign('/my/maintenance')}
               onPayInvoice={handleMarkPaid}
               onOpenApartmentMarket={() => setActiveTab('market')}
             />
@@ -113,20 +114,12 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
 
           {activeTab === 'maintenance' && (
             <MaintenancePage
+              key={navigation.selectedBuildingId}
               tickets={tickets}
-              rooms={rooms}
-              onUpdateTicketStatus={handleUpdateTicketStatus}
-              onAddTicket={handleAddTicket}
-            />
-          )}
-
-          {activeTab === 'trustguard' && (
-            <TrustGuardPage
-              audits={audits}
-              escrows={escrows}
-              onApproveAudit={handleApproveAudit}
-              onReleaseEscrow={handleReleaseEscrow}
-              onCreateEscrow={handleCreateEscrow}
+              loading={workspace.maintenanceLoading}
+              places={[...initialBuildings.filter(p=>navigation.selectedBuildingId==='all'||p.id===navigation.selectedBuildingId).map(p=>({value:`property-${p.id}`,label:`${p.name} — Toàn tòa`,propertyId:p.id})),...rooms.map(r=>({value:`room-${r.id}`,label:r.roomNumber,propertyId:r.buildingId,apartmentId:r.id}))]}
+              error={workspace.maintenanceError}
+              onReload={workspace.reloadInventory}
             />
           )}
 

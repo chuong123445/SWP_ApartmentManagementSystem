@@ -22,8 +22,9 @@ export function useRentalRequests(owner: boolean, page: number, status?: RentalR
     void load();
     const refreshVisible = () => { if (document.visibilityState === 'visible') void load(true); };
     const timer = window.setInterval(refreshVisible, 10000);
+    window.addEventListener('ancu:tenancy-changed', refreshVisible);
     window.addEventListener('focus', refreshVisible);document.addEventListener('visibilitychange', refreshVisible);
-    return () => { active = false;window.clearInterval(timer);window.removeEventListener('focus', refreshVisible);document.removeEventListener('visibilitychange', refreshVisible); };
+    return () => { active = false;window.clearInterval(timer);window.removeEventListener('ancu:tenancy-changed', refreshVisible);window.removeEventListener('focus', refreshVisible);document.removeEventListener('visibilitychange', refreshVisible); };
   }, [owner, page, status, revision, propertyId]);
   return { data, loading, error, reload: () => setRevision(value => value + 1) };
 }

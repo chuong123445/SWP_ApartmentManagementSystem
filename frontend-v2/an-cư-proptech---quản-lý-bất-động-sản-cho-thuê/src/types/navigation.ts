@@ -1,6 +1,7 @@
 export type UserRole = 'admin' | 'user' | 'resident' | 'seeker';
 
 export type ActiveTab =
+  | 'home'
   | 'dashboard'
   | 'properties'
   | 'rooms'
@@ -10,7 +11,6 @@ export type ActiveTab =
   | 'invoices'
   | 'utilities'
   | 'maintenance'
-  | 'trustguard'
   | 'finance'
   | 'reports'
   | 'settings'

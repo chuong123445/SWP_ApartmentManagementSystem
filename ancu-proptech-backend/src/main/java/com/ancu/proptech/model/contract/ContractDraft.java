@@ -24,4 +24,10 @@ public class ContractDraft {
     @Nationalized @Column(nullable=false,length=300) private String usagePurpose;
     @Column(nullable=false,columnDefinition="datetime2(6)") private Instant createdAt;
     @Column(nullable=false) private long contentVersion;
+    @Column(length=20) private String templateType;
+    @Lob @Column(columnDefinition="varbinary(max)") private byte[] ownerSignature;
+    @Lob @Column(columnDefinition="varbinary(max)") private byte[] customerSignature;
+    @Column(columnDefinition="datetime2(6)") private Instant ownerSignedAt;
+    @Column(columnDefinition="datetime2(6)") private Instant customerSignedAt;
+    @Column(length=64) private String signedContentHash;
 }

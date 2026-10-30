@@ -11,7 +11,7 @@ import { HomeIcon } from '@/components/apartments/HomeIcon';
 import { TenantHomePanel } from '@/components/billing/TenantHomePanel';
 import { catalogCity, homeCities } from '@/data/homeCities';
 
-export function HomePage() {
+export function HomePage({ embedded = false }: { embedded?: boolean }) {
   const [q, setQ] = useState('');
   const [address, setAddress] = useState({ city: '', district: '', ward: '' });
   const [minRent, setMinRent] = useState('');
@@ -37,9 +37,8 @@ export function HomePage() {
     setQ(''); setAddress({ city: '', district: '', ward: '' }); setMinRent(''); setMaxRent(''); setBedrooms(''); setValidation('');
     setFilters({ page: 0, size: 6 });
   };
-  return <CustomerLayout>
-    <main className="home-wrap">
-      <TenantHomePanel />
+  const content = <div className="home-wrap">
+      {!embedded && <TenantHomePanel />}
       <section className="home-section" aria-labelledby="home-cities-title">
         <div className="home-heading"><div><h2 id="home-cities-title">Tìm căn hộ theo khu vực</h2><p>Một nơi ở mới, bắt đầu từ khu vực bạn yêu thích.</p></div><span className="home-badge">Ảnh minh họa khu vực</span></div>
         <div className="home-cities">{homeCities.map(city => {
@@ -74,6 +73,8 @@ export function HomePage() {
           {data && <Pagination page={data.page} totalPages={data.totalPages} onChange={page => setFilters(value => ({ ...value, page }))} />}
         </>}
       </section>
-    </main>
-  </CustomerLayout>;
+    </div>;
+  return embedded
+    ? <section aria-label="Trang chủ tìm căn hộ" className="customer-shell rounded-2xl overflow-hidden">{content}</section>
+    : <CustomerLayout><main>{content}</main></CustomerLayout>;
 }

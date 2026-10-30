@@ -14,6 +14,11 @@ export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice }: {
   const [created, setCreated] = useState<BillingInvoice | null>(null);const [revision, setRevision] = useState(0);
   const form = useRef<HTMLFormElement>(null);
   useEffect(() => {
+    if (created) return;
+    const eligible = tenancies.filter(contract => contract.status === 'ACTIVE');
+    if (!eligible.some(contract => contract.id === contractId)) setContractId(eligible[0]?.id ?? '');
+  }, [tenancies, contractId, created]);
+  useEffect(() => {
     let active = true;setContext(null);setError('');
     if (!contractId) return;
     getBillingContext(contractId).then(c => { if (active) { setContext(c);setElectricity(c.electricityStartReading);setWater(c.waterStartReading);setDue(`${c.period}-28`); } })
