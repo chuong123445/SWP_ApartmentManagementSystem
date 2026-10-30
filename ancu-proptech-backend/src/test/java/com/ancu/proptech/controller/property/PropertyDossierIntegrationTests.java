@@ -29,6 +29,13 @@ class PropertyDossierIntegrationTests {
     @Autowired ApartmentRepository apartments;@Autowired PropertyDossierRepository dossiers;@Autowired PropertyEvidenceFileRepository files;
     @Autowired PasswordEncoder passwords;@Autowired AuthService auth;
     @Autowired com.ancu.proptech.repository.auth.ExternalIdentityRepository externalIdentities;
+    @Autowired com.ancu.proptech.config.property.DossierAiSettings aiSettings;
+    @Autowired com.ancu.proptech.service.property.ai.DossierAiWorker aiWorker;
+    @Autowired DossierAiReviewRepository aiReviews;
+    @Autowired PropertyEvidenceContentRepository evidenceContents;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean com.ancu.proptech.service.property.ai.DossierAiClient aiClient;
+    @AfterEach void disableAi(){aiSettings.setEnabled(false);aiSettings.setApiKey("");aiSettings.setModel("");}
+    private void enableAi(){aiSettings.setEnabled(true);aiSettings.setApiKey("synthetic-test-key");aiSettings.setModel("test-model");}
     private AuthAccount owner,other,admin,customer;private Property property,foreignProperty;private String ownerToken,adminToken;private byte[] png;
     private static String passwordHash;
     @BeforeEach void fixture()throws Exception{
@@ -61,6 +68,42 @@ class PropertyDossierIntegrationTests {
         mvc.perform(post(path+"/retry").header("Authorization","Bearer "+adminToken).contentType("application/json").content("{\"version\":0}")).andExpect(status().isAccepted());
         assertEquals(PropertyDossier.Status.PENDING_APPROVAL,dossiers.findById(Long.valueOf(id)).orElseThrow().getStatus());
         decision(adminToken,id,"REJECT","Admin đối chiếu và từ chối",0).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("REJECTED"));
+    }
+    @Test void aiFindingsNeverRejectAndAdminCanApproveDespiteWarnings()throws Exception{
+        enableAi();String id=send(uploadRight());
+        org.mockito.Mockito.when(aiClient.analyze(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any())).thenAnswer(invocation->{
+            var doc=invocation.getArgument(1,com.ancu.proptech.service.property.ai.DossierAiClient.Document.class);
+            return new com.ancu.proptech.service.property.ai.DossierAiReport.FileReview(doc.id(),true,"Giấy chứng nhận",List.of(new com.ancu.proptech.service.property.ai.DossierAiReport.Extraction("applicantName","Tên khác")),
+                List.of(new com.ancu.proptech.service.property.ai.DossierAiReport.Finding("MISMATCH","applicantName","Tên không trùng; cần admin kiểm tra","Nguyễn Kiểm Thử","Tên khác")));
+        });
+        assertTrue(aiWorker.runOnce());
+        mvc.perform(get("/api/v1/admin/property-dossiers/"+id+"/ai-review").header("Authorization","Bearer "+adminToken)).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("COMPLETED")).andExpect(jsonPath("$.result.verdict").value("ISSUES_FOUND"));
+        var dossier=dossiers.findById(Long.valueOf(id)).orElseThrow();assertEquals(PropertyDossier.Status.PENDING_APPROVAL,dossier.getStatus());assertEquals(0,dossier.getVersion());
+        decision(adminToken,id,"APPROVE","Admin đã đối chiếu bản gốc",0).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("APPROVED"));
+    }
+    @Test void transientAiErrorsRetryAtMostThreeTimesWithoutApprovingOrRejecting()throws Exception{
+        enableAi();String id=send(uploadRight());
+        org.mockito.Mockito.when(aiClient.analyze(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any())).thenThrow(new com.ancu.proptech.service.property.ai.DossierAiClient.Failure("RATE_LIMIT",true));
+        for(int attempt=0;attempt<3;attempt++){
+            var review=aiReviews.findByDossierId(Long.valueOf(id)).orElseThrow();review.setNextAttemptAt(java.time.Instant.now().minusSeconds(1));aiReviews.saveAndFlush(review);assertTrue(aiWorker.runOnce());
+        }
+        var review=aiReviews.findByDossierId(Long.valueOf(id)).orElseThrow();assertEquals(DossierAiReview.State.FAILED,review.getState());assertEquals(3,review.getAttempts());assertNull(review.getResultJson());assertEquals("RATE_LIMIT",review.getErrorCode());
+        assertEquals(PropertyDossier.Status.PENDING_APPROVAL,dossiers.findById(Long.valueOf(id)).orElseThrow().getStatus());
+    }
+    @Test void modifiedEvidenceCannotBeSilentlyScannedAsOriginalSubmission()throws Exception{
+        enableAi();String fileId=uploadRight(),id=send(fileId);var content=evidenceContents.findById(Long.valueOf(fileId)).orElseThrow();content.setContent(new byte[]{9,8,7});evidenceContents.saveAndFlush(content);
+        assertTrue(aiWorker.runOnce());var review=aiReviews.findByDossierId(Long.valueOf(id)).orElseThrow();assertEquals(DossierAiReview.State.FAILED,review.getState());assertEquals("INVALID_SOURCE",review.getErrorCode());org.mockito.Mockito.verifyNoInteractions(aiClient);
+        assertEquals(PropertyDossier.Status.PENDING_APPROVAL,dossiers.findById(Long.valueOf(id)).orElseThrow().getStatus());
+    }
+    @Test void staleWorkerCannotOverwriteNewClaimAndInterruptedJobCanRecover()throws Exception{
+        enableAi();String file=uploadRight(),id=send(file);
+        var result=new com.ancu.proptech.service.property.ai.DossierAiReport.FileReview(file,true,"Giấy chứng nhận",List.of(new com.ancu.proptech.service.property.ai.DossierAiReport.Extraction("certificateNumber","TEST-01")),List.of());
+        org.mockito.Mockito.when(aiClient.analyze(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any())).thenAnswer(invocation->{var r=aiReviews.findByDossierId(Long.valueOf(id)).orElseThrow();r.setRunToken("replacement");aiReviews.saveAndFlush(r);return result;});
+        assertTrue(aiWorker.runOnce());var review=aiReviews.findByDossierId(Long.valueOf(id)).orElseThrow();assertEquals(DossierAiReview.State.RUNNING,review.getState());assertNull(review.getResultJson());
+        review.setStartedAt(java.time.Instant.now().minusSeconds(31*60));aiReviews.saveAndFlush(review);
+        org.mockito.Mockito.doReturn(result).when(aiClient).analyze(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any());
+        assertTrue(aiWorker.runOnce());assertEquals(DossierAiReview.State.COMPLETED,review.getState());assertEquals(2,review.getAttempts());
+        assertEquals(PropertyDossier.Status.PENDING_APPROVAL,dossiers.findById(Long.valueOf(id)).orElseThrow().getStatus());
     }
     private ResultActions publish(String token,String apartment,long version,String publication)throws Exception{return mvc.perform(post("/api/v1/owner/apartments/"+apartment+"/publication").header("Authorization","Bearer "+token).contentType("application/json").content("{\"publicationStatus\":\""+publication+"\",\"version\":"+version+"}"));}
     @Test void optionalCertificateRequiresWholeGroupAndCannotForgeFixtureFlag()throws Exception{
