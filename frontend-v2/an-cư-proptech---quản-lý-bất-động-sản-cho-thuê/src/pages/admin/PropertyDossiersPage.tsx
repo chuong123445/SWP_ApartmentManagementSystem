@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { AccountMenu } from '@/components/navigation/AccountMenu';
 import { Pagination } from '@/components/common/Pagination';
 import { DossierDetails } from '@/components/property/DossierDetails';
+import { DossierAiReviewPanel } from '@/components/property/DossierAiReviewPanel';
 import { adminDossier, adminDossiers, reviewDossier } from '@/services/property/dossierService';
 import { dossierStatusLabels, type Dossier, type DossierStatus, type ReviewDecision } from '@/types/dossier';
 import type { PageResult } from '@/types/apartment';
@@ -39,7 +40,8 @@ export function PropertyDossiersPage() {
           setError('');setNotice('');setReason('');setConfirmed(false);setBusy(true);
           try { setSelected(await adminDossier(d.id)); } catch (e) { setError(e instanceof Error ? e.message : 'Không tải được hồ sơ.'); } finally { setBusy(false); }
         }} className={`text-left w-full bg-white border rounded-xl p-4 space-y-2 ${selected?.id === d.id ? 'border-emerald-600' : 'border-slate-200'}`}><strong className="block break-words">{d.propertyName}</strong><span className="block text-sm text-slate-500 break-words">{d.propertyAddress}</span><span className="text-xs">{dossierStatusLabels[d.status]} · {d.applicantName}</span></button>)}{data && !loading && <Pagination page={data.page} totalPages={data.totalPages} onChange={value => { setPage(value);setSelected(null); }} />}</section>
-        {selected && <section aria-label="Chi tiết hồ sơ kiểm duyệt" className="bg-white border rounded-xl p-5 space-y-4 min-w-0"><h2 className="text-lg font-bold break-words">{selected.propertyName}</h2><DossierDetails dossier={selected} />
+        {selected && <section aria-label="Chi tiết hồ sơ kiểm duyệt" className="bg-white border border-slate-200 rounded-xl p-5 space-y-4 min-w-0"><h2 className="text-lg font-bold break-words">{selected.propertyName}</h2><DossierDetails dossier={selected} />
+          <DossierAiReviewPanel key={selected.id} dossierId={selected.id} files={selected.files}/>
           {selected.status === 'PENDING_APPROVAL' && <fieldset disabled={busy} className="space-y-4 disabled:opacity-60"><label className="block text-sm font-semibold">Ý kiến kiểm duyệt<textarea value={reason} maxLength={2000} rows={3} onChange={e => setReason(e.target.value)} className="w-full mt-1 border rounded-lg p-3 text-sm" /></label><label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-1" />Đã đối chiếu người nộp, chủ tài khoản nhận tiền, quyền cho thuê và chứng từ của tài sản này.</label><div className="flex flex-wrap gap-2"><button onClick={() => void decide('APPROVE')} disabled={!confirmed} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold text-sm disabled:opacity-50">Phê duyệt tài sản</button><button onClick={() => void decide('REQUEST_ADDITIONAL_INFORMATION')} className="bg-amber-100 text-amber-900 px-4 py-2 rounded-lg text-sm">Yêu cầu bổ sung</button><button onClick={() => void decide('REJECT')} className="bg-rose-100 text-rose-800 px-4 py-2 rounded-lg text-sm">Từ chối hồ sơ</button></div></fieldset>}
         </section>}
       </div>
