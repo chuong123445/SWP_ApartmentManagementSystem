@@ -33,7 +33,7 @@ public record DossierAiReport(String verdict,String summary,List<FileReview> fil
             if(values.size()>1)overall.add(new Finding("MISMATCH",key,"Các tệp đọc được có giá trị khác nhau cho trường này; admin cần đối chiếu bản gốc.","",String.join(" / ",values)));
         }
         boolean issues=!overall.isEmpty()||files.stream().flatMap(f->f.findings().stream()).anyMatch(f->Set.of("MISSING_INFORMATION","MISSING_IMAGE","MISMATCH").contains(f.type()));
-        boolean unsure=files.stream().anyMatch(f->!f.readable()||f.extractedFields().isEmpty()||!f.findings().isEmpty());
+        boolean unsure=files.stream().anyMatch(f->!f.readable()||f.extractedFields().stream().noneMatch(e->!e.field().equals("other")&&!e.value().isBlank())||!f.findings().isEmpty());
         String verdict=issues?"ISSUES_FOUND":unsure?"INCONCLUSIVE":"CONSISTENT";
         String summary=issues?"Có thông tin hoặc chứng từ cần admin đối chiếu/bổ sung.":unsure?"Chưa đủ dữ liệu đọc được để kết luận đối chiếu.":"Chưa phát hiện thiếu hoặc không khớp trong các tệp đã đọc; admin vẫn cần kiểm tra bản gốc.";
         return new DossierAiReport(verdict,summary,List.copyOf(files),List.copyOf(overall));

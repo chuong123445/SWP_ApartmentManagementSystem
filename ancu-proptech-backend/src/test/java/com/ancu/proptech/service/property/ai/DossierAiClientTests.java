@@ -49,6 +49,7 @@ class DossierAiClientTests {
         assertEquals("CONSISTENT",DossierAiReport.aggregate(List.of(a)).verdict());
         assertEquals("ISSUES_FOUND",DossierAiReport.aggregate(List.of(a,b)).verdict());
         var unreadable=new DossierAiReport.FileReview("9",false,"Ảnh mờ",List.of(),List.of());assertEquals("INCONCLUSIVE",DossierAiReport.aggregate(List.of(unreadable)).verdict());
+        var unrelated=new DossierAiReport.FileReview("10",true,"Ảnh không liên quan",List.of(new DossierAiReport.Extraction("other","Ảnh phong cảnh")),List.of());assertEquals("INCONCLUSIVE",DossierAiReport.aggregate(List.of(unrelated)).verdict());
         String injected=valid("7","CERT-1").replace("certificateNumber","status");assertThrows(DossierAiClient.Failure.class,()->DossierAiReport.parse(json.readTree(injected),"7"));
     }
 }
