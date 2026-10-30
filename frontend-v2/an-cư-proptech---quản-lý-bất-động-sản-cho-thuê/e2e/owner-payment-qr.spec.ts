@@ -25,8 +25,8 @@ test('Quét QR điền bên trái, chờ xác nhận và giữ QR sau tải lạ
 
  await page.goto('/app');await page.locator('#nav-settings').click();
  const panel=page.getByRole('region',{name:'QR nhận tiền của chủ nhà'});
- await panel.getByLabel('Tải ảnh QR cá nhân').setInputFiles({name:'qr.png',mimeType:'image/png',buffer:png});
- await panel.getByRole('button',{name:'Quét QR và điền thông tin'}).click();
+ const chooserPromise=page.waitForEvent('filechooser');await panel.getByRole('button',{name:'Tải QR và điền thông tin'}).click();const chooser=await chooserPromise;await chooser.setFiles({name:'qr.png',mimeType:'image/png',buffer:png});
+ await expect(panel.getByRole('img',{name:'Ảnh QR vừa chọn'})).toBeVisible();
  await expect(panel.getByLabel('Ngân hàng nhận tiền')).toHaveValue('MBBank');await expect(panel.getByLabel('Số tài khoản nhận tiền')).toHaveValue('00123456789');await expect(panel.getByLabel('Tên chủ tài khoản nhận tiền')).toHaveValue('NGUYEN VAN TEST');
  expect(activeQr).toBeNull();await expect(panel.getByRole('button',{name:'Xác nhận và lưu QR'})).toBeDisabled();
  await panel.getByRole('checkbox',{name:/Tôi đã kiểm tra/}).check();await panel.getByRole('button',{name:'Xác nhận và lưu QR'}).click();
