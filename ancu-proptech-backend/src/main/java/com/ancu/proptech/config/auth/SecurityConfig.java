@@ -83,6 +83,10 @@ public class SecurityConfig {
                                 || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/verifications/vneid")
                                 || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/owner-upgrade")))))
                 .authorizeHttpRequests(a -> a
+                        .requestMatchers("/api/v1/owner/contracts/*/renewal-context", "/api/v1/owner/contracts/*/renewals", "/api/v1/owner/contracts/*/cancel-renewal",
+                            "/api/v1/owner/contracts/*/handover", "/api/v1/owner/contracts/*/handover/cancel", "/api/v1/contracts/*/handover/confirm").authenticated()
+                        .requestMatchers("/api/v1/contracts/*/pdf", "/api/v1/contracts/*/signatures").authenticated()
+                        .requestMatchers("/api/v1/auth/google").permitAll()
                         .requestMatchers("/api/v1/auth/csrf", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout", "/error").permitAll()
                         .requestMatchers("/api/v1/me/verifications", "/api/v1/me/verifications/vneid", "/api/v1/me/owner-upgrade").authenticated()
                         .requestMatchers("/api/v1/auth/vneid-config").permitAll()
@@ -102,6 +106,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/owner/tenancies", "/api/v1/me/tenancies", "/api/v1/owner/contracts/*/billing-context", "/api/v1/owner/contracts/*/invoices", "/api/v1/owner/invoices", "/api/v1/owner/invoices/*/send", "/api/v1/me/invoices", "/api/v1/invoices/*").authenticated()
                         .requestMatchers("/api/v1/owner/rental-requests/*/contract-context", "/api/v1/owner/rental-requests/*/contract", "/api/v1/owner/contract-drafts", "/api/v1/me/contract-drafts", "/api/v1/contracts/*", "/api/v1/owner/contracts/*/draft").authenticated()
                         .requestMatchers("/api/trustguard/**").hasAnyRole("OWNER", "ADMIN")
+                        .requestMatchers("/api/v1/owner/maintenance-tickets", "/api/v1/me/maintenance-tickets").authenticated()
+                        .requestMatchers("/api/v1/owner/maintenance-tickets/*/actions", "/api/v1/me/maintenance-tickets/*/actions").authenticated()
+                        .requestMatchers("/api/v1/maintenance-tickets/*/images", "/api/v1/maintenance-images/*").authenticated()
+                        .requestMatchers("/api/v1/admin/property-dossiers/*/ai-review", "/api/v1/admin/property-dossiers/*/ai-review/retry").authenticated()
+                        .requestMatchers("/api/v1/owner/cash-entries", "/api/v1/owner/cash-entries/**").authenticated()
                         .anyRequest().denyAll())
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((request, response, error) -> writeError(response, 401, "UNAUTHENTICATED", "Vui lòng đăng nhập lại."))

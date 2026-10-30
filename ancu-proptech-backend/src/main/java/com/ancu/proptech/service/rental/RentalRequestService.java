@@ -27,6 +27,7 @@ public class RentalRequestService {
     private final RentalRequestRepository requests;
     private final AccountAccessService access;
     private final AccountVerificationPolicy verification;
+    private final com.ancu.proptech.repository.contract.ContractDraftRepository drafts;
     private final com.ancu.proptech.service.property.PropertyRightsPolicy rights;
 
     @Transactional
@@ -61,7 +62,9 @@ public class RentalRequestService {
 
     private java.util.List<RentalRequest> activeRequests(Long customerId, Long apartmentId) {
         return requests.findByCustomerIdAndApartmentIdAndStatusInOrderByCreatedAtDescIdDesc(customerId, apartmentId,
-                java.util.List.of(RentalRequest.Status.PENDING, RentalRequest.Status.ACCEPTED));
+                java.util.List.of(RentalRequest.Status.PENDING, RentalRequest.Status.ACCEPTED)).stream()
+            .filter(r->r.getStatus()!=RentalRequest.Status.ACCEPTED || drafts.findByRentalRequestId(r.getId())
+                .map(d->d.getContract().getStatus()!=com.ancu.proptech.model.contract.RentalContract.Status.ENDED).orElse(true)).toList();
     }
 
     @Transactional
@@ -126,9 +129,12 @@ public class RentalRequestService {
     }
 
     private RentalRequestResponse response(RentalRequest r) {
+        var draft = drafts.findByRentalRequestId(r.getId()).orElse(null);
+        boolean completed = draft != null && draft.getOwnerSignedAt() != null && draft.getCustomerSignedAt() != null;
         return new RentalRequestResponse(r.getId(), r.getApartment().getId(), r.getApartment().getTitle(), r.getApartment().getProperty().getAddress(),
                 (r.getQuotedMonthlyRent()==null?r.getApartment().getAdvertisedMonthlyRent():r.getQuotedMonthlyRent()).toPlainString(), r.getCustomer().getId(), r.getCustomer().getFullName(), r.getCustomer().getEmail(),
-                r.getMessage(), r.getStatus().name(), r.getCreatedAt(), r.getVersion(), r.getDecisionReason());
+                r.getMessage(), r.getStatus().name(), r.getCreatedAt(), r.getVersion(), r.getDecisionReason(),
+                draft == null ? null : draft.getContract().getId().toString(), completed);
     }
     private static ApiException notFound() { return new ApiException(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Không tìm thấy căn hộ đang được đăng công khai."); }
 }

@@ -8,7 +8,6 @@ import {
   ReceiptText,
   Zap,
   Wrench,
-  ShieldCheck,
   Wallet,
   TrendingUp,
   Settings,
@@ -75,13 +74,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badge: maintenanceCount > 0 ? `${maintenanceCount}` : undefined,
       badgeColor: 'bg-amber-500/90 text-slate-950 font-bold',
     },
-    {
-      id: 'trustguard' as ActiveTab,
-      label: 'Thẩm định TrustGuard™',
-      icon: ShieldCheck,
-      badge: '99.4đ',
-      badgeColor: 'bg-emerald-500/25 text-emerald-300 border border-emerald-400/30',
-    },
     { id: 'finance' as ActiveTab, label: 'Sổ quỹ Thu - Chi', icon: Wallet },
     { id: 'reports' as ActiveTab, label: 'Báo cáo & Thống kê', icon: TrendingUp },
     { id: 'settings' as ActiveTab, label: 'Cài đặt Đơn giá', icon: Settings },
@@ -98,9 +90,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="overflow-hidden">
           <div className="font-bold text-white text-sm tracking-tight flex items-center gap-1.5">
             <span>An Cư PropTech</span>
-            <span className="text-[9px] uppercase font-extrabold bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30">
-              TrustGuard™
-            </span>
           </div>
           <p className="text-[11px] text-slate-400 truncate">Bất Động Sản Minh Bạch Pháp Lý</p>
         </div>
@@ -133,7 +122,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </span>
         </div>
 
-        <Link to="/" className="flex items-center gap-2.5 px-3 py-2 mb-2 text-xs text-slate-300 rounded-lg hover:bg-slate-800 hover:text-white"><Home className="w-4 h-4" />Trang chủ</Link>
+        {canManage ? <button type="button" id="nav-home" onClick={() => onSelectTab('home')}
+          aria-current={activeTab === 'home' ? 'page' : undefined}
+          className={`w-full flex items-center gap-2.5 px-3 py-2 mb-2 text-xs rounded-lg transition-colors ${activeTab === 'home' ? 'bg-[#065f46] text-white font-bold ring-1 ring-emerald-500' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>
+          <Home className="w-4 h-4" />Trang chủ
+        </button> : <Link to="/" className="flex items-center gap-2.5 px-3 py-2 mb-2 text-xs text-slate-300 rounded-lg hover:bg-slate-800 hover:text-white"><Home className="w-4 h-4" />Trang chủ</Link>}
         {/* Admin Menu */}
         {canManage && <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
           Vận Hành Quản Lý
@@ -173,17 +166,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           );
         })}
       </nav>
-
-      {/* TrustGuard Security Seal */}
-      <div className="p-3 m-2 rounded-xl bg-gradient-to-b from-slate-800/90 to-slate-900 border border-slate-700/60 text-xs">
-        <div className="flex items-center gap-2 mb-1">
-          <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span className="font-bold text-white text-[11px]">Bảo Chứng An Cư™</span>
-        </div>
-        <p className="text-[10px] text-slate-400 leading-relaxed">
-          Ký quỹ cọc Escrow an toàn qua Ngân hàng Quân Đội MBBank. Pháp lý Sổ hồng 100%.
-        </p>
-      </div>
 
       {/* Footer Profile Status */}
       <div className="p-3 border-t border-slate-800 flex items-center justify-between text-xs bg-slate-950/40">

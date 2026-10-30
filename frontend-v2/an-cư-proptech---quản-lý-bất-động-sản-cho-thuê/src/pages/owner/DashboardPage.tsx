@@ -12,7 +12,6 @@ import {
   Calendar,
   AlertTriangle,
   ShieldCheck,
-  Lock,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -79,7 +78,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             Bảng Điều Khiển Vận Hành - {propertyName}
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Tổng quan công suất phòng, dòng tiền thanh toán qua VietQR và kiểm định pháp lý bảo chứng Escrow.
+            Tổng quan công suất phòng và dòng tiền thanh toán qua VietQR.
           </p>
         </div>
 
@@ -108,13 +107,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           >
             <FileText className="w-3.5 h-3.5" />
             <span>Thu Tiền Phòng</span>
-          </button>
-          <button
-            onClick={() => onNavigateTab('trustguard')}
-            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-950 text-emerald-300 hover:bg-slate-900 rounded-lg text-xs font-semibold border border-emerald-700/50 shadow-xs transition-colors"
-          >
-            <Lock className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Thẩm Định TrustGuard</span>
           </button>
         </div>
       </div>

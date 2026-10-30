@@ -3,7 +3,7 @@ import { ApiError, readApiError } from '@/services/http/client';
 import type { AuthSession, AuthUser } from '@/types/auth';
 export type { AuthSession, AuthUser } from '@/types/auth';
 
-async function authRequest(action: 'register' | 'login' | 'refresh' | 'logout', body?: unknown): Promise<Response> {
+async function authRequest(action: 'register' | 'login' | 'google' | 'refresh' | 'logout', body?: unknown): Promise<Response> {
   try {
     const csrfResponse = await fetch('/api/v1/auth/csrf', { credentials: 'same-origin', cache: 'no-store' });
     if (!csrfResponse.ok) throw await readApiError(csrfResponse);
@@ -24,6 +24,10 @@ async function authRequest(action: 'register' | 'login' | 'refresh' | 'logout', 
 
 export async function login(email: string, password: string): Promise<AuthSession> {
   return (await authRequest('login', { email: email.trim(), password })).json();
+}
+
+export async function loginWithGoogle(credential: string): Promise<AuthSession> {
+  return (await authRequest('google', { credential })).json();
 }
 
 export interface RegistrationInput {

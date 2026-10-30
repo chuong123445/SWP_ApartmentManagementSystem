@@ -43,7 +43,7 @@ export function RequestList({
               <p className="text-xs text-slate-500 mt-1">{request.address}</p>
             </div>
             <span className={`text-xs font-semibold rounded-full px-3 py-1 self-start ${statusBadgeClass[request.status]}`}>
-              {requestStatusLabel[request.status]}
+              {request.status === 'ACCEPTED' && request.contractCompleted ? 'Đã tạo hợp đồng' : requestStatusLabel[request.status]}
             </span>
           </div>
 
@@ -92,17 +92,17 @@ export function RequestList({
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-3">
               <span className="text-xs text-emerald-700 font-medium inline-flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                Đã chấp nhận yêu cầu thuê
+                {request.contractCompleted ? 'Đã tạo hợp đồng — hai bên đã ký đầy đủ' : 'Đã chấp nhận yêu cầu thuê'}
               </span>
-              <button
+              {request.contractCompleted && request.contractId ? <Link to={`/contracts/${request.contractId}`} className="text-sm font-semibold text-emerald-700 underline">Xem hợp đồng</Link> : <button
                 type="button"
                 disabled={!onCreateContract}
                 onClick={() => onCreateContract?.(request)}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-50"
               >
                 <FileText className="w-4 h-4" />
-                Tạo hợp đồng
-              </button>
+                {request.contractId ? 'Xem / ký hợp đồng' : 'Tạo hợp đồng'}
+              </button>}
             </div>
           )}
 
@@ -127,7 +127,7 @@ export function RequestList({
           {!owner && request.status === 'ACCEPTED' && (
             <div className="mt-3 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 inline-flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Chủ nhà đã chấp nhận yêu cầu thuê của bạn. Vui lòng liên hệ chủ nhà để thực hiện bước hợp đồng.</span>
+              <span>{request.contractCompleted ? 'Đã tạo hợp đồng — hai bên đã ký đầy đủ.' : 'Chủ nhà đã chấp nhận yêu cầu thuê của bạn. Vui lòng liên hệ chủ nhà để thực hiện bước hợp đồng.'}</span>
             </div>
           )}
 

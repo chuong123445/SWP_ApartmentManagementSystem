@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.util.List;
 @Getter @Setter
 public class ContractTerms {
+    @NotNull @Pattern(regexp="APARTMENT|HOUSE|ROOM|BUSINESS|SHARED") private String templateType = "APARTMENT";
     @NotNull private LocalDate startDate;
     @NotNull private LocalDate endDate;
     @NotNull @DecimalMin("0.01") @Digits(integer=13,fraction=2) private BigDecimal monthlyRent;
