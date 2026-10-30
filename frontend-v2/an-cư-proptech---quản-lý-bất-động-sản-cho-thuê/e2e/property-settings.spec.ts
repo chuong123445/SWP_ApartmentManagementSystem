@@ -25,5 +25,7 @@ test('Lưu đơn giá thật, giữ giá 0 và tải lại đúng tài sản',as
  await page.reload();await page.locator('#nav-settings').click();await page.locator('#select-building-sidebar').selectOption('11');
  await expect(region.getByLabel('Giá điện (đ/kWh)')).toHaveValue('0');await expect(region.getByLabel('Internet (đ/phòng/tháng)')).toHaveValue('100000');
  await expect(page.getByText('Khôi Phục Dữ Liệu Demo Gốc')).toHaveCount(0);
+ await region.getByLabel('Cách tính tiền nước').selectOption('PER_PERSON');await region.getByLabel('Giá nước (đ/người/tháng)').fill('50000');await region.getByRole('button',{name:'Lưu thay đổi'}).click();await expect(region.getByRole('status')).toContainText('Đã lưu cài đặt');
+ await region.getByRole('button',{name:'Tải lại',exact:true}).click();await expect(region.getByLabel('Cách tính tiền nước')).toHaveValue('PER_PERSON');await expect(region.getByLabel('Giá nước (đ/người/tháng)')).toHaveValue('50000');
  await page.screenshot({path:info.outputPath('cai-dat-don-gia.png'),fullPage:true});
 });
