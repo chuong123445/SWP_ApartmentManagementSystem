@@ -36,6 +36,7 @@
 - OwnerPaymentQrIntegrationTests: quét chưa kích hoạt, xác nhận đúng chủ nhà, truy cập ảnh riêng tư, không xác nhận lại bản đã lưu.
 - PaymentQrNameReaderTests: AI gợi ý tên; thông tin không khớp, lỗi provider, thiếu cấu hình không ghi nhầm dữ liệu.
 - Playwright property-settings/owner-payment-qr/invoices-ui: lưu và tải lại, đổi chế độ nước, quét điền bên trái và xác nhận; màn hình điện thoại không tràn ngang. Các bài UI dùng API giả lập, kiểm tra lưu SQL và phân quyền có bài tích hợp riêng.
+- Đã gọi Gemini thật với ảnh QR tổng hợp và tên NGUYEN VAN TEST: trả AI_SUGGESTED, tên đọc đúng. Không dùng ảnh/tài khoản ngân hàng thật của người dùng trong phép thử này.
 - Hai bài resident-invoices cũ cần LOCAL_TENANT_* trong .env.local; không chạy được trên cấu hình máy hiện tại do thiếu tài khoản fixture. Không thêm tài khoản hay mật khẩu giả vào dữ liệu đang dùng để ép bài kiểm tra qua.
 
 Tham khảo giải mã QR: [ZXing](https://zxing.github.io/zxing/apidocs/com/google/zxing/multi/qrcode/QRCodeMultiReader.html), [cấu trúc VietQR và CRC trong thư viện nguồn](https://github.com/sunary/vietqr).
