@@ -1,17 +1,15 @@
 import React, { useState } from 'react';
-import { Settings, Save, CheckCircle2, QrCode, Building, CreditCard, RotateCcw } from 'lucide-react';
+import { Settings, Save, CheckCircle2, QrCode, Building, CreditCard } from 'lucide-react';
 import { SystemConfig } from '@/types';
 
 interface SettingsPageProps {
   config: SystemConfig;
   onSaveConfig: (cfg: SystemConfig) => void;
-  onResetData: () => void;
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
   config,
   onSaveConfig,
-  onResetData,
 }) => {
   const [electricPrice, setElectricPrice] = useState(config.electricPrice.toString());
   const [waterPrice, setWaterPrice] = useState(config.waterPrice.toString());
@@ -55,18 +53,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             Cấu hình đơn giá điện, nước, internet và tài khoản ngân hàng thụ hưởng mã VietQR.
           </p>
         </div>
-
-        <button
-          onClick={() => {
-            if (confirm('Bạn có chắc chắn muốn khôi phục lại dữ liệu demo mặc định ban đầu?')) {
-              onResetData();
-            }
-          }}
-          className="flex items-center gap-1.5 px-3 py-2 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg text-xs font-semibold transition-colors shrink-0"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-          <span>Khôi Phục Dữ Liệu Demo Gốc</span>
-        </button>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">

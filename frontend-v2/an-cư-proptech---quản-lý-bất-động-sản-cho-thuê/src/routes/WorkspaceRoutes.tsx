@@ -22,7 +22,7 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
     buildings: initialBuildings, setSelectedRoom, setSelectedInvoice, currentResidentRoom, currentResidentTenant,
     currentResidentContract, residentInvoices, residentTickets, handleMarkPaid, handleAddTenant, handleAddContract,
     handleUpdateIndices,
-    handleReserveEscrow, handleResetData, handleSaveConfig: setConfig,
+    handleReserveEscrow, handleSaveConfig: setConfig,
     handleAddTransaction } = workspace;
   return <>
           {activeTab === 'home' && <HomePage embedded />}
@@ -136,7 +136,6 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
             <SettingsPage
               config={config}
               onSaveConfig={setConfig}
-              onResetData={handleResetData}
             />
           )}
         </>;
