@@ -9,8 +9,10 @@ public final class PropertySettingsDtos {
   @NotNull @DecimalMin("0") @Digits(integer=13,fraction=2) BigDecimal electricityUnitPrice,
   @NotNull @DecimalMin("0") @Digits(integer=13,fraction=2) BigDecimal waterUnitPrice,
   @NotNull @DecimalMin("0") @Digits(integer=13,fraction=2) BigDecimal internetFee,
-  @NotNull @DecimalMin("0") @Digits(integer=13,fraction=2) BigDecimal garbageFee) {}
+  @NotNull @DecimalMin("0") @Digits(integer=13,fraction=2) BigDecimal garbageFee,com.ancu.proptech.model.property.PropertySettings.WaterBillingMode waterBillingMode) {
+ public Save {if(waterBillingMode==null)waterBillingMode=com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.METERED;}
+ }
  public record View(String propertyId,String propertyName,boolean configured,long version,
   String electricityUnitPrice,String waterUnitPrice,String internetFee,String garbageFee,
-  Instant updatedAt,ContractSnapshot.ReceivingAccount receivingAccount) {}
+  Instant updatedAt,ContractSnapshot.ReceivingAccount receivingAccount,com.ancu.proptech.model.property.PropertySettings.WaterBillingMode waterBillingMode) {}
 }
