@@ -42,3 +42,4 @@ ALTER TABLE dbo.sepay_events WITH CHECK ADD CONSTRAINT fk_sepay_events_owner_id 
 
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name=N'fk_sepay_events_invoice_id')
 ALTER TABLE dbo.sepay_events WITH CHECK ADD CONSTRAINT fk_sepay_events_invoice_id FOREIGN KEY (invoice_id) REFERENCES dbo.rental_invoices(id);
+GO

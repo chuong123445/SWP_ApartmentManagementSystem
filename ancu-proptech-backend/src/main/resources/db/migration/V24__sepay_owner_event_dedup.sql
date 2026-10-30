@@ -12,3 +12,4 @@ AND EXISTS(SELECT 1 FROM sys.index_columns ic JOIN sys.columns c ON c.object_id=
 IF LEN(@sql)>0 EXEC sp_executesql @sql;
 IF NOT EXISTS(SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'dbo.sepay_events') AND name=N'ux_sepay_event_owner_transaction')
 ALTER TABLE dbo.sepay_events ADD CONSTRAINT ux_sepay_event_owner_transaction UNIQUE(owner_id,transaction_id);
+GO

@@ -9,3 +9,4 @@ IF NOT EXISTS(SELECT 1 FROM sys.foreign_keys WHERE name='fk_sepay_test_contract'
  EXEC('ALTER TABLE dbo.sepay_test_payments ADD CONSTRAINT fk_sepay_test_contract FOREIGN KEY(contract_id) REFERENCES dbo.rental_contracts(id)');
 IF NOT EXISTS(SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('dbo.sepay_test_payments') AND name='ix_sepay_test_customer')
  EXEC('CREATE INDEX ix_sepay_test_customer ON dbo.sepay_test_payments(customer_id,id DESC)');
+GO

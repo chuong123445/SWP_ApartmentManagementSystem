@@ -15,3 +15,4 @@ IF NOT EXISTS(SELECT 1 FROM sys.foreign_keys WHERE name='fk_sepay_event_test_pay
  EXEC('ALTER TABLE dbo.sepay_events ADD CONSTRAINT fk_sepay_event_test_payment FOREIGN KEY(test_payment_id) REFERENCES dbo.sepay_test_payments(id)');
 IF NOT EXISTS(SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('dbo.sepay_test_payments') AND name='ix_sepay_test_owner')
  CREATE INDEX ix_sepay_test_owner ON dbo.sepay_test_payments(owner_id,id DESC);
+GO
