@@ -30,7 +30,9 @@ export function invoiceView(i: BillingInvoice): Invoice {
     items: [
       { name: 'Tiền thuê', unit: 'tháng', quantity: 1, unitPrice: Number(i.monthlyRent), amount: Number(i.monthlyRent) },
       { name: 'Tiền điện', unit: 'kWh', oldIndex: Number(i.electricityStartReading), newIndex: Number(i.electricityEndReading), quantity: Number(i.electricityQuantity), unitPrice: Number(i.electricityUnitPrice), amount: Number(i.electricityAmount) },
-      { name: 'Tiền nước', unit: 'm³', oldIndex: Number(i.waterStartReading), newIndex: Number(i.waterEndReading), quantity: Number(i.waterQuantity), unitPrice: Number(i.waterUnitPrice), amount: Number(i.waterAmount) },
+      { name: 'Tiền nước', unit: i.waterBillingMode==='PER_PERSON'?'người/tháng':'m³', oldIndex: Number(i.waterStartReading), newIndex: Number(i.waterEndReading), quantity: Number(i.waterQuantity), unitPrice: Number(i.waterUnitPrice), amount: Number(i.waterAmount) },
+      ...(Number(i.internetFee??0)>0?[{name:'Internet',unit:'tháng',quantity:1,unitPrice:Number(i.internetFee),amount:Number(i.internetFee)}]:[]),
+      ...(Number(i.garbageFee??0)>0?[{name:'Vệ sinh và rác',unit:'tháng',quantity:1,unitPrice:Number(i.garbageFee),amount:Number(i.garbageFee)}]:[]),
     ],
   };
 }

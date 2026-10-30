@@ -111,6 +111,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/maintenance-tickets/*/images", "/api/v1/maintenance-images/*").authenticated()
                         .requestMatchers("/api/v1/admin/property-dossiers/*/ai-review", "/api/v1/admin/property-dossiers/*/ai-review/retry").authenticated()
                         .requestMatchers("/api/v1/owner/cash-entries", "/api/v1/owner/cash-entries/**").authenticated()
+                        .requestMatchers("/api/v1/owner/properties/*/settings").authenticated()
+                        .requestMatchers("/api/v1/owner/payment-qr/**", "/api/v1/invoices/*/payment-qr").authenticated()
+                        .requestMatchers("/api/v1/owner/properties/*/payment-qr").authenticated()
+                        .requestMatchers("/api/v1/me/notifications", "/api/v1/me/notifications/**").authenticated()
                         .anyRequest().denyAll())
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((request, response, error) -> writeError(response, 401, "UNAUTHENTICATED", "Vui lòng đăng nhập lại."))

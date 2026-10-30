@@ -51,7 +51,9 @@ public class ContractPdfService {
             writer.field("Tiền đặt cọc",money(draft.deposit())+" đồng");
             writer.field("Thanh toán", "Ngày "+draft.paymentDay()+" hàng tháng; "+draft.paymentMethod());
             writer.field("Điện",money(draft.electricityUnitPrice())+" đồng/kWh, theo chỉ số sử dụng");
-            writer.field("Nước",money(draft.waterUnitPrice())+" đồng/m³, theo chỉ số sử dụng");
+            writer.field("Nước",money(draft.waterUnitPrice())+("PER_PERSON".equals(draft.waterBillingMode())?" đồng/người/tháng; số người: "+draft.occupantCount():" đồng/m³, theo chỉ số sử dụng"));
+            if(new BigDecimal(draft.internetFee()).signum()>0)writer.field("Internet mỗi tháng",money(draft.internetFee())+" đồng/phòng");
+            if(new BigDecimal(draft.garbageFee()).signum()>0)writer.field("Vệ sinh và rác mỗi tháng",money(draft.garbageFee())+" đồng/phòng");
             var bank=draft.snapshot().receivingAccount();
             if(bank!=null){writer.field("Ngân hàng",bank.bank());writer.field("Chủ tài khoản",bank.accountHolderName());writer.field("Số tài khoản",bank.accountNumber());}
             writer.heading("III. ĐIỀU KHOẢN THỎA THUẬN");

@@ -31,6 +31,7 @@ class ContractDraftIntegrationTests {
     @Autowired MockMvc mvc;
     @Autowired AuthAccountRepository accounts;
     @Autowired PropertyRepository properties;
+    @Autowired com.ancu.proptech.repository.property.OwnerPaymentQrRepository paymentQrs;
     @Autowired PropertyDossierRepository dossiers;
     @Autowired ApartmentRepository apartments;
     @Autowired RentalRequestRepository requests;
@@ -56,6 +57,26 @@ class ContractDraftIntegrationTests {
     }
     private AuthAccount account(AuthAccount.Role role) { var a=new AuthAccount();a.setEmail(com.ancu.proptech.support.TestIds.next()+"@example.invalid");a.setFullName("Thông tin đã lưu "+role);a.setPhone("0912345678");a.setAddress("Địa chỉ hồ sơ");a.setPasswordHash(hash);a.setRole(role);a.setStatus(AuthAccount.Status.ACTIVE);a.setEmailVerified(true);a.setContactVerified(true);return accounts.saveAndFlush(a); }
     private String bearer(AuthAccount a) { return "Bearer "+auth.login(a.getEmail(),PASSWORD).tokens().accessToken(); }
+    @Test void configuredRatesAndServiceChargesArePartOfTheSignedDocument()throws Exception {
+        Long propertyId=request.getApartment().getProperty().getId();
+        mvc.perform(put("/api/v1/owner/properties/"+propertyId+"/settings").header("Authorization",token).contentType("application/json").content("{\"version\":0,\"electricityUnitPrice\":\"3500\",\"waterUnitPrice\":\"50000\",\"internetFee\":\"100000\",\"garbageFee\":\"30000\",\"waterBillingMode\":\"PER_PERSON\"}")).andExpect(status().isOk());
+        String ctx=context();assertEquals("PER_PERSON",JsonPath.read(ctx,"$.suggestedRates.waterBillingMode"));
+        String input=body(ctx).replace("\"waterUnitPrice\":\"15000\"","\"waterUnitPrice\":\"50000\",\"waterBillingMode\":\"PER_PERSON\",\"occupantCount\":2,\"internetFee\":\"100000\",\"garbageFee\":\"30000\"");
+        create(token,input).andExpect(status().isCreated()).andExpect(jsonPath("$.waterBillingMode").value("PER_PERSON")).andExpect(jsonPath("$.occupantCount").value(2));
+    }
+    @Test void confirmedQrSnapshotIsPrivateAndSurvivesOwnerQrReplacement()throws Exception {
+        var qr=new com.ancu.proptech.model.property.OwnerPaymentQr();qr.setOwnerId(owner.getId());qr.setBankBin("970422");qr.setBank("MBBank");qr.setAccountNumber("00123456789");qr.setAccountHolderName("OWNER TEST");qr.setContentType("image/png");qr.setContent(new byte[]{1,2,3});qr.setAiStatus("NOT_REQUESTED");qr.setCreatedAt(Instant.now());qr.setConfirmedAt(Instant.now());paymentQrs.saveAndFlush(qr);
+        String saved=create();assertEquals(qr.getId().toString(),JsonPath.read(saved,"$.snapshot.ownerPaymentQrId"));assertEquals("00123456789",JsonPath.read(saved,"$.snapshot.receivingAccount.accountNumber"));
+        var c=contracts.findById(Long.valueOf(id(saved))).orElseThrow();c.setStatus(RentalContract.Status.ACTIVE);c.setBaselineDate(c.getStartDate());c.setElectricityBaseline(BigDecimal.ZERO);c.setWaterBaseline(BigDecimal.ZERO);contracts.saveAndFlush(c);
+        String invoiceBody="{\"period\":\"2026-11\",\"dueDate\":\"2026-11-28\",\"electricityEndReading\":\"0\",\"waterEndReading\":\"0\",\"baselineVersion\":0}";
+        String inv=mvc.perform(post("/api/v1/owner/contracts/"+c.getId()+"/invoices").header("Authorization",token).contentType("application/json").content(invoiceBody)).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();String invoiceId=JsonPath.read(inv,"$.id");
+        String url="/api/v1/invoices/"+invoiceId+"/payment-qr";
+        mvc.perform(get(url).header("Authorization",otherToken)).andExpect(status().isNotFound());mvc.perform(get(url).header("Authorization",customerToken)).andExpect(status().isNotFound());
+        mvc.perform(post("/api/v1/owner/invoices/"+invoiceId+"/send").header("Authorization",token).contentType("application/json").content("{\"version\":0}")).andExpect(status().isOk());
+        mvc.perform(get(url).header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(content().bytes(new byte[]{1,2,3}));
+        var next=new com.ancu.proptech.model.property.OwnerPaymentQr();next.setOwnerId(owner.getId());next.setBankBin("970422");next.setBank("MBBank");next.setAccountNumber("999999");next.setAccountHolderName("NEW OWNER TEST");next.setContentType("image/png");next.setContent(new byte[]{4,5});next.setAiStatus("NOT_REQUESTED");next.setCreatedAt(Instant.now());next.setConfirmedAt(Instant.now().plusSeconds(1));paymentQrs.saveAndFlush(next);
+        mvc.perform(get(url).header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(content().bytes(new byte[]{1,2,3}));
+    }
     private String context() throws Exception { return mvc.perform(get("/api/v1/owner/rental-requests/"+request.getId()+"/contract-context").header("Authorization",token)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString(); }
     @Test void newContractContextUsesVerifiedCitizenWithoutRequiringManualIdentity()throws Exception{
         var verified=com.ancu.proptech.support.VerifiedIdentityFixtures.bind(verifiedIdentities,owner);

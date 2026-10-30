@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import {useSearchParams} from 'react-router';
+import { useEffect,useState } from 'react';
 import type { ActiveTab, UserRole } from '@/types';
 
 export function useWorkspaceNavigation(canManage: boolean) {
+  const [params]=useSearchParams();
   // User & RBAC State
   const userRole: UserRole = canManage ? 'admin' : 'seeker';
 
@@ -10,6 +12,7 @@ export function useWorkspaceNavigation(canManage: boolean) {
   const [selectedBuildingId, setSelectedBuildingId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  useEffect(()=>{if(!canManage)return;const tab=params.get('tab');if(tab&&['rental_requests','maintenance','contracts','properties','invoices'].includes(tab)){setActiveTab(tab as ActiveTab);const property=params.get('propertyId');setSelectedBuildingId(property&&/^[0-9]+$/.test(property)?property:'all');}},[params,canManage]);
   // Modals
   const [isAddRoomOpen, setIsAddRoomOpen] = useState(false);
   const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false);
