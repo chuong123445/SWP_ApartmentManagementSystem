@@ -69,4 +69,20 @@ class NotificationIntegrationTests {
       jdbc.update("INSERT INTO rental_requests(apartment_id,customer_id,message,status,created_at,version) VALUES(?,?,N'Yêu cầu thuê kiểm thử','PENDING',SYSUTCDATETIME(),0)",apartment.getId(),tenant.getId());
       String json=feed(ownerToken);assertEquals(1,JsonPath.<Integer>read(json,"$.unreadCount"));assertEquals("Có yêu cầu thuê mới",JsonPath.read(json,"$.items[0].title"));assertEquals(0,JsonPath.<Integer>read(feed(token(otherOwner)),"$.totalElements"));
     }
+
+    @Test void ownerDecisionProducesRealCustomerNotificationWithDecisionTimestamp()throws Exception {
+      jdbc.update("INSERT INTO rental_requests(apartment_id,customer_id,message,status,created_at,version) VALUES(?,?,N'Yêu cầu kiểm thử','PENDING',SYSUTCDATETIME(),0)",apartment.getId(),tenant.getId());
+      Long id=jdbc.queryForObject("SELECT id FROM rental_requests WHERE apartment_id=? AND customer_id=?",Long.class,apartment.getId(),tenant.getId());
+      mvc.perform(post("/api/v1/owner/rental-requests/"+id+"/decisions").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"decision\":\"REJECT\",\"version\":0,\"reason\":\"Không phù hợp\"}")).andExpect(status().isOk());
+      assertNotNull(jdbc.queryForObject("SELECT decided_at FROM rental_requests WHERE id=?",java.sql.Timestamp.class,id));
+      String json=feed(tenantToken);assertEquals(1,JsonPath.<Integer>read(json,"$.unreadCount"));assertEquals("/my/rental-requests",JsonPath.read(json,"$.items[0].url"));assertTrue(JsonPath.<String>read(json,"$.items[0].message").contains("Đã từ chối"));
+    }
+    @Test void maintenanceEventsNotifyOnlyTheOtherRelevantParty()throws Exception {
+      jdbc.update("INSERT INTO maintenance_tickets(property_id,apartment_id,reporter_id,tenant_id,title,description,category,priority,status,created_at,version) VALUES(?,?,?,?,N'Sự cố kiểm thử',N'Nội dung','WATER','NORMAL','PENDING',SYSUTCDATETIME(),0)",property.getId(),apartment.getId(),tenant.getId(),tenant.getId());
+      Long id=jdbc.queryForObject("SELECT id FROM maintenance_tickets WHERE property_id=?",Long.class,property.getId());
+      jdbc.update("INSERT INTO maintenance_events(ticket_id,actor_id,action,note,created_at) VALUES(?,?,'CREATED',N'',SYSUTCDATETIME())",id,tenant.getId());
+      assertEquals(1,JsonPath.<Integer>read(feed(ownerToken),"$.unreadCount"));assertEquals(0,JsonPath.<Integer>read(feed(tenantToken),"$.unreadCount"));assertEquals(0,JsonPath.<Integer>read(feed(token(otherOwner)),"$.unreadCount"));
+      jdbc.update("INSERT INTO maintenance_events(ticket_id,actor_id,action,note,created_at) VALUES(?,?,'ACCEPT',N'',SYSUTCDATETIME())",id,owner.getId());
+      assertEquals(1,JsonPath.<Integer>read(feed(tenantToken),"$.unreadCount"));assertEquals(1,JsonPath.<Integer>read(feed(ownerToken),"$.unreadCount"));
+    }
 }
