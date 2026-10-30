@@ -1,13 +1,15 @@
 import {useEffect,useState} from 'react';
+import type {ReactNode} from 'react';
 import {paymentApi,type InvoicePayment,type TestReceipt} from '@/services/payment/sepayService';
 import {billingMoney} from '@/services/billing/billingService';
-export function InvoicePaymentPanel({invoiceId,additional=false}:{invoiceId:string;additional?:boolean}){
+export function InvoicePaymentPanel({invoiceId,additional=false,fallback}:{invoiceId:string;additional?:boolean;fallback?:ReactNode}){
  const [data,setData]=useState<InvoicePayment|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);const [revision,setRevision]=useState(0);
  useEffect(()=>{const c=new AbortController();let inFlight=false;
   async function refresh(){if(inFlight||c.signal.aborted)return;inFlight=true;try{const p=additional?(await paymentApi<TestReceipt>(`/me/payments/sepay/test-payments/${invoiceId}`,'GET',undefined,c.signal)).payment:await paymentApi<InvoicePayment>(`/invoices/${invoiceId}/payment`,'GET',undefined,c.signal);if(!c.signal.aborted){setData(p);setError('');}}catch(e){if(!c.signal.aborted)setError(e instanceof Error?e.message:'Không thể tải thanh toán.');}finally{inFlight=false;}}
   void refresh();const timer=window.setInterval(()=>{if(document.visibilityState==='visible')void refresh();},10000);return()=>{c.abort();window.clearInterval(timer);};
  },[invoiceId,revision,additional]);
  async function generate(){if(busy||additional)return;setBusy(true);setError('');try{setData(await paymentApi<InvoicePayment>(`/invoices/${invoiceId}/payment`,'POST'));setRevision(v=>v+1);}catch(e){setError(e instanceof Error?e.message:'Không thể tạo mã QR.');}finally{setBusy(false);}}
+ if(data?.status==='NOT_CONFIGURED'&&fallback)return <>{fallback}</>;
  return <section aria-label="Thanh toán hóa đơn" className="mt-6 border-t pt-5 space-y-3"><h2 className="font-bold text-lg">Thanh toán hóa đơn</h2>
  {error&&<p role="alert" className="text-rose-700">{error}</p>}
  {data?.status==='PAID'?<p role="status" className="rounded-xl p-4 bg-emerald-50 text-emerald-800">Đã thanh toán qua SePay{data.paidAt&&` · Ghi nhận ${new Date(data.paidAt).toLocaleString('vi-VN')}`}</p>:data?.status==='NOT_CONFIGURED'?<p className="text-amber-800">Chủ nhà chưa bật thanh toán SePay. Vui lòng liên hệ chủ nhà.</p>:<>

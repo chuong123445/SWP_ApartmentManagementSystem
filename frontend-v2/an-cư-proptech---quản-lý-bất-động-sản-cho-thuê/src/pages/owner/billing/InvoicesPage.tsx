@@ -51,7 +51,7 @@ export function InvoicesPage({ invoices, onOpenInvoiceModal, onOpenCreateInvoice
           <td data-label="Người thuê"><span className="op-person"><span className="op-avatar" aria-hidden="true">{i.tenantName.trim().split(/\s+/).slice(-2).map(x=>x[0]).join('')}</span>{i.tenantName}</span></td>
           <td data-label="Hạn đóng">{dateLabel(i.dueDate)}</td>
           <td data-label="Tổng tiền"><span className="op-money">{i.apiInvoice?billingMoney(i.apiInvoice.totalAmount):'—'}</span></td>
-          <td data-label="Trạng thái"><span className={`op-badge ${i.apiInvoice?.status==='SENT'?'green':'amber'}`}>{i.apiInvoice?.status==='SENT'?<><CheckCircle2 size={11}/>Đã gửi</>:<><FileText size={11}/>Bản nháp</>}</span></td>
+          <td data-label="Trạng thái"><span className={`op-badge ${i.apiInvoice?.status==='SENT'?'green':'amber'}`}>{i.apiInvoice?.status==='SENT'?<><CheckCircle2 size={11}/>Đã gửi</>:<><FileText size={11}/>Bản nháp</>}</span>{i.apiInvoice?.status==='SENT'&&<span className="block text-xs mt-1">{i.apiInvoice.paymentStatus==='PAID'?'Đã thanh toán':'Chưa thanh toán'}</span>}</td>
           <td data-label="Thao tác"><div className="op-buttons"><button onClick={()=>onOpenInvoiceModal(i)} className="op-link">Chi tiết<ArrowUpRight size={13}/></button>{i.apiInvoice?.status==='DRAFT'&&<button disabled={!!sending} onClick={()=>void send(i.id)} className="op-link"><Send size={12}/>{sending===i.id?'Đang gửi...':'Gửi người thuê'}</button>}</div></td>
         </tr>)}
         {!visible.length&&<tr><td colSpan={7} className="op-empty-cell"><div className="op-empty"><ReceiptText size={29}/><strong>Chưa có hóa đơn phù hợp.</strong>Thử đổi bộ lọc hoặc lập hóa đơn mới cho người thuê.</div></td></tr>}
