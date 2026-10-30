@@ -31,6 +31,7 @@ public class ContractDraftService {
     private final RentalRequestRepository requests;
     private final ApartmentRepository apartments;
     private final PropertyDossierRepository dossiers;
+    private final com.ancu.proptech.repository.property.OwnerPaymentQrRepository paymentQrs;
     private final com.ancu.proptech.repository.property.PropertySettingsRepository propertySettings;
     private final AccountAccessService access;
     private final AccountVerificationPolicy verification;
@@ -222,13 +223,14 @@ public class ContractDraftService {
         var a=r.getApartment();var p=a.getProperty();
         var approved=dossiers.findByPropertyIdOrderBySubmittedAtDescIdDesc(p.getId()).stream()
             .filter(d->d.getStatus()==PropertyDossier.Status.APPROVED).findFirst().orElse(null);
+        var qr=paymentQrs.findFirstByOwnerIdAndConfirmedAtNotNullOrderByConfirmedAtDescIdDesc(p.getOwner().getId()).orElse(null);
         return new ContractSnapshot(party(p.getOwner()),party(r.getCustomer()),
             new ContractSnapshot.Asset(a.getId().toString(),p.getId().toString(),p.getName(),a.getTitle(),a.getRoomNumber(),p.getAddress(),p.getCity(),p.getDistrict(),p.getWard(),
                 a.getAreaM2().toPlainString(),a.getFloor(),a.getBedrooms(),a.getBathrooms(),List.copyOf(a.getAmenities()),p.getApprovalStatus().name(),
                 approved==null?null:approved.getId().toString(),approved==null?null:approved.getRightType().name(),
                 approved==null?null:approved.getCertificateNumber(),approved==null?null:approved.getCertificateIssueDate(),
                 approved==null?null:approved.getCertificateIssuePlace(),approved==null?null:approved.getExploitationRightDescription(),approved==null?null:approved.isLocalFixture()),
-            approved==null?null:new ContractSnapshot.ReceivingAccount(approved.getBank(),approved.getAccountNumber(),approved.getAccountHolderName()));
+            qr!=null?new ContractSnapshot.ReceivingAccount(qr.getBank(),qr.getAccountNumber(),qr.getAccountHolderName()):approved==null?null:new ContractSnapshot.ReceivingAccount(approved.getBank(),approved.getAccountNumber(),approved.getAccountHolderName()),qr==null?null:qr.getId().toString());
     }
     private ContractSnapshot.Party party(AuthAccount a) {
         var verified=verifiedIdentities.findById(a.getId()).filter(i->"VERIFIED".equals(i.getVerificationStatus())).orElse(null);
