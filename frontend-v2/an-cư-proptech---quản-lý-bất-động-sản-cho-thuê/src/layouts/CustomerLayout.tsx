@@ -16,6 +16,7 @@ export function CustomerLayout({ children }: { children: ReactNode }) {
         <Link to="/" className="customer-logo" aria-label="An Cư PropTech"><span className="customer-mark"><HomeIcon name="apartment" /></span><span>An Cư<small>PROPTECH</small></span></Link>
         <nav className="customer-nav">
           <Link to="/" className="customer-home-link">Trang chủ</Link>
+          {!user?.roles.includes('ADMIN')&&<Link to="/account/properties/new" className="customer-home-link">Đăng cho thuê</Link>}
           {user ? <AccountMenu account={user} onLogout={logout} isLoggingOut={isLoggingOut} authError={error}
             isTenant={tenancy.tenancies.some(contract => contract.status === 'ACTIVE')} />
             : <><Link to="/login" className="customer-login">Đăng nhập</Link><Link to="/register" className="home-primary customer-register">Đăng ký</Link></>}

@@ -48,8 +48,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const adminMenuItems = [
     { id: 'dashboard' as ActiveTab, label: 'Tổng quan', icon: LayoutDashboard },
-    { id: 'properties' as ActiveTab, label: 'Tài sản cho thuê', icon: Building2 },
-    { id: 'rooms' as ActiveTab, label: 'Quản lý căn hộ', icon: Home },
     { id: 'rental_requests' as ActiveTab, label: 'Yêu cầu thuê', icon: MessageSquare },
     { id: 'tenants' as ActiveTab, label: 'Khách thuê & eKYC', icon: Users },
     {
@@ -76,7 +74,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     { id: 'finance' as ActiveTab, label: 'Sổ quỹ Thu - Chi', icon: Wallet },
     { id: 'reports' as ActiveTab, label: 'Báo cáo & Thống kê', icon: TrendingUp },
-    { id: 'settings' as ActiveTab, label: 'Cài đặt Đơn giá', icon: Settings },
   ];
 
 
@@ -110,23 +107,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <option value="all">{propertiesLoading ? 'Đang tải tài sản...' : propertiesError ? 'Không thể tải tài sản' : `Tất cả tài sản (${properties.length})`}</option>
           {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
-        <button type="button" onClick={() => onSelectTab('properties')} className="mt-2 text-xs text-emerald-300 underline">Quản lý / thêm tài sản</button>
+        <Link to="/account/properties" className="block mt-2 text-xs text-emerald-300 underline">Quản lý tài sản</Link>
       </div>
 
       {/* Navigation Links */}
       <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
         <div className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-          <span>{userRole === 'admin' ? 'Menu Quản Lý Tòa Nhà' : 'Cổng Dịch Vụ Cư Dân'}</span>
+          <span>{userRole === 'admin' ? 'Quản lý cho thuê' : 'Cổng Dịch Vụ Cư Dân'}</span>
           <span className="text-[10px] text-emerald-400 font-mono">
             {userRole === 'admin' ? accountRole : 'USER'}
           </span>
         </div>
 
-        {canManage ? <button type="button" id="nav-home" onClick={() => onSelectTab('home')}
-          aria-current={activeTab === 'home' ? 'page' : undefined}
-          className={`w-full flex items-center gap-2.5 px-3 py-2 mb-2 text-xs rounded-lg transition-colors ${activeTab === 'home' ? 'bg-[#065f46] text-white font-bold ring-1 ring-emerald-500' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>
-          <Home className="w-4 h-4" />Trang chủ
-        </button> : <Link to="/" className="flex items-center gap-2.5 px-3 py-2 mb-2 text-xs text-slate-300 rounded-lg hover:bg-slate-800 hover:text-white"><Home className="w-4 h-4" />Trang chủ</Link>}
+        <Link to="/" className="flex items-center gap-2.5 px-3 py-2 mb-2 text-xs text-slate-300 rounded-lg hover:bg-slate-800 hover:text-white"><Home className="w-4 h-4" />Trang chủ</Link>
         {/* Admin Menu */}
         {canManage && <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
           Vận Hành Quản Lý
