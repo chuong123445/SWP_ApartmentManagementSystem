@@ -24,7 +24,9 @@ public class AccountAccessService {
         if (account.getRole() != role && !ordinaryAccount) throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Tài khoản không có quyền thực hiện thao tác này.");
         boolean verified = role == AuthAccount.Role.CUSTOMER ? verification.isRentalVerified(account) : verification.isVerified(account);
         if (account.getStatus() != AuthAccount.Status.ACTIVE || !verified)
-            throw new ApiException(HttpStatus.FORBIDDEN, "CONTACT_NOT_VERIFIED", "Cần xác minh email hoặc số điện thoại để thực hiện thao tác này.");
+            throw new ApiException(HttpStatus.FORBIDDEN, "CONTACT_NOT_VERIFIED", role == AuthAccount.Role.CUSTOMER
+                ? "Cần xác thực tài khoản bằng email hoặc VNeID mô phỏng để thực hiện thao tác thuê nhà."
+                : "Cần xác thực tài khoản để thực hiện thao tác này.");
         return account;
     }
 }

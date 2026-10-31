@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 interface GoogleIdentity {
   accounts: { id: {
-    initialize: (options: { client_id: string; callback: (response: { credential: string }) => void }) => void;
+    initialize: (options: { client_id: string; nonce?: string; auto_select?: boolean; button_auto_select?: boolean; callback: (response: { credential: string }) => void }) => void;
     renderButton: (element: HTMLElement, options: Record<string, string | number>) => void;
   } };
 }
@@ -24,8 +24,8 @@ function loadGoogle() {
   return scriptPromise;
 }
 
-export function GoogleSignInButton({ onCredential, disabled }: {
-  onCredential: (credential: string) => Promise<void>; disabled: boolean;
+export function GoogleSignInButton({ onCredential, disabled, nonce }: {
+  onCredential: (credential: string) => Promise<void>; disabled: boolean; nonce?: string;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const callback = useRef(onCredential);
@@ -39,7 +39,7 @@ export function GoogleSignInButton({ onCredential, disabled }: {
     let active = true;
     loadGoogle().then(() => {
       if (!active || !container.current || !window.google) return;
-      window.google.accounts.id.initialize({ client_id: clientId, callback: response => {
+      window.google.accounts.id.initialize({ client_id: clientId, nonce, auto_select: false, button_auto_select: false, callback: response => {
         if (active && !busy.current) void callback.current(response.credential);
       } });
       window.google.accounts.id.renderButton(container.current, {
@@ -47,7 +47,7 @@ export function GoogleSignInButton({ onCredential, disabled }: {
       });
     }).catch(err => { if (active) setError(err.message); });
     return () => { active = false; container.current?.replaceChildren(); };
-  }, [clientId]);
+  }, [clientId, nonce]);
   if (!clientId) return <div className="mt-6">
     <div className="text-center text-xs text-slate-400 mb-4">Hoặc</div>
     <button type="button" disabled aria-describedby="google-configuration-notice"

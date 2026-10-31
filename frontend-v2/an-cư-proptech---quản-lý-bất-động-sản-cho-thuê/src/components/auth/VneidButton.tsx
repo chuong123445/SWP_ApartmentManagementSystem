@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useVneidConfig } from '@/contexts/VneidContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useLocation } from 'react-router';
 export function VneidButton({ intent, label }: { intent: 'login' | 'verify'; label: string }) {
   const { config, loading, error: configError } = useVneidConfig();
   const { loginWithRedirect, isLoading } = useAuth0(); const { user } = useAuth();
+  const location = useLocation();
   const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   const start = async () => {
     if (!config?.enabled || busy) return;
@@ -12,7 +14,8 @@ export function VneidButton({ intent, label }: { intent: 'login' | 'verify'; lab
     setBusy(true); setError('');
     try {
       // Phiên SSO Auth0 có thể còn sau logout nội bộ; yêu cầu nhập lại tài khoản khi bấm nút.
-      await loginWithRedirect({ appState: { intent, accountId: intent === 'verify' ? user!.id : undefined },
+      await loginWithRedirect({ appState: { intent, accountId: intent === 'verify' ? user!.id : undefined,
+        returnTo: typeof location.state?.returnTo === 'string' ? location.state.returnTo : undefined },
         authorizationParams: { connection: config.connection, prompt: 'login' } });
     }
     catch { setError('Không thể mở đăng nhập VNeID. Vui lòng thử lại.'); setBusy(false); }

@@ -51,6 +51,12 @@ test('login redirects only to supported local pages', () => {
   assert.equal(loginDestination(user, 'https://external.example'), '/');
   assert.equal(loginDestination(user, '//external.example'), '/');
   assert.equal(loginDestination(user, '/my/rental-requests'), '/my/rental-requests');
+  for (const target of ['/apartments/123', '/my/invoices/456', '/my/contracts/9223372036854775807', '/account/settings/identity', '/account/owner-upgrade', '/account/rental-properties', '/account/property-notices', '/account/properties/new/ownership', '/account/properties/new/authorization', '/account/properties/new/sublease']) {
+    assert.equal(loginDestination(user, target), target);
+  }
+  for (const target of ['javascript:alert(1)', '/apartments/3/../../evil', '/my/contracts/not-an-id', '/apartments/0', '/apartments/-1', '/apartments/1e3', '/apartments/1?next=https://evil.invalid', '/account/properties/new/unknown', '/%2f%2fevil.invalid', '/account/settings\\evil.invalid']) {
+    assert.equal(loginDestination(user, target), '/');
+  }
 });
 test('owner decision sends decision, version and optional reason with bearer token', async () => {
   const { decideRentalRequest } = await import('@/services/rental/rentalService');

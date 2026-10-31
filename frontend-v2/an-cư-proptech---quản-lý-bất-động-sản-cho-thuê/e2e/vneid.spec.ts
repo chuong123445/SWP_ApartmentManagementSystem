@@ -1,8 +1,17 @@
 import { test, expect, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
+import { mockGoogleIdentity } from './support/google-identity';
 
 const diagnostics = new WeakMap<Page, { console: string[]; network: string[] }>();
-test.beforeEach(({ page }) => {
+test.beforeEach(async ({ page }) => {
+  await mockGoogleIdentity(page);
+  // Hồi quy OAuth độc lập Backend đang chạy; các fixture cụ thể ghi đè route này.
+  await page.route('**/api/v1/auth/csrf', route => route.fulfill({ json: { token: 'vneid-csrf', headerName: 'X-XSRF-TOKEN' } }));
+  await page.route('**/api/v1/auth/refresh', route => route.fulfill({ status: 401, json: { message: 'Chưa đăng nhập' } }));
+  await page.route('**/api/v1/apartments?*', route => route.fulfill({ json: { items: [], page: 0, totalPages: 0, totalElements: 0, size: 6 } }));
+  for (const endpoint of ['apartments/address-options', 'me/tenancies', 'me/apartments']) {
+    await page.route(`**/api/v1/${endpoint}`, route => route.fulfill({ json: [] }));
+  }
   const log = { console: [] as string[], network: [] as string[] }; diagnostics.set(page, log);
   page.on('console', message => { if (message.type() === 'error') log.console.push(`${message.text()} [${message.location().url}]`); });
   page.on('requestfailed', request => {
@@ -135,5 +144,44 @@ test('Remembered Auth0 SSO session still requests explicit reauthentication befo
   await expect(page).toHaveURL(/^https:\/\/auth0-test\.invalid\/authorize\?/);
   await expect(page.getByRole('heading', { name: 'Đăng nhập lại Auth0' })).toBeVisible();
   expect(fixture.commands()).toBe(0);
+  expect(fixture.errors).toEqual([]);
+});
+
+async function apartmentReturnFixture(page: Page) {
+  let manualReads = 0;
+  await page.route('**/api/v1/apartments/3', route => route.fulfill({ json: {
+    id: '3', title: 'Căn hộ quay lại sau VNeID', description: '', address: 'Địa chỉ kiểm thử', propertyName: 'Tài sản kiểm thử',
+    areaM2: '40', bedrooms: 1, bathrooms: 1, advertisedMonthlyRent: '4500000', availability: 'VACANT', amenities: [], images: [],
+    publicOwner: { displayName: 'Chủ nhà kiểm thử' },
+  } }));
+  await page.route('**/api/v1/me/apartments/3/rental-requests', route => route.fulfill({ json: [] }));
+  await page.route('**/api/v1/me/identity', route => { manualReads++; return route.fulfill({ status: 204 }); });
+  return () => manualReads;
+}
+
+test('VNeID login returns to numeric apartment ID and does not require manual identity', async ({ page }) => {
+  const fixture = await oauthFixture(page, 'login');
+  const manualReads = await apartmentReturnFixture(page);
+  await page.goto('/apartments/3');
+  await page.getByRole('link', { name: 'Đăng nhập để gửi yêu cầu thuê' }).click();
+  await page.getByRole('button', { name: 'Đăng nhập bằng VNeID mô phỏng' }).click();
+  await expect(page).toHaveURL(/\/apartments\/3$/);
+  await expect(page.getByLabel('Lời nhắn cho chủ nhà')).toBeVisible();
+  expect(fixture.commands()).toBe(1);
+  expect(manualReads()).toBe(0);
+  expect(fixture.errors).toEqual([]);
+});
+
+test('pending Customer returns to apartment after self verification through the actual OAuth callback', async ({ page }) => {
+  const fixture = await oauthFixture(page, 'verify');
+  const manualReads = await apartmentReturnFixture(page);
+  await page.goto('/apartments/3');
+  await page.getByRole('button', { name: 'Gửi yêu cầu thuê', exact: true }).click();
+  await page.getByRole('link', { name: 'Quản lý xác thực tài khoản' }).click();
+  await page.getByRole('button', { name: 'Xác thực bằng VNeID mô phỏng' }).click();
+  await expect(page).toHaveURL(/\/apartments\/3$/);
+  await expect(page.getByLabel('Lời nhắn cho chủ nhà')).toBeVisible();
+  expect(fixture.commands()).toBe(1);
+  expect(manualReads()).toBe(0);
   expect(fixture.errors).toEqual([]);
 });

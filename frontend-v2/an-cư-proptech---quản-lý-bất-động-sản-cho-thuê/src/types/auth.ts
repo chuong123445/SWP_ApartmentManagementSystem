@@ -21,8 +21,8 @@ export interface AuthContextValue {
   isLoggingOut: boolean;
   error: string;
   login: (email: string, password: string) => Promise<AuthUser>;
-  loginWithGoogle: (credential: string) => Promise<AuthUser>;
   loginVneid: (token: string) => Promise<AuthUser>;
+  loginWithGoogle: (credential: string) => Promise<AuthUser>;
   logout: () => Promise<void>;
   reloadUser: () => Promise<void>;
   endSession: () => void;

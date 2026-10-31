@@ -41,12 +41,7 @@ public class GoogleLoginService {
 
     @Transactional
     public AuthService.LoginResult login(String credential) {
-        if (clientId.isBlank()) throw new AuthException(HttpStatus.SERVICE_UNAVAILABLE,
-                "GOOGLE_NOT_CONFIGURED", "Đăng nhập Google chưa được cấu hình.");
-        Jwt token;
-        try { token = decoder.decode(credential); }
-        catch (RuntimeException error) { throw new AuthException(HttpStatus.UNAUTHORIZED,
-                "INVALID_GOOGLE_TOKEN", "Không thể xác thực Google. Vui lòng thử lại."); }
+        Jwt token=decodeCredential(credential);
         AuthAccount account = accounts.findByGoogleSubject(token.getSubject()).orElse(null);
         if (account == null) {
             String email = token.getClaimAsString("email");
@@ -62,7 +57,8 @@ public class GoogleLoginService {
             String name = token.getClaimAsString("name");
             if (name == null || name.isBlank()) name = email;
             account.setFullName(name.substring(0, Math.min(name.length(), 100)));
-            account.setPasswordHash(passwords.encode(UUID.randomUUID().toString()));
+            account.setPasswordHash(null);
+            account.setLocalPasswordEnabled(false);
             account.setRole(AuthAccount.Role.CUSTOMER);
             account.setStatus(AuthAccount.Status.ACTIVE);
             account.setEmailVerified(true);
@@ -71,4 +67,15 @@ public class GoogleLoginService {
         }
         return auth.googleLogin(account);
     }
+    public boolean isConfigured(){return !clientId.isBlank();}
+    public Jwt decodeCredential(String credential) {
+        if (clientId.isBlank()) throw new AuthException(HttpStatus.SERVICE_UNAVAILABLE,
+                "GOOGLE_NOT_CONFIGURED", "Đăng nhập Google chưa được cấu hình.");
+        Jwt token;
+        try { token = decoder.decode(credential); }
+        catch (RuntimeException error) { throw new AuthException(HttpStatus.UNAUTHORIZED,
+                "INVALID_GOOGLE_TOKEN", "Không thể xác thực Google. Vui lòng thử lại."); }
+        return token;
+    }
+
 }
