@@ -32,7 +32,10 @@ public class OwnerApartmentService {
         if(a.getAvailability()!=Apartment.Availability.VACANT)throw new ApiException(HttpStatus.CONFLICT,"APARTMENT_NOT_VACANT","Chỉ đổi giá khi căn hộ đang trống, chưa làm hợp đồng hoặc có người thuê.");
         if(requests.existsByApartmentIdAndStatus(id,com.ancu.proptech.model.rental.RentalRequest.Status.PENDING))
             throw new ApiException(HttpStatus.CONFLICT,"PENDING_REQUESTS_EXIST","Hãy xử lý tất cả yêu cầu thuê đang chờ trước khi thay đổi giá thuê, điện hoặc nước.");
-        a.setAdvertisedMonthlyRent(input.getMonthlyRent());a.setElectricityUnitPrice(input.getElectricityUnitPrice());a.setWaterUnitPrice(input.getWaterUnitPrice());
+        // PATCH chỉ ghi giá được gửi lên, giữ cả giá chưa được khai báo ở trường khác.
+        if(input.getMonthlyRent()!=null)a.setAdvertisedMonthlyRent(input.getMonthlyRent());
+        if(input.getElectricityUnitPrice()!=null)a.setElectricityUnitPrice(input.getElectricityUnitPrice());
+        if(input.getWaterUnitPrice()!=null)a.setWaterUnitPrice(input.getWaterUnitPrice());
         apartments.flush();return response(a);
     }
     @Transactional public OwnerApartmentResponse createApplication(Jwt jwt,OwnerApartmentCreate input){return createInternal(jwt,input,true);}

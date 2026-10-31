@@ -79,8 +79,31 @@ class AssetManagementIntegrationTests {
  }
  @Test void newPriceEndpointKeepsPendingAndOccupiedLocks()throws Exception{
   var r=new RentalRequest();r.setApartment(apartment);r.setCustomer(other);r.setMessage("");r.setStatus(RentalRequest.Status.PENDING);r.setCreatedAt(Instant.now());requests.saveAndFlush(r);
-  String url="/api/v1/me/apartments/"+apartment.getId()+"/prices";mvc.perform(patch(url).header("Authorization",token).contentType("application/json").content(priceBody())).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PENDING_REQUESTS_EXIST"));
+  String url="/api/v1/me/apartments/"+apartment.getId()+"/prices";mvc.perform(patch(url).header("Authorization",token).contentType("application/json").content(partialPrice("electricityUnitPrice","3500"))).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PENDING_REQUESTS_EXIST"));
   mvc.perform(get("/api/v1/apartments/"+apartment.getId()).header("Authorization",token)).andExpect(jsonPath("$.management.pricesEditable").value(false));
-  r.setStatus(RentalRequest.Status.REJECTED);requests.flush();apartment.setAvailability(Apartment.Availability.OCCUPIED);apartments.flush();mvc.perform(patch(url).header("Authorization",token).contentType("application/json").content(priceBody())).andExpect(status().isConflict());
+  r.setStatus(RentalRequest.Status.REJECTED);requests.flush();apartment.setAvailability(Apartment.Availability.OCCUPIED);apartments.flush();mvc.perform(patch(url).header("Authorization",token).contentType("application/json").content(partialPrice("electricityUnitPrice","3500"))).andExpect(status().isConflict());
  }
+ String partialPrice(String field,String value){return "{\"version\":"+apartment.getVersion()+",\""+field+"\":"+value+"}";}
+ ResultActions selfPrice(String actor,String body)throws Exception{return mvc.perform(patch("/api/v1/me/apartments/"+apartment.getId()+"/prices").header("Authorization",actor).contentType("application/json").content(body));}
+ @Test void missingUtilitiesCanBeSetIndependentlyAndOtherPricesArePreserved()throws Exception{
+  assertNull(apartment.getElectricityUnitPrice());assertNull(apartment.getWaterUnitPrice());
+  selfPrice(token,partialPrice("monthlyRent","7000000")).andExpect(status().isOk());
+  assertNull(apartment.getElectricityUnitPrice());assertNull(apartment.getWaterUnitPrice());
+  selfPrice(token,partialPrice("electricityUnitPrice","3500")).andExpect(status().isOk());
+  assertEquals(0,new BigDecimal("7000000").compareTo(apartment.getAdvertisedMonthlyRent()));assertNull(apartment.getWaterUnitPrice());
+  selfPrice(token,partialPrice("waterUnitPrice","18000")).andExpect(status().isOk());
+  assertEquals(0,new BigDecimal("3500").compareTo(apartment.getElectricityUnitPrice()));
+  selfPrice(token,partialPrice("electricityUnitPrice","0")).andExpect(status().isOk());
+  assertEquals(0,new BigDecimal("18000").compareTo(apartment.getWaterUnitPrice()));
+  mvc.perform(get("/api/v1/apartments/"+apartment.getId()).header("Authorization",token)).andExpect(jsonPath("$.electricityUnitPrice").value("0")).andExpect(jsonPath("$.waterUnitPrice").value("18000"));
+ }
+ @Test void partialPricesRejectEmptyNullNegativeUnknownAndStaleOrForeignUpdates()throws Exception{
+  selfPrice(token,"{\"version\":"+apartment.getVersion()+"}").andExpect(status().isBadRequest());
+  for(String value:List.of("null","\"\"","-1","1.234"))selfPrice(token,partialPrice("waterUnitPrice",value)).andExpect(status().isBadRequest());
+  for(String value:List.of("null","\"\""))selfPrice(token,"{\"version\":"+apartment.getVersion()+",\"monthlyRent\":7000000,\"waterUnitPrice\":"+value+"}").andExpect(status().isBadRequest());
+  selfPrice(token,partialPrice("ownerId","1")).andExpect(status().isBadRequest());
+  selfPrice(otherToken,partialPrice("waterUnitPrice","18000")).andExpect(status().isNotFound());
+  String stale=partialPrice("waterUnitPrice","18000");selfPrice(token,stale).andExpect(status().isOk());selfPrice(token,stale).andExpect(status().isConflict());
+ }
+
 }

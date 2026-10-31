@@ -149,10 +149,7 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "version",
-          "monthlyRent",
-          "electricityUnitPrice",
-          "waterUnitPrice"
+          "version"
         ],
         "properties": {
           "version": {
@@ -172,7 +169,25 @@
             "type": "string",
             "description": "Decimal >=0,13integer/2fraction digits VND/m3"
           }
-        }
+        },
+        "anyOf": [
+          {
+            "required": [
+              "monthlyRent"
+            ]
+          },
+          {
+            "required": [
+              "electricityUnitPrice"
+            ]
+          },
+          {
+            "required": [
+              "waterUnitPrice"
+            ]
+          }
+        ],
+        "description": "Partial PATCH: version and at least one price. Omitted prices remain unchanged, including null legacy utilities. Explicit null/empty prices rejected; zero utilities allowed. Owner, version, VACANT and no-PENDING checks unchanged."
       }
     }
   }
