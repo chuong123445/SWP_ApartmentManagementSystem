@@ -7,4 +7,6 @@ public interface TestPaymentRepository extends JpaRepository<TestPayment,Long> {
  Optional<TestPayment> findByPaymentCode(String code);
  List<TestPayment> findTop20ByOwnerIdOrderByIdDesc(Long ownerId);
  List<TestPayment> findTop20ByCustomerIdOrderByIdDesc(Long customerId);
+ List<TestPayment> findTop20ByCustomerIdAndPaidAtIsNullOrderByIdDesc(Long customerId);
+ List<TestPayment> findTop20ByCustomerIdAndPaidAtIsNotNullOrderByIdDesc(Long customerId);
 }

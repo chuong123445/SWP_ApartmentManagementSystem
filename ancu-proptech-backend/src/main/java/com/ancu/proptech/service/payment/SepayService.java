@@ -95,7 +95,15 @@ public class SepayService {
  }
  @Transactional(readOnly=true) public List<TestReceipt> testHistory(Jwt jwt){return testPayments.findTop20ByOwnerIdOrderByIdDesc(access.owner(jwt).getId()).stream().map(this::testView).toList();}
  @Transactional(readOnly=true) public List<TestRecipient> testRecipients(Jwt jwt){return contracts.findByApartmentPropertyOwnerIdAndStatusOrderByStartDateDescIdAsc(access.owner(jwt).getId(),RentalContract.Status.ACTIVE).stream().filter(c->!c.getCustomer().getId().equals(c.getApartment().getProperty().getOwner().getId())).map(c->new TestRecipient(c.getId().toString(),c.getCustomer().getFullName(),c.getApartment().getRoomNumber())).toList();}
- @Transactional(readOnly=true) public List<TestReceipt> tenantTestHistory(Jwt jwt){return testPayments.findTop20ByCustomerIdOrderByIdDesc(access.customer(jwt).getId()).stream().map(this::testView).toList();}
+ @Transactional(readOnly=true) public List<TestReceipt> tenantTestHistory(Jwt jwt,com.ancu.proptech.dto.billing.InvoicePaymentFilter paymentStatus){
+  Long customer=access.customer(jwt).getId();
+  var items=switch(paymentStatus){
+   case ALL -> testPayments.findTop20ByCustomerIdOrderByIdDesc(customer);
+   case UNPAID -> testPayments.findTop20ByCustomerIdAndPaidAtIsNullOrderByIdDesc(customer);
+   case PAID -> testPayments.findTop20ByCustomerIdAndPaidAtIsNotNullOrderByIdDesc(customer);
+  };
+  return items.stream().map(this::testView).toList();
+ }
  @Transactional(readOnly=true) public TestReceipt tenantTestDetail(Jwt jwt,Long id){return testView(testPayments.findByIdAndCustomerId(id,access.customer(jwt).getId()).orElseThrow(SepayService::missing));}
  private TestReceipt testView(TestPayment p){
   var c=p.getContractId()==null?null:contracts.findById(p.getContractId()).orElseThrow(SepayService::missing);
