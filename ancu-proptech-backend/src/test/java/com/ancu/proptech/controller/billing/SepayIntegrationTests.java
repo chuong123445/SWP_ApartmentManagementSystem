@@ -81,6 +81,26 @@ class SepayIntegrationTests {
         mvc.perform(get("/api/v1/owner/contracts/"+contract.getId()+"/billing-context").header("Authorization","Bearer "+ownerToken)).andExpect(jsonPath("$.period").value("2026-11"));
         assertNull(JsonPath.read(ticket(tenantToken,id),"$.qrUrl"));
     }
+    @Test void tenantPaymentFiltersApplyBeforePaginationAndKeepHistoryPrivate()throws Exception{
+        String paidId=prepare();String code=JsonPath.read(ticket(tenantToken,paidId),"$.paymentCode");
+        deliver(key,webhook(84001,code,"5540000","1234567890","96247123456789","in")).andExpect(status().isOk());
+        String unpaidId=JsonPath.read(create(ownerToken,body("2026-11",2,"1200","210")).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(),"$.id");
+        send(ownerToken,unpaidId,0).andExpect(status().isOk());
+        // An issued QR without paidAt is still unpaid.
+        ticket(tenantToken,unpaidId);
+        mvc.perform(get("/api/v1/me/invoices?paymentStatus=UNPAID&size=1").header("Authorization","Bearer "+tenantToken)).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1)).andExpect(jsonPath("$.items[0].id").value(unpaidId));
+        mvc.perform(get("/api/v1/me/invoices?paymentStatus=PAID&size=1").header("Authorization","Bearer "+tenantToken)).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1)).andExpect(jsonPath("$.items[0].id").value(paidId));
+        mvc.perform(get("/api/v1/me/invoices?size=1").header("Authorization","Bearer "+tenantToken)).andExpect(jsonPath("$.totalElements").value(2)).andExpect(jsonPath("$.totalPages").value(2));
+        mvc.perform(get("/api/v1/me/invoices?paymentStatus=PAID").header("Authorization","Bearer "+token(otherTenant))).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get("/api/v1/me/invoices?paymentStatus=INVALID").header("Authorization","Bearer "+tenantToken)).andExpect(status().isBadRequest());
+        String receipt=sendTest(ownerToken,contract.getId().toString()).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String receiptCode=JsonPath.read(receipt,"$.payment.paymentCode");
+        mvc.perform(get("/api/v1/me/payments/sepay/test-payments?paymentStatus=UNPAID").header("Authorization","Bearer "+tenantToken)).andExpect(jsonPath("$.length()").value(1));
+        deliver(key,webhook(84002,receiptCode,"1000","1234567890","96247123456789","in")).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/me/payments/sepay/test-payments?paymentStatus=UNPAID").header("Authorization","Bearer "+tenantToken)).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get("/api/v1/me/payments/sepay/test-payments?paymentStatus=PAID").header("Authorization","Bearer "+tenantToken)).andExpect(jsonPath("$.length()").value(1));
+        mvc.perform(get("/api/v1/me/payments/sepay/test-payments?paymentStatus=PAID").header("Authorization","Bearer "+token(otherTenant))).andExpect(jsonPath("$.length()").value(0));
+    }
     @Test void badKeyWrongAccountAmountsOutgoingAndAmbiguousCodesNeverPay()throws Exception{
         String id=prepare();String code=JsonPath.read(ticket(tenantToken,id),"$.paymentCode");deliver("bad-key",webhook(81000,code,"5540000","1234567890","96247123456789","in")).andExpect(status().isUnauthorized());
         String[] bodies={webhook(81001,code,"5540001","1234567890","96247123456789","in"),webhook(81002,code,"1","1234567890","96247123456789","in"),webhook(81003,code,"5540000","1234567890","wrong","in"),webhook(81004,code,"5540000","1234567890","96247123456789","out"),webhook(81005,code+" ANCU111111111111111111111111","5540000","1234567890","96247123456789","in")};

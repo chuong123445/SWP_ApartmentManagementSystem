@@ -22,7 +22,7 @@ test('Send is an authenticated server command with invoice version', async () =>
   assert.equal((await sendInvoice('invoice-uuid', 3)).status, 'SENT');
 });
 test('Tenant invoice history is derived from principal, without client customer ID', async () => {
-  globalThis.fetch = async url => { assert.equal(url, '/api/v1/me/invoices?page=2&size=20');return Response.json({ items: [] }); };
+  globalThis.fetch = async url => { assert.equal(url, '/api/v1/me/invoices?page=2&size=20&paymentStatus=ALL');return Response.json({ items: [] }); };
   assert.deepEqual((await myInvoices(2)).items, []);
 });
 test('Cross-tenant or hidden invoice errors remain errors, with no sample fallback', async () => {

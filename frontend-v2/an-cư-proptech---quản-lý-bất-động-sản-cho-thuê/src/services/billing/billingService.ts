@@ -20,7 +20,8 @@ export function ownerInvoices(page = 0, size = 20, propertyId?: string) {
   if (propertyId) query.set('propertyId', propertyId);
   return request<PageResult<BillingInvoice>>(`/api/v1/owner/invoices?${query}`);
 }
-export function myInvoices(page = 0, size = 20) { return request<PageResult<BillingInvoice>>(`/api/v1/me/invoices?page=${page}&size=${size}`); }
+export type InvoicePaymentFilter = 'UNPAID' | 'PAID' | 'ALL';
+export function myInvoices(page = 0, size = 20, paymentStatus: InvoicePaymentFilter = 'ALL') { return request<PageResult<BillingInvoice>>(`/api/v1/me/invoices?page=${page}&size=${size}&paymentStatus=${paymentStatus}`); }
 // Adapt server data to the existing Owner layout. Numbers are for display only.
 export function invoiceView(i: BillingInvoice): Invoice {
   return {
