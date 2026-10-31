@@ -62,6 +62,27 @@ class ContractDraftIntegrationTests {
         String context=context();assertEquals(verified.getDocumentNumber(),JsonPath.read(context,"$.snapshot.owner.documentNumber"));assertEquals("VERIFIED",JsonPath.read(context,"$.snapshot.owner.identityVerificationStatus"));
         assertNull(JsonPath.read(context,"$.snapshot.owner.documentIssueDate"));assertEquals(verified.getLegalName(),JsonPath.read(context,"$.snapshot.owner.fullName"));
     }
+    @Autowired PropertyExternalImportRepository imports;
+    @Autowired tools.jackson.databind.ObjectMapper json;
+    private PropertyExternalImport sourceEvidence() {
+        var identity=com.ancu.proptech.support.VerifiedIdentityFixtures.bind(verifiedIdentities,owner);
+        var e=new PropertyExternalImport();e.setPropertyId(request.getApartment().getProperty().getId());e.setIssuer(identity.getIssuer());e.setSubject(identity.getSubject());e.setExternalAssetId("SOURCE-"+owner.getId());e.setSource("AUTH0_VNEID_SIMULATION");e.setSourceVersion("a".repeat(64));e.setImportedAt(Instant.now());
+        e.setSourceSnapshot(json.writeValueAsString(new com.ancu.proptech.dto.property.VneidAsset(e.getExternalAssetId(),"Nhà nguồn","Địa chỉ nguồn","SINGLE_UNIT","CT 482716","2020-06-15","Đà Nẵng",List.of(),"Quyền sở hữu riêng")));return imports.saveAndFlush(e);
+    }
+    @Test void sourceCertificateAndReceivingAccountReachFrozenDraftWithoutFakeAdminReview()throws Exception {
+        var e=sourceEvidence();String before=context();assertEquals("CT 482716",JsonPath.read(before,"$.snapshot.asset.certificateNumber"));assertEquals("OWNERSHIP",JsonPath.read(before,"$.snapshot.asset.exploitationRight"));assertNull(JsonPath.read(before,"$.snapshot.asset.approvedDossierId"));
+        String bankBody=json.writeValueAsString(Map.of("bank","Ngân hàng thử","accountNumber","12345678","accountHolderName",verifiedIdentities.findById(owner.getId()).orElseThrow().getLegalName(),"version",e.getVersion()));
+        mvc.perform(put("/api/v1/owner/properties/"+e.getPropertyId()+"/receiving-account").header("Authorization",otherToken).contentType("application/json").content(bankBody)).andExpect(status().isNotFound());
+        mvc.perform(put("/api/v1/owner/properties/"+e.getPropertyId()+"/receiving-account").header("Authorization",token).contentType("application/json").content(bankBody.replace("12345678","87654321").replace("Ngân hàng thử","Ngân hàng đúng"))).andExpect(status().isNoContent());
+        create(token,body(before)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("SOURCE_CHANGED"));
+        String saved=create();assertEquals("87654321",JsonPath.read(saved,"$.snapshot.receivingAccount.accountNumber"));assertEquals("AUTH0_VNEID_SIMULATION",JsonPath.read(saved,"$.snapshot.evidence.source"));assertEquals("2020-06-15",JsonPath.read(saved,"$.snapshot.asset.certificateIssueDate"));
+        e.setBank("Tên ngân hàng thay đổi");imports.flush();update(id(saved),0,terms()).andExpect(status().isOk()).andExpect(jsonPath("$.snapshot.receivingAccount.bank").value("Ngân hàng đúng"));assertTrue(dossiers.findByPropertyIdOrderBySubmittedAtDescIdDesc(e.getPropertyId()).isEmpty());
+    }
+    @Test void bankHolderAndVersionAreValidatedWithoutPublishingPrivateAccount()throws Exception {
+        var e=sourceEvidence();String url="/api/v1/owner/properties/"+e.getPropertyId()+"/receiving-account";
+        mvc.perform(put(url).header("Authorization",token).contentType("application/json").content("{\"bank\":\"Bank\",\"accountNumber\":\"12345678\",\"accountHolderName\":\"Khong trung ten\",\"version\":0}")).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("ACCOUNT_HOLDER_MISMATCH"));
+        mvc.perform(put(url).header("Authorization",token).contentType("application/json").content("{\"bank\":\"Bank\",\"accountNumber\":\"12345678\",\"accountHolderName\":\"Khong trung ten\",\"version\":99}")).andExpect(status().isConflict());
+    }
     @Test void cannotCreateContractBeyondApprovedRights()throws Exception{
         var p=request.getApartment().getProperty();p.setRightType(PropertyDossier.RightType.AUTHORIZATION);p.setRightsValidFrom(LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).minusDays(1));p.setRightsValidUntil(LocalDate.of(2027,10,31));properties.flush();
         create(token,body(context())).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONTRACT_EXCEEDS_PROPERTY_RIGHTS"));
@@ -337,7 +358,7 @@ class ContractDraftIntegrationTests {
     }
     @Test void legacyStoredSnapshotsWithoutNewLegalFieldsRemainReadable() throws Exception {
         String result=create();var draft=drafts.findByContractId(Long.valueOf(id(result))).orElseThrow();
-        draft.setSnapshotJson(draft.getSnapshotJson().replaceAll(",\"(?:documentNumber|documentIssueDate|documentIssuePlace|permanentAddress|identityVerificationStatus|localFixture|certificateNumber|certificateIssueDate|certificateIssuePlace|exploitationRightDescription)\":null",""));drafts.saveAndFlush(draft);
-        mvc.perform(get("/api/v1/contracts/"+id(result)).header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.snapshot.owner.fullName").value(owner.getFullName())).andExpect(jsonPath("$.snapshot.asset.certificateNumber").isEmpty());
+        draft.setSnapshotJson(draft.getSnapshotJson().replaceAll(",\"(?:documentNumber|documentIssueDate|documentIssuePlace|permanentAddress|identityVerificationStatus|localFixture|certificateNumber|certificateIssueDate|certificateIssuePlace|exploitationRightDescription|evidence)\":null",""));drafts.saveAndFlush(draft);
+        mvc.perform(get("/api/v1/contracts/"+id(result)).header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.snapshot.owner.fullName").value(owner.getFullName())).andExpect(jsonPath("$.snapshot.asset.certificateNumber").isEmpty()).andExpect(jsonPath("$.snapshot.evidence").isEmpty());
     }
 }
