@@ -50,7 +50,7 @@ public class AuthService {
             throw new AuthException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Mật khẩu tối đa 72 byte.");
         }
         AuthAccount account = accounts.findByEmail(email.trim().toLowerCase(Locale.ROOT)).orElse(null);
-        boolean hasPassword = account != null && account.getPasswordHash() != null;
+        boolean hasPassword = account != null && account.getPasswordHash() != null && account.isLocalPasswordEnabled();
         boolean matches = passwordEncoder.matches(password, hasPassword ? account.getPasswordHash() : dummyHash);
         if (!hasPassword || !matches) {
             throw new AuthException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Email hoặc mật khẩu không đúng.");

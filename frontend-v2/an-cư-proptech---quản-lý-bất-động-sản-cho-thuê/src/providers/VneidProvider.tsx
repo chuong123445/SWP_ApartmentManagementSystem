@@ -20,5 +20,6 @@ export function VneidProvider({ children }: { children: ReactNode }) {
     authorizationParams={{ audience: config.audience, scope: 'openid profile email', redirect_uri: `${window.location.origin}/auth/vneid/callback` }}
     onRedirectCallback={appState => navigate('/auth/vneid/callback', { replace: true, state: {
       intent: appState?.intent === 'verify' ? 'verify' : 'login', accountId: appState?.accountId,
+      returnTo: typeof appState?.returnTo === 'string' ? appState.returnTo : undefined,
     } })}>{content}</Auth0Provider>;
 }

@@ -23,6 +23,7 @@ public class AuthAccount {
     private String googleSubject;
     @Column(length = 100)
     private String passwordHash;
+    @Column(nullable=false) private boolean localPasswordEnabled=true;
     @Nationalized @Column(nullable = false, length = 100)
     private String fullName;
     @Column(length=20) private String phone;

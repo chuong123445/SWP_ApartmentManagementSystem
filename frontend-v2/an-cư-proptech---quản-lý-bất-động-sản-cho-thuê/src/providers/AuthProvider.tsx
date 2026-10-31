@@ -88,5 +88,5 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     apply(session); return session.user;
   };
   const endSession = () => { generation.current++;setAccessToken(null);setUser(null);setError(''); };
-  return <AuthContext.Provider value={{ user, loading, isLoggingOut, error, login, loginWithGoogle, loginVneid, logout, reloadUser, endSession }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, loading, isLoggingOut, error, login, loginVneid, loginWithGoogle, logout, reloadUser, endSession }}>{children}</AuthContext.Provider>;
 }

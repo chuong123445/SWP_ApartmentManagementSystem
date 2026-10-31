@@ -58,7 +58,7 @@ export function IdentityPage() {
     <Link to={returnTo} className="text-emerald-700 underline text-sm">{returnLabel}</Link>
     <h1 className="text-2xl font-bold mt-4 mb-3">Xác thực danh tính</h1>
     <VerifiedCitizenPanel state={verification} />
-    {verified && <p className="text-slate-600">Bạn đã xác thực căn cước qua VNeID. Không cần nhập lại thông tin hoặc tải ảnh căn cước để thêm tài sản cho thuê.</p>}
+    {verified && <p className="text-slate-600">Bạn đã xác thực căn cước qua VNeID. Không cần nhập lại thông tin hoặc tải ảnh căn cước.</p>}
     {!verification.loading && !verification.error && verification.data && !verified && <>
     <h2 className="text-lg font-semibold mb-2">Hồ sơ ảnh giấy tờ tự khai</h2>
     <p className="text-slate-600 mb-4">Cung cấp thông tin căn cước và địa chỉ để chuẩn bị thông tin cá nhân khi thuê nhà. Hãy nhập đúng nội dung trên giấy tờ.</p>

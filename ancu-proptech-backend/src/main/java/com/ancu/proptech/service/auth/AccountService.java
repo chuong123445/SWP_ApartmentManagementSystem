@@ -16,6 +16,7 @@ import java.util.*;
 @Service @RequiredArgsConstructor
 public class AccountService {
     private final AccountVerificationPolicy verification;
+    private final AccountReauthenticationService reauthentication;
     private final AuthService auth;private final AuthAccountRepository accounts;private final AuthSessionRepository sessions;
     private final EmailChangeChallengeRepository challenges;private final PasswordEncoder passwords;
     private final EmailOtpSender sender;private final OtpHasher hasher;private final EntityManager entityManager;
@@ -24,13 +25,13 @@ public class AccountService {
         var a=locked(jwt);version(a,input.getVersion());a.setFullName(input.getFullName().strip());a.setAddress(clean(input.getAddress()));a.setBio(clean(input.getBio()));a.setDateOfBirth(input.getDateOfBirth());accounts.flush();return response(a);
     }
     @Transactional public void password(Jwt jwt,PasswordChange input){
-        var a=locked(jwt);version(a,input.getVersion());reauth(a,input.getCurrentPassword());
+        var a=locked(jwt);version(a,input.getVersion());reauth(jwt,a,input.getCurrentPassword(),input.getReauthenticationProof(),com.ancu.proptech.model.auth.AccountReauthentication.Purpose.PASSWORD);
         if(input.getNewPassword().length()<12||input.getNewPassword().getBytes(StandardCharsets.UTF_8).length>72)throw error(HttpStatus.BAD_REQUEST,"VALIDATION_ERROR","Mật khẩu mới cần ít nhất 12 ký tự và tối đa 72 byte UTF-8.");
-        if(passwords.matches(input.getNewPassword(),a.getPasswordHash()))throw error(HttpStatus.BAD_REQUEST,"PASSWORD_REUSED","Mật khẩu mới phải khác mật khẩu hiện tại.");
-        a.setPasswordHash(passwords.encode(input.getNewPassword()));invalidate(a.getId());accounts.flush();sessions.revokeAll(a.getId(),Instant.now());
+        if(a.getPasswordHash()!=null&&passwords.matches(input.getNewPassword(),a.getPasswordHash()))throw error(HttpStatus.BAD_REQUEST,"PASSWORD_REUSED","Mật khẩu mới phải khác mật khẩu hiện tại.");
+        a.setPasswordHash(passwords.encode(input.getNewPassword()));a.setLocalPasswordEnabled(true);invalidate(a.getId());accounts.flush();sessions.revokeAll(a.getId(),Instant.now());
     }
     @Transactional public ProfileResponse phone(Jwt jwt,PhoneChange input){
-        var a=locked(jwt);version(a,input.getVersion());reauth(a,input.getCurrentPassword());String phone=normalizePhone(input.getPhone());
+        var a=locked(jwt);version(a,input.getVersion());reauth(jwt,a,input.getCurrentPassword(),input.getReauthenticationProof(),com.ancu.proptech.model.auth.AccountReauthentication.Purpose.PHONE);String phone=normalizePhone(input.getPhone());
         // An unverified contact number must not reserve someone else's verified identity.
         if(!Objects.equals(phone,a.getPhone())){a.setPhone(phone);a.setPhoneVerified(false);recompute(a);}
         invalidate(a.getId());accounts.flush();var response=response(a);sessions.revokeAll(a.getId(),Instant.now());return response;
@@ -39,7 +40,12 @@ public class AccountService {
         var a=auth.authenticate(jwt);entityManager.refresh(a,LockModeType.PESSIMISTIC_WRITE);
         if(a.getStatus()==AuthAccount.Status.LOCKED||a.getStatus()==AuthAccount.Status.INACTIVE)throw error(HttpStatus.FORBIDDEN,"ACCOUNT_UNAVAILABLE","Tài khoản không thể thực hiện thao tác này.");return a;
     }
-    public void reauth(AuthAccount a,String password){if(a.getPasswordHash()==null)throw error(HttpStatus.FORBIDDEN,"EXTERNAL_ACCOUNT_PASSWORD_REQUIRED","Tài khoản đăng nhập qua VNeID chưa có mật khẩu nội bộ. Chức năng này cần mật khẩu nội bộ.");if(password.getBytes(StandardCharsets.UTF_8).length>72||!passwords.matches(password,a.getPasswordHash()))throw error(HttpStatus.FORBIDDEN,"CURRENT_PASSWORD_INVALID","Mật khẩu hiện tại không đúng.");}
+    public void reauth(Jwt jwt,AuthAccount a,String password,String proof,com.ancu.proptech.model.auth.AccountReauthentication.Purpose purpose){
+        if(proof!=null&&!proof.isBlank()){reauthentication.consume(jwt,a,proof,purpose);return;}
+        if(a.getPasswordHash()==null||!a.isLocalPasswordEnabled())throw error(HttpStatus.FORBIDDEN,"EXTERNAL_ACCOUNT_PASSWORD_REQUIRED","Hãy xác thực lại qua phương thức đăng nhập đã liên kết để tiếp tục.");
+        if(password==null||password.isBlank()||password.getBytes(StandardCharsets.UTF_8).length>72||!passwords.matches(password,a.getPasswordHash()))throw error(HttpStatus.FORBIDDEN,"CURRENT_PASSWORD_INVALID","Mật khẩu hiện tại không đúng.");
+    }
+
     public void version(AuthAccount a,long version){if(a.getVersion()!=version)throw error(HttpStatus.CONFLICT,"VERSION_CONFLICT","Thông tin tài khoản đã thay đổi. Hãy tải lại trang.");}
     public void invalidate(Long accountId){Instant now=Instant.now();challenges.findByAccountIdAndUsedAtIsNullAndInvalidatedAtIsNull(accountId).forEach(c->c.setInvalidatedAt(now));}
     public void recompute(AuthAccount a){a.setContactVerified(verification.isVerified(a));if(a.getStatus()==AuthAccount.Status.ACTIVE&&!a.isContactVerified())a.setStatus(AuthAccount.Status.PENDING_VERIFICATION);else if(a.getStatus()==AuthAccount.Status.PENDING_VERIFICATION&&a.isContactVerified())a.setStatus(AuthAccount.Status.ACTIVE);}
