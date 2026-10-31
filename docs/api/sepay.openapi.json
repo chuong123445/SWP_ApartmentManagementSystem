@@ -1,0 +1,1022 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "An Cu SePay invoice payments",
+    "version": "1.0.0",
+    "description": "BIDV official VA and other linked bank accounts via SePay API v2. Existing invoice SENT/DRAFT lifecycle retained; paymentStatus/paidAt are separate."
+  },
+  "security": [
+    {
+      "Bearer": []
+    }
+  ],
+  "paths": {
+    "/api/v1/owner/payments/sepay": {
+      "get": {
+        "summary": "Owner reads own connection, never key/hash",
+        "responses": {
+          "200": {
+            "description": "Saved/private result; Cache-Control no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or provider token/data"
+          },
+          "401": {
+            "description": "Missing/invalid session or webhook API key"
+          },
+          "403": {
+            "description": "Role/account verification denied"
+          },
+          "404": {
+            "description": "Not exact invoice party"
+          },
+          "409": {
+            "description": "Stale version, invoice not SENT, missing config/public URL, fractional VND"
+          },
+          "503": {
+            "description": "Provider unavailable"
+          }
+        }
+      },
+      "put": {
+        "summary": "Owner imports provider-backed receiver using transient API token",
+        "responses": {
+          "200": {
+            "description": "Saved/private result; Cache-Control no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or provider token/data"
+          },
+          "401": {
+            "description": "Missing/invalid session or webhook API key"
+          },
+          "403": {
+            "description": "Role/account verification denied"
+          },
+          "404": {
+            "description": "Not exact invoice party"
+          },
+          "409": {
+            "description": "Stale version, invoice not SENT, missing config/public URL, fractional VND"
+          },
+          "503": {
+            "description": "Provider unavailable"
+          },
+          "429": {
+            "description": "SePay provider rate limit; wait before retrying"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Setup"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/owner/payments/sepay/bank-accounts": {
+      "post": {
+        "summary": "Read active bank accounts from SePay v2; page/per_page=100, returns items/page/hasMore",
+        "responses": {
+          "200": {
+            "description": "Saved/private result; Cache-Control no-store"
+          },
+          "400": {
+            "description": "Invalid input or provider token/data"
+          },
+          "401": {
+            "description": "Missing/invalid session or webhook API key"
+          },
+          "403": {
+            "description": "Role/account verification denied"
+          },
+          "404": {
+            "description": "Not exact invoice party"
+          },
+          "409": {
+            "description": "Stale version, invoice not SENT, missing config/public URL, fractional VND"
+          },
+          "503": {
+            "description": "Provider unavailable"
+          },
+          "429": {
+            "description": "SePay provider rate limit; wait before retrying"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiToken"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/owner/payments/sepay/virtual-accounts": {
+      "post": {
+        "summary": "Read active official static VAs from SePay v2; items/page/hasMore",
+        "responses": {
+          "200": {
+            "description": "Saved/private result; Cache-Control no-store"
+          },
+          "400": {
+            "description": "Invalid input or provider token/data"
+          },
+          "401": {
+            "description": "Missing/invalid session or webhook API key"
+          },
+          "403": {
+            "description": "Role/account verification denied"
+          },
+          "404": {
+            "description": "Not exact invoice party"
+          },
+          "409": {
+            "description": "Stale version, invoice not SENT, missing config/public URL, fractional VND"
+          },
+          "503": {
+            "description": "Provider unavailable"
+          },
+          "429": {
+            "description": "SePay provider rate limit; wait before retrying"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VaRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/owner/payments/sepay/rotate-key": {
+      "post": {
+        "summary": "Rotate owner webhook key/version; returns plaintext once",
+        "responses": {
+          "200": {
+            "description": "Saved/private result; Cache-Control no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or provider token/data"
+          },
+          "401": {
+            "description": "Missing/invalid session or webhook API key"
+          },
+          "403": {
+            "description": "Role/account verification denied"
+          },
+          "404": {
+            "description": "Not exact invoice party"
+          },
+          "409": {
+            "description": "Stale version, invoice not SENT, missing config/public URL, fractional VND"
+          },
+          "503": {
+            "description": "Provider unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Rotate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/owner/payments/sepay/events": {
+      "get": {
+        "summary": "Own latest 20 events; transactionId/invoiceId/testPaymentId/result/amount/receivedAt; exactly one receipt reference for matched payment",
+        "responses": {
+          "200": {
+            "description": "Saved/private result; Cache-Control no-store"
+          },
+          "400": {
+            "description": "Invalid input or provider token/data"
+          },
+          "401": {
+            "description": "Missing/invalid session or webhook API key"
+          },
+          "403": {
+            "description": "Role/account verification denied"
+          },
+          "404": {
+            "description": "Not exact invoice party"
+          },
+          "409": {
+            "description": "Stale version, invoice not SENT, missing config/public URL, fractional VND"
+          },
+          "503": {
+            "description": "Provider unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/invoices/{id}/payment": {
+      "get": {
+        "summary": "Exact owner/tenant SENT invoice status; optional existing QR",
+        "responses": {
+          "200": {
+            "description": "Saved/private result; Cache-Control no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Payment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or provider token/data"
+          },
+          "401": {
+            "description": "Missing/invalid session or webhook API key"
+          },
+          "403": {
+            "description": "Role/account verification denied"
+          },
+          "404": {
+            "description": "Not exact invoice party"
+          },
+          "409": {
+            "description": "Stale version, invoice not SENT, missing config/public URL, fractional VND"
+          },
+          "503": {
+            "description": "Provider unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ]
+      },
+      "post": {
+        "summary": "Idempotently issue immutable invoice QR snapshot from server total; no client amount",
+        "responses": {
+          "200": {
+            "description": "Saved/private result; Cache-Control no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Payment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or provider token/data"
+          },
+          "401": {
+            "description": "Missing/invalid session or webhook API key"
+          },
+          "403": {
+            "description": "Role/account verification denied"
+          },
+          "404": {
+            "description": "Not exact invoice party"
+          },
+          "409": {
+            "description": "Stale version, invoice not SENT, missing config/public URL, fractional VND"
+          },
+          "503": {
+            "description": "Provider unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/payments/sepay/webhooks/{ownerId}": {
+      "post": {
+        "summary": "API-key webhook; durable exact reconciliation or review event; duplicate transaction id no-op",
+        "responses": {
+          "200": {
+            "description": "Saved/private result; Cache-Control no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "success"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or provider token/data"
+          },
+          "401": {
+            "description": "Missing/invalid session or webhook API key"
+          },
+          "403": {
+            "description": "Role/account verification denied"
+          },
+          "404": {
+            "description": "Not exact invoice party"
+          },
+          "409": {
+            "description": "Stale version, invoice not SENT, missing config/public URL, fractional VND"
+          },
+          "503": {
+            "description": "Provider unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Webhook"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "ownerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "security": [
+          {
+            "SepayKey": []
+          }
+        ]
+      }
+    },
+    "/api/v1/owner/payments/sepay/status": {
+      "patch": {
+        "summary": "Exact Owner enables/pauses existing connection using only internal session and version; no provider token",
+        "responses": {
+          "200": {
+            "description": "Saved/private result; Cache-Control no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or provider token/data"
+          },
+          "401": {
+            "description": "Missing/invalid session or webhook API key"
+          },
+          "403": {
+            "description": "Role/account verification denied"
+          },
+          "404": {
+            "description": "Not exact invoice party"
+          },
+          "409": {
+            "description": "Stale version, invoice not SENT, missing config/public URL, fractional VND"
+          },
+          "503": {
+            "description": "Provider unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Status"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/owner/payments/sepay/test-payments": {
+      "get": {
+        "summary": "Owner-only latest 20 test receipts; independent of rental debts/revenue",
+        "responses": {
+          "200": {
+            "description": "Saved/private result; Cache-Control no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TestReceipt"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or provider token/data"
+          },
+          "401": {
+            "description": "Missing/invalid session or webhook API key"
+          },
+          "403": {
+            "description": "Role/account verification denied"
+          },
+          "404": {
+            "description": "Not exact invoice party"
+          },
+          "409": {
+            "description": "Stale version, invoice not SENT, missing config/public URL, fractional VND"
+          },
+          "503": {
+            "description": "Provider unavailable"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create real-money test receipt, optionally send atomically to tenant of own ACTIVE contract. Receiver customerId always derives from server contract; no arbitrary account selection or rental debt changes.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestPaymentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "400": {
+            "description": "Invalid input or provider token/data"
+          },
+          "401": {
+            "description": "Missing/invalid session or webhook API key"
+          },
+          "403": {
+            "description": "Role/account verification denied"
+          },
+          "404": {
+            "description": "Not exact invoice party"
+          },
+          "409": {
+            "description": "Stale version, invoice not SENT, missing config/public URL, fractional VND"
+          },
+          "503": {
+            "description": "Provider unavailable"
+          },
+          "201": {
+            "description": "New private real-money test receipt; Cache-Control no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestReceipt"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/owner/payments/sepay/test-recipients": {
+      "get": {
+        "summary": "Own ACTIVE contract recipients only; server tenant and room labels",
+        "responses": {
+          "200": {
+            "description": "Saved/private result; Cache-Control no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TestRecipient"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or provider token/data"
+          },
+          "401": {
+            "description": "Missing/invalid session or webhook API key"
+          },
+          "403": {
+            "description": "Role/account verification denied"
+          },
+          "404": {
+            "description": "Not exact invoice party"
+          },
+          "409": {
+            "description": "Stale version, invoice not SENT, missing config/public URL, fractional VND"
+          },
+          "503": {
+            "description": "Provider unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/me/payments/sepay/test-payments": {
+      "get": {
+        "summary": "Exact recipient latest 20 test receipts with QR and webhook-derived status; CUSTOMER or OWNER as tenant; never owner-only old receipts",
+        "responses": {
+          "200": {
+            "description": "Saved/private result; Cache-Control no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TestReceipt"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or provider token/data"
+          },
+          "401": {
+            "description": "Missing/invalid session or webhook API key"
+          },
+          "403": {
+            "description": "Role/account verification denied"
+          },
+          "404": {
+            "description": "Not exact invoice party"
+          },
+          "409": {
+            "description": "Stale version, invoice not SENT, missing config/public URL, fractional VND"
+          },
+          "503": {
+            "description": "Provider unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/me/payments/sepay/test-payments/{id}": {
+      "get": {
+        "summary": "Exact recipient detail for unified invoice screen, independent of latest-20 list; no-store; foreign or owner-only receipt returns404",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Saved/private result; Cache-Control no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or provider token/data"
+          },
+          "401": {
+            "description": "Missing/invalid session or webhook API key"
+          },
+          "403": {
+            "description": "Role/account verification denied"
+          },
+          "404": {
+            "description": "Not exact invoice party"
+          },
+          "409": {
+            "description": "Stale version, invoice not SENT, missing config/public URL, fractional VND"
+          },
+          "503": {
+            "description": "Provider unavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "SepayKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization",
+        "description": "Apikey <one-time owner webhook key>"
+      }
+    },
+    "schemas": {
+      "Connection": {
+        "type": "object",
+        "properties": {
+          "bank": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "accountNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "accountHolderName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "virtualAccount": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "configured": {
+            "type": "boolean"
+          },
+          "webhookUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastWebhookAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "webhookSecret": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "One-time on create/rotate only; GET never returns it"
+          }
+        }
+      },
+      "Setup": {
+        "type": "object",
+        "required": [
+          "apiToken",
+          "bankAccountId",
+          "enabled",
+          "version"
+        ],
+        "properties": {
+          "apiToken": {
+            "type": "string",
+            "writeOnly": true,
+            "maxLength": 4096
+          },
+          "bankAccountId": {
+            "type": "string"
+          },
+          "virtualAccountId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "ApiToken": {
+        "type": "object",
+        "required": [
+          "apiToken",
+          "page"
+        ],
+        "properties": {
+          "apiToken": {
+            "type": "string",
+            "writeOnly": true
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "VaRequest": {
+        "type": "object",
+        "required": [
+          "apiToken",
+          "bankAccountId",
+          "page"
+        ],
+        "properties": {
+          "apiToken": {
+            "type": "string",
+            "writeOnly": true
+          },
+          "bankAccountId": {
+            "type": "string"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "Rotate": {
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "Payment": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "UNPAID",
+              "PAID",
+              "NOT_CONFIGURED"
+            ]
+          },
+          "paymentCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "amount": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bank": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "accountNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "accountHolderName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "qrUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "paidAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "Webhook": {
+        "type": "object",
+        "required": [
+          "id",
+          "gateway",
+          "accountNumber",
+          "content",
+          "transferType",
+          "transferAmount"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "description": "0 is the observed SePay Gửi thử connectivity probe: API key still required; only lastWebhookAt updated, no ledger/invoice payment writes. Real transaction IDs must be positive."
+          },
+          "gateway": {
+            "type": "string"
+          },
+          "accountNumber": {
+            "type": "string"
+          },
+          "subAccount": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "content": {
+            "type": "string"
+          },
+          "transferType": {
+            "type": "string",
+            "enum": [
+              "in",
+              "out"
+            ]
+          },
+          "transferAmount": {
+            "type": "number",
+            "minimum": 1,
+            "multipleOf": 1
+          }
+        }
+      },
+      "Status": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "version"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "TestPaymentRequest": {
+        "type": "object",
+        "required": [
+          "amount"
+        ],
+        "properties": {
+          "amount": {
+            "type": "string",
+            "pattern": "^[0-9]{1,9}$",
+            "description": "Whole VND 1..999999999; zero is rejected. Real transfer, not a rental invoice."
+          },
+          "contractId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[1-9][0-9]*$",
+            "description": "Optional own ACTIVE contract. Server derives exact tenant; omitted means owner-only test."
+          }
+        }
+      },
+      "TestReceipt": {
+        "type": "object",
+        "required": [
+          "id",
+          "createdAt",
+          "payment"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "payment": {
+            "$ref": "#/components/schemas/Payment"
+          },
+          "contractId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tenantName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "roomNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ownerName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "TestRecipient": {
+        "type": "object",
+        "required": [
+          "contractId",
+          "tenantName",
+          "roomNumber"
+        ],
+        "properties": {
+          "contractId": {
+            "type": "string"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "roomNumber": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

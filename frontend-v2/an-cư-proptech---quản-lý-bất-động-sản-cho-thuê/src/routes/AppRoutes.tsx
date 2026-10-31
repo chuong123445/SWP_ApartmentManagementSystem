@@ -1,3 +1,5 @@
+import {SepayTestPaymentsPage} from '@/pages/account/SepayTestPaymentsPage';
+import {SepaySettingsPage} from '@/pages/account/SepaySettingsPage';
 import {AssetManagementPage} from '@/pages/customer/AssetManagementPage';
 import type { ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router';
@@ -57,15 +59,19 @@ export function AppRoutes() {
     <Route path="/app" element={<RequireAccount role="MANAGER"><WorkspacePage /></RequireAccount>} />
     <Route path="/admin/property-dossiers" element={<RequireAccount role="ADMIN" verified={false}><PropertyDossiersPage /></RequireAccount>} />
     <Route path="/my/rental-requests" element={<RequireAccount role="CUSTOMER"><MyRentalRequestsPage /></RequireAccount>} />
+    <Route path="/my/test-payments" element={<RequireAccount role="CUSTOMER"><SepayTestPaymentsPage tenant /></RequireAccount>} />
     <Route path="/my/invoices" element={<RequireAccount role="CUSTOMER"><MyInvoicesPage /></RequireAccount>} />
     <Route path="/my/contracts" element={<RequireAccount role="CUSTOMER"><MyContractsPage /></RequireAccount>} />
     <Route path="/my/maintenance" element={<RequireAccount role="CUSTOMER"><MyMaintenancePage /></RequireAccount>} />
     <Route path="/my/home" element={<RequireAccount role="CUSTOMER"><ResidentHomePage /></RequireAccount>} />
     <Route path="/my/contracts/:id" element={<RequireAccount role="CUSTOMER"><ContractDetailPage /></RequireAccount>} />
+    <Route path="/my/invoices/additional/:id" element={<RequireAccount role="CUSTOMER"><InvoiceDetailPage additional /></RequireAccount>} />
     <Route path="/contracts/:id" element={<RequireAccount verified={false}><ContractDetailPage /></RequireAccount>} />
     <Route path="/my/invoices/:id" element={<RequireAccount role="CUSTOMER"><InvoiceDetailPage /></RequireAccount>} />
     <Route path="/account/verification" element={<RequireAccount verified={false}><AccountVerificationPage /></RequireAccount>} />
     <Route path="/account/profile" element={<RequireAccount verified={false}><ProfilePage /></RequireAccount>} />
+    <Route path="/account/settings/payments/test" element={<RequireAccount role="MANAGER"><SepayTestPaymentsPage /></RequireAccount>} />
+    <Route path="/account/settings/payments" element={<RequireAccount role="MANAGER"><SepaySettingsPage /></RequireAccount>} />
     <Route path="/account/settings" element={<RequireAccount verified={false}><AccountSettingsPage /></RequireAccount>} />
     <Route path="/account/properties" element={<RequireAccount role="CUSTOMER" verified={false}><AssetManagementPage /></RequireAccount>} />
     <Route path="/account/owner-upgrade" element={<RequireAccount verified={false}><OwnerUpgradePage /></RequireAccount>} />

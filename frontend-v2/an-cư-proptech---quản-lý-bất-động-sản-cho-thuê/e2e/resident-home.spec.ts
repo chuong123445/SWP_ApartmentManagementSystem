@@ -19,6 +19,7 @@ async function fixture(page:Page,hasLease=true,withBank=true){
       }
       return json({items:issues,totalPages:1,totalElements:issues.length});
     }
+    if(path.endsWith('/invoices/82/payment'))return json({status:'NOT_CONFIGURED'});
     if(path.endsWith('/invoices/82'))return json(invoices[1]);
     if(path.endsWith('/contracts/43'))return json({id:'43',paymentMethod:'Chuyển khoản',snapshot:{receivingAccount:withBank?{bank:'Ngân hàng kiểm thử',accountNumber:'00022222',accountHolderName:'Chủ nhà Tòa B'}:null}});
     return route.fulfill({status:404,json:{message:'Unexpected test request '+path}});
@@ -29,7 +30,7 @@ test('Menu gọn và từng phòng nối đúng sự cố, hóa đơn, tài kho�
   const state=await fixture(page);await page.goto('/my/home');
   await page.getByRole('button',{name:'Vai trò và tài khoản'}).click();const menu=page.getByRole('navigation',{name:'Điều hướng tài khoản'});
   for(const name of ['Nhà đang thuê','Yêu cầu & hợp đồng','Hồ sơ & tài khoản'])await expect(menu.getByRole('link',{name,exact:true})).toBeVisible();
-  await expect(menu.getByRole('link',{name:'Sự cố của tôi',exact:true})).toHaveCount(0);await expect(menu.getByRole('link',{name:'Hóa đơn của tôi',exact:true})).toHaveCount(0);
+  await expect(menu.getByRole('link',{name:'Sự cố của tôi',exact:true})).toHaveCount(0);await expect(menu.getByRole('link',{name:'Hóa đơn của tôi',exact:true})).toHaveCount(1);
   await expect(menu.getByRole('link',{name:'Hồ sơ quyền cho thuê'})).not.toBeVisible();await page.keyboard.press('Escape');
   await page.getByRole('button',{name:'Hóa đơn & thanh toán',exact:true}).click();await expect(page.locator('.resident-invoice')).toHaveCount(2);
   await page.getByRole('combobox',{name:'Chọn nơi ở'}).selectOption('22');await expect(page.locator('.resident-invoice')).toHaveCount(1);await expect(page.locator('.resident-invoice')).toContainText('2026-11');

@@ -1,0 +1,49 @@
+# SePay — nhận tiền hóa đơn theo chủ nhà
+
+Ngày 28/10/2026. Nhánh `feature/sepay-payments`, xuất phát `chuong` tại fcb37ca. User yêu cầu ngân hàng liên kết trên SePay, ứng dụng gọi API theo token của từng chủ nhà; không giới hạn BIDV.
+
+## Luồng được triển khai
+
+OWNER ACTIVE/đã xác thực → Cài đặt tài khoản → Thanh toán SePay → API Token của chính tài khoản SePay → Backend đọc SePay API v2 → chọn tài khoản (tự chọn nếu duy nhất), chọn VA nếu cần → Backend đọc lại chi tiết từ SePay khi lưu, không tin tên/số tài khoản từ Frontend → lưu thông tin người nhận + SHA256 khóa webhook ngẫu nhiên → sao chép URL HTTPS và khóa hiển thị một lần → chủ nhà tự cấu hình webhook trên SePay.
+
+Token API SePay và khóa webhook khác nhau. Token chỉ dùng cho request thiết lập; không lưu database, localStorage/cookie hoặc log. Không yêu cầu mật khẩu ngân hàng. Token v2 hiện toàn quyền theo tài liệu SePay, do đó chưa triển khai việc giữ token dài hạn; OAuth là mở rộng riêng. Ứng dụng chỉ gọi API đọc tài khoản/VA, không tạo tài khoản ngân hàng, hoàn tiền hoặc chuyển tiền ra.
+
+## Đối soát
+
+- Chỉ exact Owner hoặc exact Customer của hóa đơn SENT được lấy trạng thái/cấp QR; khách không xem hóa đơn nháp. Owner vẫn giữ chức năng thuê nhà.
+- InvoicePayment là snapshot nhận tiền/số tiền/mã ngẫu nhiên ANCU + 24 ký tự hex. Local PK vẫn BIGINT IDENTITY; UUID tài khoản SePay là external ID, không thay PK nội bộ.
+- VND nguyên được lấy từ tổng hóa đơn server. Không tin số tiền frontend; không tự làm tròn số lẻ VND. QR dùng tài khoản gốc hoặc VA chính thức tĩnh lấy từ SePay. VietinBank thêm SEVQR.
+- BIDV/OCB/MSB/KienLongBank yêu cầu chọn VA trong phiên bản này. VA động và VA theo nội dung TKP chưa hỗ trợ. Các ngân hàng khác có thể dùng tài khoản gốc hoặc VA chính thức tĩnh mà API cung cấp. BIDV doanh nghiệp dùng tài khoản gốc chưa mở riêng; không khẳng định mọi biến thể ngân hàng đã được thử thật.
+- Config một tài khoản nhận mặc định cho mỗi Owner, phục vụ nhiều căn hộ/hóa đơn. Đổi cấu hình không sửa snapshot/QR đã cấp, không sửa ngân hàng trong hợp đồng đã lưu. Cần đối chiếu với người thuê khi đổi ngân hàng.
+- Webhook POST JSON có `Authorization: Apikey <key>`. Chain riêng chỉ cho đường webhook, không dùng cookie/JWT/CSRF; các API người dùng vẫn dùng Security/JWT và AccountAccessService.
+- Secret random 32 byte, so sánh hash constant-time, hiển thị khi tạo/rotate; GET không trả secret/hash. Rotate có version và vô hiệu khóa cũ. URL được tạo từ APP_PUBLIC_BASE_URL, không lấy Host header.
+- Transaction khóa connection → contract; webhook cùng Owner được tuần tự hóa. (owner_id, transaction_id) UNIQUE theo kết nối chủ nhà; invoice_id/payment_code UNIQUE. Nhận lại cùng event trả success, không ghi nhận lại. DB foreign keys giữ tham chiếu; server không cần queue/network trong webhook.
+- Đúng bank + account/VA snapshot, đúng một mã hóa đơn và đúng toàn bộ số tiền, transferType=in, invoice SENT → paidAt. Không sửa SENT thành PAID: paymentStatus riêng để giữ chuỗi chỉ số/thời kỳ hóa đơn.
+- Sai tài khoản/số tiền, tiền ra, mã không khớp/mơ hồ, hóa đơn đã trả hoặc connection tắt: lưu kết quả đối soát, trả success sau commit để không retry vô ích; không tự cộng dồn/hoàn tiền/đánh dấu đã trả. Lỗi xác thực 401; lỗi server thực sự không ack để SePay retry.
+- Khóa webhook là credential tin cậy; chủ nhà không được gửi thử bằng mã hóa đơn thật. `lastWebhookAt` chỉ chứng minh đã nhận thông báo hợp lệ, không xác minh pháp lý tài khoản ngân hàng hoặc khẳng định giao dịch thật.
+
+## Database
+
+V23/V24 thêm sepay_connections (người nhận + hash key + trạng thái/version), invoice_payments (snapshot QR + paidAt), sepay_events (external transaction ID + kết quả/amount/time). Không lưu raw payload/số dư/người chuyển. 20 events mới nhất chỉ Owner đó xem. Migration additive/idempotent, không reset dữ liệu. Project hiện Hibernate ddl-auto=update ở local; script V23 dùng để quản lý schema rõ ràng, chưa cài Flyway mới.
+
+## Ngoài phạm vi
+
+Escrow/đặt cọc, hoàn tiền, thanh toán một phần/gộp, đối soát thủ công thay trạng thái, tự đăng ký webhook qua API, OAuth SePay, hỗ trợ toàn bộ loại VA/ngân hàng, xác nhận giao dịch thật và triển khai tunnel thật. Chưa gọi SePay bằng token thật; URL/provider acceptance vẫn cần người vận hành.
+
+
+Bật/tắt nhận thanh toán: sau khi cấu hình, dùng nút Tạm dừng/Bật lại bằng phiên nội bộ và version, không cần token SePay. Khi tắt, không cấp QR mới hay tự đối soát giao dịch; trạng thái các hóa đơn đã thanh toán vẫn giữ nguyên. Thông báo nhận trong lúc tắt lưu DISABLED, không tự phát lại để thanh toán sau khi bật.
+
+
+29/10/2026 — ngrok inspector xác nhận SePay Gửi thử dùng id=0. Sau xác thực key, chỉ cập nhật lastWebhookAt rồi ack success, không lưu event ID 0 hoặc đối soát hóa đơn. ID âm/missing và các ràng buộc payload khác vẫn bị từ chối; ID dương xử lý theo quy tắc hiện có.
+
+## Bổ sung 29/10/2026 — phiếu thử số tiền tùy nhập
+
+User cần thử khoản nhỏ. Owner được tạo phiếu thử nguyên VND (1..999999999), snapshot người nhận/mã/tiền bất biến. Bảng riêng BIGINT IDENTITY `sepay_test_payments`; event có `test_payment_id` nullable. Không thay đổi RentalInvoice/SENT/billing chain, không giả lập hợp đồng hoặc công nợ. POST tạo mới mỗi lần, UI chặn bấm lặp trong lúc xử lý nhưng không tuyên bố POST idempotent. QR cùng adapter; webhook dùng cùng khóa owner, lock connection, dedup owner+transaction và kiểm tra recipient/amount. Mã ANCUTEST+24hex phân biệt với ANCU+24hex; nếu nhiều mã thì không đối soát. id=0 vẫn chỉ kiểm tra kết nối. Không có API xác nhận đã trả từ browser. Dữ liệu thử là tiền thật và không tự hoàn tiền. V25 additive; chưa xác minh chuyển khoản thật.
+
+## Bổ sung — phiếu thử gửi tenant
+
+`TestPaymentRequest.contractId` optional để giữ API phiếu owner-only; owner UI cho chọn own ACTIVE contract hoặc tự thử. Khóa connection→contract, kiểm tra exact owner/status và derive customerId server, không lấy customerId từ client. Lưu contractId/customerId bất biến, FK nullable/index V26, không tự gán phiếu cũ. Tenant GET /me/payments/sepay/test-payments chỉ query exact persisted customerId (CUSTOMER hoặc OWNER trong vai trò thuê); không cần quyền owner của nguồn nhận. Không cung cấp POST tenant hay mark-paid. Sau khi hợp đồng hết hiệu lực, phiếu đã gửi vẫn đọc được bởi đúng người nhận. Nhãn tên/phòng hiển thị từ hợp đồng hiện tại, không tuyên bố là snapshot pháp lý của hóa đơn. Gửi là ghi nhận trong tài khoản ứng dụng, không gửi email/SMS. Phiếu thử tách khỏi công nợ và billing chain.
+
+## Override 29/10/2026 — tenant xem như hóa đơn thông thường
+
+User không muốn tách mục phiếu thử. MyInvoices đọc nguồn khoản thu nhận được và nguồn hóa đơn thuê, hiển thị cùng màn hình/thẻ/chi tiết và panel thanh toán; bỏ link mục phụ khỏi luồng chính. Khoản thu dùng `/my/invoices/additional/{id}` + exact-recipient GET `/me/payments/sepay/test-payments/{id}`; tách namespace tránh IDENTITY của hai bảng trùng ID. Điều hướng sau login giữ numeric ID, truy cập chi tiết không phụ thuộc top20. Dữ liệu đã gửi giữ nguyên, không chuyển bảng hay đưa khoản thử vào billing chain/doanh thu hóa đơn thuê. Không đặt giá thử vào giá hợp đồng hoặc giả công tơ/kỳ hóa đơn.

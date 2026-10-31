@@ -13,6 +13,7 @@ export interface BillingInvoice {
   tenantName: string; period: string; dueDate: string; monthlyRent: string;
   electricityStartReading: string; electricityEndReading: string; electricityQuantity: string; electricityUnitPrice: string; electricityAmount: string;
   waterStartReading: string; waterEndReading: string; waterQuantity: string; waterUnitPrice: string; waterAmount: string;
+  paymentStatus?: 'UNPAID'|'PAID'; paidAt?: string|null;
   totalAmount: string; status: 'DRAFT' | 'SENT'; createdAt: string; sentAt: string | null; version: number;
 }
 export interface InvoiceCreate {
