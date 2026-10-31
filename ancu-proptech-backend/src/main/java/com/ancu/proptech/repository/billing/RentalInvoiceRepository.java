@@ -15,6 +15,11 @@ public interface RentalInvoiceRepository extends JpaRepository<RentalInvoice,Lon
     Page<RentalInvoice> findByContractApartmentPropertyOwnerIdAndContractApartmentPropertyId(Long ownerId,Long propertyId,Pageable pageable);
     @EntityGraph(attributePaths={"contract","contract.apartment","contract.apartment.property","contract.customer"})
     Page<RentalInvoice> findByContractCustomerIdAndStatus(Long customerId,RentalInvoice.Status status,Pageable pageable);
+    @EntityGraph(attributePaths={"contract","contract.apartment","contract.apartment.property","contract.customer"})
+    @Query("select i from RentalInvoice i where i.contract.customer.id=:customerId and i.status=:status and "
+        + "((:paid=true and exists (select p.id from InvoicePayment p where p.invoiceId=i.id and p.paidAt is not null)) or "
+        + "(:paid=false and not exists (select p.id from InvoicePayment p where p.invoiceId=i.id and p.paidAt is not null)))")
+    Page<RentalInvoice> findByCustomerAndPaymentStatus(Long customerId,RentalInvoice.Status status,boolean paid,Pageable pageable);
     @EntityGraph(attributePaths={"contract","contract.apartment","contract.apartment.property","contract.apartment.property.owner","contract.customer"})
     Optional<RentalInvoice> findWithContractById(Long id);
 }

@@ -605,7 +605,24 @@
           "503": {
             "description": "Provider unavailable"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "paymentStatus",
+            "in": "query",
+            "required": false,
+            "description": "Filter exact-recipient receipts before selecting the latest 20.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ALL",
+                "UNPAID",
+                "PAID"
+              ],
+              "default": "ALL"
+            }
+          }
+        ]
       }
     },
     "/api/v1/me/payments/sepay/test-payments/{id}": {
