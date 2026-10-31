@@ -33,3 +33,7 @@ Database có dữ liệu yêu cầu công cụ maintenance với backup đã ki�
 ## Xác thực danh tính
 
 `auth_accounts.identity_verified` là summary riêng, backfill từ evidence VERIFIED và cập nhật cùng transaction Auth0. `contact_verified` không phải CCCD; email_verified/phone_verified chỉ liên hệ. Nguồn quyết định cho quyền nhạy cảm vẫn là `auth_external_identities` với source/issuer/subject/verifiedAt, không tin cờ từ client hoặc chỉ summary trên account. Duyệt tài sản không tạo xác thực danh tính.
+
+## Current override — asset-bound activation, 28 October 2026
+
+User replaced the original consent/count-only Owner upgrade. New flow is Customer-layout /account/properties, per-property relationship selection, then source consent after OWNERSHIP choice. Consent/preview never promotes. A complete validated source property import grants OWNER atomically with Property/units/evidence; AUTHORIZATION/SUBLEASE grants it only on Admin approval as before. Existing Owners/data remain unchanged. Workspace is operational; shared /apartments/{id} provides exact-owner editing/private draft access. Read asset-management-and-lessor-activation-v2.md and asset-management-lessor-flow-2026-10-28 report; this override takes precedence over the historical steps above.

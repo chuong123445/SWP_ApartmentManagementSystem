@@ -1,6 +1,7 @@
+import {allowPropertySource} from '../src/services/property/assetManagementService.ts';
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { vneidLogin, verifyVneid, getVneidConfig, getAccountVerification, upgradeOwner } from '../src/services/auth/vneidService.ts';
+import { vneidLogin, verifyVneid, getVneidConfig, getAccountVerification } from '../src/services/auth/vneidService.ts';
 import { setAccessToken, setRefreshHandler, ApiError } from '../src/services/http/client.ts';
 const original = globalThis.fetch;
 afterEach(() => { globalThis.fetch = original; setAccessToken(null); setRefreshHandler(null); });
@@ -46,13 +47,13 @@ test('Citizen status is a private no-store Self read, not a caller-selected acco
   };
   const result = await getAccountVerification();assert.equal(result.emailVerified, true);assert.equal(result.vneid.identity, null);
 });
-test('Owner upgrade sends only explicit consent and server version with internal bearer and CSRF', async () => {
+test('Source consent sends only explicit consent/version and never returns Owner authority', async () => {
   setAccessToken('internal');
   globalThis.fetch = async (url, init) => {
     if (url === '/api/v1/auth/csrf') return Response.json({ token: 'csrf', headerName: 'X-XSRF-TOKEN' });
-    assert.equal(url, '/api/v1/me/owner-upgrade');assert.equal(init?.method, 'POST');
+    assert.equal(url, '/api/v1/me/property-source-consent');assert.equal(init?.method, 'POST');
     assert.equal(new Headers(init?.headers).get('Authorization'), 'Bearer internal');assert.equal(new Headers(init?.headers).get('X-XSRF-TOKEN'), 'csrf');
-    assert.deepEqual(JSON.parse(init?.body as string), { consent: true, version: 3 });return Response.json({ roles: ['OWNER'] });
+    assert.deepEqual(JSON.parse(init?.body as string), { consent: true, version: 3 });return Response.json({consented:true,assetServiceAvailable:true,version:3});
   };
-  assert.deepEqual((await upgradeOwner(3)).roles, ['OWNER']);
+  const result=await allowPropertySource(3);assert.equal(result.consented,true);assert.equal('roles' in result,false);
 });

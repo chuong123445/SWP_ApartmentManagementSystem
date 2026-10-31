@@ -16,6 +16,6 @@ public class ApartmentController {
         @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "6") int size) {
         return apartments.search(q, city, district, ward, minRent, maxRent, bedrooms, page, size);
     }
-    @GetMapping("/{id}") public ApartmentDetail detail(@PathVariable Long id) { return apartments.detail(id); }
+    @GetMapping("/{id}") public org.springframework.http.ResponseEntity<ApartmentDetail> detail(@PathVariable Long id,@org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.oauth2.jwt.Jwt jwt) { return org.springframework.http.ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(apartments.detail(id,jwt)); }
     @GetMapping("/address-options") public java.util.List<AddressOption> addresses(){return apartments.addressOptions();}
 }

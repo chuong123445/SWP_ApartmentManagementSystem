@@ -15,3 +15,7 @@ Chưa nhập dữ liệu tài sản thành Property/Apartment. Nâng cấp khôn
 Settings hiển thị riêng Email và CCCD/VNeID; trạng thái và căn cước từ evidence Backend, không suy ra từ email hoặc ảnh tự khai. Account đã xác thực không còn nút xác thực lại.
 
 Live Management API chưa nghiệm thu: user có M2M và sẽ điền credentials local. Kiểm thử adapter dùng HTTP kiểm soát; không tuyên bố đã đọc thành công tài sản owner02.
+
+## Current override — asset-bound activation, 28 October 2026
+
+User replaced the original consent/count-only Owner upgrade. New flow is Customer-layout /account/properties, per-property relationship selection, then source consent after OWNERSHIP choice. Consent/preview never promotes. A complete validated source property import grants OWNER atomically with Property/units/evidence; AUTHORIZATION/SUBLEASE grants it only on Admin approval as before. Existing Owners/data remain unchanged. Workspace is operational; shared /apartments/{id} provides exact-owner editing/private draft access. Read asset-management-and-lessor-activation-v2.md and asset-management-lessor-flow-2026-10-28 report; this override takes precedence over the historical steps above.

@@ -14,6 +14,11 @@ import java.util.List;
 @RestController @RequestMapping("/api/v1/owner/properties") @RequiredArgsConstructor
 public class OwnerPropertyController {
     private final OwnerPropertyService properties;
+    private final com.ancu.proptech.service.property.SourceReceivingAccountService receivingAccounts;
+    @PutMapping("/{id}/receiving-account") public ResponseEntity<Void> receivingAccount(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,
+            @Valid @RequestBody com.ancu.proptech.dto.property.SourceReceivingAccountUpdate input) {
+        receivingAccounts.update(jwt,id,input);return ResponseEntity.noContent().cacheControl(org.springframework.http.CacheControl.noStore()).build();
+    }
     private final com.ancu.proptech.service.property.VneidPropertyImportService vneid;
     @GetMapping("/vneid-assets") public ResponseEntity<List<com.ancu.proptech.service.property.VneidPropertyImportService.Candidate>> vneidAssets(@AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(vneid.list(jwt));

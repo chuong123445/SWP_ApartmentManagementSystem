@@ -15,4 +15,9 @@ public class PropertyExternalImport {
     @Column(nullable=false,length=64) private String sourceVersion;
     @Column(nullable=false,columnDefinition="nvarchar(max)") private String sourceSnapshot;
     @Column(nullable=false,columnDefinition="datetime2(6)") private Instant importedAt;
+    @org.hibernate.annotations.Nationalized @Column(length=150) private String bank;
+    @Column(length=50) private String accountNumber;
+    @org.hibernate.annotations.Nationalized @Column(length=100) private String accountHolderName;
+    @Column(columnDefinition="datetime2(6)") private Instant receivingAccountUpdatedAt;
+    @Version private long version;
 }
