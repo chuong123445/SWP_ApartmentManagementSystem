@@ -1,7 +1,8 @@
 package com.ancu.proptech.dto.contract;
 import java.time.LocalDate;
 import java.util.*;
-public record ContractSnapshot(Party owner, Party customer, Asset asset, ReceivingAccount receivingAccount) {
+public record ContractSnapshot(Party owner, Party customer, Asset asset, ReceivingAccount receivingAccount, Evidence evidence) {
+    public record Evidence(String source,String reference,String sourceHash,java.time.Instant recordedAt,Long receivingAccountVersion) {}
     public record Party(String id,String fullName,String email,String phone,String address,LocalDate dateOfBirth,boolean emailVerified,
             String documentNumber,LocalDate documentIssueDate,String documentIssuePlace,String permanentAddress,String identityVerificationStatus,Boolean localFixture) {}
     public record Asset(String apartmentId,String propertyId,String propertyName,String title,String roomNumber,String address,

@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "An Cư — selection-bound contract drafts",
-    "version": "1.1.0",
-    "description": "Implemented 14 October 2026. Private DRAFT authoring/review; no signing, activation, payment or release endpoints. Snapshots are server-derived and immutable. Monthly rent must be positive; all other money nonnegative. Existing legacy ACTIVE fixtures are not backfilled into these authoring routes. Legal identity/certificate fields are server-derived and frozen at creation; old snapshots remain unchanged and readable. Explicit local samples are marked; no eKYC or legal evidence proof. Update27October: new contexts prefer persisted VERIFIED Auth0 citizen; missing issue fields stay null, old snapshots unchanged. Context includes current rightsValidFrom/Until. Server locks/rechecks rights and rejects contract beyond approved window or expired rights."
+    "version": "1.2.0",
+    "description": "Implemented 14 October 2026. Private DRAFT authoring/review; no signing, activation, payment or release endpoints. Snapshots are server-derived and immutable. Monthly rent must be positive; all other money nonnegative. Existing legacy ACTIVE fixtures are not backfilled into these authoring routes. Legal identity/certificate fields are server-derived and frozen at creation; old snapshots remain unchanged and readable. Explicit local samples are marked; no eKYC or legal evidence proof. Update27October: new contexts prefer persisted VERIFIED Auth0 citizen; missing issue fields stay null, old snapshots unchanged. Context includes current rightsValidFrom/Until. Server locks/rechecks rights and rejects contract beyond approved window or expired rights. F07 fixed28October: resolver uses persisted Auth0 source certificate/right or exact approved manual dossier; new snapshots contain evidence source/reference/hash/time and private source receiving account if declared. No provider lookup during contract creation, no fake Admin review or old snapshot rewrite."
   },
   "servers": [
     {
@@ -1298,6 +1298,9 @@
                 "$ref": "#/components/schemas/ReceivingAccount"
               }
             ]
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/Evidence"
           }
         },
         "required": [
@@ -1498,6 +1501,30 @@
           "message"
         ],
         "additionalProperties": false
+      },
+      "Evidence": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "sourceHash": {
+            "type": "string"
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "receivingAccountVersion": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          }
+        }
       }
     }
   }

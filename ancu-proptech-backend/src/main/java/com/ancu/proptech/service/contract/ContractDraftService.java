@@ -30,7 +30,7 @@ public class ContractDraftService {
     private final RentalContractRepository contracts;
     private final RentalRequestRepository requests;
     private final ApartmentRepository apartments;
-    private final PropertyDossierRepository dossiers;
+    private final ContractPropertyEvidenceResolver propertyEvidence;
     private final AccountAccessService access;
     private final AccountVerificationPolicy verification;
     private final IdentityProfileRepository identities;
@@ -213,15 +213,12 @@ public class ContractDraftService {
     }
     ContractSnapshot snapshot(RentalRequest r) {
         var a=r.getApartment();var p=a.getProperty();
-        var approved=dossiers.findByPropertyIdOrderBySubmittedAtDescIdDesc(p.getId()).stream()
-            .filter(d->d.getStatus()==PropertyDossier.Status.APPROVED).findFirst().orElse(null);
+        var evidence=propertyEvidence.resolve(p);
         return new ContractSnapshot(party(p.getOwner()),party(r.getCustomer()),
             new ContractSnapshot.Asset(a.getId().toString(),p.getId().toString(),p.getName(),a.getTitle(),a.getRoomNumber(),p.getAddress(),p.getCity(),p.getDistrict(),p.getWard(),
                 a.getAreaM2().toPlainString(),a.getFloor(),a.getBedrooms(),a.getBathrooms(),List.copyOf(a.getAmenities()),p.getApprovalStatus().name(),
-                approved==null?null:approved.getId().toString(),approved==null?null:approved.getRightType().name(),
-                approved==null?null:approved.getCertificateNumber(),approved==null?null:approved.getCertificateIssueDate(),
-                approved==null?null:approved.getCertificateIssuePlace(),approved==null?null:approved.getExploitationRightDescription(),approved==null?null:approved.isLocalFixture()),
-            approved==null?null:new ContractSnapshot.ReceivingAccount(approved.getBank(),approved.getAccountNumber(),approved.getAccountHolderName()));
+                evidence.dossierId(),evidence.right(),evidence.certificate(),evidence.date(),evidence.place(),evidence.description(),evidence.fixture()),
+            evidence.bank(),evidence.evidence());
     }
     private ContractSnapshot.Party party(AuthAccount a) {
         var verified=verifiedIdentities.findById(a.getId()).filter(i->"VERIFIED".equals(i.getVerificationStatus())).orElse(null);
