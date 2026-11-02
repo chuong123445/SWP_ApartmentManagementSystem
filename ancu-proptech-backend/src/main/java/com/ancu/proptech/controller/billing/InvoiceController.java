@@ -14,6 +14,7 @@ import java.net.URI;
 public class InvoiceController {
     private final InvoiceService invoices;
     @GetMapping("/api/v1/owner/contracts/{id}/billing-context") public BillingContext context(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id){return invoices.context(jwt,id);}
+    @PostMapping("/api/v1/owner/contracts/{id}/meter-readings") public BillingContext readings(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody MeterReadingSave request){return invoices.saveReadings(jwt,id,request);}
     @PostMapping("/api/v1/owner/contracts/{id}/invoices") public ResponseEntity<InvoiceResponse> create(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody InvoiceCreate request){var result=invoices.create(jwt,id,request);return ResponseEntity.created(URI.create("/api/v1/invoices/"+result.id())).body(result);}
     @PostMapping("/api/v1/owner/invoices/{id}/send") public InvoiceResponse send(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody InvoiceSend request){return invoices.send(jwt,id,request);}
     @GetMapping("/api/v1/owner/invoices") public PageResponse<InvoiceResponse> owner(@AuthenticationPrincipal Jwt jwt,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size,@RequestParam(required=false) Long propertyId){return invoices.owner(jwt,page,size,propertyId);}
