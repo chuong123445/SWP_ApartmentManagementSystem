@@ -21,7 +21,8 @@ public class NotificationService {
  WITH feed AS (
  SELECT CONCAT('contract-expiry:',n.id) notification_key,N'Hợp đồng sắp hết hạn' title,
  CONCAT(N'HD-',c.id,N' hết hạn ngày ',CONVERT(varchar(10),n.expires_on,23),N'. Xem hợp đồng để yêu cầu thuê tiếp hoặc theo dõi bàn giao.') message,
- CONCAT('/contracts/',c.id) url,n.created_at
+ CASE WHEN p.owner_id=:account THEN CONCAT('/app?tab=contracts&propertyId=',p.id,'&contractId=',c.id)
+      ELSE CONCAT('/my/rental-requests?tab=contracts&contractId=',c.id) END url,n.created_at
  FROM contract_expiry_notices n JOIN rental_contracts c ON c.id=n.contract_id JOIN rental_apartments a ON a.id=c.apartment_id JOIN rental_properties p ON p.id=a.property_id
  WHERE n.recipient_id=:account AND (c.customer_id=:account OR p.owner_id=:account)
  UNION ALL

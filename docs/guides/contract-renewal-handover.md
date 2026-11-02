@@ -6,6 +6,8 @@ Khởi động lại Backend để nạp code và migration V42, sau đó tải 
 
 Chuông thông báo trong ứng dụng nhắc hai bên trước hạn 20 ngày và 10 ngày. Job chạy sau khoảng một phút khi Backend khởi động, sau đó mỗi giờ; thời gian theo Việt Nam. Nếu ứng dụng ngừng chạy qua một mốc, chỉ gửi mốc hiện tại còn phù hợp, không dồn hai lời nhắc cũ. Không có email/SMS trong phần này.
 
+Nhắc hạn vẫn ở chuông thông báo, không có mục nhắc hạn riêng. Khi chọn lời nhắc, Tenant đến **Yêu cầu & hợp đồng → Hợp đồng**, Owner đến **Hợp đồng** của đúng tài sản; hợp đồng liên quan được đánh dấu. ID/thời điểm/read state của thông báo giữ nguyên, chỉ đổi đích điều hướng.
+
 ## Muốn thuê tiếp
 
 Owner vào **Yêu cầu thuê → Thuê tiếp** để xem và xử lý trực tiếp; không cần mở từng hợp đồng mới biết có yêu cầu. Chuông thông báo yêu cầu thuê tiếp cũng mở đúng tab và tài sản. Hai tab **Thuê mới / Thuê tiếp** mặc định **Chờ xử lý**. Bộ lọc tiếp theo gồm **Đang làm hợp đồng**, **Đã ký hợp đồng**, **Đã từ chối**, **Đã hủy** và **Tất cả**. Chỉ đủ hai chữ ký mới được hiển thị đã ký; quyết định đồng ý không tự kích hoạt thuê. Các bản ghi kỹ thuật khi soạn kỳ mới không xuất hiện lẫn trong tab Thuê mới.
