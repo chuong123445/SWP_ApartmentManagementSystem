@@ -169,7 +169,7 @@ class VneidIntegrationTests {
                 .contentType("application/json").content("{\"auth0AccessToken\":\""+token+"\"}"));
     }
     private AuthAccount account(AuthAccount.Role role,AuthAccount.Status status) {
-        var a=new AuthAccount();a.setEmail(email);a.setFullName("Tài khoản kiểm thử");a.setRole(role);a.setStatus(status);
+        var a=new AuthAccount();a.setEmail(email);a.setFullName("Người kiểm thử Auth0");a.setRole(role);a.setStatus(status);
         return accounts.saveAndFlush(a);
     }
 }
