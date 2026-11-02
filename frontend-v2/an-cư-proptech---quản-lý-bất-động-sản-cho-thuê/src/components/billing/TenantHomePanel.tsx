@@ -1,20 +1,25 @@
 import { Link } from 'react-router';
 import { ReceiptText } from 'lucide-react';
-import { useTenancyContext } from '@/contexts/TenancyContext';
 import { useTenantInvoices } from '@/hooks/useTenantInvoices';
-import { billingMoney } from '@/services/billing/billingService';
+import { useReceivedTestPayments } from '@/hooks/useReceivedTestPayments';
+import { useAuth } from '@/hooks/useAuth';
 export function TenantHomePanel() {
-  const { tenancies } = useTenancyContext();
-  const active = tenancies.filter(c => c.status === 'ACTIVE');
-  const { data, error, loading } = useTenantInvoices(active.length > 0);
-  if (!active.length) return null;
-  return <section className="bg-white rounded-xl border border-emerald-200 p-5 mb-6" aria-label="Hóa đơn người thuê">
-    <div className="flex flex-wrap justify-between gap-3"><div><h2 className="font-bold flex gap-2 items-center"><ReceiptText className="w-5 h-5 text-emerald-600" />Căn hộ đang thuê & hóa đơn</h2>
-      <p className="text-sm text-slate-500 mt-1">{active.map(c => `${c.roomNumber} — ${c.propertyName}`).join(', ')}</p></div>
-      <Link to="/my/invoices" className="self-start text-sm font-semibold text-emerald-700">Xem tất cả hóa đơn →</Link></div>
-    {error && <p role="alert" className="text-rose-700 mt-3">{error}</p>}
-    {loading && !data && <p role="status" className="text-sm mt-3">Đang tải hóa đơn...</p>}
-    {data && <div className="grid md:grid-cols-3 gap-3 mt-4">{data.items.slice(0, 3).map(i => <Link key={i.id} to={`/my/invoices/${i.id}`} className="p-3 rounded-lg bg-emerald-50 border border-emerald-100"><p className="font-semibold">{i.roomNumber} · {i.period}</p><p className="text-lg text-emerald-700">{billingMoney(i.totalAmount)}</p><p className="text-xs text-slate-500">Hạn đóng {i.dueDate}</p></Link>)}</div>}
-    {data?.totalElements === 0 && <p className="text-sm text-slate-500 mt-3">Chưa có hóa đơn được Owner gửi.</p>}
+  const { user } = useAuth();
+  const eligible = user?.accountStatus === 'ACTIVE' && user.contactVerificationStatus === 'VERIFIED' && user.roles.some(role => role === 'CUSTOMER' || role === 'OWNER');
+  return eligible ? <UnpaidInvoiceNotice key={user.id} /> : null;
+}
+function UnpaidInvoiceNotice() {
+  const { data, error, loading } = useTenantInvoices(true, 'UNPAID');
+  const extra = useReceivedTestPayments(0, 'UNPAID');
+  if (loading || extra.loading || error || extra.error || !data) return null;
+  const invoices = data.items.filter(i => i.status === 'SENT' && i.paymentStatus === 'UNPAID');
+  const receipts = extra.items.filter(i => i.payment.status !== 'PAID');
+  if (!invoices.length && !receipts.length) return null;
+  const count = Math.max(data.totalElements, invoices.length) + receipts.length;
+  const destination = count === 1 ? invoices.length === 1 ? `/my/invoices/${encodeURIComponent(invoices[0].id)}` : `/my/invoices/additional/${encodeURIComponent(receipts[0].id)}` : '/my/invoices';
+  return <section className="bg-white rounded-xl border border-amber-200 p-5 mb-6 flex flex-wrap justify-between items-center gap-4" aria-label="Hóa đơn chưa thanh toán">
+    <div><h2 className="font-bold flex gap-2 items-center"><ReceiptText className="w-5 h-5 text-amber-600 shrink-0" />Bạn có hóa đơn chưa thanh toán</h2>
+      <p className="text-sm text-slate-600 mt-1">{count > 1 ? 'Chọn hóa đơn để kiểm tra và thanh toán.' : 'Kiểm tra thông tin hóa đơn và thanh toán khi sẵn sàng.'}</p></div>
+    <Link to={destination} className="rounded-lg bg-emerald-700 px-5 py-3 text-sm font-semibold text-white whitespace-nowrap">Thanh toán ngay</Link>
   </section>;
 }
