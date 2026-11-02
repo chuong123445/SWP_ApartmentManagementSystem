@@ -13,6 +13,7 @@ import java.net.URI;
 @RestController @RequiredArgsConstructor
 public class InvoiceController {
     private final InvoiceService invoices;
+    @GetMapping("/api/v1/owner/invoices/summary") public ResponseEntity<InvoiceService.OwnerSummary> ownerSummary(@AuthenticationPrincipal Jwt jwt,@RequestParam(required=false) Long propertyId){return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(invoices.ownerSummary(jwt,propertyId));}
     @GetMapping("/api/v1/owner/contracts/{id}/billing-context") public BillingContext context(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id){return invoices.context(jwt,id);}
     @PostMapping("/api/v1/owner/contracts/{id}/invoices") public ResponseEntity<InvoiceResponse> create(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody InvoiceCreate request){var result=invoices.create(jwt,id,request);return ResponseEntity.created(URI.create("/api/v1/invoices/"+result.id())).body(result);}
     @PostMapping("/api/v1/owner/invoices/{id}/send") public InvoiceResponse send(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody InvoiceSend request){return invoices.send(jwt,id,request);}

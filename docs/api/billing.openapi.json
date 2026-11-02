@@ -384,6 +384,50 @@
           }
         }
       }
+    },
+    "/api/v1/owner/invoices/summary": {
+      "get": {
+        "summary": "Count current verified Owner SENT invoices without a paid payment across all pages",
+        "parameters": [
+          {
+            "name": "propertyId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owner/property scoped; SENT remains SENT after payment. Response is no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "unpaidCount"
+                  ],
+                  "properties": {
+                    "unpaidCount": {
+                      "type": "integer",
+                      "format": "int64",
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "Not an eligible Owner"
+          }
+        }
+      }
     }
   },
   "components": {

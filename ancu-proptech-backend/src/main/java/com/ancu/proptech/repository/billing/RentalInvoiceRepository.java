@@ -4,6 +4,11 @@ import org.springframework.data.domain.*;
 import org.springframework.data.jpa.repository.*;
 import java.util.*;
 public interface RentalInvoiceRepository extends JpaRepository<RentalInvoice,Long> {
+    @Query("select count(i) from RentalInvoice i where i.contract.apartment.property.owner.id=:ownerId "
+        + "and (:propertyId is null or i.contract.apartment.property.id=:propertyId) and i.status=com.ancu.proptech.model.billing.RentalInvoice.Status.SENT "
+        + "and not exists (select p.id from InvoicePayment p where p.invoiceId=i.id and p.paidAt is not null)")
+    long countOwnerUnpaid(@org.springframework.data.repository.query.Param("ownerId") Long ownerId,
+                         @org.springframework.data.repository.query.Param("propertyId") Long propertyId);
     @Query("select i.contract.id from RentalInvoice i where i.id=:id")
     Optional<Long> findContractId(@org.springframework.data.repository.query.Param("id") Long id);
     boolean existsByContractIdAndPeriod(Long contractId,String period);

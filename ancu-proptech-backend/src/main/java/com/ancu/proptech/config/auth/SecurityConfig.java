@@ -112,6 +112,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/owner/rental-requests/*/contract-context", "/api/v1/owner/rental-requests/*/contract", "/api/v1/owner/contract-drafts", "/api/v1/me/contract-drafts", "/api/v1/contracts/*", "/api/v1/owner/contracts/*/draft").authenticated()
                         // API ký quỹ cũ chưa có ownership/provider hợp lệ: đóng mọi truy cập,
                         // kể cả Owner/Admin, thay vì chỉ kiểm tra role rồi cho đọc/sửa toàn bộ.
+                        .requestMatchers("/api/v1/owner/invoices/summary").authenticated()
                         .requestMatchers("/api/trustguard/escrow", "/api/trustguard/escrow/**").denyAll()
                         .requestMatchers("/api/v1/owner/maintenance-tickets", "/api/v1/me/maintenance-tickets").authenticated()
                         .requestMatchers("/api/v1/owner/maintenance-tickets/*/actions", "/api/v1/me/maintenance-tickets/*/actions").authenticated()
