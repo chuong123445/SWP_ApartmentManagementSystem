@@ -44,14 +44,16 @@ public class InvoiceService {
         if(input.getBaselineVersion()!=c.getBillingVersion())throw conflict("VERSION_CONFLICT","Chỉ số đã thay đổi. Hãy tải lại trước khi chốt.");
         if(!s.period().toString().equals(input.getPeriod()))throw conflict("BILLING_SEQUENCE_CONFLICT","Chỉ chốt cho kỳ kế tiếp: "+s.period());
         var r=readings.findByContractIdAndPeriod(id,input.getPeriod()).orElseGet(MeterReading::new);
-        r.setContract(c);r.setPeriod(input.getPeriod());r.setElectricityUnitPrice(c.getElectricityUnitPrice());r.setWaterUnitPrice(c.getWaterUnitPrice());r.setWaterBillingMode(c.getWaterBillingMode());r.setInternetFee(c.getInternetFee());r.setGarbageFee(c.getGarbageFee());r.setOccupantCount(c.getOccupantCount());
-        if(input.isApplyPropertyRates()){
+        if(input.isKeepSavedTariff()&&r.getId()==null)throw conflict("METER_READING_MISSING","Chưa có đơn giá đã chốt để giữ lại.");
+        r.setContract(c);r.setPeriod(input.getPeriod());
+        if(!input.isKeepSavedTariff()){r.setElectricityUnitPrice(c.getElectricityUnitPrice());r.setWaterUnitPrice(c.getWaterUnitPrice());r.setWaterBillingMode(c.getWaterBillingMode());r.setInternetFee(c.getInternetFee());r.setGarbageFee(c.getGarbageFee());r.setOccupantCount(c.getOccupantCount());}
+        if(input.isApplyPropertyRates()&&!input.isKeepSavedTariff()){
             var p=settings.findById(c.getApartment().getProperty().getId()).orElseThrow(()->conflict("PROPERTY_SETTINGS_MISSING","Tài sản chưa được cài đặt đơn giá."));
             if(input.getSettingsVersion()==null||input.getSettingsVersion()!=p.getVersion())throw conflict("SETTINGS_VERSION_CONFLICT","Đơn giá cài đặt đã thay đổi. Hãy tải lại.");
             r.setElectricityUnitPrice(p.getElectricityUnitPrice());r.setWaterUnitPrice(p.getWaterUnitPrice());r.setWaterBillingMode(p.getWaterBillingMode());r.setInternetFee(p.getInternetFee());r.setGarbageFee(p.getGarbageFee());
         }
         if(input.getElectricityEndReading().compareTo(s.electric())<0||(r.getWaterBillingMode()==com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.METERED&&input.getWaterEndReading().compareTo(s.water())<0))throw bad("INVALID_METER_READING","Chỉ số mới không được nhỏ hơn chỉ số đầu kỳ.");
-        r.setElectricityEndReading(input.getElectricityEndReading());r.setWaterEndReading(r.getWaterBillingMode()==com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.PER_PERSON?s.water():input.getWaterEndReading());r.setPropertyRates(input.isApplyPropertyRates());r.setSavedAt(Instant.now());r.setSavedBy(owner.getId());
+        r.setElectricityEndReading(input.getElectricityEndReading());r.setWaterEndReading(r.getWaterBillingMode()==com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.PER_PERSON?s.water():input.getWaterEndReading());if(!input.isKeepSavedTariff())r.setPropertyRates(input.isApplyPropertyRates());r.setSavedAt(Instant.now());r.setSavedBy(owner.getId());
         readings.saveAndFlush(r);c.setBillingVersion(c.getBillingVersion()+1);contracts.flush();return billingContext(c);
     }
     @Transactional public InvoiceResponse create(Jwt jwt,Long contractId,InvoiceCreate input){

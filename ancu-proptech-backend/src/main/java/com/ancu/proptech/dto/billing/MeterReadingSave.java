@@ -9,5 +9,6 @@ public class MeterReadingSave {
  @NotNull @DecimalMin("0") @Digits(integer=13,fraction=2) private BigDecimal electricityEndReading;
  @NotNull @DecimalMin("0") @Digits(integer=13,fraction=2) private BigDecimal waterEndReading;
  private boolean applyPropertyRates;
+ private boolean keepSavedTariff;
  @Min(0) private Long settingsVersion;
 }
