@@ -1,5 +1,7 @@
 import { FileCheck2, Plus } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router';
+import { contractStatusLabel } from '@/utils/contractDisplay';
 import type { Contract } from '@/types';
 import { ContractDraftList } from '@/components/contract/ContractDraftList';
 
@@ -29,12 +31,13 @@ export function ContractsPage({ contracts, propertyId, onChooseRequest }: Contra
         </label>
       </div>
       <div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-600"><tr>
-        {['Số hợp đồng', 'Phòng / căn', 'Khách thuê', 'Thời hạn', 'Tiền thuê / tháng', 'Trạng thái'].map(label => <th key={label} className="p-3 font-semibold">{label}</th>)}
+        {['Số hợp đồng', 'Phòng / căn', 'Khách thuê', 'Thời hạn', 'Tiền thuê / tháng', 'Trạng thái', 'Xem lại'].map(label => <th key={label} className="p-3 font-semibold">{label}</th>)}
       </tr></thead><tbody>{existing.map(contract => <tr key={contract.id} className="border-t border-slate-100">
         <td className="p-3 font-medium">{contract.contractNumber}</td><td className="p-3">{contract.roomNumber}</td><td className="p-3">{contract.tenantName}</td>
         <td className="p-3">{contract.startDate} → {contract.endDate}</td><td className="p-3">{contract.monthlyRent.toLocaleString('vi-VN')} đ</td>
-        <td className="p-3">{contract.status === 'expiring' ? 'Sắp hết hạn' : contract.status === 'active' ? 'Đang hiệu lực' : 'Đã kết thúc'}</td>
-      </tr>)}{!existing.length && <tr><td colSpan={6} className="p-6 text-center text-slate-500">Chưa có quan hệ thuê phù hợp.</td></tr>}</tbody></table></div>
+        <td className="p-3">{contractStatusLabel(contract.status, contract.endDate)}</td>
+        <td className="p-3"><Link to={`/contracts/${contract.id}`} className="font-semibold text-emerald-700 underline whitespace-nowrap">Xem hồ sơ</Link></td>
+      </tr>)}{!existing.length && <tr><td colSpan={7} className="p-6 text-center text-slate-500">Chưa có quan hệ thuê phù hợp.</td></tr>}</tbody></table></div>
     </section>
     <p className="text-xs text-slate-500">Các quan hệ thuê cũ chưa có bản nội dung gốc không được tự tạo PDF hoặc gắn chữ ký giả. Hợp đồng mới được lưu đầy đủ thông tin, điều khoản và chữ ký tại đây.</p>
   </div>;
