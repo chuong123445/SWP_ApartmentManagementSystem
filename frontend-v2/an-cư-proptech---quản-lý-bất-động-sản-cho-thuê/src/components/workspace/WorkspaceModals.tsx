@@ -11,6 +11,6 @@ export function WorkspaceModals({workspace,navigation}:{workspace:RentalWorkspac
     {(navigation.isAddPropertyOpen||navigation.isAddRoomOpen)&&<Navigate to="/account/properties/new"/>}
     {navigation.propertyForDossierId&&<Navigate to="/account/rental-properties" state={{openPropertyId:navigation.propertyForDossierId}}/>}
     {workspace.selectedInvoice&&<InvoiceDetailModal invoice={workspace.selectedInvoice} onClose={()=>workspace.setSelectedInvoice(null)}/>}
-    {navigation.isCreateInvoiceOpen&&<CreateInvoiceModal tenancies={workspace.tenancies} onClose={()=>navigation.setIsCreateInvoiceOpen(false)} onCreateInvoice={workspace.handleCreateInvoice}/>}
+    {navigation.isCreateInvoiceOpen&&<CreateInvoiceModal tenancies={workspace.tenancies} initialContractId={navigation.invoiceContractId} onOpenUtilities={()=>{navigation.setIsCreateInvoiceOpen(false);navigation.selectTab('utilities');}} onClose={()=>{navigation.setIsCreateInvoiceOpen(false);navigation.setInvoiceContractId('');}} onCreateInvoice={workspace.handleCreateInvoice}/>}
   </>;
 }
