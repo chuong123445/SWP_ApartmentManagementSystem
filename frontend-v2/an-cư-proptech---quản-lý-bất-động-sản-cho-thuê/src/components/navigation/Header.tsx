@@ -1,6 +1,6 @@
 import {NotificationBell} from '@/components/navigation/NotificationBell';
 import React from 'react';
-import { Link } from 'react-router';
+import { HeaderLinks } from '@/components/navigation/HeaderLinks';
 import {
   Search,
 } from 'lucide-react';
@@ -30,7 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSearchChange,
 }) => {
   return (
-    <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between gap-4 sticky top-0 z-30 shadow-xs">
+    <header className="min-h-16 flex-wrap py-2 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between gap-4 sticky top-0 z-30 shadow-xs">
       {/* Search Box */}
       <div className="flex-1 max-w-md relative">
         <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -46,6 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Center/Right Controls */}
       <div className="flex items-center gap-2 sm:gap-3">
+        <HeaderLinks embeddedHome />
         <NotificationBell key={account.id} accountId={account.id} />
 
         <AccountMenu account={account} onLogout={onLogout} isLoggingOut={isLoggingOut} authError={authError} />

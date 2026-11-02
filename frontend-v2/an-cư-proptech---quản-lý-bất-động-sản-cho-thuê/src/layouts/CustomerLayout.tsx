@@ -1,3 +1,4 @@
+import { HeaderLinks } from '@/components/navigation/HeaderLinks';
 import {NotificationBell} from '@/components/navigation/NotificationBell';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
@@ -16,7 +17,7 @@ export function CustomerLayout({ children }: { children: ReactNode }) {
       <div className="home-wrap customer-header-inner">
         <Link to="/" className="customer-logo" aria-label="An Cư PropTech"><span className="customer-mark"><HomeIcon name="apartment" /></span><span>An Cư<small>PROPTECH</small></span></Link>
         <nav className="customer-nav">
-          <Link to="/" className="customer-home-link">Trang chủ</Link>
+          {user ? <HeaderLinks /> : <Link to="/" className="customer-home-link">Trang chủ</Link>}
           {user&&<NotificationBell key={user.id} accountId={user.id}/>}
           {user ? <AccountMenu account={user} onLogout={logout} isLoggingOut={isLoggingOut} authError={error}
             isTenant={tenancy.tenancies.some(contract => contract.status === 'ACTIVE')} />
