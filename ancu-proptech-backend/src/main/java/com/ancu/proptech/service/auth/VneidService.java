@@ -24,6 +24,8 @@ public class VneidService {
     private final AuthService auth;
     private final VneidTokenVerifier verifier;
     private final VneidProperties config;
+    private final VneidLinkConfirmationStore confirmations;
+    private final jakarta.persistence.EntityManager entityManager;
     private final Map<String, Window> attempts = new ConcurrentHashMap<>();
     private record Window(long minute, int count) {}
 
@@ -64,8 +66,10 @@ public class VneidService {
         return auth.createSession(account);
     }
 
+    public record LinkAttempt(AuthUserResponse user, com.ancu.proptech.dto.auth.VneidNameConfirmation confirmation) {}
+
     @Transactional
-    public AuthUserResponse verifySelf(Jwt internal, String rawToken) {
+    public LinkAttempt verifySelf(Jwt internal, String rawToken) {
         requireEnabled();
         var sessionAccount = auth.authenticate(internal);
         limit(sessionAccount.getId().toString());
@@ -75,21 +79,55 @@ public class VneidService {
             throw error(HttpStatus.UNAUTHORIZED,"VNEID_TOKEN_INVALID","Token Auth0 không hợp lệ hoặc đã hết hạn.");
         }
         var account = accounts.findForIdentityUpdate(sessionAccount.getId()).orElseThrow();
+        entityManager.refresh(account);
         requireUsable(account);
         var bySubject = identities.findByIssuerAndSubject(config.getIssuer(), external.getSubject());
         if (bySubject.isPresent() && !bySubject.get().getAccountId().equals(account.getId())) throw conflict();
         var current = identities.findById(account.getId());
         if (current.isPresent()) {
             if (!current.get().getIssuer().equals(config.getIssuer()) || !current.get().getSubject().equals(external.getSubject())) throw conflict();
-            return auth.user(account); // Retry cùng liên kết không ghi đè hồ sơ đã lưu.
+            return new LinkAttempt(auth.user(account),null); // Retry cùng liên kết không ghi đè hồ sơ đã lưu.
         }
         var identity = identity(external);
         if (identities.existsByDocumentNumber(identity.getDocumentNumber())) throw conflict();
+        if (!normalizedName(account.getFullName()).equals(normalizedName(identity.getLegalName())))
+            return new LinkAttempt(null,confirmations.create(account,internal,identity,external.getExpiresAt()));
+        return new LinkAttempt(bind(account,identity),null);
+    }
+
+    @Transactional
+    public AuthUserResponse confirmSelf(Jwt internal, String confirmationId) {
+        requireEnabled();
+        var sessionAccount=auth.authenticate(internal);
+        limit(sessionAccount.getId().toString());
+        var account=accounts.findForIdentityUpdate(sessionAccount.getId()).orElseThrow();
+        entityManager.refresh(account);
+        requireUsable(account);
+        var pending=confirmations.take(account,internal,confirmationId);
+        var identity=pending.identity();
+        if(!config.getIssuer().equals(identity.getIssuer()) || identities.findById(account.getId()).isPresent()
+                || identities.findByIssuerAndSubject(identity.getIssuer(),identity.getSubject()).isPresent()
+                || identities.existsByDocumentNumber(identity.getDocumentNumber())) throw conflict();
+        return bind(account,identity);
+    }
+
+    @Transactional(readOnly=true)
+    public void cancelSelf(Jwt internal, String confirmationId) {
+        var account=auth.authenticate(internal);
+        confirmations.take(account,internal,confirmationId);
+    }
+
+    private AuthUserResponse bind(AuthAccount account, ExternalIdentity identity) {
         identity.setAccountId(account.getId());identities.saveAndFlush(identity);account.setIdentityVerified(true);accounts.saveAndFlush(account);
         account.setContactVerified(true);
         if (account.getStatus() == AuthAccount.Status.PENDING_VERIFICATION) account.setStatus(AuthAccount.Status.ACTIVE);
         accounts.flush();
         return auth.user(account);
+    }
+
+    static String normalizedName(String value) {
+        return java.text.Normalizer.normalize(value==null?"":value,java.text.Normalizer.Form.NFC)
+                .replaceAll("(?U)\\s+"," ").strip().toLowerCase(Locale.ROOT);
     }
 
     private ExternalIdentity identity(Jwt jwt) {
