@@ -182,6 +182,7 @@ public class ContractDraftService {
             if(contracts.findByApartmentId(apartment.getId()).stream().anyMatch(other->!other.getId().equals(id) && other.getStatus()!=RentalContract.Status.ENDED))
                 throw conflict("ACTIVE_CONTRACT_EXISTS","Căn hộ đã có hợp đồng khác.");
             c.setStatus(RentalContract.Status.ACTIVE);
+            c.setActivatedAt(Instant.now());
             // A signed agreement does not invent meter readings. Missing readings stay missing.
             if(apartment.getElectricityIndex()!=null && apartment.getWaterIndex()!=null) {
                 c.setElectricityBaseline(java.math.BigDecimal.valueOf(apartment.getElectricityIndex()));

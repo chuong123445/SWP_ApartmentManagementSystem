@@ -9,6 +9,7 @@ import { ownerTenancies, ownerInvoices, tenancyViews, invoiceView, sendInvoice }
 import type { Tenancy } from '@/types/billing';
 import { createOwnerProperty } from '@/services/property/ownerPropertyService';
 import type { PropertyCreateInput } from '@/types/property';
+import { useOwnerInvoiceSummary } from '@/hooks/useOwnerInvoiceSummary';
 
 export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all') {
   // Global Data States
@@ -24,6 +25,7 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
   const [billingError, setBillingError] = useState('');
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingRevision, setBillingRevision] = useState(0);
+  const invoiceSummary = useOwnerInvoiceSummary(canManage, selectedPropertyId, billingRevision);
   const [invoicePage, setInvoicePage] = useState(0);
   const [invoiceTotalPages, setInvoiceTotalPages] = useState(0);
   const [tickets, setTickets] = useState<MaintenanceTicket[]>([]);
@@ -174,7 +176,7 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
   const residentTickets = tickets.filter((t) => t.roomNumber === currentResidentRoom?.roomNumber);
 
   // Counters for sidebar badges
-  const unpaidCount = invoices.filter((i) => i.apiInvoice?.status === 'SENT').length;
+  const unpaidCount = invoiceSummary.count ?? 0;
   const maintenanceCount = tickets.filter((t) => t.status !== 'resolved').length;
   const expiringCount = contracts.filter((c) => c.status === 'expiring').length;
 
@@ -193,7 +195,7 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
   }, ...prev]);
   return {
     rooms, tenants, contracts, invoices, tickets, transactions, config, escrows, maintenanceError, maintenanceLoading,
-    tenancies, billingError, billingLoading, invoicePage, setInvoicePage, invoiceTotalPages,
+    tenancies, billingError: billingError || invoiceSummary.error, billingLoading, invoicePage, setInvoicePage, invoiceTotalPages,
     reloadBilling: () => setBillingRevision(value => value + 1), handleSendInvoice,
     buildings, inventoryError, inventoryLoading, reloadInventory,
     selectedRoom, setSelectedRoom, selectedInvoice, setSelectedInvoice,

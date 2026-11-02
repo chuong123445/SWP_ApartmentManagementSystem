@@ -26,6 +26,10 @@ public class InvoiceService {
     private final AccountAccessService access;
     private final com.ancu.proptech.repository.payment.InvoicePaymentRepository payments;
     private record Source(YearMonth period,BigDecimal electric,BigDecimal water) {}
+    public record OwnerSummary(long unpaidCount) {}
+    @Transactional(readOnly=true) public OwnerSummary ownerSummary(Jwt jwt,Long propertyId){
+        return new OwnerSummary(invoices.countOwnerUnpaid(access.owner(jwt).getId(),propertyId));
+    }
     @Transactional(readOnly=true) public BillingContext context(Jwt jwt,Long id){
         var owner=access.owner(jwt);var c=contracts.findById(id).orElseThrow(InvoiceService::missing);owned(c,owner.getId());
         var s=source(c);return new BillingContext(c.getId(),c.getApartment().getId(),c.getApartment().getRoomNumber(),c.getCustomer().getFullName(),s.period().toString(),str(c.getMonthlyRent()),str(s.electric()),str(c.getElectricityUnitPrice()),str(s.water()),str(c.getWaterUnitPrice()),c.getBillingVersion(),c.getWaterBillingMode().name(),c.getOccupantCount(),str(c.getInternetFee()),str(c.getGarbageFee()));

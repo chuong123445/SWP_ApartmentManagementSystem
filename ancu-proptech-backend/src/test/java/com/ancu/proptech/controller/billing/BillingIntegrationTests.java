@@ -33,6 +33,28 @@ class BillingIntegrationTests {
     @Autowired ApartmentRepository apartments;@Autowired RentalContractRepository contracts;
     @Autowired InvoiceNotificationRepository notifications;@Autowired AuthService auth;@Autowired PasswordEncoder encoder;@Autowired JdbcTemplate jdbc;
     private AuthAccount owner,tenant,otherOwner,otherTenant;private Property property;private Apartment apartment;private RentalContract contract;private String ownerToken,tenantToken;
+    @Test void ownerUnpaidSummaryCountsSentUnpaidAcrossPagesAndScopesTheOwner()throws Exception {
+        var sent=new ArrayList<String>();
+        for(int index=0;index<4;index++){
+            String period=java.time.YearMonth.of(2026,10).plusMonths(index).toString();
+            String result=create(ownerToken,body(period,index*2,"1120","208")).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+            String id=JsonPath.read(result,"$.id");
+            if(index<3){send(ownerToken,id,0).andExpect(status().isOk());sent.add(id);}
+        }
+        jdbc.update("INSERT INTO invoice_payments(invoice_id,owner_id,payment_code,bank,account_number,account_holder_name,amount,paid_at) SELECT id,?,?,'TEST','123','Owner',total_amount,SYSUTCDATETIME() FROM rental_invoices WHERE id=?",owner.getId(),"ANCU"+UUID.randomUUID().toString().replace("-","").substring(0,24),Long.valueOf(sent.get(0)));
+        jdbc.update("INSERT INTO invoice_payments(invoice_id,owner_id,payment_code,bank,account_number,account_holder_name,amount) SELECT id,?,?,'TEST','123','Owner',total_amount FROM rental_invoices WHERE id=?",owner.getId(),"ANCU"+UUID.randomUUID().toString().replace("-","").substring(0,24),Long.valueOf(sent.get(1)));
+        mvc.perform(get("/api/v1/owner/invoices").param("size","1").header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(1));
+        mvc.perform(get("/api/v1/owner/invoices/summary").header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store")).andExpect(jsonPath("$.unpaidCount").value(2));
+        mvc.perform(get("/api/v1/owner/invoices/summary").param("propertyId",property.getId().toString()).header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.unpaidCount").value(2));
+        assertEquals(2L,jdbc.queryForObject("SELECT COUNT_BIG(*) FROM vw_invoice_payment_status WHERE owner_id=? AND is_payable_unpaid=1",Long.class,owner.getId()));
+        assertEquals(0L,jdbc.queryForObject("SELECT COUNT_BIG(*) FROM vw_invoice_payment_status WHERE owner_id=? AND issuance_status='DRAFT' AND (is_payable_unpaid=1 OR is_overdue=1 OR amount_due<>0)",Long.class,owner.getId()));
+        assertEquals("PAID",jdbc.queryForObject("SELECT payment_status FROM vw_invoice_payment_status WHERE invoice_id=?",String.class,Long.valueOf(sent.get(0))));
+        var foreignProperty=new Property();foreignProperty.setOwner(otherOwner);foreignProperty.setName("Other property");foreignProperty.setAddress("Other");foreignProperty.setCity("Other");foreignProperty.setDistrict("Other");foreignProperty.setApprovalStatus(Property.ApprovalStatus.APPROVED);properties.saveAndFlush(foreignProperty);
+        mvc.perform(get("/api/v1/owner/invoices/summary").param("propertyId",foreignProperty.getId().toString()).header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.unpaidCount").value(0));
+        mvc.perform(get("/api/v1/owner/invoices/summary").header("Authorization","Bearer "+token(otherOwner))).andExpect(status().isOk()).andExpect(jsonPath("$.unpaidCount").value(0));
+        mvc.perform(get("/api/v1/owner/invoices/summary").header("Authorization","Bearer "+tenantToken)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/owner/invoices/summary")).andExpect(status().isUnauthorized());
+    }
     @BeforeEach void fixture(){
         owner=account(AuthAccount.Role.OWNER);tenant=account(AuthAccount.Role.CUSTOMER);otherOwner=account(AuthAccount.Role.OWNER);otherTenant=account(AuthAccount.Role.CUSTOMER);
         property=new Property();property.setOwner(owner);property.setName("Billing test");property.setAddress("Test address");property.setCity("Test city");property.setDistrict("District");property.setWard("Ward");property.setApprovalStatus(Property.ApprovalStatus.APPROVED);property=properties.saveAndFlush(property);

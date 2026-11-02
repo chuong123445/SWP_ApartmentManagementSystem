@@ -1,8 +1,19 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
-import { createInvoice, sendInvoice, myInvoices, getInvoice, tenancyViews, billingMoney } from '@/services/billing/billingService';
+import { createInvoice, sendInvoice, myInvoices, getInvoice, tenancyViews, billingMoney, ownerInvoiceSummary } from '@/services/billing/billingService';
 import { getApartments, getAddressOptions } from '@/services/apartments/apartmentService';
 const originalFetch = globalThis.fetch;
+test('Owner unpaid summary is server counted, property scoped and independent of list pagination', async () => {
+  const urls: string[] = [];
+  globalThis.fetch = async (url, options) => {
+    urls.push(String(url));
+    assert.equal(options?.method, undefined);
+    return Response.json({ unpaidCount: 25 });
+  };
+  assert.equal((await ownerInvoiceSummary()).unpaidCount, 25);
+  assert.equal((await ownerInvoiceSummary('17')).unpaidCount, 25);
+  assert.deepEqual(urls, ['/api/v1/owner/invoices/summary', '/api/v1/owner/invoices/summary?propertyId=17']);
+});
 test('Money rendering preserves decimal precision beyond JavaScript safe integers', () => {
   assert.equal(billingMoney('12345678901234567890.1250'), '12.345.678.901.234.567.890,125 đ');
   assert.equal(billingMoney('5540000.0000'), '5.540.000 đ');
