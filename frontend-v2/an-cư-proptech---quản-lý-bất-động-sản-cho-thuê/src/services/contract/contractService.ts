@@ -23,6 +23,15 @@ export const cancelRenewal = (id: string, version: number) => request<ContractDr
   method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version, consent: true }),
 });
 export const getContract = (id: string) => request<ContractDraft>(`/api/v1/contracts/${encodeURIComponent(id)}`);
+export const requestRenewal = (id: string, version: number, message: string) => request<ContractDraft>(`/api/v1/contracts/${encodeURIComponent(id)}/renewal-request`, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version, consent: true, message }),
+});
+export const decideRenewalRequest = (id: string, version: number, decision: 'ACCEPT' | 'REJECT', reason: string) => request<ContractDraft>(`/api/v1/owner/contracts/${encodeURIComponent(id)}/renewal-request/decision`, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version, decision, reason }),
+});
+export const cancelAcceptedRenewalRequest = (id: string, version: number) => request<ContractDraft>(`/api/v1/owner/contracts/${encodeURIComponent(id)}/renewal-request/cancel`, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version, consent: true }),
+});
 export async function getContractPdf(id: string): Promise<Blob> {
   const response = await apiFetch(`/api/v1/contracts/${encodeURIComponent(id)}/pdf`, { cache: 'no-store' });
   if (!response.ok) throw await readApiError(response);

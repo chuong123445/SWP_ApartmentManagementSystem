@@ -8,12 +8,14 @@ function document() {
     startDate: '2025-10-01', endDate: '2026-09-30', monthlyRent: '6200000.50', deposit: '10000000', electricityUnitPrice: '3500', waterUnitPrice: '15000', paymentDay: 5, paymentMethod: 'Chuyển khoản', usagePurpose: 'Để ở', clauses: [{ title: 'Thỏa thuận', body: 'Nội dung kiểm thử' }], createdAt: '2025-09-28T00:00:00Z',
     snapshot: { owner: party('1', 'Chủ nhà kiểm thử'), customer: party('2', 'Khách thuê kiểm thử'), asset: { title: 'Phòng kiểm thử', roomNumber: 'P.101', address: 'Địa chỉ kiểm thử', amenities: [], areaM2: '40' }, receivingAccount: null },
     signing: { ownerAccountId: '1', customerAccountId: '2', contentHash: 'a'.repeat(64), state: 'SIGNED', ownerSignedAt: '2025-09-28T00:00:00Z', customerSignedAt: '2025-09-28T00:00:00Z', ownerSignature: null, customerSignature: null },
-    lifecycle: { version: 3, expired: true, previousContractId: null as string | null, renewalContractId: null as string | null, endReason: null as string | null, handover: null as ReturnType<typeof handover> | null } };
+    lifecycle: { version: 3, expired: true, previousContractId: null as string | null, renewalContractId: null as string | null, endReason: null as string | null, handover: null as ReturnType<typeof handover> | null,
+      handoverAvailable: true, renewalRequest: null as { id: string; status: string; version: number; message: string } | null } };
 }
 function handover() { return { id: '8', version: 0, status: 'PENDING', returnDate: '2026-10-28', electricityReading: '215', waterReading: '55', electricityStartReading: '200', waterStartReading: '50', keysReturned: true, conditionNotes: 'Đã kiểm tra phòng và chìa khóa', depositAmount: '10000000', deductionAmount: '100000', utilityAmount: '127500', refundAmount: '9772500', extraAmountDue: '0', ownerConfirmedAt: '2026-10-28T10:00:00Z', customerConfirmedAt: null as string | null }; }
 
 async function setup(page: Page, owner: boolean, mode: 'renewal' | 'handover' | 'confirm') {
   const old = document();if (mode === 'confirm') old.lifecycle.handover = handover();
+  if (mode === 'renewal') { old.lifecycle.renewalRequest = { id: '9', status: 'ACCEPTED', version: 1, message: 'Khách đã gửi yêu cầu thuê tiếp' };old.lifecycle.handoverAvailable = false; }
   const pdf = readFileSync(resolve('../../ancu-proptech-backend/target/contract-preview-unsigned.pdf'));
   let renewalPosted = false;
   await page.route('**/api/**', async route => {

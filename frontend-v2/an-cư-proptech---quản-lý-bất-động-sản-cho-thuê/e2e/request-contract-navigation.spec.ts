@@ -31,7 +31,7 @@ for (const width of [1440, 390]) {
       await card.getByRole('link', { name: entry === 'action' ? 'Xem hợp đồng' : 'HH205.TEST', exact: true }).click();
       await expect(page).toHaveURL(/\/contracts\/4$/);
       await expect(page.getByRole('heading', { name: 'Hợp đồng PDF · HD-4', exact: true })).toBeVisible();
-      await expect(page.getByText('Chờ chủ nhà tạo hợp đồng ký tiếp hoặc biên bản bàn giao.', { exact: false })).toBeVisible();
+      await expect(page.getByRole('form', { name: 'Gửi yêu cầu thuê tiếp', exact: true })).toBeVisible();
       await expect(page.getByRole('alert')).toHaveCount(0);
       expect(apartmentCalls).toEqual([]);
       expect(errors).toEqual([]);
