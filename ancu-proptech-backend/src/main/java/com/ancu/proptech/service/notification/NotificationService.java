@@ -19,6 +19,22 @@ public class NotificationService {
  public record Feed(List<Item> items,int page,int size,long totalElements,int totalPages,long unreadCount,Instant snapshotAt){}
  private static final String FEED="""
  WITH feed AS (
+ SELECT CONCAT('contract-expiry:',n.id) notification_key,N'Hợp đồng sắp hết hạn' title,
+ CONCAT(N'HD-',c.id,N' hết hạn ngày ',CONVERT(varchar(10),n.expires_on,23),N'. Xem hợp đồng để yêu cầu thuê tiếp hoặc theo dõi bàn giao.') message,
+ CONCAT('/contracts/',c.id) url,n.created_at
+ FROM contract_expiry_notices n JOIN rental_contracts c ON c.id=n.contract_id JOIN rental_apartments a ON a.id=c.apartment_id JOIN rental_properties p ON p.id=a.property_id
+ WHERE n.recipient_id=:account AND (c.customer_id=:account OR p.owner_id=:account)
+ UNION ALL
+ SELECT CONCAT('renewal-request:',r.id),N'Khách yêu cầu thuê tiếp',CONCAT(N'Yêu cầu thuê tiếp HD-',c.id),CONCAT('/app?tab=rental_requests&requestType=renewal&propertyId=',p.id),r.created_at
+ FROM contract_renewal_requests r JOIN rental_contracts c ON c.id=r.contract_id JOIN rental_apartments a ON a.id=c.apartment_id JOIN rental_properties p ON p.id=a.property_id WHERE p.owner_id=:account
+ UNION ALL
+ SELECT CONCAT('renewal-decision:',r.id),N'Yêu cầu thuê tiếp đã được xử lý',
+ CONCAT(N'HD-',c.id,CASE r.decision WHEN 'ACCEPT' THEN N': Chủ nhà đã chấp nhận, chờ soạn và ký hợp đồng mới.' ELSE N': Chủ nhà từ chối cho thuê tiếp.' END),CONCAT('/contracts/',c.id),r.decided_at
+ FROM contract_renewal_requests r JOIN rental_contracts c ON c.id=r.contract_id WHERE c.customer_id=:account AND r.decided_at IS NOT NULL
+ UNION ALL
+ SELECT CONCAT('renewal-cancelled:',r.id),N'Ký tiếp đã được hủy',CONCAT(N'HD-',c.id,N': Chủ nhà đã hủy ký tiếp; đến hạn sẽ đối soát bàn giao.'),CONCAT('/contracts/',c.id),r.cancelled_at
+ FROM contract_renewal_requests r JOIN rental_contracts c ON c.id=r.contract_id WHERE c.customer_id=:account AND r.cancelled_at IS NOT NULL
+ UNION ALL
  SELECT CONCAT('request-new:',r.id) notification_key,N'Có yêu cầu thuê mới' title,
  CONCAT(N'Yêu cầu thuê ',a.title,N' — ',COALESCE(a.room_number,N'')) message,
  CONCAT('/app?tab=rental_requests&propertyId=',p.id) url,r.created_at
