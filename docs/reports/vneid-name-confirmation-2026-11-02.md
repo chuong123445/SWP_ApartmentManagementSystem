@@ -21,4 +21,6 @@ No user server was restarted. Only the dedicated frontend test server is used an
 
 ## Publishing
 
-Initial fetch failed: the configured GitHub proxy could not connect. GitHub CLI is not installed. Push/PR status will be recorded after the local implementation is complete; no remote PR or successful publication is claimed in advance.
+Code commits: `b953151` (backend/API/security guards) and `53b6eff` (confirmation UI, display/legal-name separation and browser/integration scenarios). Both belong to this one feature unit and are based directly on cached main, without audit, fixture, billing-view or other feature commits.
+
+Actual `git push -u origin feat/vneid-name-confirmation` failed: could not connect to GitHub port 443 through the configured proxy `127.0.0.1:9`. Initial fetch failed for the same reason; GitHub CLI is also absent. Network restrictions were not bypassed. The branch has NOT been pushed and no remote PR exists. Intended PR base is `main`; its title/body are prepared in the task handoff outside the repository. No merge or main update was attempted. The isolated worktree remains available for a later push/PR when GitHub connectivity is restored.
