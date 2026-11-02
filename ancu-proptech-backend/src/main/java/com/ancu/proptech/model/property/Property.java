@@ -21,6 +21,7 @@ public class Property {
     private ApprovalStatus approvalStatus;
     @Enumerated(EnumType.STRING) @Column(length = 24)
     private RentalMode rentalMode;
+    private Long privatePaymentQrId;
     @Version private long version;
     @Nationalized @Column(length = 80) private String ward;
     @Column(nullable=false) private boolean onboardingApplication;

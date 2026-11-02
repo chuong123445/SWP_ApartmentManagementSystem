@@ -9,6 +9,11 @@ import java.time.LocalDate;
 @Entity @Table(name="rental_contracts") @Getter @Setter @NoArgsConstructor
 public class RentalContract {
     public enum Status { DRAFT, ACTIVE, ENDED }
+
+    @Enumerated(EnumType.STRING) @Column(nullable=false,length=16) private com.ancu.proptech.model.property.PropertySettings.WaterBillingMode waterBillingMode=com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.METERED;
+    @Column(nullable=false) private int occupantCount=1;
+    @Column(nullable=false,precision=15,scale=2) private BigDecimal internetFee=BigDecimal.ZERO;
+    @Column(nullable=false,precision=15,scale=2) private BigDecimal garbageFee=BigDecimal.ZERO;
     @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
     @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="apartment_id",nullable=false) private Apartment apartment;
     @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="customer_id",nullable=false) private AuthAccount customer;

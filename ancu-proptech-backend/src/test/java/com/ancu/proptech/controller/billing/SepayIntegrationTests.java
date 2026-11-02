@@ -29,6 +29,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 @SpringBootTest(properties={"app.seed.enabled=false","app.billing.local-fixtures=false","app.payment.public-base-url=https://payments.example.invalid"}) @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
 class SepayIntegrationTests {
+    @Autowired jakarta.persistence.EntityManager mergeEntities;
     @Autowired MockMvc mvc;@Autowired AuthAccountRepository accounts;@Autowired PropertyRepository properties;
     @Autowired ApartmentRepository apartments;@Autowired RentalContractRepository contracts;
     @Autowired InvoiceNotificationRepository notifications;@Autowired AuthService auth;@Autowired PasswordEncoder encoder;@Autowired JdbcTemplate jdbc;
@@ -214,5 +215,18 @@ class SepayIntegrationTests {
         jdbc.update("DELETE FROM sepay_events WHERE owner_id=?",owner.getId());jdbc.update("DELETE FROM invoice_payments WHERE owner_id=?",owner.getId());jdbc.update("DELETE FROM sepay_connections WHERE owner_id=?",owner.getId());
         jdbc.update("DELETE FROM invoice_notifications WHERE invoice_id IN(SELECT id FROM rental_invoices WHERE contract_id=?)",cid);jdbc.update("DELETE FROM rental_invoices WHERE contract_id=?",cid);jdbc.update("DELETE FROM rental_contracts WHERE id=?",cid);jdbc.update("DELETE FROM rental_apartment_amenities WHERE apartment_id=?",aid);jdbc.update("DELETE FROM rental_apartments WHERE id=?",aid);jdbc.update("DELETE FROM rental_properties WHERE id=?",property.getId().toString());
         for(var account:List.of(owner,tenant,otherOwner,otherTenant)){String id=account.getId().toString();jdbc.update("DELETE FROM auth_refresh_tokens WHERE session_id IN(SELECT id FROM auth_sessions WHERE account_id=?)",id);jdbc.update("DELETE FROM auth_sessions WHERE account_id=?",id);jdbc.update("DELETE FROM auth_accounts WHERE id=?",id);}
+    }
+
+    @Test void contractQrReceiverCannotBeReplacedByDifferentSharedSepayAccount()throws Exception {
+      setup(ownerToken,"bank1","va1",0);String id=createDraft();send(ownerToken,id,0).andExpect(status().isOk());
+      jdbc.update("INSERT INTO rental_requests(apartment_id,customer_id,message,status,created_at,version) VALUES(?,?,N'QR merge test','ACCEPTED',SYSUTCDATETIME(),0)",apartment.getId(),tenant.getId());
+      Long requestId=jdbc.queryForObject("SELECT id FROM rental_requests WHERE apartment_id=? AND customer_id=?",Long.class,apartment.getId(),tenant.getId());
+      String snapshot="{\"ownerPaymentQrId\":\"999\",\"receivingAccount\":{\"bank\":\"MBBank\",\"accountNumber\":\"009999\",\"accountHolderName\":\"OWNER TEST\"}}";
+      jdbc.update("INSERT INTO contract_drafts(contract_id,rental_request_id,snapshot_json,clauses_json,deposit,payment_day,payment_method,usage_purpose,created_at,content_version) VALUES(?,?,?,N'[]',0,5,N'Chuyển khoản',N'Để ở',SYSUTCDATETIME(),0)",contract.getId(),requestId,snapshot);
+      mvc.perform(get("/api/v1/invoices/"+id+"/payment").header("Authorization","Bearer "+tenantToken)).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("NOT_CONFIGURED"));
+      mvc.perform(post("/api/v1/invoices/"+id+"/payment").header("Authorization","Bearer "+tenantToken)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PAYMENT_RECEIVER_MISMATCH"));
+      jdbc.update("UPDATE contract_drafts SET snapshot_json=? WHERE contract_id=?",snapshot.replace("MBBank","BIDV").replace("009999","96247123456789"),contract.getId());
+      mergeEntities.clear();
+      mvc.perform(post("/api/v1/invoices/"+id+"/payment").header("Authorization","Bearer "+tenantToken)).andExpect(status().isOk()).andExpect(jsonPath("$.accountNumber").value("96247123456789"));
     }
 }

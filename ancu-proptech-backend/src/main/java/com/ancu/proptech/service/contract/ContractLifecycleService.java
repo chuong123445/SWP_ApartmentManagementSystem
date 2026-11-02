@@ -160,7 +160,7 @@ public class ContractLifecycleService {
         if(waterStart==null)waterStart=suppliedWaterStart;
         if(electricStart==null || waterStart==null)throw conflict("METER_BASELINE_MISSING","Chưa có chỉ số đầu kỳ. Chủ nhà cần nhập chỉ số đầu đã đối chiếu để khách kiểm tra và xác nhận.");
         if(electric.compareTo(electricStart)<0 || water.compareTo(waterStart)<0)throw conflict("INVALID_METER_READING","Chỉ số bàn giao không được nhỏ hơn chỉ số đã ghi nhận/thanh toán trong hóa đơn.");
-        var cost=electric.subtract(electricStart).multiply(c.getElectricityUnitPrice()).add(water.subtract(waterStart).multiply(c.getWaterUnitPrice())).setScale(2,java.math.RoundingMode.HALF_UP);
+        var cost=electric.subtract(electricStart).multiply(c.getElectricityUnitPrice()).add((c.getWaterBillingMode()==com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.METERED?water.subtract(waterStart).multiply(c.getWaterUnitPrice()):BigDecimal.ZERO)).setScale(2,java.math.RoundingMode.HALF_UP);
         if(cost.compareTo(new BigDecimal("9999999999999.99"))>0)throw conflict("SETTLEMENT_TOO_LARGE","Số tiền đối soát vượt giới hạn. Hãy kiểm tra chỉ số.");return new Settlement(electricStart,waterStart,cost);
     }
     private static void requireConsent(boolean consent){if(!consent)throw new ApiException(HttpStatus.BAD_REQUEST,"CONSENT_REQUIRED","Cần xác nhận đồng ý.");}
