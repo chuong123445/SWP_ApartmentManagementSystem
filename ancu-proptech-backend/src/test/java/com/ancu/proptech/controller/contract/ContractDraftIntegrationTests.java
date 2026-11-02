@@ -268,6 +268,10 @@ class ContractDraftIntegrationTests {
         expiryNotices.generate(end.minusDays(10));expiryNotices.generate(end.minusDays(1));
         assertEquals(4,jdbc.queryForObject("select count(*) from contract_expiry_notices where contract_id=?",Integer.class,id));
         mvc.perform(get("/api/v1/me/notifications").header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.items[?(@.title=='Hợp đồng sắp hết hạn')]").isNotEmpty());
+        String customerFeed=mvc.perform(get("/api/v1/me/notifications").header("Authorization",customerToken)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue(customerFeed.contains("/my/rental-requests?tab=contracts&contractId="+id));
+        String ownerFeed=mvc.perform(get("/api/v1/me/notifications").header("Authorization",token)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue(ownerFeed.contains("/app?tab=contracts&propertyId="+request.getApartment().getProperty().getId()+"&contractId="+id));
         assertEquals(0,jdbc.queryForObject("select count(*) from contract_expiry_notices where contract_id=? and recipient_id=?",Integer.class,id,other.getId()));
         assertEquals("ACTIVE",JsonPath.read(readContract(Long.toString(id)),"$.status"));
     }
