@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "An Cư — selection-bound contract drafts",
-    "version": "1.2.0",
-    "description": "Implemented 14 October 2026. Private DRAFT authoring/review; no signing, activation, payment or release endpoints. Snapshots are server-derived and immutable. Monthly rent must be positive; all other money nonnegative. Existing legacy ACTIVE fixtures are not backfilled into these authoring routes. Legal identity/certificate fields are server-derived and frozen at creation; old snapshots remain unchanged and readable. Explicit local samples are marked; no eKYC or legal evidence proof. Update27October: new contexts prefer persisted VERIFIED Auth0 citizen; missing issue fields stay null, old snapshots unchanged. Context includes current rightsValidFrom/Until. Server locks/rechecks rights and rejects contract beyond approved window or expired rights. F07 fixed28October: resolver uses persisted Auth0 source certificate/right or exact approved manual dossier; new snapshots contain evidence source/reference/hash/time and private source receiving account if declared. No provider lookup during contract creation, no fake Admin review or old snapshot rewrite."
+    "version": "1.3.0",
+    "description": "Implemented private contract authoring, exact-party PDF and hand-drawn electronic signatures, renewal requests and expiry handover. Tenant requests renewal; Owner accepts/rejects before drafting a new agreement. Signed future renewals wait until the next start date; no automatic expiry release or provider-certified digital signature. V42 adds persistent in-app 20/10-day reminders and request state/version. Old saved snapshots remain immutable; missing legacy originals are not fabricated. See tenant-renewal-requests-v1 ADR for detailed transitions and safeguards."
   },
   "servers": [
     {
@@ -883,6 +883,612 @@
           }
         }
       }
+    },
+    "/contracts/{id}/renewal-request": {
+      "post": {
+        "summary": "Exact tenant requests renewal; version binds to lifecycle, duplicate send returns existing request",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenewalRequestCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input/consent/rejection reason"
+          },
+          "401": {
+            "description": "No current authenticated session"
+          },
+          "403": {
+            "description": "Account role/status/verification denied"
+          },
+          "404": {
+            "description": "No exact-party record"
+          },
+          "409": {
+            "description": "Stale version or lifecycle conflict"
+          }
+        }
+      }
+    },
+    "/owner/contracts/{id}/renewal-request/decision": {
+      "post": {
+        "summary": "Exact Owner accepts/rejects pending renewal, with independent request version",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenewalRequestDecision"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input/consent/rejection reason"
+          },
+          "401": {
+            "description": "No current authenticated session"
+          },
+          "403": {
+            "description": "Account role/status/verification denied"
+          },
+          "404": {
+            "description": "No exact-party record"
+          },
+          "409": {
+            "description": "Stale version or lifecycle conflict"
+          }
+        }
+      }
+    },
+    "/owner/contracts/{id}/renewal-request/cancel": {
+      "post": {
+        "summary": "Cancel accepted request before a successor exists; preserve history",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LifecycleConfirm"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input/consent/rejection reason"
+          },
+          "401": {
+            "description": "No current authenticated session"
+          },
+          "403": {
+            "description": "Account role/status/verification denied"
+          },
+          "404": {
+            "description": "No exact-party record"
+          },
+          "409": {
+            "description": "Stale version or lifecycle conflict"
+          }
+        }
+      }
+    },
+    "/owner/contracts/{id}/renewal-context": {
+      "get": {
+        "summary": "Owner authors only after accepting Tenant request",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Context"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input/consent/rejection reason"
+          },
+          "401": {
+            "description": "No current authenticated session"
+          },
+          "403": {
+            "description": "Account role/status/verification denied"
+          },
+          "404": {
+            "description": "No exact-party record"
+          },
+          "409": {
+            "description": "Stale version or lifecycle conflict"
+          }
+        }
+      }
+    },
+    "/owner/contracts/{id}/renewals": {
+      "post": {
+        "summary": "Create fresh unsigned successor, never overlapping old term",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Create"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input/consent/rejection reason"
+          },
+          "401": {
+            "description": "No current authenticated session"
+          },
+          "403": {
+            "description": "Account role/status/verification denied"
+          },
+          "404": {
+            "description": "No exact-party record"
+          },
+          "409": {
+            "description": "Stale version or lifecycle conflict"
+          }
+        }
+      }
+    },
+    "/owner/contracts/{id}/cancel-renewal": {
+      "post": {
+        "summary": "Cancel successor before both signatures; cancel accepted request",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LifecycleConfirm"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input/consent/rejection reason"
+          },
+          "401": {
+            "description": "No current authenticated session"
+          },
+          "403": {
+            "description": "Account role/status/verification denied"
+          },
+          "404": {
+            "description": "No exact-party record"
+          },
+          "409": {
+            "description": "Stale version or lifecycle conflict"
+          }
+        }
+      }
+    },
+    "/owner/contracts/{id}/handover": {
+      "post": {
+        "summary": "Owner proposes handover at expiry with no pending/accepted request or successor",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandoverCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input/consent/rejection reason"
+          },
+          "401": {
+            "description": "No current authenticated session"
+          },
+          "403": {
+            "description": "Account role/status/verification denied"
+          },
+          "404": {
+            "description": "No exact-party record"
+          },
+          "409": {
+            "description": "Stale version or lifecycle conflict"
+          }
+        }
+      }
+    },
+    "/owner/contracts/{id}/handover/cancel": {
+      "post": {
+        "summary": "Owner cancels pending handover; preserve history",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LifecycleConfirm"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input/consent/rejection reason"
+          },
+          "401": {
+            "description": "No current authenticated session"
+          },
+          "403": {
+            "description": "Account role/status/verification denied"
+          },
+          "404": {
+            "description": "No exact-party record"
+          },
+          "409": {
+            "description": "Stale version or lifecycle conflict"
+          }
+        }
+      }
+    },
+    "/contracts/{id}/handover/confirm": {
+      "post": {
+        "summary": "Exact tenant confirms handover; transactional END and VACANT",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LifecycleConfirm"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input/consent/rejection reason"
+          },
+          "401": {
+            "description": "No current authenticated session"
+          },
+          "403": {
+            "description": "Account role/status/verification denied"
+          },
+          "404": {
+            "description": "No exact-party record"
+          },
+          "409": {
+            "description": "Stale version or lifecycle conflict"
+          }
+        }
+      }
+    },
+    "/contracts/{id}/signatures": {
+      "post": {
+        "summary": "Exact party signs their own slot; future signed renewal waits until term start",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignatureInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Draft"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input/consent/rejection reason"
+          },
+          "401": {
+            "description": "No current authenticated session"
+          },
+          "403": {
+            "description": "Account role/status/verification denied"
+          },
+          "404": {
+            "description": "No exact-party record"
+          },
+          "409": {
+            "description": "Stale version or lifecycle conflict"
+          }
+        }
+      }
+    },
+    "/contracts/{id}/pdf": {
+      "get": {
+        "summary": "Read private stored-snapshot contract PDF as an exact party",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Private no-store PDF",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No exact-party document"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1396,6 +2002,31 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "templateType": {
+            "type": "string"
+          },
+          "signing": {
+            "$ref": "#/components/schemas/Signing"
+          },
+          "lifecycle": {
+            "$ref": "#/components/schemas/Lifecycle"
+          },
+          "waterBillingMode": {
+            "type": "string",
+            "enum": [
+              "METERED",
+              "PER_PERSON"
+            ]
+          },
+          "occupantCount": {
+            "type": "integer"
+          },
+          "internetFee": {
+            "type": "string"
+          },
+          "garbageFee": {
+            "type": "string"
           }
         },
         "required": [
@@ -1525,6 +2156,352 @@
             "nullable": true
           }
         }
+      },
+      "RenewalRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ACCEPTED",
+              "REJECTED",
+              "FULFILLED",
+              "CANCELLED"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "ACCEPT",
+              "REJECT"
+            ],
+            "nullable": true
+          },
+          "decisionReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "RenewalRequestCreate": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "consent": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "version",
+          "consent"
+        ]
+      },
+      "RenewalRequestDecision": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "ACCEPT",
+              "REJECT"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "description": "Nonblank required for REJECT."
+          }
+        },
+        "required": [
+          "version",
+          "decision"
+        ]
+      },
+      "LifecycleConfirm": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "consent": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "version",
+          "consent"
+        ]
+      },
+      "Signing": {
+        "type": "object",
+        "properties": {
+          "ownerAccountId": {
+            "type": "string"
+          },
+          "customerAccountId": {
+            "type": "string"
+          },
+          "contentHash": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "UNSIGNED",
+              "WAITING_OWNER",
+              "WAITING_CUSTOMER",
+              "SIGNED"
+            ]
+          },
+          "ownerSignedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "customerSignedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ownerSignature": {
+            "type": "string",
+            "nullable": true
+          },
+          "customerSignature": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "Handover": {
+        "type": "object",
+        "description": "Exact-party handover with actual end meter readings, immutable settlement values, owner/customer confirmation timestamps and optimistic version.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "CONFIRMED",
+              "CANCELLED"
+            ]
+          },
+          "returnDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "electricityReading": {
+            "type": "string"
+          },
+          "waterReading": {
+            "type": "string"
+          },
+          "electricityStartReading": {
+            "type": "string"
+          },
+          "waterStartReading": {
+            "type": "string"
+          },
+          "depositAmount": {
+            "type": "string"
+          },
+          "deductionAmount": {
+            "type": "string"
+          },
+          "utilityAmount": {
+            "type": "string"
+          },
+          "refundAmount": {
+            "type": "string"
+          },
+          "extraAmountDue": {
+            "type": "string"
+          },
+          "keysReturned": {
+            "type": "boolean"
+          },
+          "conditionNotes": {
+            "type": "string"
+          },
+          "ownerConfirmedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "customerConfirmedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "Lifecycle": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "expired": {
+            "type": "boolean"
+          },
+          "previousContractId": {
+            "type": "string",
+            "nullable": true
+          },
+          "renewalContractId": {
+            "type": "string",
+            "nullable": true
+          },
+          "endReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "handover": {
+            "$ref": "#/components/schemas/Handover",
+            "nullable": true
+          },
+          "renewalRequest": {
+            "$ref": "#/components/schemas/RenewalRequest",
+            "nullable": true
+          },
+          "handoverAvailable": {
+            "type": "boolean",
+            "description": "Server eligibility on/after end date with no pending request, open successor or pending handover."
+          }
+        }
+      },
+      "HandoverCreate": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "consent": {
+            "type": "boolean"
+          },
+          "returnDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "electricityReading": {
+            "type": "string"
+          },
+          "waterReading": {
+            "type": "string"
+          },
+          "electricityStartReading": {
+            "type": "string",
+            "nullable": true
+          },
+          "waterStartReading": {
+            "type": "string",
+            "nullable": true
+          },
+          "keysReturned": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "conditionNotes": {
+            "type": "string",
+            "maxLength": 3000
+          },
+          "deductionAmount": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "consent",
+          "returnDate",
+          "electricityReading",
+          "waterReading",
+          "keysReturned",
+          "conditionNotes",
+          "deductionAmount"
+        ]
+      },
+      "SignatureInput": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "contentHash": {
+            "type": "string"
+          },
+          "signature": {
+            "type": "string",
+            "description": "PNG data URL normalized server-side."
+          },
+          "consent": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "version",
+          "contentHash",
+          "signature",
+          "consent"
+        ]
       }
     }
   }
