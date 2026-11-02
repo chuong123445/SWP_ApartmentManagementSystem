@@ -40,6 +40,8 @@ public class ContractDraftService {
     private final ObjectMapper json;
     private final com.ancu.proptech.service.property.PropertyRightsPolicy rights;
     private final ContractHandoverRepository handovers;
+    private final ContractRenewalRequestRepository renewalRequests;
+    private final ContractRenewalActivationService renewalActivation;
     private final com.ancu.proptech.repository.billing.RentalInvoiceRepository invoices;
     @jakarta.persistence.PersistenceContext private jakarta.persistence.EntityManager entityManager;
 
@@ -160,7 +162,7 @@ public class ContractDraftService {
         if(c.getRenewalOfContractId()!=null) {
             previous=contracts.lockById(c.getRenewalOfContractId()).orElseThrow(ContractDraftService::notFound);
             entityManager.refresh(previous);
-            if(previous.getStatus()!=RentalContract.Status.ACTIVE || !previous.getEndDate().isBefore(rights.today()) ||
+            if(previous.getStatus()!=RentalContract.Status.ACTIVE ||
                 handovers.existsByContractIdAndStatus(previous.getId(),ContractHandover.Status.PENDING))
                 throw conflict("RENEWAL_UNAVAILABLE","Hợp đồng cũ không còn đủ điều kiện ký tiếp.");
         }
@@ -168,32 +170,23 @@ public class ContractDraftService {
         if(owner){d.setOwnerSignature(signature);d.setOwnerSignedAt(Instant.now());}
         else {d.setCustomerSignature(signature);d.setCustomerSignedAt(Instant.now());}
         d.setSignedContentHash(contentHash(d));
+        if(previous!=null && d.getOwnerSignedAt()!=null && d.getCustomerSignedAt()!=null) {
+            contracts.saveAndFlush(c);drafts.saveAndFlush(d);
+            renewalRequests.findByContractId(previous.getId()).ifPresent(r->{r.setStatus(ContractRenewalRequest.Status.FULFILLED);renewalRequests.saveAndFlush(r);});
+            if(!c.getStartDate().isAfter(rights.today()))renewalActivation.activate(c.getId());
+            return response(d);
+        }
         if(d.getOwnerSignedAt()!=null && d.getCustomerSignedAt()!=null) {
-            if(apartment.getAvailability()!=(previous==null?Apartment.Availability.CONTRACT_IN_PROGRESS:Apartment.Availability.OCCUPIED))
+            if(apartment.getAvailability()!=Apartment.Availability.CONTRACT_IN_PROGRESS)
                 throw conflict("APARTMENT_NOT_SELECTED","Căn hộ không còn ở bước làm hợp đồng.");
-            Long previousId=c.getRenewalOfContractId();
-            if(contracts.findByApartmentId(apartment.getId()).stream().anyMatch(other->!other.getId().equals(id) && !other.getId().equals(previousId) && other.getStatus()!=RentalContract.Status.ENDED))
+            if(contracts.findByApartmentId(apartment.getId()).stream().anyMatch(other->!other.getId().equals(id) && other.getStatus()!=RentalContract.Status.ENDED))
                 throw conflict("ACTIVE_CONTRACT_EXISTS","Căn hộ đã có hợp đồng khác.");
-            if(previous!=null) {
-                if(invoices.existsByContractIdAndStatus(previous.getId(),com.ancu.proptech.model.billing.RentalInvoice.Status.DRAFT))
-                    throw conflict("OPEN_INVOICE_DRAFT","Cần xử lý hóa đơn nháp của hợp đồng cũ trước khi hoàn tất ký tiếp.");
-                previous.setStatus(RentalContract.Status.ENDED);previous.setEndedAt(Instant.now());previous.setEndReason("RENEWED");
-                contracts.saveAndFlush(previous); // Release the unique ACTIVE-apartment slot before activating its successor.
-            }
             c.setStatus(RentalContract.Status.ACTIVE);
             // A signed agreement does not invent meter readings. Missing readings stay missing.
             if(apartment.getElectricityIndex()!=null && apartment.getWaterIndex()!=null) {
                 c.setElectricityBaseline(java.math.BigDecimal.valueOf(apartment.getElectricityIndex()));
                 c.setWaterBaseline(java.math.BigDecimal.valueOf(apartment.getWaterIndex()));
                 c.setBaselineDate(c.getStartDate());
-            }
-            if(previous!=null) {
-                var last=invoices.findFirstByContractIdAndStatusOrderByPeriodDesc(previous.getId(),com.ancu.proptech.model.billing.RentalInvoice.Status.SENT);
-                var electric=last.map(i->i.getElectricityEndReading()).orElse(previous.getElectricityBaseline());
-                var water=last.map(i->i.getWaterEndReading()).orElse(previous.getWaterBaseline());
-                if(electric!=null && water!=null) {
-                    c.setElectricityBaseline(electric);c.setWaterBaseline(water);c.setBaselineDate(c.getStartDate());
-                }
             }
             apartment.setAvailability(Apartment.Availability.OCCUPIED);
         }
@@ -261,11 +254,15 @@ public class ContractDraftService {
     private ContractDraftResponse.Lifecycle lifecycle(RentalContract c) {
         var next=contracts.findByRenewalOfContractIdAndStatusNot(c.getId(),RentalContract.Status.ENDED).stream().findFirst().orElse(null);
         var h=handovers.findFirstByContractIdOrderByIdDesc(c.getId()).orElse(null);
+        var r=renewalRequests.findByContractId(c.getId()).orElse(null);
+        var renewal=r==null?null:new ContractDraftResponse.RenewalRequest(r.getId().toString(),r.getStatus().name(),r.getMessage(),r.getDecision(),r.getDecisionReason(),r.getCreatedAt(),r.getDecidedAt(),r.getVersion());
+        boolean requestOpen=r!=null&&(r.getStatus()==ContractRenewalRequest.Status.PENDING||r.getStatus()==ContractRenewalRequest.Status.ACCEPTED);
         return new ContractDraftResponse.Lifecycle(c.getVersion(),c.getEndDate().isBefore(rights.today()),
             c.getRenewalOfContractId()==null?null:c.getRenewalOfContractId().toString(),next==null?null:next.getId().toString(),c.getEndReason(),
             h==null?null:new ContractDraftResponse.Handover(h.getId().toString(),h.getVersion(),h.getStatus().name(),h.getReturnDate(),
                 h.getElectricityReading().toPlainString(),h.getWaterReading().toPlainString(),h.getElectricityStartReading()==null?null:h.getElectricityStartReading().toPlainString(),h.getWaterStartReading()==null?null:h.getWaterStartReading().toPlainString(),h.isKeysReturned(),h.getConditionNotes(),h.getDepositAmount().toPlainString(),
-                h.getDeductionAmount().toPlainString(),h.getUtilityAmount().toPlainString(),h.getRefundAmount().toPlainString(),h.getExtraAmountDue().toPlainString(),h.getOwnerConfirmedAt(),h.getCustomerConfirmedAt()));
+                h.getDeductionAmount().toPlainString(),h.getUtilityAmount().toPlainString(),h.getRefundAmount().toPlainString(),h.getExtraAmountDue().toPlainString(),h.getOwnerConfirmedAt(),h.getCustomerConfirmedAt()),renewal,
+            c.getStatus()==RentalContract.Status.ACTIVE&&!c.getEndDate().isAfter(rights.today())&&next==null&&!requestOpen&&(h==null||h.getStatus()==ContractHandover.Status.CANCELLED));
     }
     private String image(byte[] bytes){return bytes==null?null:"data:image/png;base64,"+Base64.getEncoder().encodeToString(bytes);}
     private String contentHash(ContractDraft d) {

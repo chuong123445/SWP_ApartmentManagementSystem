@@ -37,6 +37,10 @@ class ContractDraftIntegrationTests {
     @Autowired RentalRequestRepository requests;
     @Autowired RentalContractRepository contracts;
     @Autowired ContractDraftRepository drafts;
+    @Autowired ContractRenewalRequestRepository renewalRequests;
+    @Autowired com.ancu.proptech.service.contract.ContractExpiryService expiryNotices;
+    @Autowired com.ancu.proptech.service.contract.ContractRenewalActivationService renewalActivation;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired com.ancu.proptech.repository.contract.ContractHandoverRepository handovers;
     @Autowired com.ancu.proptech.repository.identity.IdentityProfileRepository identities;
     @Autowired AuthService auth;
@@ -134,6 +138,7 @@ class ContractDraftIntegrationTests {
         return readContract(c.getId().toString());
     }
     private String renewalInput(String previousId) throws Exception {
+        if(renewalRequests.findByContractId(Long.valueOf(previousId)).isEmpty())acceptRenewal(previousId);
         var ctx=mvc.perform(get("/api/v1/owner/contracts/"+previousId+"/renewal-context").header("Authorization",token)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         var month=java.time.YearMonth.now(ZoneId.of("Asia/Ho_Chi_Minh"));
         return "{\"requestVersion\":"+JsonPath.read(ctx,"$.requestVersion")+",\"sourceVersion\":\""+JsonPath.read(ctx,"$.sourceVersion")+"\","+
@@ -166,7 +171,8 @@ class ContractDraftIntegrationTests {
         mvc.perform(post("/api/v1/owner/contracts/"+id(next)+"/cancel-renewal").header("Authorization",token).contentType("application/json").content("{\"version\":"+JsonPath.read(next,"$.lifecycle.version")+",\"consent\":true}"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.lifecycle.endReason").value("RENEWAL_CANCELLED"));
         assertEquals("ACTIVE",JsonPath.read(readContract(oldId),"$.status"));
-        mvc.perform(post("/api/v1/owner/contracts/"+oldId+"/renewals").header("Authorization",token).contentType("application/json").content(renewalInput(oldId))).andExpect(status().isCreated());
+        mvc.perform(get("/api/v1/owner/contracts/"+oldId+"/renewal-context").header("Authorization",token)).andExpect(status().isConflict());
+        mvc.perform(post("/api/v1/owner/contracts/"+oldId+"/handover").header("Authorization",token).contentType("application/json").content(handoverInput(readContract(oldId)))).andExpect(status().isOk());
     }
     @Test void handoverRequiresCustomerConfirmationThenFreesRoomAndRetainsInvoicesAndOldSignatures() throws Exception {
         String old=expiredContract();String oldId=id(old);
@@ -201,9 +207,72 @@ class ContractDraftIntegrationTests {
     }
     @Test void unexpiredContractCannotRenewOrHandoverAndOtherOwnersCannotReadRenewalContext() throws Exception {
         String saved=create();var c=contracts.findById(Long.valueOf(id(saved))).orElseThrow();c.setStatus(RentalContract.Status.ACTIVE);contracts.saveAndFlush(c);
-        mvc.perform(get("/api/v1/owner/contracts/"+id(saved)+"/renewal-context").header("Authorization",token)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("NOT_EXPIRED"));
+        mvc.perform(get("/api/v1/owner/contracts/"+id(saved)+"/renewal-context").header("Authorization",token)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("RENEWAL_REQUEST_NOT_ACCEPTED"));
         mvc.perform(get("/api/v1/owner/contracts/"+id(saved)+"/renewal-context").header("Authorization",otherToken)).andExpect(status().isNotFound());
         mvc.perform(post("/api/v1/owner/contracts/"+id(saved)+"/handover").header("Authorization",token).contentType("application/json").content(handoverInput(readContract(id(saved))))).andExpect(status().isConflict());
+    }
+    private ResultActions askRenewal(String id,String account,String message)throws Exception {
+        return mvc.perform(post("/api/v1/contracts/"+id+"/renewal-request").header("Authorization",account).contentType("application/json").content("{\"version\":"+JsonPath.read(readContract(id),"$.lifecycle.version")+",\"consent\":true,\"message\":\""+message+"\"}"));
+    }
+    private void acceptRenewal(String id)throws Exception {
+        String requested=askRenewal(id,customerToken,"Muốn thuê tiếp").andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        mvc.perform(post("/api/v1/owner/contracts/"+id+"/renewal-request/decision").header("Authorization",token).contentType("application/json")
+            .content("{\"version\":"+JsonPath.read(requested,"$.lifecycle.renewalRequest.version")+",\"decision\":\"ACCEPT\"}")).andExpect(status().isOk());
+    }
+    @Test void renewalRequestIsExactTenantVersionedIdempotentAndBlocksHandover()throws Exception {
+        String old=expiredContract();String id=id(old);
+        askRenewal(id,otherToken,"forged").andExpect(status().isNotFound());
+        askRenewal(id,token,"forged").andExpect(status().isNotFound());
+        mvc.perform(post("/api/v1/contracts/"+id+"/renewal-request").header("Authorization",customerToken).contentType("application/json").content("{\"consent\":true}")).andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/contracts/"+id+"/renewal-request").header("Authorization",customerToken).contentType("application/json").content("{\"version\":99,\"consent\":true}")).andExpect(status().isConflict());
+        askRenewal(id,customerToken,"Muốn thuê tiếp").andExpect(status().isOk()).andExpect(jsonPath("$.lifecycle.renewalRequest.status").value("PENDING")).andExpect(jsonPath("$.lifecycle.handoverAvailable").value(false));
+        askRenewal(id,customerToken,"Muốn thuê tiếp").andExpect(status().isOk());
+        assertEquals(1,jdbc.queryForObject("select count(*) from contract_renewal_requests where contract_id=?",Integer.class,Long.valueOf(id)));
+        mvc.perform(get("/api/v1/owner/contracts/"+id+"/renewal-context").header("Authorization",token)).andExpect(status().isConflict());
+        mvc.perform(post("/api/v1/owner/contracts/"+id+"/handover").header("Authorization",token).contentType("application/json").content(handoverInput(old))).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("OPEN_RENEWAL_REQUEST"));
+        String url="/api/v1/owner/contracts/"+id+"/renewal-request/decision";
+        mvc.perform(post(url).header("Authorization",otherToken).contentType("application/json").content("{\"version\":0,\"decision\":\"REJECT\",\"reason\":\"Không cho thuê tiếp\"}")).andExpect(status().isNotFound());
+        mvc.perform(post(url).header("Authorization",token).contentType("application/json").content("{\"version\":0,\"decision\":\"REJECT\"}")).andExpect(status().isBadRequest());
+        mvc.perform(post(url).header("Authorization",token).contentType("application/json").content("{\"version\":0,\"decision\":\"REJECT\",\"reason\":\"Không cho thuê tiếp\"}")).andExpect(status().isOk()).andExpect(jsonPath("$.lifecycle.handoverAvailable").value(true));
+        mvc.perform(post(url).header("Authorization",token).contentType("application/json").content("{\"version\":0,\"decision\":\"ACCEPT\"}")).andExpect(status().isConflict());
+        mvc.perform(get("/api/v1/me/notifications").header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.items[?(@.title=='Yêu cầu thuê tiếp đã được xử lý')]").isNotEmpty());
+    }
+    @Test void futureRenewalSignaturesDoNotEndCurrentTermOrActivateEarly()throws Exception {
+        String old=expiredContract();String oldId=id(old);var c=contracts.findById(Long.valueOf(oldId)).orElseThrow();
+        var today=LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));c.setEndDate(today.plusDays(10));contracts.saveAndFlush(c);
+        acceptRenewal(oldId);
+        String input=renewalInput(oldId).replace(today.withDayOfMonth(1).toString(),today.plusDays(11).toString());
+        String next=mvc.perform(post("/api/v1/owner/contracts/"+oldId+"/renewals").header("Authorization",token).contentType("application/json").content(input)).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String hash=JsonPath.read(next,"$.signing.contentHash");sign(next,token,hash,signature(),true).andExpect(status().isOk());
+        sign(next,customerToken,hash,signature(),true).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DRAFT")).andExpect(jsonPath("$.signing.state").value("SIGNED"));
+        assertEquals("ACTIVE",JsonPath.read(readContract(oldId),"$.status"));
+        renewalActivation.activate(Long.valueOf(id(next)));assertEquals("DRAFT",JsonPath.read(readContract(id(next)),"$.status"));
+        mvc.perform(post("/api/v1/owner/contracts/"+id(next)+"/cancel-renewal").header("Authorization",token).contentType("application/json").content("{\"version\":0,\"consent\":true}")).andExpect(status().isConflict());
+    }
+    @Test void expiryRemindersArePersistentScopedAndDeduplicatedAtTwentyAndTenDays()throws Exception {
+        String old=expiredContract();long id=Long.parseLong(id(old));var end=contracts.findById(id).orElseThrow().getEndDate();
+        expiryNotices.generate(end.minusDays(21));assertEquals(0,jdbc.queryForObject("select count(*) from contract_expiry_notices where contract_id=?",Integer.class,id));
+        expiryNotices.generate(end.minusDays(20));expiryNotices.generate(end.minusDays(20));
+        assertEquals(2,jdbc.queryForObject("select count(*) from contract_expiry_notices where contract_id=?",Integer.class,id));
+        expiryNotices.generate(end.minusDays(10));expiryNotices.generate(end.minusDays(1));
+        assertEquals(4,jdbc.queryForObject("select count(*) from contract_expiry_notices where contract_id=?",Integer.class,id));
+        mvc.perform(get("/api/v1/me/notifications").header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.items[?(@.title=='Hợp đồng sắp hết hạn')]").isNotEmpty());
+        assertEquals(0,jdbc.queryForObject("select count(*) from contract_expiry_notices where contract_id=? and recipient_id=?",Integer.class,id,other.getId()));
+        assertEquals("ACTIVE",JsonPath.read(readContract(Long.toString(id)),"$.status"));
+    }
+    @Test void acceptedRequestCanBeCancelledBeforeDraftButNeverSilentlyDiscarded()throws Exception {
+        String old=expiredContract();String id=id(old);acceptRenewal(id);
+        mvc.perform(post("/api/v1/owner/contracts/"+id+"/handover").header("Authorization",token).contentType("application/json").content(handoverInput(old))).andExpect(status().isConflict());
+        String url="/api/v1/owner/contracts/"+id+"/renewal-request/cancel";
+        mvc.perform(post(url).header("Authorization",otherToken).contentType("application/json").content("{\"version\":1,\"consent\":true}")).andExpect(status().isNotFound());
+        mvc.perform(post(url).header("Authorization",token).contentType("application/json").content("{\"version\":0,\"consent\":true}")).andExpect(status().isConflict());
+        mvc.perform(post(url).header("Authorization",token).contentType("application/json").content("{\"version\":1,\"consent\":true}")).andExpect(status().isOk()).andExpect(jsonPath("$.lifecycle.renewalRequest.status").value("CANCELLED")).andExpect(jsonPath("$.lifecycle.handoverAvailable").value(true));
+        mvc.perform(get("/api/v1/me/notifications").header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.items[?(@.title=='Ký tiếp đã được hủy')]").isNotEmpty());
+    }
+    @Test void tenantRenewalRequestStillRequiresCurrentVerification()throws Exception {
+        String old=expiredContract();customer.setEmailVerified(false);customer.setContactVerified(false);accounts.saveAndFlush(customer);
+        askRenewal(id(old),customerToken,"Muốn thuê tiếp").andExpect(status().isForbidden());
+        assertTrue(renewalRequests.findByContractId(Long.valueOf(id(old))).isEmpty());
     }
     private String signature() throws Exception {
         var image=new java.awt.image.BufferedImage(900,280,java.awt.image.BufferedImage.TYPE_INT_ARGB);

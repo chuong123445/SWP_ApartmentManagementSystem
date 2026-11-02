@@ -40,6 +40,12 @@ public class ContractDraftController {
     }
     @GetMapping("/owner/contracts/{id}/renewal-context")
     public ContractContextResponse renewalContext(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id){return lifecycle.renewalContext(jwt,id);}
+    @PostMapping("/contracts/{id}/renewal-request")
+    public ContractDraftResponse requestRenewal(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody RenewalRequestCreate input){return lifecycle.requestRenewal(jwt,id,input);}
+    @PostMapping("/owner/contracts/{id}/renewal-request/decision")
+    public ContractDraftResponse decideRenewal(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody RenewalRequestDecision input){return lifecycle.decideRenewal(jwt,id,input);}
+    @PostMapping("/owner/contracts/{id}/renewal-request/cancel")
+    public ContractDraftResponse cancelAcceptedRequest(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody LifecycleConfirm input){return lifecycle.cancelAcceptedRequest(jwt,id,input);}
     @PostMapping("/owner/contracts/{id}/renewals")
     public ResponseEntity<ContractDraftResponse> renew(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody ContractDraftCreate input){
         var result=lifecycle.renew(jwt,id,input);return ResponseEntity.created(URI.create("/api/v1/contracts/"+result.id())).body(result);
