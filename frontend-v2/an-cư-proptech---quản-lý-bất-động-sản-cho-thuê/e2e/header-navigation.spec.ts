@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('Owner switches home, management and sidebar without stale home URL', async ({ page }) => {
+test('Trang chủ dùng một URL và liên kết cũ chuyển về đúng trang', async ({ page }) => {
   await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/refresh')) return route.fulfill({ json: { accessToken: 'test', tokenType: 'Bearer', expiresIn: 900, user: { id: '1', email: 'owner@example.invalid', fullName: 'Owner test', roles: ['OWNER'], accountStatus: 'ACTIVE', contactVerificationStatus: 'VERIFIED', version: 0 } } });
@@ -14,14 +14,13 @@ test('Owner switches home, management and sidebar without stale home URL', async
   const nav = page.getByRole('navigation', { name: 'Điều hướng chính' });
   await nav.getByRole('link', { name: 'Trang chủ', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Tìm căn hộ theo khu vực', exact: true })).toBeVisible();
-  await expect(page.locator('#select-building-sidebar')).toBeVisible();
-  await page.locator('#nav-rooms').click();
-  await expect(page.getByRole('heading', { name: 'Thêm tài sản cho thuê', exact: true })).toBeVisible();
-  await nav.getByRole('link', { name: 'Trang chủ', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Tìm căn hộ theo khu vực', exact: true })).toBeVisible();
+  await expect(page).toHaveURL('/');
+  await page.goto('/app?tab=home');
+  await expect(page).toHaveURL('/');
   await nav.getByRole('link', { name: 'Trang quản lý', exact: true }).click();
   await expect(page).toHaveURL(/tab=dashboard/);
   await expect(page.getByRole('heading', { name: 'Thêm tài sản cho thuê', exact: true })).toBeVisible();
   await nav.getByRole('link', { name: 'Trang chủ', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Tìm căn hộ theo khu vực', exact: true })).toBeVisible();
+  await expect(page).toHaveURL('/');
 });

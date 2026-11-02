@@ -46,7 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Center/Right Controls */}
       <div className="flex items-center gap-2 sm:gap-3">
-        <HeaderLinks embeddedHome />
+        <HeaderLinks />
         <NotificationBell key={account.id} accountId={account.id} />
 
         <AccountMenu account={account} onLogout={onLogout} isLoggingOut={isLoggingOut} authError={authError} />
