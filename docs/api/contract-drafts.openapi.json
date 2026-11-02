@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "An Cư — selection-bound contract drafts",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "description": "Implemented private contract authoring, exact-party PDF and hand-drawn electronic signatures, renewal requests and expiry handover. Tenant requests renewal; Owner accepts/rejects before drafting a new agreement. Signed future renewals wait until the next start date; no automatic expiry release or provider-certified digital signature. V42 adds persistent in-app 20/10-day reminders and request state/version. Old saved snapshots remain immutable; missing legacy originals are not fabricated. See tenant-renewal-requests-v1 ADR for detailed transitions and safeguards."
   },
   "servers": [
@@ -1489,6 +1489,81 @@
           }
         }
       }
+    },
+    "/owner/renewal-requests": {
+      "get": {
+        "summary": "Owner renewal-request inbox, scoped before pagination/count; UI defaults to PENDING",
+        "description": "Optional status/propertyId filters. Null status returns all. PENDING first, then createdAt/ID ascending. Contains current contract, tenant, independent request version and latest successor link; no images or identity documents. Owner notification opens /app?tab=rental_requests&requestType=renewal&propertyId=...",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "ACCEPTED",
+                "REJECTED",
+                "FULFILLED",
+                "CANCELLED"
+              ]
+            }
+          },
+          {
+            "name": "propertyId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owner-scoped page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenewalInboxPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid enum or pagination"
+          },
+          "401": {
+            "description": "No session"
+          },
+          "403": {
+            "description": "Requires verified ACTIVE Owner"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2502,6 +2577,115 @@
           "signature",
           "consent"
         ]
+      },
+      "RenewalInboxItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "contractId": {
+            "type": "string"
+          },
+          "contractNumber": {
+            "type": "string"
+          },
+          "apartmentId": {
+            "type": "string"
+          },
+          "apartmentTitle": {
+            "type": "string"
+          },
+          "roomNumber": {
+            "type": "string"
+          },
+          "propertyId": {
+            "type": "string"
+          },
+          "propertyName": {
+            "type": "string"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "customerEmail": {
+            "type": "string"
+          },
+          "monthlyRent": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ACCEPTED",
+              "REJECTED",
+              "FULFILLED",
+              "CANCELLED"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "decisionReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "nextContractId": {
+            "type": "string",
+            "nullable": true
+          },
+          "nextContractStatus": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "RenewalInboxPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RenewalInboxItem"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
       }
     }
   }
