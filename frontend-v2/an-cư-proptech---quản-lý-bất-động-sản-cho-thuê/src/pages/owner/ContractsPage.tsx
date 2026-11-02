@@ -4,11 +4,14 @@ import { Link } from 'react-router';
 import { contractStatusLabel } from '@/utils/contractDisplay';
 import type { Contract } from '@/types';
 import { ContractDraftList } from '@/components/contract/ContractDraftList';
+import { ContractListActionModal } from '@/components/contract/ContractListActionModal';
+import type { ContractDraft } from '@/types/contract';
 
 interface ContractsPageProps { propertyId?: string; onChooseRequest?: () => void; contracts: Contract[] }
 
 export function ContractsPage({ contracts, propertyId, onChooseRequest }: ContractsPageProps) {
   const [search, setSearch] = useState('');
+  const [documents, setDocuments] = useState<ContractDraft[]>([]); const [handoverId, setHandoverId] = useState<string | null>(null);
   const needle = search.trim().toLocaleLowerCase('vi');
   const existing = contracts.filter(contract => contract.status !== 'draft' &&
     `${contract.contractNumber} ${contract.tenantName} ${contract.roomNumber}`.toLocaleLowerCase('vi').includes(needle));
@@ -23,7 +26,7 @@ export function ContractsPage({ contracts, propertyId, onChooseRequest }: Contra
         <Plus size={17} />Tạo hợp đồng mới
       </button>
     </header>
-    <ContractDraftList owner propertyId={propertyId} />
+    <ContractDraftList owner propertyId={propertyId} onLoaded={setDocuments} />
     <section className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
       <div className="p-4 space-y-3"><h2 className="font-bold">Quan hệ thuê đã lưu</h2>
         <label className="block text-sm text-slate-600">Tìm số hợp đồng, khách thuê hoặc phòng
@@ -36,9 +39,10 @@ export function ContractsPage({ contracts, propertyId, onChooseRequest }: Contra
         <td className="p-3 font-medium">{contract.contractNumber}</td><td className="p-3">{contract.roomNumber}</td><td className="p-3">{contract.tenantName}</td>
         <td className="p-3">{contract.startDate} → {contract.endDate}</td><td className="p-3">{contract.monthlyRent.toLocaleString('vi-VN')} đ</td>
         <td className="p-3">{contractStatusLabel(contract.status, contract.endDate)}</td>
-        <td className="p-3"><Link to={`/contracts/${contract.id}`} className="font-semibold text-emerald-700 underline whitespace-nowrap">Xem hồ sơ</Link></td>
+        <td className="p-3"><div className="flex flex-wrap gap-3"><Link to={`/contracts/${contract.id}`} className="font-semibold text-emerald-700 underline whitespace-nowrap">Xem hồ sơ</Link>{documents.find(document => document.id === contract.id)?.lifecycle?.handoverAvailable === true && <button type="button" onClick={() => setHandoverId(contract.id)} className="font-semibold text-emerald-700 underline whitespace-nowrap">Lập biên bản bàn giao</button>}</div></td>
       </tr>)}{!existing.length && <tr><td colSpan={7} className="p-6 text-center text-slate-500">Chưa có quan hệ thuê phù hợp.</td></tr>}</tbody></table></div>
     </section>
     <p className="text-xs text-slate-500">Các quan hệ thuê cũ chưa có bản nội dung gốc không được tự tạo PDF hoặc gắn chữ ký giả. Hợp đồng mới được lưu đầy đủ thông tin, điều khoản và chữ ký tại đây.</p>
+    {handoverId && <ContractListActionModal key={handoverId} contractId={handoverId} action="handover" onClose={() => setHandoverId(null)} onUpdated={value => setDocuments(previous => previous.map(document => document.id === value.id ? value : document))} />}
   </div>;
 }

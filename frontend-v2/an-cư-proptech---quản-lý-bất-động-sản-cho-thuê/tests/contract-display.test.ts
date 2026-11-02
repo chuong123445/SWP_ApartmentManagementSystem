@@ -1,7 +1,23 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { contractActionLabel, contractStatusLabel } from '../src/utils/contractDisplay.ts';
+import { contractActionLabel, contractStatusLabel, contractLifecycleActions } from '../src/utils/contractDisplay.ts';
 import type { ContractDraft } from '../src/types/contract.ts';
+
+test('list lifecycle actions follow exact party, request/handover conflicts and server handover permission', () => {
+  const draft = { status: 'ACTIVE', snapshot: { owner: { id: '3' }, customer: { id: '2' } }, lifecycle: { version: 4, handoverAvailable: true, renewalRequest: null, renewalContractId: null, handover: null } } as unknown as ContractDraft;
+  assert.equal(contractLifecycleActions(draft, '2').canRequest, true);
+  assert.equal(contractLifecycleActions(draft, '3').canRequest, false);
+  assert.equal(contractLifecycleActions(draft, '3').canHandover, true);
+  assert.equal(contractLifecycleActions(draft, '9').canHandover, false);
+  for (const blocked of [
+    { ...draft, status: 'ENDED' },
+    { ...draft, lifecycle: undefined },
+    { ...draft, lifecycle: { ...draft.lifecycle, handover: { status: 'PENDING' } } },
+    { ...draft, lifecycle: { ...draft.lifecycle, renewalContractId: '10' } },
+    { ...draft, lifecycle: { ...draft.lifecycle, renewalRequest: { status: 'PENDING' } } },
+  ]) assert.equal(contractLifecycleActions(blocked as ContractDraft, '2').canRequest, false);
+  assert.equal(contractLifecycleActions({ ...draft, status: 'ENDED' }, '3').canHandover, false);
+});
 
 test('past end date stays pending resolution until ended; drafts are not expired tenancies', () => {
   assert.equal(contractStatusLabel('active', '2026-10-31', '2026-11-02'), 'Hết hạn — chờ xử lý');
