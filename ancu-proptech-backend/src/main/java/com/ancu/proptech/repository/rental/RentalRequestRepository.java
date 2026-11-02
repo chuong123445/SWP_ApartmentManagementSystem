@@ -15,7 +15,9 @@ public interface RentalRequestRepository extends JpaRepository<RentalRequest, Lo
     @Query("select r from RentalRequest r where r.id = :id and r.customer.id = :customerId")
     java.util.Optional<RentalRequest> findOwnForUpdate(@Param("id") Long id, @Param("customerId") Long customerId);
     @EntityGraph(attributePaths = {"apartment", "apartment.property", "customer"})
-    Page<RentalRequest> findByCustomerId(Long customerId, Pageable page);
+    @Query(value="select r from RentalRequest r where r.customer.id=:customerId and not exists (select d.id from ContractDraft d where d.rentalRequest.id=r.id)",
+           countQuery="select count(r) from RentalRequest r where r.customer.id=:customerId and not exists (select d.id from ContractDraft d where d.rentalRequest.id=r.id)")
+    Page<RentalRequest> findByCustomerId(@Param("customerId") Long customerId, Pageable page);
     @EntityGraph(attributePaths = {"apartment", "apartment.property", "customer"})
     @Query(value = "select r from RentalRequest r where r.apartment.property.owner.id = :ownerId "
             + "and (:apartmentId is null or r.apartment.id = :apartmentId) and (:status is null or r.status = :status) "

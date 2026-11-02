@@ -232,7 +232,8 @@
           "403": {
             "$ref": "#/components/responses/Error"
           }
-        }
+        },
+        "description": "Exact authenticated renter request inbox. Requests already linked to a saved contract document are excluded in SQL before paging/count; documents and original selection records remain available through private contract APIs. ACCEPTED requests awaiting document creation remain here. Ended/cancelled documents are not moved back into this inbox."
       }
     },
     "/api/v1/owner/rental-requests": {
