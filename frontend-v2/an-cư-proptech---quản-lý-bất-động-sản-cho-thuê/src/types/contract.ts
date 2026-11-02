@@ -33,6 +33,12 @@ export interface ContractLifecycle {
   handoverAvailable?: boolean;
   renewalRequest?: { id: string; status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'FULFILLED' | 'CANCELLED'; message: string; decision: 'ACCEPT' | 'REJECT' | null; decisionReason: string | null; createdAt: string; decidedAt: string | null; version: number } | null;
 }
+export interface RenewalInboxItem {
+  id: string; contractId: string; contractNumber: string; apartmentId: string; apartmentTitle: string; roomNumber: string;
+  propertyId: string; propertyName: string; customerName: string; customerEmail: string; startDate: string; endDate: string; monthlyRent: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'FULFILLED' | 'CANCELLED'; message: string; decisionReason: string | null;
+  createdAt: string; decidedAt: string | null; version: number; nextContractId: string | null; nextContractStatus: string | null;
+}
 export interface HandoverInput {
   version: number; returnDate: string; electricityReading: string; waterReading: string;
   keysReturned: boolean; conditionNotes: string; deductionAmount: string; consent: boolean;
