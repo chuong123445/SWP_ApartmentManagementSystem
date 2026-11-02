@@ -8,9 +8,11 @@ Chuông thông báo trong ứng dụng nhắc hai bên trước hạn 20 ngày v
 
 ## Muốn thuê tiếp
 
+Owner vào **Yêu cầu thuê → Thuê tiếp** để xem và xử lý trực tiếp; không cần mở từng hợp đồng mới biết có yêu cầu. Chuông thông báo yêu cầu thuê tiếp cũng mở đúng tab và tài sản. Hai tab **Thuê mới / Thuê tiếp** mặc định **Chờ xử lý**. Bộ lọc tiếp theo gồm **Đang làm hợp đồng**, **Đã ký hợp đồng**, **Đã từ chối**, **Đã hủy** và **Tất cả**. Chỉ đủ hai chữ ký mới được hiển thị đã ký; quyết định đồng ý không tự kích hoạt thuê. Các bản ghi kỹ thuật khi soạn kỳ mới không xuất hiện lẫn trong tab Thuê mới.
+
 1. Tenant mở hợp đồng, nhập lời nhắn nếu cần, xác nhận muốn thuê tiếp và bấm **Gửi yêu cầu thuê tiếp**. Có thể gửi trước ngày hết hạn. Không muốn thuê tiếp thì không cần gửi.
-2. Owner mở thông báo hoặc cùng hợp đồng, chọn **Chấp nhận thuê tiếp** hoặc **Từ chối thuê tiếp**. Từ chối phải có lý do; quyết định chưa có nghĩa đã ký hợp đồng.
-3. Sau khi chấp nhận, Owner bấm **Tạo hợp đồng ký tiếp**, rà soát ngày/giá/điều khoản rồi tạo bản mới. Hai bên ký lại bằng tài khoản của mình.
+2. Owner mở tab Thuê tiếp, chọn **Đồng ý thuê tiếp** hoặc **Từ chối thuê tiếp** ngay trên thẻ yêu cầu (vẫn có thể xử lý ở trang hợp đồng). Từ chối phải có lý do; quyết định chưa có nghĩa đã ký hợp đồng.
+3. Sau khi chấp nhận, chọn bộ lọc **Đang làm hợp đồng** và bấm **Soạn hợp đồng ký tiếp**, rà soát ngày/giá/điều khoản rồi tạo bản mới. Hai bên ký lại bằng tài khoản của mình. Nếu đã có bản ký tiếp, dùng liên kết xem bản đó thay vì tạo trùng.
 4. Nếu ký sớm, bản mới hiện **Đã ký — chờ chuyển kỳ thuê**. Bản cũ vẫn giữ đến hết kỳ. Đến ngày bắt đầu kỳ mới, Backend chuyển kỳ khi đủ điều kiện; nếu còn hóa đơn nháp, vấn đề quyền thuê hoặc tài khoản thì cần xử lý trước. Không tự đặt chỉ số điện/nước bằng 0.
 
 Mỗi hợp đồng có một yêu cầu; gửi lặp không tạo trùng. Yêu cầu từ chối/hủy vẫn lưu và không mở lại bằng nút gửi mới. Khi chưa có bản ký tiếp, Owner có thể **Hủy chấp nhận thuê tiếp**. Nếu đã có bản nháp, dùng **Hủy bản ký tiếp** trước khi đủ hai chữ ký. Không hỗ trợ hủy đơn phương bản đã có đủ hai chữ ký.

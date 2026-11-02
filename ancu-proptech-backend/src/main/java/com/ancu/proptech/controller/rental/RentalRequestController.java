@@ -34,8 +34,8 @@ public class RentalRequestController {
     @GetMapping("/api/v1/owner/rental-requests")
     public PageResponse<RentalRequestResponse> inbox(@AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) Long apartmentId,
         @RequestParam(required = false) RentalRequest.Status status, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size,
-        @RequestParam(required = false) Long propertyId) {
-        return requests.ownerInbox(jwt, apartmentId, status, page, size, propertyId);
+        @RequestParam(required = false) Long propertyId, @RequestParam(required=false) Boolean contractCompleted) {
+        return requests.ownerInbox(jwt, apartmentId, status, page, size, propertyId,contractCompleted);
     }
     @PostMapping("/api/v1/owner/rental-requests/{id}/decisions")
     public RentalRequestResponse decide(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id, @Valid @RequestBody RentalDecision input) {

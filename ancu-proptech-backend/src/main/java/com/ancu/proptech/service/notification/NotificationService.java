@@ -25,7 +25,7 @@ public class NotificationService {
  FROM contract_expiry_notices n JOIN rental_contracts c ON c.id=n.contract_id JOIN rental_apartments a ON a.id=c.apartment_id JOIN rental_properties p ON p.id=a.property_id
  WHERE n.recipient_id=:account AND (c.customer_id=:account OR p.owner_id=:account)
  UNION ALL
- SELECT CONCAT('renewal-request:',r.id),N'Khách yêu cầu thuê tiếp',CONCAT(N'Yêu cầu thuê tiếp HD-',c.id),CONCAT('/contracts/',c.id),r.created_at
+ SELECT CONCAT('renewal-request:',r.id),N'Khách yêu cầu thuê tiếp',CONCAT(N'Yêu cầu thuê tiếp HD-',c.id),CONCAT('/app?tab=rental_requests&requestType=renewal&propertyId=',p.id),r.created_at
  FROM contract_renewal_requests r JOIN rental_contracts c ON c.id=r.contract_id JOIN rental_apartments a ON a.id=c.apartment_id JOIN rental_properties p ON p.id=a.property_id WHERE p.owner_id=:account
  UNION ALL
  SELECT CONCAT('renewal-decision:',r.id),N'Yêu cầu thuê tiếp đã được xử lý',
