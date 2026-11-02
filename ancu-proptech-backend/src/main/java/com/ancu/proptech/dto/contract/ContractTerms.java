@@ -9,6 +9,10 @@ import java.util.List;
 @Getter @Setter
 public class ContractTerms {
     @NotNull @Pattern(regexp="APARTMENT|HOUSE|ROOM|BUSINESS|SHARED") private String templateType = "APARTMENT";
+    @NotNull private com.ancu.proptech.model.property.PropertySettings.WaterBillingMode waterBillingMode=com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.METERED;
+    @NotNull @Min(1) @Max(100) private Integer occupantCount=1;
+    @NotNull @PositiveOrZero @Digits(integer=13,fraction=2) private BigDecimal internetFee=BigDecimal.ZERO;
+    @NotNull @PositiveOrZero @Digits(integer=13,fraction=2) private BigDecimal garbageFee=BigDecimal.ZERO;
     @NotNull private LocalDate startDate;
     @NotNull private LocalDate endDate;
     @NotNull @DecimalMin("0.01") @Digits(integer=13,fraction=2) private BigDecimal monthlyRent;
