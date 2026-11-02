@@ -149,8 +149,9 @@ class BillingIntegrationTests {
         contract.setOccupantCount(2);contracts.saveAndFlush(contract);
         saveMeter(ownerToken,body("2026-10",0,"1120","200").replace("baselineVersion\":0","applyPropertyRates\":true,\"settingsVersion\":0,\"baselineVersion\":0")).andExpect(status().isOk());
         jdbc.update("UPDATE property_settings SET electricity_unit_price=9000,version=version+1 WHERE property_id=?",property.getId());
-        create(ownerToken,body("2026-10",1,"1130","200")).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("SAVED_READING_MISMATCH"));
-        String json=create(ownerToken,"{\"period\":\"2026-10\",\"baselineVersion\":1,\"useSavedReadings\":true,\"dueDate\":\"2026-11-05\"}").andExpect(status().isCreated()).andExpect(jsonPath("$.electricityEndReading").value("1120")).andExpect(jsonPath("$.electricityUnitPrice").value("4000.00")).andExpect(jsonPath("$.waterBillingMode").value("PER_PERSON")).andReturn().getResponse().getContentAsString();
+        saveMeter(ownerToken,body("2026-10",1,"1120","200").replace("baselineVersion\":1","keepSavedTariff\":true,\"baselineVersion\":1")).andExpect(status().isOk()).andExpect(jsonPath("$.electricityUnitPrice").value("4000.00"));
+        create(ownerToken,body("2026-10",2,"1130","200")).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("SAVED_READING_MISMATCH"));
+        String json=create(ownerToken,"{\"period\":\"2026-10\",\"baselineVersion\":2,\"useSavedReadings\":true,\"dueDate\":\"2026-11-05\"}").andExpect(status().isCreated()).andExpect(jsonPath("$.electricityEndReading").value("1120")).andExpect(jsonPath("$.electricityUnitPrice").value("4000.00")).andExpect(jsonPath("$.waterBillingMode").value("PER_PERSON")).andReturn().getResponse().getContentAsString();
         assertEquals(0,new BigDecimal(JsonPath.<String>read(json,"$.totalAmount")).compareTo(new BigDecimal("5710000")));
         String id=JsonPath.read(json,"$.id");send(ownerToken,id,0).andExpect(status().isOk());
         mvc.perform(get("/api/v1/owner/contracts/"+contract.getId()+"/billing-context").header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.period").value("2026-11")).andExpect(jsonPath("$.electricityStartReading").value("1120")).andExpect(jsonPath("$.savedReading").isEmpty());
