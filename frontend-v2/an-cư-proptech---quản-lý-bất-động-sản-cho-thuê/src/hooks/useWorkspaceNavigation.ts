@@ -19,6 +19,7 @@ export function useWorkspaceNavigation(canManage: boolean) {
   const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false);
   const [propertyForDossierId, setPropertyForDossierId] = useState<string | null>(null);
   const [isCreateInvoiceOpen, setIsCreateInvoiceOpen] = useState(false);
+  const [invoiceContractId,setInvoiceContractId]=useState('');
 
 
   // Quick Action Handler from Header
@@ -49,6 +50,6 @@ export function useWorkspaceNavigation(canManage: boolean) {
   const resetToDashboard = () => setActiveTab('dashboard');
   return { userRole, activeTab, selectedBuildingId, setSelectedBuildingId, searchQuery, setSearchQuery,
     isAddRoomOpen, setIsAddRoomOpen, isAddPropertyOpen, setIsAddPropertyOpen, propertyForDossierId, setPropertyForDossierId, isCreateInvoiceOpen, setIsCreateInvoiceOpen,
-    handleQuickAction, selectTab, resetToDashboard };
+    invoiceContractId,setInvoiceContractId,handleQuickAction, selectTab, resetToDashboard };
 }
 export type WorkspaceNavigation = ReturnType<typeof useWorkspaceNavigation>;

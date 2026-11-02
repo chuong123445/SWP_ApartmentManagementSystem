@@ -3,11 +3,12 @@ import { X } from 'lucide-react';
 import type { Invoice } from '@/types';
 import type { Tenancy, BillingContext, BillingInvoice } from '@/types/billing';
 import { getBillingContext, createInvoice, sendInvoice, invoiceView, billingMoney } from '@/services/billing/billingService';
-export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice }: {
+export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice, initialContractId, onOpenUtilities }: {
+  initialContractId?:string; onOpenUtilities?:()=>void;
   tenancies: Tenancy[]; onClose: () => void; onCreateInvoice: (invoice: Invoice) => void;
 }) {
   const active = tenancies.filter(c => c.status === 'ACTIVE');
-  const [contractId, setContractId] = useState(active[0]?.id ?? '');
+  const [contractId, setContractId] = useState(initialContractId ?? active[0]?.id ?? '');
   const [context, setContext] = useState<BillingContext | null>(null);
   const [electricity, setElectricity] = useState(''); const [water, setWater] = useState('');const [due, setDue] = useState('');
   const [error, setError] = useState('');const [saving, setSaving] = useState(false);
@@ -21,14 +22,14 @@ export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice }: {
   useEffect(() => {
     let active = true;setContext(null);setError('');
     if (!contractId) return;
-    getBillingContext(contractId).then(c => { if (active) { setContext(c);setElectricity(c.electricityStartReading);setWater(c.waterStartReading);setDue(`${c.period}-28`); } })
+    getBillingContext(contractId).then(c => { if (active) { setContext(c);setElectricity(c.savedReading?.electricityEndReading??'');setWater(c.savedReading?.waterEndReading??'');setDue(`${c.period}-28`); } })
       .catch(e => { if (active) setError(e.message); });return () => { active = false; };
   }, [contractId, revision]);
   const save = async (send: boolean) => {
-    if (saving || !context || !form.current?.reportValidity()) return;
+    if (saving || !context?.savedReading || !form.current?.reportValidity()) return;
     setSaving(true);setError('');
     try {
-      const draft = created ?? await createInvoice(contractId, { period: context.period, electricityEndReading: electricity, waterEndReading: water, dueDate: due, baselineVersion: context.baselineVersion });
+      const draft = created ?? await createInvoice(contractId, { period: context.period, useSavedReadings:true, dueDate: due, baselineVersion: context.baselineVersion });
       setCreated(draft);onCreateInvoice(invoiceView(draft));
       if (send) { const sent = await sendInvoice(draft.id, draft.version);onCreateInvoice(invoiceView(sent)); }
       onClose();
@@ -45,13 +46,15 @@ export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice }: {
         <div><label htmlFor="invoice-contract" className="text-sm font-semibold">Căn hộ / Người thuê</label><select id="invoice-contract" required className={cls} value={contractId} onChange={e => setContractId(e.target.value)}><option value="">Chọn quan hệ thuê</option>{active.map(c => <option key={c.id} value={c.id}>{c.roomNumber} — {c.customerName}</option>)}</select></div>
         {contractId && !context && !error && <p role="status">Đang tải chỉ số đầu và giá hợp đồng...</p>}
         {context && <><div className="bg-slate-50 rounded-lg p-3 text-sm"><p>Kỳ: <strong>{context.period}</strong> · Tiền thuê: <strong>{billingMoney(context.monthlyRent)}</strong></p><p>Điện đầu: {context.electricityStartReading} kWh · {billingMoney(context.electricityUnitPrice)}/kWh</p>{context.waterBillingMode==='PER_PERSON'?<p>Nước theo người: {context.occupantCount} × {billingMoney(context.waterUnitPrice)} / tháng</p>:<p>Nước đầu: {context.waterStartReading} m³ · {billingMoney(context.waterUnitPrice)}/m³</p>}<p>Internet: {billingMoney(context.internetFee??'0')} · Vệ sinh/rác: {billingMoney(context.garbageFee??'0')} mỗi tháng</p></div>
-          <div className="grid grid-cols-2 gap-4"><div><label htmlFor="invoice-electricity" className="text-sm font-semibold">Chỉ số điện cuối kỳ</label><input id="invoice-electricity" required type="number" step="0.01" min={context.electricityStartReading} value={electricity} onChange={e => setElectricity(e.target.value)} className={cls} /></div>
-            <div><label htmlFor="invoice-water" className="text-sm font-semibold">Chỉ số nước cuối kỳ</label><input id="invoice-water" disabled={context.waterBillingMode==='PER_PERSON'} required type="number" step="0.01" min={context.waterStartReading} value={water} onChange={e => setWater(e.target.value)} className={cls} /></div></div>
+          {!context.savedReading&&<div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Chưa chốt chỉ số cho kỳ này. Hãy chốt tại mục Chỉ số Điện Nước trước khi lập hóa đơn.{onOpenUtilities&&<button type="button" onClick={onOpenUtilities} className="block mt-2 underline font-semibold">Đi chốt điện nước</button>}</div>}
+          {context.savedReading&&<p className="text-sm text-emerald-700">Đã tự lấy chỉ số và đơn giá đã chốt. Không cần nhập lại.</p>}
+          <div className="grid grid-cols-2 gap-4"><div><label htmlFor="invoice-electricity" className="text-sm font-semibold">Chỉ số điện cuối kỳ</label><input id="invoice-electricity" readOnly required type="number" step="0.01" min={context.electricityStartReading} value={electricity} onChange={e => setElectricity(e.target.value)} className={cls} /></div>
+            <div><label htmlFor="invoice-water" className="text-sm font-semibold">Chỉ số nước cuối kỳ</label><input id="invoice-water" readOnly disabled={context.waterBillingMode==='PER_PERSON'} required type="number" step="0.01" min={context.waterStartReading} value={water} onChange={e => setWater(e.target.value)} className={cls} /></div></div>
           <div><label htmlFor="invoice-due-date" className="text-sm font-semibold">Hạn đóng</label><input id="invoice-due-date" required type="date" min={`${context.period}-01`} value={due} onChange={e => setDue(e.target.value)} className={cls} /></div></>}
       </fieldset>
       {created && <p className="text-sm text-amber-700">Đã lưu bản nháp. Bạn có thể thử gửi lại hóa đơn này.</p>}
       <div className="flex justify-end gap-3 pt-4 border-t"><button type="button" onClick={onClose} disabled={saving}>Hủy</button>
-        <button type="submit" id="btn-confirm-create-invoice" disabled={saving || !context} className="border rounded-lg px-4 py-2 disabled:opacity-50">Lưu bản nháp</button>
+        <button type="submit" id="btn-confirm-create-invoice" disabled={saving || !context?.savedReading} className="border rounded-lg px-4 py-2 disabled:opacity-50">Lưu bản nháp</button>
         <button type="button" id="btn-create-send-invoice" disabled={saving || !context} onClick={() => void save(true)} className="bg-emerald-600 text-white rounded-lg px-4 py-2 disabled:opacity-50">{saving ? 'Đang xử lý...' : created ? 'Gửi lại' : 'Lập và gửi'}</button></div>
     </form>
   </section></div>;

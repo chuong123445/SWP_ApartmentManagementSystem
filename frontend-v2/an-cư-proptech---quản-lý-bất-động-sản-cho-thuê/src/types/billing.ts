@@ -3,7 +3,11 @@ export interface Tenancy {
   customerId: string; customerName: string; customerEmail: string; status: 'DRAFT' | 'ACTIVE' | 'ENDED';
   startDate: string; endDate: string; monthlyRent: string; version: number;
 }
+export interface BillingTariff { electricityUnitPrice:string;waterUnitPrice:string;waterBillingMode:'METERED'|'PER_PERSON';internetFee:string;garbageFee:string;version:number; }
+export interface MeterReadingInput {period:string;baselineVersion:number;electricityEndReading:string;waterEndReading:string;applyPropertyRates:boolean;keepSavedTariff?:boolean;settingsVersion?:number;}
 export interface BillingContext {
+  savedReading?:{electricityEndReading:string;waterEndReading:string;propertyRates:boolean;savedAt:string}|null;
+  propertyTariff?:BillingTariff|null;contractTariff?:BillingTariff;
   waterBillingMode?:'METERED'|'PER_PERSON';occupantCount?:number;internetFee?:string;garbageFee?:string;
   contractId: string; apartmentId: string; roomNumber: string; tenantName: string; period: string;
   monthlyRent: string; electricityStartReading: string; electricityUnitPrice: string;
@@ -19,5 +23,5 @@ export interface BillingInvoice {
   totalAmount: string; status: 'DRAFT' | 'SENT'; createdAt: string; sentAt: string | null; version: number;
 }
 export interface InvoiceCreate {
-  period: string; dueDate: string; electricityEndReading: string; waterEndReading: string; baselineVersion: number;
+  period: string; dueDate: string; electricityEndReading?: string; waterEndReading?: string; baselineVersion: number; useSavedReadings?:boolean;
 }

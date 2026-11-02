@@ -1,223 +1,56 @@
-import React, { useState } from 'react';
-import { Zap, Droplets, Save, Calculator, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
-import { Room, Tenant, SystemConfig } from '@/types';
+import { useEffect, useRef, useState } from 'react';
+import { Zap, RefreshCw, Save, ReceiptText, Settings } from 'lucide-react';
+import type { Tenancy, BillingContext } from '@/types/billing';
+import { getBillingContext, saveMeterReadings, billingMoney } from '@/services/billing/billingService';
+import '@/styles/operations.css';
 
-interface UtilitiesPageProps {
-  rooms: Room[];
-  tenants: Tenant[];
-  config: SystemConfig;
-  onUpdateIndices: (updates: { roomId: string; electric: number; water: number }[]) => void;
+function MeterCard({ tenancy, onInvoice }: { tenancy:Tenancy;onInvoice:(id:string)=>void }) {
+  const [context,setContext]=useState<BillingContext|null>(null);
+  const [electricity,setElectricity]=useState('');const [water,setWater]=useState('');
+  const [source,setSource]=useState('CONTRACT');const [error,setError]=useState('');
+  const [loading,setLoading]=useState(true);const [saving,setSaving]=useState(false);const [revision,setRevision]=useState(0);
+  const [notice,setNotice]=useState('');const form=useRef<HTMLFormElement>(null);
+  const install=(c:BillingContext)=>{setContext(c);setElectricity(c.savedReading?.electricityEndReading??'');setWater(c.savedReading?.waterEndReading??'');setSource(c.savedReading?'SAVED':'CONTRACT');};
+  useEffect(()=>{let active=true;setLoading(true);setError('');setContext(null);setNotice('');
+    getBillingContext(tenancy.id).then(c=>{if(active)install(c);}).catch(e=>{if(active)setError(e.message);}).finally(()=>{if(active)setLoading(false);});
+    return ()=>{active=false;};
+  },[tenancy.id,revision]);
+  const propertyRates=source==='PROPERTY';
+  const tariff=context&&(source==='SAVED'?context:propertyRates?context.propertyTariff:context.contractTariff??context);
+  const perPerson=tariff?.waterBillingMode==='PER_PERSON';
+  const dirty=!!context&&(!context.savedReading||electricity!==context.savedReading.electricityEndReading||(!perPerson&&water!==context.savedReading.waterEndReading)||source!=='SAVED');
+  const electricUsage=context&&electricity!==''?Number(electricity)-Number(context.electricityStartReading):null;
+  const waterUsage=context&&water!==''?Number(water)-Number(context.waterStartReading):null;
+  const estimate=tariff&&electricUsage!==null&&electricUsage>=0&&(perPerson||(waterUsage!==null&&waterUsage>=0))?electricUsage*Number(tariff.electricityUnitPrice)+(perPerson?(context?.occupantCount??1):waterUsage!)*Number(tariff.waterUnitPrice):null;
+  const save=async()=>{
+    if(!context||saving||!form.current?.reportValidity())return;
+    setSaving(true);setError('');setNotice('');
+    try{const result=await saveMeterReadings(tenancy.id,{period:context.period,baselineVersion:context.baselineVersion,electricityEndReading:electricity,waterEndReading:perPerson?context.waterStartReading:water,applyPropertyRates:propertyRates,keepSavedTariff:source==='SAVED',settingsVersion:propertyRates?context.propertyTariff?.version:undefined});install(result);setNotice('Đã chốt và lưu chỉ số. Hóa đơn sẽ dùng dữ liệu này.');}
+    catch(e){setError(e instanceof Error?e.message:'Không thể lưu chỉ số.');}finally{setSaving(false);}
+  };
+  return <article className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 space-y-4" aria-label={'Chốt chỉ số '+tenancy.roomNumber}>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-bold text-lg">{tenancy.roomNumber} · {tenancy.propertyName}</h2><p className="text-sm text-slate-500">{tenancy.customerName}</p></div><button type="button" className="op-button" disabled={saving||loading} onClick={()=>setRevision(v=>v+1)}><RefreshCw size={14}/>Tải lại dữ liệu</button></div>
+    {loading&&<p role="status">Đang tải kỳ, chỉ số và đơn giá...</p>}
+    {error&&<p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
+    {context&&<form ref={form} onSubmit={e=>{e.preventDefault();void save();}} className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3 text-sm"><span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-800 font-semibold">Kỳ {context.period}</span>{context.savedReading&&<span className="text-emerald-700">Đã chốt · {new Date(context.savedReading.savedAt).toLocaleString('vi-VN')}</span>}</div>
+      <fieldset disabled={saving} className="space-y-4">
+        <label className="block text-sm font-semibold">Nguồn đơn giá<select aria-label="Nguồn đơn giá" value={source} onChange={e=>{setSource(e.target.value);setNotice('');}} className="block mt-2 w-full rounded-lg border border-slate-200 p-3"><option value="CONTRACT">Theo hợp đồng đã ký</option>{context.savedReading&&<option value="SAVED">Giữ đơn giá đã chốt của kỳ này</option>}<option value="PROPERTY" disabled={!context.propertyTariff}>Áp dụng đơn giá cài đặt cho kỳ này</option></select></label>
+        {!context.propertyTariff&&<p className="text-sm text-slate-500">Tài sản chưa có đơn giá cài đặt. Hiện sử dụng giá hợp đồng.</p>}
+        {tariff&&<div className="bg-slate-50 rounded-xl p-4 text-sm space-y-1"><p>Điện: <strong>{billingMoney(tariff.electricityUnitPrice)}/kWh</strong></p><p>Nước: <strong>{billingMoney(tariff.waterUnitPrice)}/{perPerson?'người/tháng':'m³'}</strong>{perPerson&&(' · '+context.occupantCount+' người')}</p><p>Internet: {billingMoney(tariff.internetFee??'0')} · Vệ sinh/rác: {billingMoney(tariff.garbageFee??'0')}</p>{propertyRates&&<p className="text-amber-800 pt-2">Chốt lại sẽ áp dụng đơn giá cài đặt đang hiển thị cho kỳ {context.period}. Hợp đồng và hóa đơn cũ giữ nguyên.</p>}</div>}
+        <div className="grid sm:grid-cols-2 gap-4"><label className="text-sm font-semibold">Chỉ số điện mới<span className="block text-xs text-slate-500 font-normal mt-1">Đầu kỳ: {context.electricityStartReading} kWh</span><input aria-label="Chỉ số điện mới" required type="number" min={context.electricityStartReading} max="9999999999999.99" step="0.01" value={electricity} onChange={e=>{setElectricity(e.target.value);setNotice('');}} className="mt-2 w-full border border-slate-200 rounded-lg p-3"/></label>
+          {perPerson?<div className="rounded-xl bg-sky-50 p-4 text-sm text-sky-900">Nước theo người: không cần nhập chỉ số đồng hồ.</div>:<label className="text-sm font-semibold">Chỉ số nước mới<span className="block text-xs text-slate-500 font-normal mt-1">Đầu kỳ: {context.waterStartReading} m³</span><input aria-label="Chỉ số nước mới" required type="number" min={context.waterStartReading} max="9999999999999.99" step="0.01" value={water} onChange={e=>{setWater(e.target.value);setNotice('');}} className="mt-2 w-full border border-slate-200 rounded-lg p-3"/></label>}</div>
+      </fieldset>
+      {estimate!==null&&<p className="text-sm">Tạm tính điện + nước: <strong>{estimate.toLocaleString('vi-VN')} đ</strong><span className="block text-xs text-slate-500">Chưa gồm tiền thuê, internet và vệ sinh. Tổng chính thức do máy chủ tính khi lập hóa đơn.</span></p>}
+      {notice&&<p role="status" className="text-sm text-emerald-700">{notice}</p>}
+      <div className="flex flex-wrap gap-3 border-t border-slate-100 pt-4"><button type="submit" disabled={saving} className="op-button op-button-primary"><Save size={15}/>{saving?'Đang lưu...':'Lưu & chốt chỉ số'}</button><button type="button" disabled={saving||dirty} onClick={()=>onInvoice(tenancy.id)} className="op-button disabled:opacity-50"><ReceiptText size={15}/>Lập hóa đơn từ chỉ số đã chốt</button></div>
+      {dirty&&<p className="text-xs text-slate-500">Lưu chỉ số trước khi lập hóa đơn.</p>}
+    </form>}
+  </article>;
 }
-
-export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
-  rooms,
-  tenants,
-  config,
-  onUpdateIndices,
-}) => {
-  // Local state for meter readings
-  const [readings, setReadings] = useState<{
-    [roomId: string]: { newElectric: string; newWater: string };
-  }>(() => {
-    const init: { [roomId: string]: { newElectric: string; newWater: string } } = {};
-    rooms.forEach((r) => {
-      init[r.id] = {
-        newElectric: r.meterBaselineKnown === false ? '' : r.electricityIndex.toString(),
-        newWater: r.meterBaselineKnown === false ? '' : r.waterIndex.toString(),
-      };
-    });
-    return init;
-  });
-
-  const [savedSuccess, setSavedSuccess] = useState(false);
-
-  const handleElectricChange = (roomId: string, val: string) => {
-    setReadings((prev) => ({
-      ...prev,
-      [roomId]: { ...prev[roomId], newElectric: val },
-    }));
-  };
-
-  const handleWaterChange = (roomId: string, val: string) => {
-    setReadings((prev) => ({
-      ...prev,
-      [roomId]: { ...prev[roomId], newWater: val },
-    }));
-  };
-
-  const handleSaveAll = () => {
-    const updates = rooms.filter(r => r.meterBaselineKnown !== false).map((r) => ({
-      roomId: r.id,
-      electric: Number(readings[r.id]?.newElectric) || r.electricityIndex,
-      water: Number(readings[r.id]?.newWater) || r.waterIndex,
-    }));
-    onUpdateIndices(updates);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
-  };
-
-  return (
-    <div className="space-y-6 pb-12">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <span>Chốt Chỉ Số Điện - Nước & Tiện Ích</span>
-            <span className="text-xs bg-amber-100 text-amber-800 font-semibold px-2.5 py-0.5 rounded-full">
-              Kỳ chốt: Tháng 09/2026
-            </span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Đơn giá quy định: Điện {config.electricPrice.toLocaleString('vi-VN')} đ/kWh • Nước {config.waterPrice.toLocaleString('vi-VN')} đ/m³
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {savedSuccess && (
-            <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
-              <CheckCircle2 className="w-4 h-4" /> Đã lưu chỉ số thành công!
-            </span>
-          )}
-          <button
-            onClick={handleSaveAll}
-            id="btn-save-utilities"
-            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
-          >
-            <Save className="w-4 h-4" />
-            <span>Lưu & Chốt Toàn Bộ Tòa Nhà</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Info bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-amber-50/60 border border-amber-200 p-4 rounded-xl flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
-            <Zap className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs font-bold text-amber-900">Đơn giá điện: {config.electricPrice.toLocaleString('vi-VN')} đ / kWh</div>
-            <div className="text-[11px] text-amber-700">Công tơ điện riêng từng phòng tử tế</div>
-          </div>
-        </div>
-
-        <div className="bg-sky-50/60 border border-sky-200 p-4 rounded-xl flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center font-bold">
-            <Droplets className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs font-bold text-sky-900">Đơn giá nước: {config.waterPrice.toLocaleString('vi-VN')} đ / m³</div>
-            <div className="text-[11px] text-sky-700">Đồng hồ nước kiểm định định kỳ</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Utilities Table matching Image 5 */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[11px]">
-              <tr>
-                <th className="px-3.5 py-3">Phòng</th>
-                <th className="px-3.5 py-3">Khách Thuê</th>
-                <th className="px-3.5 py-3 bg-amber-50/40 text-amber-900">Điện Cũ</th>
-                <th className="px-3.5 py-3 bg-amber-50/60 text-amber-900">Điện Mới (Nhập)</th>
-                <th className="px-3.5 py-3 text-right bg-amber-50/80 text-amber-900">Tiêu Thụ (kWh)</th>
-                <th className="px-3.5 py-3 bg-sky-50/40 text-sky-900">Nước Cũ</th>
-                <th className="px-3.5 py-3 bg-sky-50/60 text-sky-900">Nước Mới (Nhập)</th>
-                <th className="px-3.5 py-3 text-right bg-sky-50/80 text-sky-900">Tiêu Thụ (m³)</th>
-                <th className="px-3.5 py-3 text-right font-bold">Tổng Tiền Đ+N</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {rooms.map((room) => {
-                const tenant = tenants.find((t) => t.id === room.currentTenantId);
-                const missingBaseline = room.meterBaselineKnown === false;
-                const currentRecord = readings[room.id] || {
-                  newElectric: missingBaseline ? '' : room.electricityIndex.toString(),
-                  newWater: missingBaseline ? '' : room.waterIndex.toString(),
-                };
-
-                const newE = Number(currentRecord.newElectric) || room.electricityIndex;
-                const newW = Number(currentRecord.newWater) || room.waterIndex;
-
-                const eUsage = Math.max(0, newE - room.electricityIndex);
-                const wUsage = Math.max(0, newW - room.waterIndex);
-
-                const eCost = eUsage * config.electricPrice;
-                const wCost = wUsage * config.waterPrice;
-                const totalCost = eCost + wCost;
-
-                return (
-                  <tr key={room.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="px-3.5 py-2.5 font-bold text-slate-900">
-                      <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200">
-                        {room.roomNumber}
-                      </span>
-                    </td>
-                    <td className="px-3.5 py-2.5 text-slate-700 font-medium">
-                      {tenant ? tenant.name : <span className="text-slate-400 italic">Trống</span>}
-                    </td>
-
-                    {/* Electric Old */}
-                    <td className="px-3.5 py-2.5 font-mono text-slate-600 bg-amber-50/20">
-                      {missingBaseline ? 'Chưa nhập' : room.electricityIndex}
-                    </td>
-
-                    {/* Electric New Input */}
-                    <td className="px-3.5 py-2.5 bg-amber-50/40">
-                      <input
-                        type="number"
-                        value={currentRecord.newElectric}
-                        disabled={missingBaseline}
-                        onChange={(e) => handleElectricChange(room.id, e.target.value)}
-                        className="w-24 bg-white border border-amber-300 rounded px-2 py-1 font-mono font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                      />
-                    </td>
-
-                    {/* Electric Usage */}
-                    <td className="px-3.5 py-2.5 text-right font-bold text-amber-700 bg-amber-50/60">
-                      {missingBaseline ? 'Thiếu chỉ số bàn giao' : `${eUsage} kWh`}
-                      <span className="text-[10px] text-slate-400 font-normal block">
-                        ({eCost.toLocaleString('vi-VN')} đ)
-                      </span>
-                    </td>
-
-                    {/* Water Old */}
-                    <td className="px-3.5 py-2.5 font-mono text-slate-600 bg-sky-50/20">
-                      {missingBaseline ? 'Chưa nhập' : room.waterIndex}
-                    </td>
-
-                    {/* Water New Input */}
-                    <td className="px-3.5 py-2.5 bg-sky-50/40">
-                      <input
-                        type="number"
-                        value={currentRecord.newWater}
-                        disabled={missingBaseline}
-                        onChange={(e) => handleWaterChange(room.id, e.target.value)}
-                        className="w-20 bg-white border border-sky-300 rounded px-2 py-1 font-mono font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-sky-500"
-                      />
-                    </td>
-
-                    {/* Water Usage */}
-                    <td className="px-3.5 py-2.5 text-right font-bold text-sky-700 bg-sky-50/60">
-                      {missingBaseline ? 'Thiếu chỉ số bàn giao' : `${wUsage} m³`}
-                      <span className="text-[10px] text-slate-400 font-normal block">
-                        ({wCost.toLocaleString('vi-VN')} đ)
-                      </span>
-                    </td>
-
-                    {/* Total Cost */}
-                    <td className="px-3.5 py-2.5 text-right font-bold text-slate-900 text-sm">
-                      {totalCost.toLocaleString('vi-VN')} đ
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-};
+export function UtilitiesPage({tenancies,onInvoice,onSettings}:{tenancies:Tenancy[];onInvoice:(id:string)=>void;onSettings:()=>void}){
+  const active=tenancies.filter(c=>c.status==='ACTIVE');
+  return <section className="operations-page space-y-5" aria-label="Chốt điện nước"><header className="op-heading"><div className="op-title-group"><span className="op-heading-icon"><Zap size={22}/></span><div><h1>Chỉ số điện nước</h1><p>Chốt một lần theo kỳ. Hóa đơn tự lấy chỉ số và đơn giá đã lưu.</p></div></div><button type="button" className="op-button" onClick={onSettings}><Settings size={15}/>Cài đặt đơn giá</button></header>
+    {!active.length?<p className="bg-white border border-slate-200 rounded-xl p-6 text-slate-500">Chưa có hợp đồng đang hoạt động tại tài sản đang chọn để chốt chỉ số.</p>:active.map(c=><MeterCard key={c.id} tenancy={c} onInvoice={onInvoice}/>)}
+  </section>;
+}
