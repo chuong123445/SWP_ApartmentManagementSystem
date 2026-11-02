@@ -27,9 +27,28 @@ export async function vneidLogin(token: string): Promise<AuthSession> {
   if (!response.ok) throw await readApiError(response);
   return response.json();
 }
-export async function verifyVneid(token: string): Promise<AuthUser> {
+export interface VneidNameConfirmation {
+  status: 'CONFIRMATION_REQUIRED'; confirmationId: string; displayName: string; legalName: string; expiresAt: string;
+}
+export async function verifyVneid(token: string): Promise<AuthUser | VneidNameConfirmation> {
   const headers = await csrfHeaders(); headers.set('Content-Type', 'application/json');
   const response = await apiFetch('/api/v1/me/verifications/vneid', { method: 'POST', headers, body: JSON.stringify({ auth0AccessToken: token }) });
   if (!response.ok) throw await readApiError(response);
   return response.json();
+}
+
+export async function confirmVneid(confirmationId: string): Promise<AuthUser> {
+  const response = await linkDecision('confirm', confirmationId);
+  return response.json();
+}
+export async function cancelVneid(confirmationId: string): Promise<void> {
+  await linkDecision('cancel', confirmationId);
+}
+async function linkDecision(action: 'confirm' | 'cancel', confirmationId: string) {
+  const headers = await csrfHeaders(); headers.set('Content-Type', 'application/json');
+  const response = await apiFetch(`/api/v1/me/verifications/vneid/${action}`, {
+    method: 'POST', headers, body: JSON.stringify({ confirmationId }),
+  });
+  if (!response.ok) throw await readApiError(response);
+  return response;
 }
