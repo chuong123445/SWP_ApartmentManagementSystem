@@ -34,7 +34,7 @@ for(const mobile of [false,true])test('Chốt đơn giá, chỉ số và lập h
   await page.reload();await openUtilities();await expect(card.getByRole('spinbutton',{name:'Chỉ số điện mới',exact:true})).toHaveValue('1120');
   await card.getByRole('button',{name:'Lập hóa đơn từ chỉ số đã chốt'}).click();
   const dialog=page.getByRole('dialog',{name:'Lập hóa đơn'});await expect(dialog.getByText('Đã tự lấy chỉ số và đơn giá đã chốt. Không cần nhập lại.')).toBeVisible();
-  await expect(dialog.getByLabel('Chỉ số điện cuối kỳ')).toHaveValue('1120');await expect(dialog.getByLabel('Chỉ số điện cuối kỳ')).toHaveAttribute('readonly','');
+  await expect(dialog.getByRole('spinbutton')).toHaveCount(0);await expect(dialog.getByText('Chỉ số điện cuối kỳ',{exact:true})).toHaveCount(0);await expect(dialog.getByText('Chỉ số nước cuối kỳ',{exact:true})).toHaveCount(0);
   await page.screenshot({path:info.outputPath('hoa-don-tu-chi-so.png'),fullPage:true});
   await dialog.getByRole('button',{name:'Lưu bản nháp',exact:true}).click();await expect(dialog).toHaveCount(0);
   expect(creates).toHaveLength(1);expect(creates[0]).toMatchObject({period:'2026-10',baselineVersion:1,useSavedReadings:true});expect(creates[0].electricityEndReading).toBeUndefined();expect(creates[0].waterEndReading).toBeUndefined();expect(errors).toEqual([]);
