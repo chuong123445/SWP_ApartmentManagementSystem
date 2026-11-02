@@ -31,6 +31,8 @@ public class ContractDraftService {
     private final RentalRequestRepository requests;
     private final ApartmentRepository apartments;
     private final ContractPropertyEvidenceResolver propertyEvidence;
+    private final com.ancu.proptech.service.property.PropertyPaymentQrResolver paymentQrResolver;
+    private final com.ancu.proptech.repository.property.PropertySettingsRepository propertySettings;
     private final AccountAccessService access;
     private final AccountVerificationPolicy verification;
     private final IdentityProfileRepository identities;
@@ -52,7 +54,7 @@ public class ContractDraftService {
         var snapshot=snapshot(request);
         return new ContractContextResponse(requestId,request.getVersion(),sourceVersion(request,snapshot),snapshot,
             a.getAdvertisedMonthlyRent().toPlainString(),a.getDeposit()==null?null:a.getDeposit().toPlainString(),
-            ContractTemplates.apartment(),existing==null?null:response(existing),a.getProperty().getRightsValidFrom(),a.getProperty().getRightsValidUntil());
+            ContractTemplates.apartment(),existing==null?null:response(existing),a.getProperty().getRightsValidFrom(),a.getProperty().getRightsValidUntil(),suggestedRates(a));
     }
 
     @Transactional
@@ -198,11 +200,17 @@ public class ContractDraftService {
         contracts.saveAndFlush(c);drafts.saveAndFlush(d);
         return response(d);
     }
+    private ContractContextResponse.SuggestedRates suggestedRates(Apartment a) {
+        var s=propertySettings.findById(a.getProperty().getId()).orElse(null);
+        return s==null ? new ContractContextResponse.SuggestedRates(a.getElectricityUnitPrice()==null?null:a.getElectricityUnitPrice().toPlainString(),a.getWaterUnitPrice()==null?null:a.getWaterUnitPrice().toPlainString(),"0","0","METERED")
+            : new ContractContextResponse.SuggestedRates(s.getElectricityUnitPrice().toPlainString(),s.getWaterUnitPrice().toPlainString(),s.getInternetFee().toPlainString(),s.getGarbageFee().toPlainString(),s.getWaterBillingMode().name());
+    }
     void validateTerms(ContractTerms t) {
         if(!t.getEndDate().isAfter(t.getStartDate())) throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_CONTRACT_DATES","Ngày kết thúc phải sau ngày bắt đầu.");
     }
     void applyContract(RentalContract c,ContractTerms t) {
         c.setStartDate(t.getStartDate());c.setEndDate(t.getEndDate());c.setMonthlyRent(t.getMonthlyRent());
+        c.setWaterBillingMode(t.getWaterBillingMode());c.setOccupantCount(t.getOccupantCount());c.setInternetFee(t.getInternetFee());c.setGarbageFee(t.getGarbageFee());
         c.setElectricityUnitPrice(t.getElectricityUnitPrice());c.setWaterUnitPrice(t.getWaterUnitPrice());
     }
     void applyDraft(ContractDraft d,ContractTerms t) {
@@ -214,11 +222,14 @@ public class ContractDraftService {
     ContractSnapshot snapshot(RentalRequest r) {
         var a=r.getApartment();var p=a.getProperty();
         var evidence=propertyEvidence.resolve(p);
+        var qr=paymentQrResolver.resolve(p);
+        var provenance=evidence.evidence();
+        if(qr!=null&&provenance!=null)provenance=new ContractSnapshot.Evidence(provenance.source(),provenance.reference(),provenance.sourceHash(),provenance.recordedAt(),null);
         return new ContractSnapshot(party(p.getOwner()),party(r.getCustomer()),
             new ContractSnapshot.Asset(a.getId().toString(),p.getId().toString(),p.getName(),a.getTitle(),a.getRoomNumber(),p.getAddress(),p.getCity(),p.getDistrict(),p.getWard(),
                 a.getAreaM2().toPlainString(),a.getFloor(),a.getBedrooms(),a.getBathrooms(),List.copyOf(a.getAmenities()),p.getApprovalStatus().name(),
                 evidence.dossierId(),evidence.right(),evidence.certificate(),evidence.date(),evidence.place(),evidence.description(),evidence.fixture()),
-            evidence.bank(),evidence.evidence());
+            qr==null?evidence.bank():new ContractSnapshot.ReceivingAccount(qr.getBank(),qr.getAccountNumber(),qr.getAccountHolderName()),provenance,qr==null?null:qr.getId().toString());
     }
     private ContractSnapshot.Party party(AuthAccount a) {
         var verified=verifiedIdentities.findById(a.getId()).filter(i->"VERIFIED".equals(i.getVerificationStatus())).orElse(null);
@@ -245,7 +256,7 @@ public class ContractDraftService {
             d.getTemplateType()==null?"APARTMENT":d.getTemplateType(),
             new ContractDraftResponse.Signing(c.getApartment().getProperty().getOwner().getId().toString(),c.getCustomer().getId().toString(),contentHash(d),
                 d.getOwnerSignedAt()!=null && d.getCustomerSignedAt()!=null?"SIGNED":d.getOwnerSignedAt()!=null?"WAITING_CUSTOMER":d.getCustomerSignedAt()!=null?"WAITING_OWNER":"UNSIGNED",
-                d.getOwnerSignedAt(),d.getCustomerSignedAt(),image(d.getOwnerSignature()),image(d.getCustomerSignature())),lifecycle(c));
+                d.getOwnerSignedAt(),d.getCustomerSignedAt(),image(d.getOwnerSignature()),image(d.getCustomerSignature())),lifecycle(c),c.getWaterBillingMode().name(),c.getOccupantCount(),c.getInternetFee().toPlainString(),c.getGarbageFee().toPlainString());
     }
     private ContractDraftResponse.Lifecycle lifecycle(RentalContract c) {
         var next=contracts.findByRenewalOfContractIdAndStatusNot(c.getId(),RentalContract.Status.ENDED).stream().findFirst().orElse(null);
@@ -263,6 +274,9 @@ public class ContractDraftService {
             d.getSnapshotJson(),d.getClausesJson(),c.getStartDate(),c.getEndDate(),c.getMonthlyRent().stripTrailingZeros().toPlainString(),
             c.getElectricityUnitPrice().stripTrailingZeros().toPlainString(),c.getWaterUnitPrice().stripTrailingZeros().toPlainString(),
             d.getDeposit().stripTrailingZeros().toPlainString(),d.getPaymentDay(),d.getPaymentMethod(),d.getUsagePurpose()));
+        // Legacy contracts retain the exact hash when no new charges/mode were agreed.
+        if(c.getWaterBillingMode()!=com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.METERED || c.getInternetFee().signum()!=0 || c.getGarbageFee().signum()!=0)
+            content+="|charges-v1|"+c.getWaterBillingMode()+"|"+c.getOccupantCount()+"|"+c.getInternetFee().stripTrailingZeros().toPlainString()+"|"+c.getGarbageFee().stripTrailingZeros().toPlainString();
         try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content.getBytes(StandardCharsets.UTF_8)));}
         catch(NoSuchAlgorithmException e){throw new IllegalStateException(e);}
     }

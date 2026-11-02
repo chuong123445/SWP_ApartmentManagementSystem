@@ -73,6 +73,14 @@ class BillingIntegrationTests {
         send(ownerToken,id,0).andExpect(status().isOk());assertEquals(1,notifications.countByInvoiceId(Long.valueOf(id)));
         mvc.perform(get("/api/v1/me/invoices").header("Authorization","Bearer "+tenantToken)).andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(id));
     }
+    @Test void waterPerPersonAndFeesAreSnapshottedFromContract()throws Exception {
+        contract.setWaterBillingMode(com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.PER_PERSON);contract.setOccupantCount(2);contract.setWaterUnitPrice(new BigDecimal("50000"));contract.setInternetFee(new BigDecimal("100000"));contract.setGarbageFee(new BigDecimal("30000"));contracts.saveAndFlush(contract);
+        String json=create(ownerToken,body("2026-10",0,"1120","208")).andExpect(status().isCreated()).andExpect(jsonPath("$.waterBillingMode").value("PER_PERSON")).andExpect(jsonPath("$.occupantCount").value(2)).andReturn().getResponse().getContentAsString();
+        assertEquals(0,new BigDecimal(JsonPath.<String>read(json,"$.waterAmount")).compareTo(new BigDecimal("100000")));
+        assertEquals(0,new BigDecimal(JsonPath.<String>read(json,"$.totalAmount")).compareTo(new BigDecimal("5650000")));
+        contract.setWaterUnitPrice(new BigDecimal("90000"));contract.setInternetFee(BigDecimal.ZERO);contracts.saveAndFlush(contract);
+        mvc.perform(get("/api/v1/invoices/"+JsonPath.<String>read(json,"$.id")).header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.internetFee").value("100000"));
+    }
     @Test void crossOwnerCrossTenantAndGuestAccessAreDenied()throws Exception{
         String id=createDraft();send(ownerToken,id,0).andExpect(status().isOk());
         create(token(otherOwner),body("2026-11",2,"1200","210")).andExpect(status().isNotFound());
