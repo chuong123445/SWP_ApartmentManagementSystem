@@ -33,3 +33,9 @@ Original short suggestions: (1) delivery/use, (2) purpose/building rules, (3) re
 ## Contracts and checks
 
 Exact implemented routes/schema: `docs/api/contract-drafts.openapi.json`. T15/T25 authoring slice only. Appropriate checks and commits recorded in root WORK_PROGRESS and the validation report; do not mark full signing lifecycle DONE. RDS/diagrams remain reference artifacts; legacy contract/provider and identity sections need a separately authorized update.
+
+## F07 correction — 28 October 2026
+
+New contexts/drafts now use ContractPropertyEvidenceResolver: source-imported properties use immutable PropertyExternalImport source data; manual properties use their approved dossier (exact approvedRightsDossierId when present). Both return the same ContractSnapshot asset/receiving-account structure plus nullable provenance source/reference/hash/time. Auth0 imports retain rightDescription from new source reads; old snapshots without it remain missing/readable. No fake Admin review, external request on contract creation, legal claim or modification of existing saved contract snapshots.
+
+Source receiving-account fields are private owner declarations, name-matched against the exact linked verified citizen; not bank verification. New wizard step4 can save bank/account/holder with source row version, reload context/sourceVersion without clearing terms, and then snapshot it in a new draft. Source changes after context require re-review; bank changes after saved draft do not rewrite it. Missing data stays explicit, not hardcoded. See f07-f08-f09-fixes-2026-10-28 report and updated OpenAPI.

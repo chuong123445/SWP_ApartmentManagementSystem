@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router';
-import { ChevronDown, ClipboardList, LayoutDashboard, LogOut, Home, UserRound } from 'lucide-react';
+import { ChevronDown, ClipboardList, LayoutDashboard, LogOut, Home, UserRound, ReceiptText, Settings } from 'lucide-react';
 import type { AuthUser } from '@/types/auth';
 import { hasManagementRole } from '@/utils/auth';
 
@@ -40,9 +40,11 @@ export function AccountMenu({ account, onLogout, isLoggingOut, authError, isTena
       {manager && <Link to="/app" onClick={() => setOpen(false)} className={linkClass}><LayoutDashboard className="w-4 h-4" />Trang quản lý</Link>}
       {canRent&&<Link to="/my/home" onClick={()=>setOpen(false)} className={linkClass}><Home className="w-4 h-4"/>Nhà đang thuê</Link>}
       {canRent && <Link to="/my/rental-requests" onClick={() => setOpen(false)} className={linkClass}><ClipboardList className="w-4 h-4" />Yêu cầu & hợp đồng</Link>}
+      {canRent&&<Link to="/my/invoices" onClick={()=>setOpen(false)} className={linkClass}><ReceiptText className="w-4 h-4"/>Hóa đơn của tôi</Link>}
+      <Link to="/account/settings" onClick={()=>setOpen(false)} className={linkClass}><Settings className="w-4 h-4"/>Cài đặt tài khoản</Link>
       <Link to="/account/profile" onClick={() => setOpen(false)} className={linkClass}><UserRound className="w-4 h-4" />Hồ sơ & tài khoản</Link>
       {canRent&&<details className="border-t border-slate-100 mt-2 pt-1"><summary className={`${linkClass} cursor-pointer text-xs`}>{manager?'Hồ sơ cho thuê':'Dành cho người muốn cho thuê'}</summary><div className="pl-2 border-l border-slate-100 ml-3">
-        {account.roles.includes('CUSTOMER')&&<Link to="/account/owner-upgrade" onClick={()=>setOpen(false)} className={linkClass}><LayoutDashboard className="w-4 h-4"/>Trở thành chủ cho thuê</Link>}
+        <Link to="/account/properties" onClick={()=>setOpen(false)} className={linkClass}><LayoutDashboard className="w-4 h-4"/>Quản lý tài sản</Link>
         <Link to="/account/rental-properties" onClick={()=>setOpen(false)} className={linkClass}><ClipboardList className="w-4 h-4"/>Hồ sơ quyền cho thuê</Link>
         <Link to="/account/property-notices" onClick={()=>setOpen(false)} className={linkClass}><ClipboardList className="w-4 h-4"/>Thông báo thời hạn</Link>
       </div></details>}

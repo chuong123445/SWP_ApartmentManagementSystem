@@ -11,7 +11,7 @@
 - Đánh dấu đã đọc idempotent; khóa database chống tạo bản đọc trùng. Lỗi được hiển thị để thử lại, không báo thành công giả.
 - Frontend cập nhật khi mở chuông, quay lại cửa sổ và mỗi 30 giây khi trang đang hiển thị. Đây là cập nhật định kỳ, chưa có WebSocket/push ngoài trình duyệt.
 - Bấm thông báo đánh dấu đã đọc rồi mở đúng hóa đơn/hợp đồng hoặc tab quản lý kèm tài sản. Bấm ngoài hoặc Escape để đóng. Dữ liệu API không được cache.
-- Migration V34 tạo notification_reads và thêm decided_at vào rental_requests; không sửa thông tin nghiệp vụ cũ, không gửi email hay tin nhắn bên ngoài.
+- Migration V41 tạo notification_reads và thêm decided_at vào rental_requests; không sửa thông tin nghiệp vụ cũ, không gửi email hay tin nhắn bên ngoài.
 
 ## Kiểm tra
 

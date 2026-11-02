@@ -23,7 +23,7 @@
 
 ## Dữ liệu và triển khai
 
-- V29 property_settings; V30 cách tính nước; V31 phí hợp đồng/hóa đơn; V32 owner_payment_qrs; V33 phạm vi QR theo tài sản và lựa chọn QR riêng. Được chạy khi backend khởi động theo cơ chế migration hiện có.
+- V36 property_settings; V37 cách tính nước; V38 phí hợp đồng/hóa đơn; V39 owner_payment_qrs; V40 phạm vi QR theo tài sản và lựa chọn QR riêng. Được chạy khi backend khởi động theo cơ chế migration hiện có.
 - Phiên bản cài đặt 0 là chưa cấu hình, sau lưu là 1 trở lên. Cập nhật phiên bản cũ trả 409 và giữ nội dung đang nhập để rà soát.
 - Hợp đồng/hóa đơn cũ mặc định METERED, phí internet/rác bằng 0. Không tự cộng phí mới vào hóa đơn cũ; mã băm nội dung ký cũ được giữ khi không có khoản mới.
 - Tiền xử lý bằng BigDecimal ở backend; giá và số tiền API trả dạng chuỗi thập phân.
@@ -42,3 +42,7 @@
 - Hai bài resident-invoices cũ cần LOCAL_TENANT_* trong .env.local; không chạy được trên cấu hình máy hiện tại do thiếu tài khoản fixture. Không thêm tài khoản hay mật khẩu giả vào dữ liệu đang dùng để ép bài kiểm tra qua.
 
 Tham khảo giải mã QR: [ZXing](https://zxing.github.io/zxing/apidocs/com/google/zxing/multi/qrcode/QRCodeMultiReader.html), [cấu trúc VietQR và CRC trong thư viện nguồn](https://github.com/sunary/vietqr).
+
+## Kết hợp với main và SePay
+
+Sau khi đồng bộ main, các migration riêng của Duy dùng V36–V41 để không trùng chuỗi migration trên main. QR của hợp đồng được giữ nguyên; SePay chỉ cấp mã cho hợp đồng có QR đã lưu nếu ngân hàng và tài khoản đích (kể cả tài khoản ảo) khớp. Nếu khác tài khoản, hiển thị QR hợp đồng và không cấp QR SePay trỏ sang tài khoản chung. Hợp đồng cũ không có QR riêng vẫn dùng luồng SePay hiện có; trạng thái thanh toán đã ghi nhận được giữ.

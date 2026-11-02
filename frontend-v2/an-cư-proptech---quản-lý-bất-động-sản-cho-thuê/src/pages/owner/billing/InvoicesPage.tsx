@@ -1,3 +1,4 @@
+import {Link} from 'react-router';
 import { useState } from 'react';
 import { ReceiptText, RefreshCw, Plus, FileText, Send, Search, CalendarDays, ArrowUpRight, CheckCircle2 } from 'lucide-react';
 import type { Invoice } from '@/types';
@@ -31,7 +32,7 @@ export function InvoicesPage({ invoices, onOpenInvoiceModal, onOpenCreateInvoice
         <div className="op-eyebrow">Tài chính · Thu tiền thuê</div><h1>Hóa đơn người thuê</h1>
         <p>Lập hóa đơn từ hợp đồng và chỉ số công tơ, gửi trực tiếp đến người thuê.</p>
       </div></div>
-      <div className="op-buttons"><button onClick={onReload} className="op-button" disabled={loading}><RefreshCw size={14}/>Làm mới</button><button id="btn-create-invoice-page" onClick={onOpenCreateInvoiceModal} className="op-button op-button-primary"><Plus size={15}/>Lập hóa đơn mới</button></div>
+      <div className="op-buttons"><Link to="/account/settings/payments/test" className="op-button">Tạo phiếu thanh toán thử</Link><button onClick={onReload} className="op-button" disabled={loading}><RefreshCw size={14}/>Làm mới</button><button id="btn-create-invoice-page" onClick={onOpenCreateInvoiceModal} className="op-button op-button-primary"><Plus size={15}/>Lập hóa đơn mới</button></div>
     </header>
     <div className="op-stats">
       {[{label:'Hóa đơn trên trang',value:invoices.length,icon:ReceiptText,tone:''},{label:'Bản nháp trên trang',value:draftCount,icon:FileText,tone:'amber'},{label:'Đã gửi trên trang',value:sentCount,icon:Send,tone:'blue'}].map(s=><div className="op-stat" key={s.label}><span className={`op-stat-icon ${s.tone}`}><s.icon size={19}/></span><div><small>{s.label}</small><strong>{loading?'—':s.value}</strong></div></div>)}
@@ -50,7 +51,7 @@ export function InvoicesPage({ invoices, onOpenInvoiceModal, onOpenCreateInvoice
           <td data-label="Người thuê"><span className="op-person"><span className="op-avatar" aria-hidden="true">{i.tenantName.trim().split(/\s+/).slice(-2).map(x=>x[0]).join('')}</span>{i.tenantName}</span></td>
           <td data-label="Hạn đóng">{dateLabel(i.dueDate)}</td>
           <td data-label="Tổng tiền"><span className="op-money">{i.apiInvoice?billingMoney(i.apiInvoice.totalAmount):'—'}</span></td>
-          <td data-label="Trạng thái"><span className={`op-badge ${i.apiInvoice?.status==='SENT'?'green':'amber'}`}>{i.apiInvoice?.status==='SENT'?<><CheckCircle2 size={11}/>Đã gửi</>:<><FileText size={11}/>Bản nháp</>}</span></td>
+          <td data-label="Trạng thái"><span className={`op-badge ${i.apiInvoice?.status==='SENT'?'green':'amber'}`}>{i.apiInvoice?.status==='SENT'?<><CheckCircle2 size={11}/>Đã gửi</>:<><FileText size={11}/>Bản nháp</>}</span>{i.apiInvoice?.status==='SENT'&&<span className="block text-xs mt-1">{i.apiInvoice.paymentStatus==='PAID'?'Đã thanh toán':'Chưa thanh toán'}</span>}</td>
           <td data-label="Thao tác"><div className="op-buttons"><button onClick={()=>onOpenInvoiceModal(i)} className="op-link">Chi tiết<ArrowUpRight size={13}/></button>{i.apiInvoice?.status==='DRAFT'&&<button disabled={!!sending} onClick={()=>void send(i.id)} className="op-link"><Send size={12}/>{sending===i.id?'Đang gửi...':'Gửi người thuê'}</button>}</div></td>
         </tr>)}
         {!visible.length&&<tr><td colSpan={7} className="op-empty-cell"><div className="op-empty"><ReceiptText size={29}/><strong>Chưa có hóa đơn phù hợp.</strong>Thử đổi bộ lọc hoặc lập hóa đơn mới cho người thuê.</div></td></tr>}

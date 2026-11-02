@@ -15,15 +15,15 @@ export function AssetReview({ snapshot }: { snapshot: ContractSnapshot }) {
   const a = snapshot.asset;
   return <section className="rounded-xl border border-slate-200 p-4 space-y-4"><h3 className="font-bold">Tài sản cho thuê</h3><ReviewFields fields={[
     ['Tài sản', a.propertyName], ['Căn hộ', a.title], ['Số căn hộ', a.roomNumber], ['Địa chỉ', a.address], ['Tỉnh / thành phố', a.city], ['Quận / huyện', a.district], ['Phường / xã', a.ward], ['Diện tích (m²)', a.areaM2], ['Tầng', a.floor], ['Phòng ngủ', a.bedrooms], ['Phòng tắm', a.bathrooms], ['Tiện nghi đã lưu', a.amenities.join(', ') || null],
-    ['Duyệt tài sản', a.approvalStatus === 'APPROVED' ? 'Đã được duyệt' : a.approvalStatus], ['Quyền khai thác trong hồ sơ', a.exploitationRight === 'OWNERSHIP' ? 'Sở hữu' : a.exploitationRight === 'AUTHORIZATION' ? 'Ủy quyền / khai thác' : a.exploitationRight==='SUBLEASE'?'Cho thuê lại':null],
+    ['Duyệt tài sản', a.approvalStatus === 'APPROVED' ? snapshot.evidence?.source==='AUTH0_VNEID_SIMULATION'?'Đã xác thực nguồn VNeID':'Đã được duyệt' : a.approvalStatus], ['Quyền khai thác trong hồ sơ', a.exploitationRight === 'OWNERSHIP' ? 'Sở hữu' : a.exploitationRight === 'AUTHORIZATION' ? 'Ủy quyền / khai thác' : a.exploitationRight==='SUBLEASE'?'Cho thuê lại':null],
     ['Căn cứ quyền khai thác', a.exploitationRightDescription], ['Số giấy chứng nhận', a.certificateNumber], ['Ngày cấp giấy chứng nhận', a.certificateIssueDate], ['Nơi cấp giấy chứng nhận', a.certificateIssuePlace],
-  ]} />{a.localFixture && <p className="text-sm text-amber-900 bg-amber-50 rounded-lg p-3">Giấy chứng nhận và quyền khai thác mẫu — chỉ dùng minh họa; không phải bằng chứng sở hữu đã được kiểm tra.</p>}<p className="text-xs text-slate-500">Các thông tin lấy từ căn hộ và hồ sơ tài sản được duyệt tại thời điểm tạo bản nháp. Ảnh chứng từ vẫn được giữ riêng tư.</p></section>;
+  ]} />{a.localFixture && <p className="text-sm text-amber-900 bg-amber-50 rounded-lg p-3">Giấy chứng nhận và quyền khai thác mẫu — chỉ dùng minh họa; không phải bằng chứng sở hữu đã được kiểm tra.</p>}<p className="text-xs text-slate-500">Thông tin được chụp lại từ nguồn VNeID hoặc hồ sơ tài sản đã được duyệt tại thời điểm tạo bản nháp. Ảnh chứng từ vẫn được giữ riêng tư.</p></section>;
 }
 export function ReceivingAccountReview({ snapshot }: { snapshot: ContractSnapshot }) {
   const bank = snapshot.receivingAccount;
   return <section className="rounded-xl border border-slate-200 p-4 space-y-3"><h3 className="font-bold">Tài khoản nhận tiền đã lưu</h3>{bank ? <ReviewFields fields={[
     ['Ngân hàng', bank.bank], ['Số tài khoản', bank.accountNumber], ['Chủ tài khoản', bank.accountHolderName],
-  ]} /> : <p className="text-sm text-slate-500">Chưa có tài khoản nhận tiền trong hồ sơ tài sản được duyệt.</p>}</section>;
+  ]}/>: <p className="text-sm text-slate-500">Chưa có tài khoản nhận tiền đã lưu cho tài sản này.</p>}{snapshot.evidence?.source==='AUTH0_VNEID_SIMULATION'&&bank&&<p className="text-xs text-slate-500">Tài khoản nhận tiền do chủ tài sản khai báo; chưa xác minh với ngân hàng.</p>}</section>;
 }
 export function ContractReview({ snapshot, terms, number, status = 'DRAFT' }: { snapshot: ContractSnapshot; terms: ContractTerms; number?: string; status?: string }) {
   return <article id="contract-preview" className="space-y-5 break-words"><div className="text-center space-y-2"><h2 className="text-xl font-bold">HỢP ĐỒNG THUÊ CĂN HỘ</h2><p className="text-xs text-slate-500 break-all">{number ?? 'Số hợp đồng được tạo khi lưu bản nháp'}</p><p className="text-sm text-amber-800">{status === 'DRAFT' ? 'Bản nháp — chưa ký' : status === 'ENDED' ? 'Đã kết thúc' : 'Đang hiệu lực'}</p></div>

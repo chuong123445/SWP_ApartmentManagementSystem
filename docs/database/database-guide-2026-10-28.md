@@ -4,6 +4,26 @@
 
 Database hiện có **29 bảng**, **16 cột BIGINT IDENTITY**; không còn cột kiểu SQL `uniqueidentifier`. Bảng phụ dùng chung khóa của bảng gốc hoặc khóa ghép sẽ không có IDENTITY riêng. Dữ liệu văn bản trong archive/snapshot cũ vẫn giữ nguyên.
 
+## Bổ sung F07/F08 — migration V20/V21
+
+Phần 29 bảng bên dưới là ảnh chụp live tại V19. Đợt này chỉ chạy trên SQL clone; live áp dụng khi khởi động lại Backend. Không tạo lại database hoặc đổi khóa chính cũ.
+
+| Bảng / cột mới | Lưu gì, dùng để làm gì? |
+|---|---|
+| `property_external_imports.bank/account_number/account_holder_name` | Tài khoản nhận tiền chủ tài sản nguồn khai báo; chỉ Owner/quyền đọc hợp đồng chính xác được xem, không đưa lên catalog. Không phải kết quả xác minh ngân hàng. |
+| `property_external_imports.receiving_account_updated_at/version` | Thời điểm cập nhật và optimistic version để không ghi đè dữ liệu nhận tiền cũ. Snapshot Auth0 gốc không sửa. |
+| `auth_accounts.local_password_enabled` | Có cho đăng nhập bằng mật khẩu nội bộ không. Cờ mới mặc định giữ quyền đăng nhập cũ nếu có hash; không suy đoán hash Google là ngẫu nhiên hay đã thay thủ công. Google mới/null hash chưa bật; thiết lập mật khẩu thành công thì bật. Không phải xác thực email/CCCD. |
+| `auth_accounts.google_subject` nếu chưa có | Bổ sung cột phục vụ model Google hiện tại trước khi chạy V21. Không giải quyết unique/index của F10 trong đợt này. |
+| `account_reauthentications` | Bảng mới cho challenge/quyền xác thực lại một lần. `id` BIGINT IDENTITY; `account_id/session_id` FK; `account_version/purpose` ràng buộc lệnh; `nonce_hash/credential_hash/proof_hash` chỉ hash; `created_at/expires_at/confirmed_at/used_at/attempts` quản lý thời hạn/lần thử. Không lưu token provider, OTP hoặc mật khẩu. |
+
+Sau hai migration, schema thiết kế có thêm 1 bảng và 1 cột IDENTITY so với ảnh chụp V19. Existing contract JSON giữ nguyên; hợp đồng mới có `snapshot.evidence` thể hiện nguồn xác thực. Tài sản vẫn dùng chung `rental_properties/rental_apartments`; chỉ bằng chứng Admin/Auth0 lưu riêng theo bản chất nguồn.
+
+## Bổ sung V22 — consent đọc tài sản độc lập với quyền Owner
+
+`property_source_consents` là bảng mới, dùng `account_id` BIGINT làm PK/FK chung với account (không phải một ID UUID hoặc root entity có IDENTITY riêng). Lưu `issuer`, `subject`, `consented_at`, `consent_version` để giới hạn quyền đọc đúng nguồn của chính tài khoản. Không lưu danh sách tài sản, JWT, mật khẩu hoặc M2M secret và không cấp Owner khi ghi consent.
+
+`auth_owner_upgrades` cũ giữ nguyên dữ liệu audit; luồng mới không dùng việc đồng ý/số lượng preview để nâng quyền. Owner mới được ghi cùng transaction tạo tài sản nguồn hợp lệ hoặc khi Admin duyệt hồ sơ thủ công đầu tiên. `rental_properties.version` cũng tăng khi thay gallery để chống cập nhật mất dữ liệu; không thêm bảng ảnh thứ hai. Không thay hợp đồng, khóa chính hoặc trạng thái thuê có sẵn. V22 chỉ áp dụng live khi restart Backend; phiên triển khai đã chạy trên SQL clone.
+
 ## 1. Phân biệt các trạng thái xác thực
 
 | Vị trí | Ý nghĩa | Có xác thực CCCD không? |

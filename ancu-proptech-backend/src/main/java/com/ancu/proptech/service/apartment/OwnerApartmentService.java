@@ -16,6 +16,7 @@ import java.util.*;
 @Service @RequiredArgsConstructor
 public class OwnerApartmentService {
     private final ApartmentRepository apartments;
+    private final com.ancu.proptech.service.property.AssetManagementAccess assetAccess;
     private final PropertyRepository properties;
     private final AccountAccessService access;
     private final com.ancu.proptech.repository.property.PropertyExternalImportRepository imports;
@@ -25,16 +26,20 @@ public class OwnerApartmentService {
     private final com.ancu.proptech.service.property.PropertyImageService images;
     /** Cùng khóa căn hộ với gửi/nhận yêu cầu thuê để không lọt thay giá đồng thời. */
     @Transactional public OwnerApartmentResponse prices(Jwt jwt, Long id, ApartmentPrices input) {
-        var owner=access.owner(jwt);
+        var owner=assetAccess.write(jwt);
         var a=apartments.findForOwnerUpdate(id,owner.getId()).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy căn hộ."));
         if(a.getVersion()!=input.getVersion())throw new ApiException(HttpStatus.CONFLICT,"STALE_VERSION","Căn hộ đã thay đổi. Hãy tải lại.");
         if(a.getAvailability()!=Apartment.Availability.VACANT)throw new ApiException(HttpStatus.CONFLICT,"APARTMENT_NOT_VACANT","Chỉ đổi giá khi căn hộ đang trống, chưa làm hợp đồng hoặc có người thuê.");
         if(requests.existsByApartmentIdAndStatus(id,com.ancu.proptech.model.rental.RentalRequest.Status.PENDING))
             throw new ApiException(HttpStatus.CONFLICT,"PENDING_REQUESTS_EXIST","Hãy xử lý tất cả yêu cầu thuê đang chờ trước khi thay đổi giá thuê, điện hoặc nước.");
-        a.setAdvertisedMonthlyRent(input.getMonthlyRent());a.setElectricityUnitPrice(input.getElectricityUnitPrice());a.setWaterUnitPrice(input.getWaterUnitPrice());
+        // PATCH chỉ ghi giá được gửi lên, giữ cả giá chưa được khai báo ở trường khác.
+        if(input.getMonthlyRent()!=null)a.setAdvertisedMonthlyRent(input.getMonthlyRent());
+        if(input.getElectricityUnitPrice()!=null)a.setElectricityUnitPrice(input.getElectricityUnitPrice());
+        if(input.getWaterUnitPrice()!=null)a.setWaterUnitPrice(input.getWaterUnitPrice());
         apartments.flush();return response(a);
     }
     @Transactional public OwnerApartmentResponse createApplication(Jwt jwt,OwnerApartmentCreate input){return createInternal(jwt,input,true);}
+    @Transactional(readOnly=true) public List<OwnerApartmentResponse> selfList(Jwt jwt){return apartments.findByPropertyOwnerIdOrderByCreatedAtAscIdAsc(assetAccess.read(jwt).getId()).stream().map(this::response).toList();}
     @Transactional(readOnly = true)
     public List<OwnerApartmentResponse> list(Jwt jwt) {
         var owner = access.owner(jwt);

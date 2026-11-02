@@ -303,6 +303,21 @@
               "maximum": 100,
               "default": 20
             }
+          },
+          {
+            "name": "paymentStatus",
+            "in": "query",
+            "required": false,
+            "description": "Filter before pagination. ALL preserves existing API behavior; tenant UI defaults to UNPAID. PAID requires a server-confirmed payment receipt.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ALL",
+                "UNPAID",
+                "PAID"
+              ],
+              "default": "ALL"
+            }
           }
         ],
         "responses": {
@@ -535,6 +550,20 @@
           "version": {
             "type": "integer",
             "minimum": 0
+          },
+          "paymentStatus": {
+            "type": "string",
+            "enum": [
+              "UNPAID",
+              "PAID"
+            ]
+          },
+          "paidAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
           }
         }
       },

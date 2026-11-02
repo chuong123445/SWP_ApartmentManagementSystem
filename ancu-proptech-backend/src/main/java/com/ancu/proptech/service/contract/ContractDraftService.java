@@ -30,7 +30,7 @@ public class ContractDraftService {
     private final RentalContractRepository contracts;
     private final RentalRequestRepository requests;
     private final ApartmentRepository apartments;
-    private final PropertyDossierRepository dossiers;
+    private final ContractPropertyEvidenceResolver propertyEvidence;
     private final com.ancu.proptech.service.property.PropertyPaymentQrResolver paymentQrResolver;
     private final com.ancu.proptech.repository.property.PropertySettingsRepository propertySettings;
     private final AccountAccessService access;
@@ -221,16 +221,15 @@ public class ContractDraftService {
     }
     ContractSnapshot snapshot(RentalRequest r) {
         var a=r.getApartment();var p=a.getProperty();
-        var approved=dossiers.findByPropertyIdOrderBySubmittedAtDescIdDesc(p.getId()).stream()
-            .filter(d->d.getStatus()==PropertyDossier.Status.APPROVED).findFirst().orElse(null);
+        var evidence=propertyEvidence.resolve(p);
         var qr=paymentQrResolver.resolve(p);
+        var provenance=evidence.evidence();
+        if(qr!=null&&provenance!=null)provenance=new ContractSnapshot.Evidence(provenance.source(),provenance.reference(),provenance.sourceHash(),provenance.recordedAt(),null);
         return new ContractSnapshot(party(p.getOwner()),party(r.getCustomer()),
             new ContractSnapshot.Asset(a.getId().toString(),p.getId().toString(),p.getName(),a.getTitle(),a.getRoomNumber(),p.getAddress(),p.getCity(),p.getDistrict(),p.getWard(),
                 a.getAreaM2().toPlainString(),a.getFloor(),a.getBedrooms(),a.getBathrooms(),List.copyOf(a.getAmenities()),p.getApprovalStatus().name(),
-                approved==null?null:approved.getId().toString(),approved==null?null:approved.getRightType().name(),
-                approved==null?null:approved.getCertificateNumber(),approved==null?null:approved.getCertificateIssueDate(),
-                approved==null?null:approved.getCertificateIssuePlace(),approved==null?null:approved.getExploitationRightDescription(),approved==null?null:approved.isLocalFixture()),
-            qr!=null?new ContractSnapshot.ReceivingAccount(qr.getBank(),qr.getAccountNumber(),qr.getAccountHolderName()):approved==null?null:new ContractSnapshot.ReceivingAccount(approved.getBank(),approved.getAccountNumber(),approved.getAccountHolderName()),qr==null?null:qr.getId().toString());
+                evidence.dossierId(),evidence.right(),evidence.certificate(),evidence.date(),evidence.place(),evidence.description(),evidence.fixture()),
+            qr==null?evidence.bank():new ContractSnapshot.ReceivingAccount(qr.getBank(),qr.getAccountNumber(),qr.getAccountHolderName()),provenance,qr==null?null:qr.getId().toString());
     }
     private ContractSnapshot.Party party(AuthAccount a) {
         var verified=verifiedIdentities.findById(a.getId()).filter(i->"VERIFIED".equals(i.getVerificationStatus())).orElse(null);
