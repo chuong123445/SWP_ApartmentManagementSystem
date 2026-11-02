@@ -44,3 +44,13 @@ Hồ sơ nộp trước tính năng này không được gửi hàng loạt sang
 - Nhà cung cấp nhận các trường trong snapshot và tệp chứng từ của hồ sơ được quét; không gửi mật khẩu, token đăng nhập, lịch sử hóa đơn hoặc dữ liệu hồ sơ khác. Form nộp thông báo việc sử dụng dịch vụ AI khi cấu hình được bật.
 
 Tham khảo giao thức: [Gemini structured output](https://ai.google.dev/gemini-api/docs/generate-content/structured-output), [xử lý PDF](https://ai.google.dev/gemini-api/docs/document-processing).
+
+## Khi gặp “AI không trả về kết quả đầy đủ”
+
+Mã `PROVIDER_INCOMPLETE` nghĩa là API trả HTTP 200 nhưng candidate không có `finishReason=STOP` (hoặc không có candidate). Đây chưa phải kết luận hồ sơ sai hay giấy tờ không hợp lệ. Nguyên nhân có thể là hết token (`MAX_TOKENS`), bộ lọc của nhà cung cấp hoặc phản hồi thiếu candidate. Không thể phân biệt các nguyên nhân chỉ bằng mã lỗi cũ đã lưu trong database.
+
+Từ bản sửa ngày 02/11/2026, riêng `gemini-2.5-flash` và alias `gemini-2.5-flash-preview-*` dùng `maxOutputTokens=16384`, `thinkingConfig.thinkingBudget=1024`. Cấu hình cũ giới hạn tổng 4096 token và để suy luận động mặc định, có nguy cơ hết ngân sách trước khi hoàn thành JSON. Các model khác giữ nguyên cấu hình vì có thể không hỗ trợ tham số này. Tham khảo [ngân sách suy luận Gemini 2.5](https://ai.google.dev/gemini-api/docs/generate-content/thinking).
+
+Nếu còn lỗi, xem log backend `Dossier AI incomplete`: `finishReason`, `blockReason`, `outputTokens`, `thinkingTokens`. Log chỉ giữ enum đã cho phép và số token, không ghi tệp, nội dung trích xuất, key hay lỗi thô. Kết quả chưa hoàn tất vẫn bị từ chối, không được coi là quét thành công.
+
+Khởi động lại backend để nạp code mới, sau đó Admin chọn đúng hồ sơ và bấm **Quét lại hồ sơ**. Bản ghi FAILED không tự chạy lại sau khi chỉ cập nhật code. Thời điểm “Nộp vào hàng quét” là lúc tạo bản ghi, không phải lúc bắt đầu lần xử lý cuối; dùng `startedAt`/`finishedAt` để xác định thời gian xử lý.
