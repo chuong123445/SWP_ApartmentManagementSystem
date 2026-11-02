@@ -1,3 +1,4 @@
+import {PrivatePaymentQr} from './PrivatePaymentQr';
 import { useEffect,useState } from 'react';
 import { Landmark,Copy,RefreshCw } from 'lucide-react';
 import { getContract } from '@/services/contract/contractService';
@@ -29,6 +30,7 @@ export function InvoicePaymentInfo({invoice}:{invoice:BillingInvoice}){
         <div className="sm:col-span-2"><dt className="text-xs text-slate-500 mb-1">Nội dung chuyển khoản tham khảo</dt><dd className="font-semibold break-words">Hoa don {invoice.id} - Phong {invoice.roomNumber}</dd></div>
       </dl>:<p className="op-note">Hợp đồng chưa lưu tài khoản chuyển khoản. Bạn liên hệ chủ nhà để thanh toán theo phương thức đã thỏa thuận.</p>}
     </>}
+    {contract?.snapshot.ownerPaymentQrId&&<div className="space-y-3"><h3 className="font-semibold text-sm">QR nhận tiền đã lưu cùng hợp đồng</h3><PrivatePaymentQr path={'/api/v1/invoices/'+encodeURIComponent(invoice.id)+'/payment-qr'} alt="QR thanh toán hóa đơn"/><p className="text-xs text-slate-500">QR cá nhân không điền sẵn số tiền. Nhập {billingMoney(invoice.totalAmount)} và nội dung chuyển khoản phía trên; kiểm tra người nhận trong ứng dụng ngân hàng.</p></div>}
     {notice&&<p role="status" className="text-sm text-emerald-700">{notice}</p>}
     <p className="text-xs text-slate-500 leading-relaxed">Thông tin nhận tiền lấy từ hợp đồng của hóa đơn này. Thanh toán thực hiện ngoài hệ thống; trạng thái “Đã gửi” chỉ cho biết chủ nhà đã gửi hóa đơn, chưa xác nhận tiền đã được thanh toán.</p>
   </section>;

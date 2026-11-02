@@ -34,6 +34,8 @@ public class SepayService {
  private final AuthAccountRepository accounts;
  private final AccountAccessService access;
  private final SepayBankClient bankClient;
+ private final com.ancu.proptech.repository.contract.ContractDraftRepository contractDrafts;
+ private final tools.jackson.databind.ObjectMapper json;
  @Value("${app.payment.public-base-url:}") private String publicBaseUrl;
  private static final SecureRandom RANDOM=new SecureRandom();
  private static final Pattern CODE=Pattern.compile("(?<![A-Z0-9])ANCU(?:TEST)?[A-F0-9]{24}(?![A-Z0-9])");
@@ -60,7 +62,7 @@ public class SepayService {
   var i=visible(access.account(jwt),jwt,invoiceId);var p=payments.findByInvoiceId(invoiceId).orElse(null);
   if(p!=null&&p.getPaidAt()!=null)return paymentView(p);
   var c=connections.findByOwnerId(i.getContract().getApartment().getProperty().getOwner().getId()).orElse(null);
-  if(c==null||!c.isEnabled())return new Payment("NOT_CONFIGURED",null,null,null,null,null,null,null);
+  if(c==null||!c.isEnabled()||!matchesSavedQr(i,p==null?c.getBank():p.getBank(),p==null?c.getAccountNumber():p.getAccountNumber(),p==null?c.getVirtualAccount():p.getVirtualAccount()))return new Payment("NOT_CONFIGURED",null,null,null,null,null,null,null);
   return p==null?new Payment("UNPAID",null,null,null,null,null,null,null):paymentView(p);
  }
  @Transactional public Payment payment(Jwt jwt,Long invoiceId){
@@ -69,6 +71,7 @@ public class SepayService {
   if(p!=null&&p.getPaidAt()!=null)return paymentView(p);
   var c=connections.lockOwner(i.getContract().getApartment().getProperty().getOwner().getId()).orElse(null);
   if(c==null||!c.isEnabled())throw new ApiException(HttpStatus.CONFLICT,"PAYMENT_NOT_CONFIGURED","Chủ nhà chưa bật thanh toán SePay.");
+  if(!matchesSavedQr(i,p==null?c.getBank():p.getBank(),p==null?c.getAccountNumber():p.getAccountNumber(),p==null?c.getVirtualAccount():p.getVirtualAccount()))throw new ApiException(HttpStatus.CONFLICT,"PAYMENT_RECEIVER_MISMATCH","Tài khoản SePay khác QR đã lưu trong hợp đồng. Hãy dùng QR của hợp đồng để thanh toán.");
   if(view(c,c.getOwnerId(),null).webhookUrl()==null)throw new ApiException(HttpStatus.CONFLICT,"PUBLIC_URL_MISSING","Quản trị viên chưa cấu hình URL HTTPS nhận webhook SePay.");
   // Cùng thứ tự khóa với ghi hóa đơn: connection -> contract. Snapshot người nhận không đổi sau khi cấp QR.
   contracts.lockById(i.getContract().getId()).orElseThrow(SepayService::missing);
@@ -80,6 +83,13 @@ public class SepayService {
   }
   return paymentView(p);
  }
+ private boolean matchesSavedQr(RentalInvoice invoice,String bank,String account,String virtualAccount){
+  var draft=contractDrafts.findByContractId(invoice.getContract().getId()).orElse(null);if(draft==null)return true;
+  var snapshot=json.readValue(draft.getSnapshotJson(),com.ancu.proptech.dto.contract.ContractSnapshot.class);
+  if(snapshot.ownerPaymentQrId()==null)return true;
+  var receiver=snapshot.receivingAccount();return receiver!=null&&normalizeBank(receiver.bank()).equals(normalizeBank(bank))&&receiver.accountNumber().equals(virtualAccount==null?account:virtualAccount);
+ }
+ private static String normalizeBank(String bank){String value=bank==null?"":bank.replaceAll("[^A-Za-z0-9]","").toUpperCase(Locale.ROOT);return switch(value){case "MB"->"MBBANK";case "VCB"->"VIETCOMBANK";case "ICB"->"VIETINBANK";case "TCB"->"TECHCOMBANK";case "VPB"->"VPBANK";default->value;};}
  // Phiếu thử độc lập với công nợ; chốt số tiền và người nhận khi tạo.
  @Transactional public TestReceipt createTest(Jwt jwt,TestPaymentRequest input){
   Long owner=access.owner(jwt).getId();var c=connections.lockOwner(owner).orElse(null);

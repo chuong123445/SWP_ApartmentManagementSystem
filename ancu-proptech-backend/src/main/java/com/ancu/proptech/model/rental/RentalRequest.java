@@ -21,5 +21,6 @@ public class RentalRequest {
     @Nationalized @Column(name = "decision_reason", length = 2000) private String decisionReason;
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 24) private Status status;
     @Column(nullable = false, columnDefinition = "datetime2(6)") private Instant createdAt;
+    @Column(columnDefinition="datetime2(6)") private Instant decidedAt;
     @Version private long version;
 }
