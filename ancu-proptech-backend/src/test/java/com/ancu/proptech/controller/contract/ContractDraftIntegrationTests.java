@@ -51,6 +51,17 @@ class ContractDraftIntegrationTests {
     private String token,customerToken,otherToken;
     private static String hash;
     private static final String PASSWORD="Contract-test!12345";
+    @Test void customerRequestInboxExcludesConvertedSelectionsBeforePagingButKeepsTheirDocuments()throws Exception {
+        String saved=create();
+        for(var state:List.of(RentalRequest.Status.REJECTED,RentalRequest.Status.CANCELLED)){
+            var r=new RentalRequest();r.setApartment(request.getApartment());r.setCustomer(customer);r.setStatus(state);r.setMessage("Request history without a contract");r.setCreatedAt(Instant.now());requests.saveAndFlush(r);
+        }
+        for(int page=0;page<2;page++)mvc.perform(get("/api/v1/me/rental-requests").header("Authorization",customerToken).param("size","1").param("page",Integer.toString(page)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2)).andExpect(jsonPath("$.totalPages").value(2)).andExpect(jsonPath("$.items.length()").value(1)).andExpect(jsonPath("$.items[0].contractId").isEmpty());
+        mvc.perform(get("/api/v1/me/rental-requests").header("Authorization",otherToken)).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get("/api/v1/me/contract-drafts").header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(id(saved)));
+        assertTrue(requests.existsById(request.getId()));
+    }
     @BeforeEach void fixture() {
         if(hash==null) hash=passwords.encode(PASSWORD);
         owner=account(AuthAccount.Role.OWNER);customer=account(AuthAccount.Role.CUSTOMER);other=account(AuthAccount.Role.OWNER);
