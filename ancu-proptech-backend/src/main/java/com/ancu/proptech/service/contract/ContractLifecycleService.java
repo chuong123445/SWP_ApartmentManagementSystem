@@ -28,6 +28,7 @@ public class ContractLifecycleService {
     private final ContractDraftRepository drafts;
     private final RentalContractRepository contracts;
     private final ContractHandoverRepository handovers;
+    private final ContractRenewalRequestRepository renewalRequests;
     private final RentalRequestRepository requests;
     private final ApartmentRepository apartments;
     private final RentalInvoiceRepository invoices;
@@ -37,6 +38,43 @@ public class ContractLifecycleService {
     private final ContractDraftService authoring;
     private final ObjectMapper json;
     @jakarta.persistence.PersistenceContext private jakarta.persistence.EntityManager entities;
+
+    @Transactional
+    public ContractDraftResponse requestRenewal(Jwt jwt,Long id,RenewalRequestCreate input) {
+        var d=lock(jwt,id,false);var c=d.getContract();
+        if(!c.getCustomer().getId().equals(access.account(jwt).getId()))throw missing();
+        access.customer(jwt);
+        requireConsent(input.consent());
+        if(c.getVersion()!=input.version())throw stale();
+        eligibleForRenewal(c);
+        if(openRenewal(id)!=null)throw conflict("OPEN_RENEWAL","Đã có hợp đồng ký tiếp.");
+        if(renewalRequests.findByContractId(id).isPresent())return authoring.response(d);
+        var r=new ContractRenewalRequest();r.setContractId(id);r.setStatus(ContractRenewalRequest.Status.PENDING);
+        r.setMessage(input.message()==null?"":input.message().strip());r.setCreatedAt(Instant.now());renewalRequests.saveAndFlush(r);
+        return authoring.response(d);
+    }
+
+    @Transactional
+    public ContractDraftResponse decideRenewal(Jwt jwt,Long id,RenewalRequestDecision input) {
+        var d=lock(jwt,id,true);eligibleForRenewal(d.getContract());
+        var r=renewalRequests.findByContractId(id).orElseThrow(ContractLifecycleService::missing);
+        if(r.getVersion()!=input.version())throw stale();
+        if(r.getStatus()!=ContractRenewalRequest.Status.PENDING)throw conflict("REQUEST_NOT_PENDING","Yêu cầu thuê tiếp đã được xử lý.");
+        if(input.decision()==RenewalRequestDecision.Decision.REJECT && (input.reason()==null||input.reason().isBlank()))
+            throw new ApiException(HttpStatus.BAD_REQUEST,"REASON_REQUIRED","Cần ghi lý do từ chối thuê tiếp.");
+        r.setStatus(input.decision()==RenewalRequestDecision.Decision.ACCEPT?ContractRenewalRequest.Status.ACCEPTED:ContractRenewalRequest.Status.REJECTED);
+        r.setDecision(input.decision().name());r.setDecisionReason(input.reason()==null?null:input.reason().strip());r.setDecidedAt(Instant.now());
+        renewalRequests.saveAndFlush(r);return authoring.response(d);
+    }
+
+    @Transactional
+    public ContractDraftResponse cancelAcceptedRequest(Jwt jwt,Long id,LifecycleConfirm input) {
+        var d=lock(jwt,id,true);eligibleForRenewal(d.getContract());requireConsent(input.consent());
+        var r=renewalRequests.findByContractId(id).orElseThrow(ContractLifecycleService::missing);
+        if(r.getVersion()!=input.version())throw stale();
+        if(r.getStatus()!=ContractRenewalRequest.Status.ACCEPTED||openRenewal(id)!=null)throw conflict("OPEN_RENEWAL","Chỉ hủy chấp nhận khi chưa có bản hợp đồng ký tiếp; nếu đã soạn hãy hủy bản đó.");
+        r.setStatus(ContractRenewalRequest.Status.CANCELLED);r.setCancelledAt(Instant.now());renewalRequests.saveAndFlush(r);return authoring.response(d);
+    }
 
     @Transactional
     public ContractContextResponse renewalContext(Jwt jwt,Long id) {
@@ -78,9 +116,10 @@ public class ContractLifecycleService {
     public ContractDraftResponse cancelRenewal(Jwt jwt,Long id,LifecycleConfirm input) {
         var d=lock(jwt,id,true);var c=d.getContract();
         if(c.getVersion()!=input.version())throw stale();
-        if(c.getRenewalOfContractId()==null || c.getStatus()!=RentalContract.Status.DRAFT)throw conflict("INVALID_STATE","Chỉ hủy bản ký tiếp chưa đủ hai chữ ký.");
+        if(c.getRenewalOfContractId()==null || c.getStatus()!=RentalContract.Status.DRAFT || (d.getOwnerSignedAt()!=null&&d.getCustomerSignedAt()!=null))throw conflict("INVALID_STATE","Chỉ hủy bản ký tiếp chưa đủ hai chữ ký.");
         requireConsent(input.consent());c.setStatus(RentalContract.Status.ENDED);c.setEndReason("RENEWAL_CANCELLED");c.setEndedAt(Instant.now());
         d.getRentalRequest().setStatus(RentalRequest.Status.CANCELLED);contracts.saveAndFlush(c);
+        renewalRequests.findByContractId(c.getRenewalOfContractId()).ifPresent(r->{r.setStatus(ContractRenewalRequest.Status.CANCELLED);r.setCancelledAt(Instant.now());renewalRequests.saveAndFlush(r);});
         return authoring.response(d);
     }
 
@@ -90,6 +129,7 @@ public class ContractLifecycleService {
         if(c.getVersion()!=input.version())throw stale();requireConsent(input.consent());
         if(handovers.existsByContractIdAndStatus(id,ContractHandover.Status.PENDING))throw conflict("OPEN_HANDOVER","Đã có biên bản bàn giao chờ khách xác nhận.");
         if(openRenewal(id)!=null)throw conflict("OPEN_RENEWAL","Cần hủy bản ký tiếp đang chờ trước khi bàn giao.");
+        requireNoRenewalRequest(id);
         if(input.returnDate().isBefore(c.getEndDate()) || input.returnDate().isAfter(rights.today()))
             throw conflict("INVALID_RETURN_DATE","Ngày bàn giao phải từ ngày hết hạn đến hôm nay.");
         if(!input.keysReturned())throw conflict("KEYS_NOT_RETURNED","Cần xác nhận chìa khóa và tài sản đã bàn giao.");
@@ -112,6 +152,7 @@ public class ContractLifecycleService {
         returnable(c);requireConsent(input.consent());
         var h=pending(id,input.version());requireNoDraftInvoice(c);
         if(openRenewal(id)!=null)throw conflict("OPEN_RENEWAL","Đang có bản ký tiếp chưa xử lý.");
+        requireNoRenewalRequest(id);
         var current=utilityCost(c,h.getElectricityReading(),h.getWaterReading(),h.getElectricityStartReading(),h.getWaterStartReading());
         if(current.cost().compareTo(h.getUtilityAmount())!=0 || current.electricStart().compareTo(h.getElectricityStartReading())!=0 || current.waterStart().compareTo(h.getWaterStartReading())!=0)
             throw conflict("HANDOVER_SOURCE_CHANGED","Hóa đơn hoặc chỉ số đã thay đổi. Chủ nhà cần lập lại biên bản.");
@@ -140,9 +181,19 @@ public class ContractLifecycleService {
         requests.findForOwnerUpdate(d.getRentalRequest().getId(),owner).orElseThrow(ContractLifecycleService::missing);
         contracts.lockById(id).orElseThrow(ContractLifecycleService::missing);entities.refresh(c);entities.refresh(d);return d;
     }
-    private void renewable(RentalContract c) {
-        if(c.getStatus()!=RentalContract.Status.ACTIVE || !c.getEndDate().isBefore(rights.today()))throw conflict("NOT_EXPIRED","Chỉ ký tiếp sau khi hợp đồng hiện tại đã hết hạn.");
+    private void eligibleForRenewal(RentalContract c) {
+        if(c.getStatus()!=RentalContract.Status.ACTIVE)throw conflict("INVALID_STATE","Chỉ yêu cầu thuê tiếp cho hợp đồng đang có hiệu lực hoặc chờ xử lý hết hạn.");
         if(handovers.existsByContractIdAndStatus(c.getId(),ContractHandover.Status.PENDING))throw conflict("OPEN_HANDOVER","Cần hủy bàn giao đang chờ trước khi ký tiếp.");
+    }
+    private void renewable(RentalContract c) {
+        eligibleForRenewal(c);
+        var r=renewalRequests.findByContractId(c.getId()).orElse(null);
+        if(r==null||r.getStatus()!=ContractRenewalRequest.Status.ACCEPTED)throw conflict("RENEWAL_REQUEST_NOT_ACCEPTED","Cần khách gửi yêu cầu thuê tiếp và chủ nhà chấp nhận trước khi soạn hợp đồng.");
+    }
+    private void requireNoRenewalRequest(Long id) {
+        var r=renewalRequests.findByContractId(id).orElse(null);
+        if(r!=null&&(r.getStatus()==ContractRenewalRequest.Status.PENDING||r.getStatus()==ContractRenewalRequest.Status.ACCEPTED))
+            throw conflict("OPEN_RENEWAL_REQUEST","Cần xử lý yêu cầu thuê tiếp trước khi bàn giao. Nếu đã chấp nhận, hãy hủy bản ký tiếp đang chờ.");
     }
     private void returnable(RentalContract c) {
         if(c.getStatus()!=RentalContract.Status.ACTIVE || c.getEndDate().isAfter(rights.today()))throw conflict("NOT_EXPIRED","Bàn giao khi hợp đồng đến ngày kết thúc hoặc đã hết hạn.");

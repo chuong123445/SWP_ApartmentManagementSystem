@@ -32,7 +32,7 @@ for (const role of ['OWNER', 'CUSTOMER'] as const) {
       return route.fulfill({ status: 404, json: { message: `Unexpected fixture request: ${path}` } });
     });
     await page.goto('/contracts/42');
-    await expect(page.getByRole('heading', { name: 'Xem và ký hợp đồng' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Chi tiết hợp đồng', exact: true })).toBeVisible();
     await expect(page.getByTitle('Bản PDF hợp đồng HD-42')).toBeVisible();
     await expect(page.getByRole('heading', { name: role === 'OWNER' ? 'Ký xác nhận · Bên cho thuê (Bên A)' : 'Ký xác nhận · Bên thuê (Bên B)' })).toBeVisible();
     const confirm = page.getByRole('button', { name: 'Xác nhận ký hợp đồng' });await expect(confirm).toBeDisabled();

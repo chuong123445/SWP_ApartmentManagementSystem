@@ -17,6 +17,7 @@ public interface RentalContractRepository extends JpaRepository<RentalContract,L
     Optional<RentalContract> findByApartmentIdAndCustomerId(Long apartmentId,Long customerId);
     Optional<RentalContract> findFirstByApartmentIdAndCustomerIdOrderByStartDateDescIdDesc(Long apartmentId,Long customerId);
     List<RentalContract> findByRenewalOfContractIdAndStatusNot(Long id,RentalContract.Status status);
+    List<RentalContract> findByRenewalOfContractIdOrderByIdDesc(Long id);
     List<RentalContract> findByApartmentId(Long apartmentId);
     boolean existsByCustomerIdAndLocalFixtureTrue(Long customerId);
     long countByLocalFixtureTrue();
