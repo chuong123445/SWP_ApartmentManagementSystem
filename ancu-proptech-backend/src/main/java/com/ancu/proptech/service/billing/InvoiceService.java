@@ -25,10 +25,34 @@ public class InvoiceService {
     private final InvoiceNotificationRepository notifications;
     private final AccountAccessService access;
     private final com.ancu.proptech.repository.payment.InvoicePaymentRepository payments;
+    private final MeterReadingRepository readings;
+    private final com.ancu.proptech.repository.property.PropertySettingsRepository settings;
     private record Source(YearMonth period,BigDecimal electric,BigDecimal water) {}
     @Transactional(readOnly=true) public BillingContext context(Jwt jwt,Long id){
         var owner=access.owner(jwt);var c=contracts.findById(id).orElseThrow(InvoiceService::missing);owned(c,owner.getId());
-        var s=source(c);return new BillingContext(c.getId(),c.getApartment().getId(),c.getApartment().getRoomNumber(),c.getCustomer().getFullName(),s.period().toString(),str(c.getMonthlyRent()),str(s.electric()),str(c.getElectricityUnitPrice()),str(s.water()),str(c.getWaterUnitPrice()),c.getBillingVersion(),c.getWaterBillingMode().name(),c.getOccupantCount(),str(c.getInternetFee()),str(c.getGarbageFee()));
+        return billingContext(c);
+
+    }
+    private BillingContext billingContext(RentalContract c){
+        var s=source(c);var saved=readings.findByContractIdAndPeriod(c.getId(),s.period().toString()).orElse(null);
+        var defaults=settings.findById(c.getApartment().getProperty().getId()).map(p->new BillingTariff(str(p.getElectricityUnitPrice()),str(p.getWaterUnitPrice()),p.getWaterBillingMode().name(),str(p.getInternetFee()),str(p.getGarbageFee()),p.getVersion())).orElse(null);
+        return new BillingContext(c.getId(),c.getApartment().getId(),c.getApartment().getRoomNumber(),c.getCustomer().getFullName(),s.period().toString(),str(c.getMonthlyRent()),str(s.electric()),str(saved==null?c.getElectricityUnitPrice():saved.getElectricityUnitPrice()),str(s.water()),str(saved==null?c.getWaterUnitPrice():saved.getWaterUnitPrice()),c.getBillingVersion(),(saved==null?c.getWaterBillingMode():saved.getWaterBillingMode()).name(),c.getOccupantCount(),str(saved==null?c.getInternetFee():saved.getInternetFee()),str(saved==null?c.getGarbageFee():saved.getGarbageFee()),saved==null?null:new SavedMeterReading(str(saved.getElectricityEndReading()),str(saved.getWaterEndReading()),saved.isPropertyRates(),saved.getSavedAt()),defaults);
+    }
+    @Transactional public BillingContext saveReadings(Jwt jwt,Long id,MeterReadingSave input){
+        var owner=access.owner(jwt);var c=contracts.lockById(id).orElseThrow(InvoiceService::missing);owned(c,owner.getId());
+        var s=source(c);
+        if(input.getBaselineVersion()!=c.getBillingVersion())throw conflict("VERSION_CONFLICT","Chỉ số đã thay đổi. Hãy tải lại trước khi chốt.");
+        if(!s.period().toString().equals(input.getPeriod()))throw conflict("BILLING_SEQUENCE_CONFLICT","Chỉ chốt cho kỳ kế tiếp: "+s.period());
+        var r=readings.findByContractIdAndPeriod(id,input.getPeriod()).orElseGet(MeterReading::new);
+        r.setContract(c);r.setPeriod(input.getPeriod());r.setElectricityUnitPrice(c.getElectricityUnitPrice());r.setWaterUnitPrice(c.getWaterUnitPrice());r.setWaterBillingMode(c.getWaterBillingMode());r.setInternetFee(c.getInternetFee());r.setGarbageFee(c.getGarbageFee());r.setOccupantCount(c.getOccupantCount());
+        if(input.isApplyPropertyRates()){
+            var p=settings.findById(c.getApartment().getProperty().getId()).orElseThrow(()->conflict("PROPERTY_SETTINGS_MISSING","Tài sản chưa được cài đặt đơn giá."));
+            if(input.getSettingsVersion()==null||input.getSettingsVersion()!=p.getVersion())throw conflict("SETTINGS_VERSION_CONFLICT","Đơn giá cài đặt đã thay đổi. Hãy tải lại.");
+            r.setElectricityUnitPrice(p.getElectricityUnitPrice());r.setWaterUnitPrice(p.getWaterUnitPrice());r.setWaterBillingMode(p.getWaterBillingMode());r.setInternetFee(p.getInternetFee());r.setGarbageFee(p.getGarbageFee());
+        }
+        if(input.getElectricityEndReading().compareTo(s.electric())<0||(r.getWaterBillingMode()==com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.METERED&&input.getWaterEndReading().compareTo(s.water())<0))throw bad("INVALID_METER_READING","Chỉ số mới không được nhỏ hơn chỉ số đầu kỳ.");
+        r.setElectricityEndReading(input.getElectricityEndReading());r.setWaterEndReading(r.getWaterBillingMode()==com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.PER_PERSON?s.water():input.getWaterEndReading());r.setPropertyRates(input.isApplyPropertyRates());r.setSavedAt(Instant.now());r.setSavedBy(owner.getId());
+        readings.saveAndFlush(r);c.setBillingVersion(c.getBillingVersion()+1);contracts.flush();return billingContext(c);
     }
     @Transactional public InvoiceResponse create(Jwt jwt,Long contractId,InvoiceCreate input){
         var owner=access.owner(jwt);var c=contracts.lockById(contractId).orElseThrow(InvoiceService::missing);owned(c,owner.getId());

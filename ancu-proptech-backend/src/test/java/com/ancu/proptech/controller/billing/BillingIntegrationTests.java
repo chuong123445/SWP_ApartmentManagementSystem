@@ -128,6 +128,22 @@ class BillingIntegrationTests {
         try{Callable<Integer> task=()->{gate.await();return create(ownerToken,body("2026-10",0,"1120","208")).andReturn().getResponse().getStatus();};var a=pool.submit(task);var b=pool.submit(task);gate.countDown();var statuses=new ArrayList<>(List.of(a.get(15,TimeUnit.SECONDS),b.get(15,TimeUnit.SECONDS)));Collections.sort(statuses);assertEquals(List.of(201,409),statuses);assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM rental_invoices WHERE contract_id=?",Integer.class,contract.getId().toString()));}
         finally{pool.shutdownNow();cleanupCommitted();}
     }
+    private ResultActions saveMeter(String token,String json)throws Exception{return mvc.perform(post("/api/v1/owner/contracts/"+contract.getId()+"/meter-readings").header("Authorization","Bearer "+token).contentType("application/json").content(json));}
+    @Test void savedMetersSurviveReloadAndProtectScopeSequenceAndStaleEdits()throws Exception{
+        String input=body("2026-10",0,"1120.25","208.50").replace(",\"dueDate\":\"2027-10-05\"","");
+        saveMeter(token(otherOwner),input).andExpect(status().isNotFound());saveMeter(tenantToken,input).andExpect(status().isForbidden());
+        saveMeter(ownerToken,input).andExpect(status().isOk()).andExpect(jsonPath("$.savedReading.electricityEndReading").value("1120.25")).andExpect(jsonPath("$.baselineVersion").value(1));
+        mvc.perform(get("/api/v1/owner/contracts/"+contract.getId()+"/billing-context").header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.savedReading.waterEndReading").value("208.50"));
+        saveMeter(ownerToken,input).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("VERSION_CONFLICT"));
+        saveMeter(ownerToken,input.replace("2026-10","2026-11").replace("baselineVersion\":0","baselineVersion\":1")).andExpect(status().isConflict());
+    }
+    @Test void savingMeterRejectsDecreaseAndUsesOnlyThisPropertySettings()throws Exception{
+        String input=body("2026-10",0,"999","208");saveMeter(ownerToken,input).andExpect(status().isBadRequest());
+        input=body("2026-10",0,"1120","208").replace("baselineVersion\":0","applyPropertyRates\":true,\"settingsVersion\":0,\"baselineVersion\":0");
+        saveMeter(ownerToken,input).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PROPERTY_SETTINGS_MISSING"));
+        jdbc.update("INSERT INTO property_settings(property_id,electricity_unit_price,water_unit_price,internet_fee,garbage_fee,water_billing_mode,updated_at,updated_by,version) VALUES(?,4000,50000,100000,30000,'PER_PERSON',SYSUTCDATETIME(),?,0)",property.getId(),owner.getId());
+        saveMeter(ownerToken,input).andExpect(status().isOk()).andExpect(jsonPath("$.electricityUnitPrice").value("4000.00")).andExpect(jsonPath("$.waterBillingMode").value("PER_PERSON")).andExpect(jsonPath("$.savedReading.waterEndReading").value("200")).andExpect(jsonPath("$.savedReading.propertyRates").value(true));
+    }
     private void cleanupCommitted(){
         String cid=contract.getId().toString(),aid=apartment.getId().toString();
         jdbc.update("DELETE FROM invoice_notifications WHERE invoice_id IN(SELECT id FROM rental_invoices WHERE contract_id=?)",cid);jdbc.update("DELETE FROM rental_invoices WHERE contract_id=?",cid);jdbc.update("DELETE FROM rental_contracts WHERE id=?",cid);jdbc.update("DELETE FROM rental_apartment_amenities WHERE apartment_id=?",aid);jdbc.update("DELETE FROM rental_apartments WHERE id=?",aid);jdbc.update("DELETE FROM rental_properties WHERE id=?",property.getId().toString());
