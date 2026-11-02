@@ -274,6 +274,37 @@ class ContractDraftIntegrationTests {
         askRenewal(id(old),customerToken,"Muốn thuê tiếp").andExpect(status().isForbidden());
         assertTrue(renewalRequests.findByContractId(Long.valueOf(id(old))).isEmpty());
     }
+    @Test void renewalInboxScopesOwnerPropertyStatusAndCountsBeforePagination()throws Exception {
+        String old=expiredContract();String id=id(old);askRenewal(id,customerToken,"Muốn thuê tiếp").andExpect(status().isOk());
+        String url="/api/v1/owner/renewal-requests";
+        mvc.perform(get("/api/v1/me/notifications").header("Authorization",token)).andExpect(status().isOk()).andExpect(jsonPath("$.items[?(@.title=='Khách yêu cầu thuê tiếp')].url").value(org.hamcrest.Matchers.hasItem("/app?tab=rental_requests&requestType=renewal&propertyId="+request.getApartment().getProperty().getId())));
+        mvc.perform(get(url).header("Authorization",token).param("status","PENDING").param("size","1")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1)).andExpect(jsonPath("$.items[0].contractId").value(id)).andExpect(jsonPath("$.items[0].customerEmail").value(customer.getEmail()));
+        mvc.perform(get(url).header("Authorization",otherToken)).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get(url).header("Authorization",customerToken)).andExpect(status().isForbidden());
+        mvc.perform(get(url)).andExpect(status().isUnauthorized());
+        mvc.perform(get(url).header("Authorization",token).param("propertyId","999999999")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get(url).header("Authorization",token).param("status","REJECTED")).andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(0));
+        mvc.perform(get(url).header("Authorization",token).param("status","INVALID")).andExpect(status().isBadRequest());
+        mvc.perform(get(url).header("Authorization",token).param("page","-1")).andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/owner/contracts/"+id+"/renewal-request/decision").header("Authorization",token).contentType("application/json").content("{\"version\":0,\"decision\":\"ACCEPT\"}")).andExpect(status().isOk());
+        mvc.perform(get(url).header("Authorization",token).param("status","PENDING")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        String next=mvc.perform(post("/api/v1/owner/contracts/"+id+"/renewals").header("Authorization",token).contentType("application/json").content(renewalInput(id))).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        mvc.perform(get(url).header("Authorization",token).param("status","ACCEPTED").param("propertyId",request.getApartment().getProperty().getId().toString())).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1)).andExpect(jsonPath("$.items[0].nextContractId").value(id(next)));
+        mvc.perform(get("/api/v1/owner/rental-requests").header("Authorization",token).param("status","ACCEPTED").param("contractCompleted","false")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get("/api/v1/owner/rental-requests").header("Authorization",token).param("status","ACCEPTED")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1));
+    }
+    @Test void ordinaryInboxSeparatesUnsignedAndSignedAcceptedRequestsWithoutChangingState()throws Exception {
+        String saved=create();String id=id(saved);
+        String url="/api/v1/owner/rental-requests";
+        mvc.perform(get(url).header("Authorization",token).param("status","ACCEPTED").param("contractCompleted","false").param("size","1")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1)).andExpect(jsonPath("$.items[0].contractCompleted").value(false));
+        var d=drafts.findByContractId(Long.valueOf(id)).orElseThrow();d.setOwnerSignedAt(Instant.now());drafts.saveAndFlush(d);
+        mvc.perform(get(url).header("Authorization",token).param("status","ACCEPTED").param("contractCompleted","true")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        d.setCustomerSignedAt(Instant.now());drafts.saveAndFlush(d);
+        mvc.perform(get(url).header("Authorization",token).param("status","ACCEPTED").param("contractCompleted","true").param("size","1")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1)).andExpect(jsonPath("$.items[0].contractCompleted").value(true));
+        mvc.perform(get(url).header("Authorization",token).param("status","ACCEPTED").param("contractCompleted","false")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get(url).header("Authorization",token).param("status","PENDING").param("contractCompleted","true")).andExpect(status().isBadRequest());
+        assertEquals(RentalRequest.Status.ACCEPTED,request.getStatus());
+    }
     private String signature() throws Exception {
         var image=new java.awt.image.BufferedImage(900,280,java.awt.image.BufferedImage.TYPE_INT_ARGB);
         var pen=image.createGraphics();pen.setColor(java.awt.Color.BLACK);pen.setStroke(new java.awt.BasicStroke(4));
