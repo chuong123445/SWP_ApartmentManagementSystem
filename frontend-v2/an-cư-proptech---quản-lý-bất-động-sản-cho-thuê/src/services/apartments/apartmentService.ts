@@ -1,4 +1,4 @@
-import { ApiError, readApiError } from '@/services/http/client';
+import { apiFetch, ApiError, readApiError } from '@/services/http/client';
 import type { ApartmentSummary, ApartmentDetail, ApartmentFilters, PageResult } from '@/types/apartment';
 export function getAddressOptions(signal?: AbortSignal) { return publicGet<import('@/types/apartment').AddressOption[]>('/api/v1/apartments/address-options', signal); }
 
@@ -8,7 +8,7 @@ export async function getApartments(filters: ApartmentFilters, signal?: AbortSig
   return publicGet(`/api/v1/apartments?${query}`, signal);
 }
 export async function getApartment(id: string, signal?: AbortSignal): Promise<ApartmentDetail> {
-  return publicGet(`/api/v1/apartments/${encodeURIComponent(id)}`, signal);
+  const response=await apiFetch(`/api/v1/apartments/${encodeURIComponent(id)}`,{signal,cache:'no-store'});if(!response.ok)throw await readApiError(response);return response.json();
 }
 async function publicGet<T>(url: string, signal?: AbortSignal): Promise<T> {
   let response: Response;

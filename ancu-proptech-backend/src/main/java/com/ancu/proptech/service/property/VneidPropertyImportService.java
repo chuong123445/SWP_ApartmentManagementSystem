@@ -23,7 +23,8 @@ import static com.ancu.proptech.service.auth.AccountService.error;
 
 @Service @RequiredArgsConstructor
 public class VneidPropertyImportService {
-    private final AccountAccessService access;
+    private final PropertyApplicantAccess applicants;
+    private final PropertySourceConsentService consents;
     private final AuthAccountRepository accounts;
     private final ExternalIdentityRepository identities;
     private final Auth0AssetReader assets;
@@ -71,10 +72,11 @@ public class VneidPropertyImportService {
                 u.setMaxOccupants(t.getMaxOccupants());u.setDescription(t.getDescription());u.setAdvertisedMonthlyRent(t.getMonthlyRent());
                 u.setDeposit(t.getDeposit());u.setElectricityIndex(t.getElectricityIndex());u.setWaterIndex(t.getWaterIndex());return u;
             }).toList());
-            var created=propertyService.create(jwt,create);
+            var created=propertyService.createSource(jwt,create);
             var property=properties.findById(created.property().id()).orElseThrow();
             // User cho phép tài sản nguồn Auth0 bỏ Admin; không tạo bản ghi Admin duyệt giả.
             property.setApprovalStatus(Property.ApprovalStatus.APPROVED);
+            property.setOnboardingApplication(false);
             property.setRightType(PropertyDossier.RightType.OWNERSHIP);
             for(var createdUnit:created.apartments()) {
                 var unit=apartments.findById(createdUnit.id()).orElseThrow();
@@ -85,19 +87,25 @@ public class VneidPropertyImportService {
             var evidence=new PropertyExternalImport();evidence.setPropertyId(property.getId());evidence.setIssuer(binding.issuer());evidence.setSubject(binding.subject());
             evidence.setExternalAssetId(source.externalAssetId());evidence.setSource(VneidTokenVerifier.SOURCE);evidence.setSourceVersion(hash(source));
             evidence.setSourceSnapshot(json.writeValueAsString(source));evidence.setImportedAt(Instant.now());imports.saveAndFlush(evidence);apartments.flush();properties.flush();
+            // Mọi dữ liệu/ảnh/giá đã hợp lệ và lưu trong cùng transaction mới cấp quyền.
+            var account=accounts.findById(binding.accountId()).orElseThrow();
+            if(account.getRole()==com.ancu.proptech.model.auth.AuthAccount.Role.CUSTOMER){account.setRole(com.ancu.proptech.model.auth.AuthAccount.Role.OWNER);accounts.flush();}
             return new OwnerPropertyCreated(propertyService.list(jwt).stream().filter(p->p.id().equals(property.getId())).findFirst().orElseThrow(),
                 apartmentService.list(jwt).stream().filter(a->a.propertyId().equals(property.getId())).toList());
         });
     }
 
     private Binding binding(Jwt jwt){
-        var owner=access.owner(jwt);
+        var owner=applicants.verified(jwt);
         var identity=identities.findById(owner.getId()).filter(i->"VERIFIED".equals(i.getVerificationStatus()))
             .orElseThrow(()->error(HttpStatus.FORBIDDEN,"VNEID_REQUIRED","Cần căn cước VNeID đã xác thực để chọn tài sản."));
+        consents.require(owner,identity);
         return new Binding(owner.getId(),identity.getIssuer(),identity.getSubject());
     }
     private void recheck(Jwt jwt,Binding expected){
         em.clear();accounts.findForIdentityUpdate(expected.accountId()).orElseThrow();
+        var identity=identities.findById(expected.accountId()).orElse(null);
+        if(identity==null||!identity.getIssuer().equals(expected.issuer())||!identity.getSubject().equals(expected.subject()))throw error(HttpStatus.CONFLICT,"VNEID_LINK_CHANGED","Liên kết VNeID đã thay đổi. Hãy tải lại.");
         var current=binding(jwt);
         if(!current.equals(expected))throw error(HttpStatus.CONFLICT,"VNEID_LINK_CHANGED","Liên kết VNeID đã thay đổi. Hãy tải lại.");
     }

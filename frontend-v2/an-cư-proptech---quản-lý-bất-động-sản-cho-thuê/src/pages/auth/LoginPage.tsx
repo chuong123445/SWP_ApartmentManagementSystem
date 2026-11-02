@@ -3,8 +3,8 @@ import { Building2, ArrowRight, Eye, EyeOff, LockKeyhole, LoaderCircle } from 'l
 import { useAuth } from '@/hooks/useAuth';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { loginDestination } from '@/utils/navigation';
-import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { VneidButton } from '@/components/auth/VneidButton';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 
 export function LoginPage() {
   const { login, loginWithGoogle, error: sessionError } = useAuth();
@@ -63,6 +63,7 @@ export function LoginPage() {
               {isSubmitting ? <><LoaderCircle className="w-4 h-4 animate-spin" />Đang đăng nhập...</> : <>Đăng nhập<ArrowRight className="w-4 h-4" /></>}
             </button>
           </form>
+          <VneidButton intent="login" label="Đăng nhập bằng VNeID mô phỏng" />
           <GoogleSignInButton disabled={isSubmitting} onCredential={async credential => {
             setError('');
             setIsSubmitting(true);
@@ -72,7 +73,6 @@ export function LoginPage() {
             } catch (err) { setError(err instanceof Error ? err.message : 'Không thể đăng nhập Google.'); }
             finally { setIsSubmitting(false); }
           }} />
-          <VneidButton intent="login" label="Đăng nhập bằng VNeID mô phỏng" />
           <p className="text-sm text-slate-500 mt-6 text-center">Chưa có tài khoản? <Link to="/register" className="text-emerald-700 font-semibold">Đăng ký</Link></p>
         </section>
       </div>

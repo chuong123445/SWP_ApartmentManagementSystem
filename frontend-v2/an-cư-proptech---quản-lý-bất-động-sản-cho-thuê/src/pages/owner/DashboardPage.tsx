@@ -24,7 +24,7 @@ import {
   Legend,
 } from 'recharts';
 import { Room, Invoice, MaintenanceTicket, Contract, ActiveTab } from '@/types';
-import { monthlyRevenueData } from '@/data/mockData';
+import { calculateMonthlyRevenueData } from '@/utils/reportUtils';
 
 interface DashboardPageProps {
   propertyName: string;
@@ -59,6 +59,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const urgentTickets = tickets.filter((t) => t.status !== 'resolved');
   const expiringContracts = contracts.filter((c) => c.status === 'expiring');
   const overdueInvoices = invoices.filter((i) => i.status === 'overdue');
+  const monthlyRevenue = React.useMemo(
+    () => calculateMonthlyRevenueData(invoices, contracts),
+    [invoices, contracts]
+  );
 
   return (
     <div className="space-y-6 pb-12">
@@ -230,7 +234,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyRevenueData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+              <BarChart data={monthlyRevenue} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="month" tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
                 <YAxis tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />

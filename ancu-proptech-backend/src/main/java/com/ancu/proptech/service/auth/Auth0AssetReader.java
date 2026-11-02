@@ -48,7 +48,8 @@ public class Auth0AssetReader {
                     .map(u->new VneidAsset.Unit((String)u.get("external_unit_id"),(String)u.get("code"),new BigDecimal(u.get("floor_area_m2").toString()),integer(u.get("bedrooms")),integer(u.get("bathrooms")))).toList();
                 var cert=map(asset.get("certificate"));String id=(String)asset.get("external_asset_id");
                 var detail=new VneidAsset(id,(String)asset.get("name"),(String)asset.get("address"),(String)asset.get("property_mode"),
-                    (String)cert.get("number"),optional(cert.get("issued_date")),optional(cert.get("issued_place")),units);
+                    (String)cert.get("number"),optional(cert.get("issued_date")),optional(cert.get("issued_place")),units,
+                    text(asset.get("right_description"),2000)?(String)asset.get("right_description"):null);
                 if(results.putIfAbsent(id,detail)!=null&&!results.get(id).equals(detail))throw invalidData();
             }
             return List.copyOf(results.values());

@@ -17,11 +17,14 @@ import org.springframework.http.HttpStatus;
 @Service @RequiredArgsConstructor
 public class OwnerPropertyService {
     private final PropertyRepository properties;
+    private final AssetManagementAccess assetAccess;
     private final AccountAccessService access;
     private final OwnerApartmentService apartments;
     private final com.ancu.proptech.repository.property.PropertyExternalImportRepository imports;
     private final PropertyApplicantAccess applicantAccess;
     private final PropertyImageService images;
+    @Transactional(readOnly=true) public List<OwnerPropertyResponse> selfList(Jwt jwt){return properties.findByOwnerIdOrderByNameAscIdAsc(assetAccess.read(jwt).getId()).stream().map(this::response).toList();}
+    @Transactional public OwnerPropertyCreated createSource(Jwt jwt,OwnerPropertyCreate input){return createInternal(jwt,input,com.ancu.proptech.model.property.PropertyDossier.RightType.OWNERSHIP);}
     @Transactional public OwnerPropertyCreated createApplication(Jwt jwt,PropertyApplicationCreate input){
         if(input.getRightType()==com.ancu.proptech.model.property.PropertyDossier.RightType.OWNERSHIP)
             throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_RIGHT_TYPE","Hồ sơ nâng cấp thủ công dùng quyền ủy quyền hoặc cho thuê lại.");

@@ -7,6 +7,7 @@ export interface ApartmentSummary {
   availability: ApartmentAvailability; bedrooms: number; bathrooms: number;
 }
 export interface ApartmentDetail extends Omit<ApartmentSummary, 'thumbnail'> {
+  management?: {propertyId:string;propertyVersion:number;approvalStatus:string;verificationSource:string|null;canEdit:boolean;pricesEditable:boolean;priceLockReason:string|null;gallery:{id:string;url:string}[];roomNumber:string|null;maxOccupants:number|null}|null;
   description: string; propertyName: string; images: string[]; amenities: string[];
   publicationStatus: string; version: number;
   electricityUnitPrice?: string | null; waterUnitPrice?: string | null;

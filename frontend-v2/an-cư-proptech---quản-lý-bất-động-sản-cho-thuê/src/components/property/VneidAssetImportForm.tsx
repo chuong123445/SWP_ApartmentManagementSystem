@@ -7,7 +7,7 @@ import { ApiError } from '@/services/http/client';
 type Fields = { monthlyRent: string; deposit: string; electricityUnitPrice: string; waterUnitPrice: string; electricityIndex: string; waterIndex: string; floor: string; maxOccupants: string; description: string };
 const blank = (): Fields => ({ monthlyRent: '', deposit: '', electricityUnitPrice: '', waterUnitPrice: '', electricityIndex: '', waterIndex: '', floor: '', maxOccupants: '', description: '' });
 const inputClass = 'mt-1 w-full min-w-0 border border-slate-300 rounded-lg px-3 py-2 bg-white';
-export function VneidAssetImportForm({ onClose, onBack, onImported }: { onClose: () => void; onBack: () => void; onImported: (id: string) => void }) {
+export function VneidAssetImportForm({ onClose, onBack, onImported }: { onClose: () => void; onBack: () => void; onImported: (id: string) => void | Promise<void> }) {
   const [items, setItems] = useState<VneidAssetCandidate[]>([]);const [selected, setSelected] = useState<VneidAssetCandidate | null>(null);
   const [terms, setTerms] = useState<Record<string, Fields>>({});const [city, setCity] = useState('');const [district, setDistrict] = useState('');const [ward, setWard] = useState('');
   const [loading, setLoading] = useState(true);const [saving, setSaving] = useState(false);const [error, setError] = useState('');const [stale, setStale] = useState(false);const [revision, setRevision] = useState(0);
@@ -40,7 +40,7 @@ export function VneidAssetImportForm({ onClose, onBack, onImported }: { onClose:
             city: city.trim(), district: district.trim(), ward: ward.trim() || null,
             units: selected.asset.units.map(unit => { const t=terms[unit.externalUnitId];return { ...t, externalUnitId: unit.externalUnitId,
               floor: Number(t.floor), maxOccupants: Number(t.maxOccupants), electricityIndex: Number(t.electricityIndex), waterIndex: Number(t.waterIndex) }; }),
-          });onImported(result.property.id);
+          });await onImported(result.property.id);
         } catch (e) {setError(e instanceof Error ? e.message : 'Chưa thêm được tài sản.');if(e instanceof ApiError && ['ASSET_SOURCE_CHANGED','ASSET_ALREADY_IMPORTED','ASSET_NOT_AVAILABLE','VNEID_LINK_CHANGED'].includes(e.code))setStale(true);}
         finally {setSaving(false);}
       }}>

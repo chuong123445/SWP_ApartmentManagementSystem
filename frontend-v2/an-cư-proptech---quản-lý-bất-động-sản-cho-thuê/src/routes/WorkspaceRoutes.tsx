@@ -130,7 +130,7 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
             />
           )}
 
-          {activeTab === 'reports' && <ReportsPage />}
+          {activeTab === 'reports' && <ReportsPage rooms={rooms} buildings={initialBuildings} invoices={invoices} contracts={contracts} selectedPropertyId={navigation.selectedBuildingId} loading={workspace.billingLoading||workspace.inventoryLoading} />}
 
           {activeTab === 'settings' && (
             <SettingsPage key={navigation.selectedBuildingId} propertyId={navigation.selectedBuildingId} />

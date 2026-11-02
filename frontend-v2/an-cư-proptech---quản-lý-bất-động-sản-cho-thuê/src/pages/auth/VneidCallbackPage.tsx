@@ -22,8 +22,11 @@ export function VneidCallbackPage() {
       if (!verifying && user) throw new Error('Bạn đang đăng nhập một tài khoản. Hãy dùng chức năng xác thực tài khoản để liên kết.');
       const token = await getAccessTokenSilently();
       if (!token) throw new Error('Auth0 chưa cấp access token cho API. Hãy kiểm tra cấu hình audience.');
-      if (verifying) { await verifyVneid(token); await reloadUser(); return '/account/verification'; }
-      return loginDestination(await loginVneid(token), undefined);
+      if (verifying) {
+        await verifyVneid(token); await reloadUser();
+        return typeof location.state.returnTo === 'string' ? loginDestination(user!, location.state.returnTo) : '/account/verification';
+      }
+      return loginDestination(await loginVneid(token), location.state.returnTo);
     })();
     operation.current.then(path => { if (active) navigate(path, { replace: true }); })
       .catch(e => { if (active) setError(e instanceof Error ? e.message : 'Không thể hoàn tất đăng nhập VNeID.'); });

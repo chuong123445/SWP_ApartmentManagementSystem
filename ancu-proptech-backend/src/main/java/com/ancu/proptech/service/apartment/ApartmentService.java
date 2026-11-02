@@ -20,6 +20,10 @@ import java.util.*;
 @Service @RequiredArgsConstructor
 public class ApartmentService {
     private final ApartmentRepository apartments;
+    private final com.ancu.proptech.service.auth.AccountAccessService access;
+    private final com.ancu.proptech.service.property.AssetManagementAccess assetAccess;
+    private final com.ancu.proptech.repository.property.PropertyExternalImportRepository imports;
+    private final com.ancu.proptech.repository.rental.RentalRequestRepository requests;
     private final com.ancu.proptech.service.property.PropertyImageService images;
     private final com.ancu.proptech.service.property.PropertyRightsPolicy rights;
     public static Specification<Apartment> rightsEffective(){
@@ -69,16 +73,28 @@ public class ApartmentService {
     }
 
     @Transactional(readOnly = true)
-    public ApartmentDetail detail(Long id) {
-        Apartment a = apartments.findOne(visible().and((root, query, cb) -> cb.equal(root.get("id"), id)))
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Không tìm thấy căn hộ đang được đăng công khai."));
+    public ApartmentDetail detail(Long id) {return detail(id,null);}
+    @Transactional(readOnly=true)
+    public ApartmentDetail detail(Long id,org.springframework.security.oauth2.jwt.Jwt jwt) {
+        var actor=jwt==null?null:access.account(jwt);
+        var a=apartments.findById(id).orElseThrow(()->new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy căn hộ."));
+        boolean own=actor!=null&&actor.getId().equals(a.getProperty().getOwner().getId())&&(actor.getRole()==AuthAccount.Role.CUSTOMER||actor.getRole()==AuthAccount.Role.OWNER);
+        if(!own&&apartments.findOne(visible().and((root,query,cb)->cb.equal(root.get("id"),id))).isEmpty())throw new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy căn hộ đang được đăng công khai.");
+        ApartmentDetail.Management management=null;
+        if(own){
+            var property=a.getProperty();boolean editable=assetAccess.editable(actor);
+            boolean pending=requests.existsByApartmentIdAndStatus(id,com.ancu.proptech.model.rental.RentalRequest.Status.PENDING);
+            boolean vacant=a.getAvailability()==Apartment.Availability.VACANT;
+            management=new ApartmentDetail.Management(property.getId(),property.getVersion(),property.getApprovalStatus().name(),imports.findById(property.getId()).map(com.ancu.proptech.model.property.PropertyExternalImport::getSource).orElse(null),editable,editable&&vacant&&!pending,
+                !editable?"Cần xác thực tài khoản để chỉnh sửa.":!vacant?"Chỉ đổi giá khi căn hộ trống, chưa làm hợp đồng hoặc có người thuê.":pending?"Cần xử lý tất cả yêu cầu thuê đang chờ trước khi đổi giá.":null,images.gallery(property.getId()).stream().map(i->new ApartmentDetail.Image(i.id(),i.url())).toList(),a.getRoomNumber(),a.getMaxOccupants());
+        }
         var p = a.getProperty();
         var owner = p.getOwner();
         return new ApartmentDetail(a.getId(), a.getTitle(), a.getDescription(), p.getAddress(), p.getCity(), p.getDistrict(), p.getName(),
                 a.getAreaM2().toPlainString(), a.getAdvertisedMonthlyRent().toPlainString(), gallery(a),
                 List.copyOf(a.getAmenities()), a.getAvailability().name(), a.getPublicationStatus().name(), a.getBedrooms(), a.getBathrooms(),
                 new ApartmentDetail.PublicOwner(owner.getId(), owner.getFullName(), owner.isContactVerified()), a.getVersion(),
-                a.getElectricityUnitPrice()==null?null:a.getElectricityUnitPrice().toPlainString(),a.getWaterUnitPrice()==null?null:a.getWaterUnitPrice().toPlainString(),p.getRightType()==null?"UNSPECIFIED":p.getRightType().name(),p.getRightsValidFrom(),p.getRightsValidUntil(),!rights.limited(p)||(p.getRightsValidFrom()!=null&&p.getRightsValidUntil()!=null&&!rights.today().isBefore(p.getRightsValidFrom())&&!rights.today().isAfter(p.getRightsValidUntil())));
+                a.getElectricityUnitPrice()==null?null:a.getElectricityUnitPrice().toPlainString(),a.getWaterUnitPrice()==null?null:a.getWaterUnitPrice().toPlainString(),p.getRightType()==null?"UNSPECIFIED":p.getRightType().name(),p.getRightsValidFrom(),p.getRightsValidUntil(),!rights.limited(p)||(p.getRightsValidFrom()!=null&&p.getRightsValidUntil()!=null&&!rights.today().isBefore(p.getRightsValidFrom())&&!rights.today().isAfter(p.getRightsValidUntil())),management);
     }
 
     public static void validatePage(int page, int size) {
