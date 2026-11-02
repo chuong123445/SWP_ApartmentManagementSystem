@@ -81,20 +81,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
 
   return (
-    <aside className="w-64 bg-[#111827] text-slate-300 flex flex-col shrink-0 border-r border-slate-800 select-none min-h-screen">
-      {/* Brand Logo */}
-      <div className="p-4 border-b border-slate-800 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-emerald-950/60">
-          <Building2 className="w-5 h-5" />
-        </div>
-        <div className="overflow-hidden">
-          <div className="font-bold text-white text-sm tracking-tight flex items-center gap-1.5">
-            <span>An Cư PropTech</span>
-          </div>
-          <p className="text-[11px] text-slate-400 truncate">Bất Động Sản Minh Bạch Pháp Lý</p>
-        </div>
-      </div>
-
+    <aside className="w-64 bg-[#111827] text-slate-300 flex flex-col shrink-0 border-r border-slate-800 select-none min-h-0 h-full overflow-y-auto">
       {/* Building Selector */}
       <div className="p-3 border-b border-slate-800 bg-slate-900/50">
         <label htmlFor="select-building-sidebar" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
