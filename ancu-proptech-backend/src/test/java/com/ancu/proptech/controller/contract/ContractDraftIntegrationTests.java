@@ -51,6 +51,40 @@ class ContractDraftIntegrationTests {
     private String token,customerToken,otherToken;
     private static String hash;
     private static final String PASSWORD="Contract-test!12345";
+    @Test void historyViewUsesFrozenNamesAndSurvivesLegacyInvalidJson()throws Exception {
+        String saved=create();Long contractId=Long.valueOf(id(saved));
+        String frozenName=JsonPath.read(saved,"$.snapshot.customer.fullName");
+        customer.setFullName("Changed display name");accounts.saveAndFlush(customer);
+        assertEquals(frozenName,jdbc.queryForObject("SELECT customer_name FROM vw_customer_tenancy_history WHERE contract_id=?",String.class,contractId));
+        assertEquals("Changed display name",jdbc.queryForObject("SELECT customer_display_name FROM vw_customer_tenancy_history WHERE contract_id=?",String.class,contractId));
+        var d=drafts.findByContractId(contractId).orElseThrow();d.setSnapshotJson("{invalid legacy json");drafts.saveAndFlush(d);
+        assertEquals("CURRENT_ACCOUNT",jdbc.queryForObject("SELECT customer_name_source FROM vw_customer_tenancy_history WHERE contract_id=?",String.class,contractId));
+        assertNull(jdbc.queryForObject("SELECT activated_at FROM vw_customer_tenancy_history WHERE contract_id=?",java.sql.Timestamp.class,contractId));
+    }
+    @Test void historySummaryDoesNotCountCancelledDraftOrInventLegacyActivationTime()throws Exception {
+        String saved=create();Long contractId=Long.valueOf(id(saved));var c=contracts.findById(contractId).orElseThrow();
+        c.setStatus(RentalContract.Status.ENDED);c.setEndReason("RENEWAL_CANCELLED");contracts.saveAndFlush(c);
+        assertEquals(0,jdbc.queryForObject("SELECT ever_rented_apartment_count FROM vw_account_tenancy_summary WHERE account_id=?",Integer.class,customer.getId()));
+        c.setEndReason(null);contracts.saveAndFlush(c);
+        assertEquals(1L,jdbc.queryForObject("SELECT unknown_history_count FROM vw_account_tenancy_summary WHERE account_id=?",Long.class,customer.getId()));
+        c.setStatus(RentalContract.Status.ACTIVE);c.setStartDate(LocalDate.now().minusMonths(2));c.setEndDate(LocalDate.now().minusDays(1));contracts.saveAndFlush(c);
+        assertEquals("EXPIRED_PENDING_RESOLUTION",jdbc.queryForObject("SELECT tenancy_stage FROM vw_customer_tenancy_history WHERE contract_id=?",String.class,contractId));
+        assertEquals(1L,jdbc.queryForObject("SELECT current_tenancy_count FROM vw_account_tenancy_summary WHERE account_id=?",Long.class,customer.getId()));
+        assertEquals(1,jdbc.queryForObject("SELECT ever_rented_apartment_count FROM vw_account_tenancy_summary WHERE account_id=?",Integer.class,customer.getId()));
+        assertTrue(jdbc.queryForObject("SELECT has_legacy_activation_without_timestamp FROM vw_account_tenancy_summary WHERE account_id=?",Boolean.class,customer.getId()));
+        assertNull(jdbc.queryForObject("SELECT first_recorded_activation_at FROM vw_account_tenancy_summary WHERE account_id=?",java.sql.Timestamp.class,customer.getId()));
+        assertEquals(0L,jdbc.queryForObject("SELECT total_contract_count FROM vw_account_tenancy_summary WHERE account_id=?",Long.class,other.getId()));
+    }
+    @Test void apartmentAndRequestViewsKeepTheirGrainWithMultipleRequests()throws Exception {
+        create();
+        for(var party:List.of(customer,other)){
+            var r=new RentalRequest();r.setApartment(request.getApartment());r.setCustomer(party);r.setStatus(RentalRequest.Status.PENDING);r.setMessage("View test");r.setCreatedAt(Instant.now());requests.saveAndFlush(r);
+        }
+        Long apartmentId=request.getApartment().getId();
+        assertEquals(1L,jdbc.queryForObject("SELECT COUNT_BIG(*) FROM vw_apartment_rental_overview WHERE apartment_id=?",Long.class,apartmentId));
+        assertEquals(2L,jdbc.queryForObject("SELECT pending_new_request_count FROM vw_apartment_rental_overview WHERE apartment_id=?",Long.class,apartmentId));
+        assertEquals(3L,jdbc.queryForObject("SELECT COUNT_BIG(*) FROM vw_owner_request_inbox WHERE apartment_id=? AND request_type='NEW'",Long.class,apartmentId));
+    }
     @BeforeEach void fixture() {
         if(hash==null) hash=passwords.encode(PASSWORD);
         owner=account(AuthAccount.Role.OWNER);customer=account(AuthAccount.Role.CUSTOMER);other=account(AuthAccount.Role.OWNER);
@@ -157,6 +191,10 @@ class ContractDraftIntegrationTests {
         String hash=JsonPath.read(next,"$.signing.contentHash");
         sign(next,token,hash,signature(),true).andExpect(status().isOk());assertEquals("ACTIVE",JsonPath.read(readContract(oldId),"$.status"));
         sign(next,customerToken,hash,signature(),true).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"));
+        assertNotNull(contracts.findById(Long.valueOf(id(next))).orElseThrow().getActivatedAt());
+        assertNull(contracts.findById(Long.valueOf(oldId)).orElseThrow().getActivatedAt());
+        assertEquals(1L,jdbc.queryForObject("SELECT COUNT_BIG(*) FROM vw_owner_request_inbox WHERE apartment_id=? AND request_type='NEW'",Long.class,request.getApartment().getId()));
+        assertEquals(1L,jdbc.queryForObject("SELECT COUNT_BIG(*) FROM vw_owner_request_inbox WHERE apartment_id=? AND request_type='RENEWAL'",Long.class,request.getApartment().getId()));
         String ended=readContract(oldId);assertEquals("ENDED",JsonPath.read(ended,"$.status"));assertEquals("RENEWED",JsonPath.read(ended,"$.lifecycle.endReason"));
         assertEquals(JsonPath.<String>read(old,"$.signing.ownerSignature"),JsonPath.<String>read(ended,"$.signing.ownerSignature"));
         assertEquals(JsonPath.<String>read(old,"$.signing.contentHash"),JsonPath.<String>read(ended,"$.signing.contentHash"));
@@ -247,6 +285,8 @@ class ContractDraftIntegrationTests {
         sign(next,customerToken,hash,signature(),true).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DRAFT")).andExpect(jsonPath("$.signing.state").value("SIGNED"));
         assertEquals("ACTIVE",JsonPath.read(readContract(oldId),"$.status"));
         renewalActivation.activate(Long.valueOf(id(next)));assertEquals("DRAFT",JsonPath.read(readContract(id(next)),"$.status"));
+        assertNull(contracts.findById(Long.valueOf(id(next))).orElseThrow().getActivatedAt());
+        assertEquals("SIGNED_WAITING_ACTIVATION",jdbc.queryForObject("SELECT tenancy_stage FROM vw_customer_tenancy_history WHERE contract_id=?",String.class,Long.valueOf(id(next))));
         mvc.perform(post("/api/v1/owner/contracts/"+id(next)+"/cancel-renewal").header("Authorization",token).contentType("application/json").content("{\"version\":0,\"consent\":true}")).andExpect(status().isConflict());
     }
     @Test void expiryRemindersArePersistentScopedAndDeduplicatedAtTwentyAndTenDays()throws Exception {
@@ -342,6 +382,7 @@ class ContractDraftIntegrationTests {
             .andExpect(jsonPath("$.signing.ownerSignedAt").isNotEmpty()).andExpect(jsonPath("$.signing.customerSignedAt").isEmpty())
             .andExpect(jsonPath("$.signing.state").value("WAITING_CUSTOMER")).andExpect(jsonPath("$.status").value("DRAFT"))
             .andReturn().getResponse().getContentAsString();
+        assertNull(contracts.findById(Long.valueOf(id(contract))).orElseThrow().getActivatedAt());
         assertEquals(hash,JsonPath.read(ownerSigned,"$.signing.contentHash"));
         update(id(contract),0,terms()).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONTRACT_SIGNED_CONTENT"));
         sign(ownerSigned,token,hash,signature(),true).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("ALREADY_SIGNED"));
@@ -349,6 +390,8 @@ class ContractDraftIntegrationTests {
             .andExpect(jsonPath("$.status").value("ACTIVE")).andExpect(jsonPath("$.signing.state").value("SIGNED"));
         assertEquals(Apartment.Availability.OCCUPIED,request.getApartment().getAvailability());
         var saved=contracts.findById(Long.valueOf(id(contract))).orElseThrow();assertNull(saved.getElectricityBaseline());assertNull(saved.getWaterBaseline());
+        assertNotNull(saved.getActivatedAt());
+        var activation=saved.getActivatedAt();readContract(id(contract));assertEquals(activation,saved.getActivatedAt());
         byte[] bytes=mvc.perform(get("/api/v1/contracts/"+id(contract)+"/pdf").header("Authorization",customerToken)).andExpect(status().isOk())
             .andReturn().getResponse().getContentAsByteArray();
         try(var pdf=org.apache.pdfbox.Loader.loadPDF(bytes)){

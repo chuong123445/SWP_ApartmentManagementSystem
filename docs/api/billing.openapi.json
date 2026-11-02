@@ -3,7 +3,7 @@
   "info": {
     "title": "An Cu Tenant Billing",
     "version": "1.0.0",
-    "description": "Implemented Owner monthly draft/send and Customer-as-Tenant private invoice receipt. Contract activation/signing/payment are not implemented. Local ACTIVE contracts are fixtures only. Billing rules are in docs/decisions/billing-v1.md."
+    "description": "Implemented Owner monthly draft/send, exact-party invoice receipt and Owner unpaid summary. SENT is issuance, paymentStatus/paidAt represent collection separately. Contract and payment integration are documented in their own OpenAPI files."
   },
   "servers": [
     {

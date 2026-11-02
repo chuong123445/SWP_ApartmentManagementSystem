@@ -29,6 +29,8 @@ public class RentalContract {
     @Column(nullable=false) private long billingVersion;
     @Column(nullable=false) private boolean localFixture;
     private Long renewalOfContractId;
+    // Actual system transition to ACTIVE. Historical records remain unknown (NULL).
+    @Column(columnDefinition="datetime2(6)") private java.time.Instant activatedAt;
     @Column(columnDefinition="datetime2(6)") private java.time.Instant endedAt;
     @Column(length=24) private String endReason;
     @Version private long version;
