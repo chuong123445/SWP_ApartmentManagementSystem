@@ -122,11 +122,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </span>
         </div>
 
-        {canManage ? <button type="button" id="nav-home" onClick={() => onSelectTab('home')}
-          aria-current={activeTab === 'home' ? 'page' : undefined}
-          className={`w-full flex items-center gap-2.5 px-3 py-2 mb-2 text-xs rounded-lg transition-colors ${activeTab === 'home' ? 'bg-[#065f46] text-white font-bold ring-1 ring-emerald-500' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>
-          <Home className="w-4 h-4" />Trang chủ
-        </button> : <Link to="/" className="flex items-center gap-2.5 px-3 py-2 mb-2 text-xs text-slate-300 rounded-lg hover:bg-slate-800 hover:text-white"><Home className="w-4 h-4" />Trang chủ</Link>}
         {/* Admin Menu */}
         {canManage && <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
           Vận Hành Quản Lý
