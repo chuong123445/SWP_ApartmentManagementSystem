@@ -36,7 +36,7 @@ export function RequestList({
           <div className="flex flex-wrap justify-between gap-3">
             <div>
               <h2 className="font-bold text-slate-900">
-                <Link to={`/apartments/${request.apartmentId}`} className="hover:text-emerald-700">
+                <Link to={!owner && request.contractId ? `/contracts/${request.contractId}` : `/apartments/${request.apartmentId}`} className="hover:text-emerald-700">
                   {request.apartmentTitle}
                 </Link>
               </h2>
@@ -114,6 +114,12 @@ export function RequestList({
           )}
 
           {/* Customer actions & status notices */}
+          {!owner && request.contractId && (
+            <Link to={`/contracts/${request.contractId}`} className="mt-3 flex w-fit items-center gap-2 text-sm font-semibold text-emerald-700 underline">
+              <FileText className="w-4 h-4" />
+              {request.contractCompleted ? 'Xem hợp đồng' : 'Xem / ký hợp đồng'}
+            </Link>
+          )}
           {!owner && request.status === 'PENDING' && onCancel && (
             <button
               disabled={!!cancelling}
