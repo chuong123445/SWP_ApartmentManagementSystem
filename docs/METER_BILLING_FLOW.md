@@ -7,3 +7,5 @@
 - Nước theo người dùng số người trong hợp đồng, không yêu cầu nhập đồng hồ nước mới.
 - Chỉ chốt kỳ tiếp theo của hợp đồng ACTIVE, đủ chỉ số bàn giao và kỳ trọn tháng. Không chốt vào kỳ đã có hóa đơn nháp/gửi.
 - Migrations: V42__billing_meter_readings.sql, idempotent và không tự sinh dữ liệu demo.
+
+- Lập hóa đơn với useSavedReadings=true: không cần truyền lại chỉ số. Server lấy bản đã chốt và tính tổng; nếu truyền chỉ số khác bản chốt thì trả SAVED_READING_MISMATCH. baselineVersion chống lập hóa đơn bằng dữ liệu đã bị sửa. Gửi hóa đơn xong, kỳ sau tự lấy chỉ số cuối kỳ này làm đầu kỳ.

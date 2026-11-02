@@ -144,6 +144,25 @@ class BillingIntegrationTests {
         jdbc.update("INSERT INTO property_settings(property_id,electricity_unit_price,water_unit_price,internet_fee,garbage_fee,water_billing_mode,updated_at,updated_by,version) VALUES(?,4000,50000,100000,30000,'PER_PERSON',SYSUTCDATETIME(),?,0)",property.getId(),owner.getId());
         saveMeter(ownerToken,input).andExpect(status().isOk()).andExpect(jsonPath("$.electricityUnitPrice").value("4000.00")).andExpect(jsonPath("$.waterBillingMode").value("PER_PERSON")).andExpect(jsonPath("$.savedReading.waterEndReading").value("200")).andExpect(jsonPath("$.savedReading.propertyRates").value(true));
     }
+    @Test void invoiceUsesSavedMetersAndFrozenSettingsWithoutRetyping()throws Exception{
+        jdbc.update("INSERT INTO property_settings(property_id,electricity_unit_price,water_unit_price,internet_fee,garbage_fee,water_billing_mode,updated_at,updated_by,version) VALUES(?,4000,50000,100000,30000,'PER_PERSON',SYSUTCDATETIME(),?,0)",property.getId(),owner.getId());
+        contract.setOccupantCount(2);contracts.saveAndFlush(contract);
+        saveMeter(ownerToken,body("2026-10",0,"1120","200").replace("baselineVersion\":0","applyPropertyRates\":true,\"settingsVersion\":0,\"baselineVersion\":0")).andExpect(status().isOk());
+        jdbc.update("UPDATE property_settings SET electricity_unit_price=9000,version=version+1 WHERE property_id=?",property.getId());
+        create(ownerToken,body("2026-10",1,"1130","200")).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("SAVED_READING_MISMATCH"));
+        String json=create(ownerToken,"{\"period\":\"2026-10\",\"baselineVersion\":1,\"useSavedReadings\":true,\"dueDate\":\"2026-11-05\"}").andExpect(status().isCreated()).andExpect(jsonPath("$.electricityEndReading").value("1120")).andExpect(jsonPath("$.electricityUnitPrice").value("4000.00")).andExpect(jsonPath("$.waterBillingMode").value("PER_PERSON")).andReturn().getResponse().getContentAsString();
+        assertEquals(0,new BigDecimal(JsonPath.<String>read(json,"$.totalAmount")).compareTo(new BigDecimal("5710000")));
+        String id=JsonPath.read(json,"$.id");send(ownerToken,id,0).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/owner/contracts/"+contract.getId()+"/billing-context").header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.period").value("2026-11")).andExpect(jsonPath("$.electricityStartReading").value("1120")).andExpect(jsonPath("$.savedReading").isEmpty());
+        mvc.perform(get("/api/v1/invoices/"+id).header("Authorization","Bearer "+tenantToken)).andExpect(status().isOk()).andExpect(jsonPath("$.electricityUnitPrice").value("4000.00"));
+    }
+    @Test void cannotCreateFromMissingSavedReadingsOrEditAfterInvoice()throws Exception{
+        create(ownerToken,"{\"period\":\"2026-10\",\"baselineVersion\":0,\"useSavedReadings\":true,\"dueDate\":\"2026-11-05\"}").andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("METER_READING_MISSING"));
+        saveMeter(ownerToken,body("2026-10",0,"1120","208")).andExpect(status().isOk());
+        create(ownerToken,body("2026-10",0,"1120","208")).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("VERSION_CONFLICT"));
+        create(ownerToken,body("2026-10",1,"1120","208")).andExpect(status().isCreated());
+        saveMeter(ownerToken,body("2026-10",2,"1130","208")).andExpect(status().isConflict());
+    }
     private void cleanupCommitted(){
         String cid=contract.getId().toString(),aid=apartment.getId().toString();
         jdbc.update("DELETE FROM invoice_notifications WHERE invoice_id IN(SELECT id FROM rental_invoices WHERE contract_id=?)",cid);jdbc.update("DELETE FROM rental_invoices WHERE contract_id=?",cid);jdbc.update("DELETE FROM rental_contracts WHERE id=?",cid);jdbc.update("DELETE FROM rental_apartment_amenities WHERE apartment_id=?",aid);jdbc.update("DELETE FROM rental_apartments WHERE id=?",aid);jdbc.update("DELETE FROM rental_properties WHERE id=?",property.getId().toString());
