@@ -36,7 +36,8 @@ public class VneidService {
                 .filter(identity -> "VERIFIED".equals(identity.getVerificationStatus()))
                 .map(identity -> new AccountVerificationResponse.Vneid("VERIFIED", identity.getVerifiedAt(),
                         new AccountVerificationResponse.Citizen(identity.getDocumentNumber(), identity.getLegalName(),
-                                identity.getDateOfBirth(), identity.getGender(), identity.getAddress())))
+                                identity.getDateOfBirth(), identity.getGender(), identity.getAddress(), identity.getPhoneNumber(),
+                                identity.getDocumentIssueDate(),identity.getDocumentIssuePlace(),identity.getPermanentAddress())))
                 .orElseGet(() -> new AccountVerificationResponse.Vneid("UNVERIFIED", null, null));
         return new AccountVerificationResponse(account.isEmailVerified(), vneid);
     }
@@ -48,6 +49,7 @@ public class VneidService {
         if (existing.isPresent()) {
             var account = accounts.findForIdentityUpdate(existing.get().getAccountId()).orElseThrow();
             requireUsable(account);
+            supplement(existing.get(), external);
             return auth.createSession(account);
         }
         var identity = identity(external);
@@ -86,7 +88,8 @@ public class VneidService {
         var current = identities.findById(account.getId());
         if (current.isPresent()) {
             if (!current.get().getIssuer().equals(config.getIssuer()) || !current.get().getSubject().equals(external.getSubject())) throw conflict();
-            return new LinkAttempt(auth.user(account),null); // Retry cùng liên kết không ghi đè hồ sơ đã lưu.
+            supplement(current.get(),external);
+            return new LinkAttempt(auth.user(account),null); // Chỉ bổ sung trường trống từ cùng định danh; không ghi đè dữ liệu đã lưu.
         }
         var identity = identity(external);
         if (identities.existsByDocumentNumber(identity.getDocumentNumber())) throw conflict();
@@ -141,8 +144,14 @@ public class VneidService {
             if (result.getDateOfBirth().isAfter(LocalDate.now())) throw invalidClaims();
         } catch (DateTimeParseException ex) { throw invalidClaims(); }
         result.setGender(text(jwt,"gender",30));result.setAddress(text(jwt,"address",300));
+        VneidCitizenDetails.read(jwt,result);
         result.setSource(VneidTokenVerifier.SOURCE);result.setVerificationStatus("VERIFIED");result.setVerifiedAt(Instant.now());
         return result;
+    }
+    private void supplement(ExternalIdentity saved,Jwt jwt) {
+        if(!VneidCitizenDetails.present(jwt))return; // Legacy tokens and frozen core evidence remain supported.
+        entityManager.refresh(saved); // The account row lock serializes concurrent supplements; discard earlier cached evidence.
+        if(VneidCitizenDetails.fillMissing(saved,identity(jwt)))identities.saveAndFlush(saved);
     }
     private static String text(Jwt jwt,String key,int max) {
         Object raw=jwt.getClaims().get(VneidTokenVerifier.NS+key);
