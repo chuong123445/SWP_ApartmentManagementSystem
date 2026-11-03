@@ -41,7 +41,7 @@ function ResidentHomeContent(){
   const canReport=!!selected&&selected.startDate<=today;
   const openTickets=tickets.filter(t=>!['RESOLVED','CANCELLED','REJECTED'].includes(t.apiStatus??'')).length;
   const places=selected&&canReport?[{value:selected.apartmentId,label:`${selected.propertyName} — ${selected.roomNumber}`,apartmentId:selected.apartmentId}]:[];
-  return <main className="resident-hub operations-page max-w-7xl mx-auto px-5 py-8">
+  return <main className="resident-hub operations-page home-wrap py-8">
     <header className="op-heading"><div className="op-title-group"><span className="op-heading-icon"><Home size={23}/></span><div><div className="op-eyebrow">Không gian của bạn</div><h1>Nhà đang thuê</h1><p>Thông tin nơi ở, hóa đơn và hỗ trợ sửa chữa trong một nơi.</p></div></div><button className="op-button" onClick={()=>{reloadLeases();reload();}} disabled={leasesLoading||loading}><RefreshCw size={14}/>Làm mới</button></header>
     {leaseError&&<p role="alert" className="op-error">{leaseError}</p>}
     {leasesLoading&&!selected&&<p role="status" className="op-empty">Đang tải nơi ở của bạn...</p>}

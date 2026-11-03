@@ -5,12 +5,13 @@ import { hasManagementRole } from '@/utils/auth';
 import { ManagementLayout } from '@/layouts/ManagementLayout';
 import { WorkspaceRoutes } from '@/routes/WorkspaceRoutes';
 import { WorkspaceModals } from '@/components/workspace/WorkspaceModals';
-import { Link } from 'react-router';
+import { Link, Navigate, useSearchParams } from 'react-router';
 import { useEffect } from 'react';
 
 // Owner navigation retains shared workspace data while switching management tabs.
 export function WorkspacePage() {
   const { user, logout, isLoggingOut, error } = useAuth();
+  const [params] = useSearchParams();
   const canManage = hasManagementRole(user!);
   const navigation = useWorkspaceNavigation(canManage);
   const workspace = useRentalWorkspace(canManage, navigation.selectedBuildingId, navigation.activeTab === 'invoices');
@@ -37,6 +38,7 @@ export function WorkspacePage() {
     if (!workspace.inventoryLoading && !workspace.inventoryError && propertyId !== 'all' && !workspace.buildings.some(p => p.id === propertyId))
       navigation.setSelectedBuildingId('all');
   }, [workspace.inventoryLoading, workspace.inventoryError, workspace.buildings, propertyId]);
+  if (params.get('tab') === 'home') return <Navigate to="/" replace />;
   return (
     <ManagementLayout
       account={user!}

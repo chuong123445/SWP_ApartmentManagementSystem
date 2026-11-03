@@ -21,7 +21,6 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
   const { rooms, tenants, contracts, invoices, tickets, transactions, config,
     buildings: initialBuildings, setSelectedRoom, setSelectedInvoice, currentResidentRoom, currentResidentTenant,
     currentResidentContract, residentInvoices, residentTickets, handleMarkPaid, handleAddTenant, handleAddContract,
-    handleUpdateIndices,
     handleReserveEscrow,
     handleAddTransaction } = workspace;
   return <>
@@ -106,10 +105,9 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
 
           {activeTab === 'utilities' && (
             <UtilitiesPage
-              rooms={rooms}
-              tenants={tenants}
-              config={config}
-              onUpdateIndices={handleUpdateIndices}
+              tenancies={workspace.tenancies}
+              onSettings={()=>setActiveTab('settings')}
+              onInvoice={id=>{navigation.setInvoiceContractId(id);setIsCreateInvoiceOpen(true);}}
             />
           )}
 

@@ -63,7 +63,7 @@ export function AppRoutes() {
     <Route path="/my/invoices" element={<RequireAccount role="CUSTOMER"><MyInvoicesPage /></RequireAccount>} />
     <Route path="/my/contracts" element={<RequireAccount role="CUSTOMER"><MyContractsPage /></RequireAccount>} />
     <Route path="/my/maintenance" element={<RequireAccount role="CUSTOMER"><MyMaintenancePage /></RequireAccount>} />
-    <Route path="/my/home" element={<RequireAccount role="CUSTOMER"><ResidentHomePage /></RequireAccount>} />
+    <Route path="/my/home" element={<RequireAccount><ResidentHomePage /></RequireAccount>} />
     <Route path="/my/contracts/:id" element={<RequireAccount role="CUSTOMER"><ContractDetailPage /></RequireAccount>} />
     <Route path="/my/invoices/additional/:id" element={<RequireAccount role="CUSTOMER"><InvoiceDetailPage additional /></RequireAccount>} />
     <Route path="/contracts/:id" element={<RequireAccount verified={false}><ContractDetailPage /></RequireAccount>} />
@@ -75,7 +75,7 @@ export function AppRoutes() {
     <Route path="/account/settings" element={<RequireAccount verified={false}><AccountSettingsPage /></RequireAccount>} />
     <Route path="/account/properties" element={<RequireAccount role="CUSTOMER" verified={false}><AssetManagementPage /></RequireAccount>} />
     <Route path="/account/owner-upgrade" element={<RequireAccount verified={false}><OwnerUpgradePage /></RequireAccount>} />
-    <Route path="/account/properties/new/:relationship?" element={<RequireAccount role="CUSTOMER" verified={false}><PropertyCreatePage /></RequireAccount>} />
+    <Route path="/account/properties/new/:relationship?" element={<RequireAccount verified={false}><PropertyCreatePage /></RequireAccount>} />
     <Route path="/account/rental-properties" element={<RequireAccount verified={false}><PropertyApplicationsPage /></RequireAccount>} />
     <Route path="/account/property-notices" element={<RequireAccount verified={false}><PropertyNoticesPage /></RequireAccount>} />
     <Route path="/account/settings/identity" element={<RequireAccount verified={false}><IdentityPage /></RequireAccount>} />

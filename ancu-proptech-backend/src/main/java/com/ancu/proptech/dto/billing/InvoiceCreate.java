@@ -7,9 +7,10 @@ import java.time.LocalDate;
 @Getter @Setter @NoArgsConstructor
 public class InvoiceCreate {
     @NotNull @Pattern(regexp="\\d{4}-\\d{2}") private String period;
-    @NotNull @DecimalMin("0") @Digits(integer=13,fraction=2) private BigDecimal electricityEndReading;
-    @NotNull @DecimalMin("0") @Digits(integer=13,fraction=2) private BigDecimal waterEndReading;
+    @DecimalMin("0") @Digits(integer=13,fraction=2) private BigDecimal electricityEndReading;
+    @DecimalMin("0") @Digits(integer=13,fraction=2) private BigDecimal waterEndReading;
     @NotNull @Min(0) private Long baselineVersion;
+    private boolean useSavedReadings;
     @NotNull private LocalDate dueDate;
     @JsonAnySetter public void reject(String field,Object value){throw new IllegalArgumentException("Unsupported field: "+field);}
 }
