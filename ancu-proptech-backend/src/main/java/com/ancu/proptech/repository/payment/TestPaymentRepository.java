@@ -15,6 +15,7 @@ public interface TestPaymentRepository extends JpaRepository<TestPayment,Long> {
  @Query("select p"+RECEIVED_OWNER+" and p.id=:id")
  Optional<TestPayment> ownerReceivedDetail(@Param("ownerId") Long ownerId,@Param("propertyId") Long propertyId,@Param("paid") Boolean paid,@Param("id") Long id);
  Optional<TestPayment> findByIdAndCustomerId(Long id,Long customerId);
+ boolean existsByCollectionOwnerId(Long ownerId);
  Optional<TestPayment> findByPaymentCode(String code);
  List<TestPayment> findTop20ByOwnerIdOrderByIdDesc(Long ownerId);
  List<TestPayment> findTop20ByCustomerIdOrderByIdDesc(Long customerId);

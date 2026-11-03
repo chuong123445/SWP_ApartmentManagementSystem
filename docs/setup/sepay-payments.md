@@ -1,5 +1,7 @@
 # Thiết lập SePay cho ứng dụng An Cư
 
+> Chế độ thu chung ở profile local dùng kết nối SePay đã có của owner@ancu.local. Xem [thiết lập và quy tắc thu chung](../decisions/platform-sepay-settlement-v1.md). Các bước nhập token theo từng Owner bên dưới mô tả chế độ kết nối trực tiếp cũ.
+
 ## 1. Ngân hàng và API Token
 
 Chủ nhà tự đăng ký SePay và liên kết ngân hàng tại đó. Mỗi chủ nhà dùng API Token của tài khoản SePay của mình. Một token có thể đọc nhiều ngân hàng đã liên kết, không phải một URL API riêng cho mỗi ngân hàng.

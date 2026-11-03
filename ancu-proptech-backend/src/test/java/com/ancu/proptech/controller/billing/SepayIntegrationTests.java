@@ -29,6 +29,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 @SpringBootTest(properties={"app.seed.enabled=false","app.billing.local-fixtures=false","app.payment.public-base-url=https://payments.example.invalid"}) @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
 class SepayIntegrationTests {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean com.ancu.proptech.service.property.ai.DossierAiClient dossierAiClient;
     @Autowired jakarta.persistence.EntityManager mergeEntities;
     @Autowired MockMvc mvc;@Autowired AuthAccountRepository accounts;@Autowired PropertyRepository properties;
     @Autowired ApartmentRepository apartments;@Autowired RentalContractRepository contracts;
@@ -72,7 +73,9 @@ class SepayIntegrationTests {
         mvc.perform(put("/api/v1/owner/payments/sepay").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"apiToken\":\"test-provider-token\",\"bankAccountId\":\"bank1\",\"enabled\":true,\"version\":0}")).andExpect(status().isBadRequest());
     }
     @Test void qrUsesVaExactServerAmountAndIdempotentCode()throws Exception{
-        String id=prepare();String response=ticket(tenantToken,id);assertTrue(JsonPath.<String>read(response,"$.qrUrl").contains("acc=96247123456789"));assertTrue(JsonPath.<String>read(response,"$.qrUrl").contains("amount=5540000"));assertEquals(JsonPath.<String>read(response,"$.paymentCode"),JsonPath.<String>read(ticket(ownerToken,id),"$.paymentCode"));
+        String id=prepare();String response=ticket(tenantToken,id);assertTrue(JsonPath.<String>read(response,"$.qrUrl").contains("acc=96247123456789"));assertTrue(JsonPath.<String>read(response,"$.qrUrl").contains("amount=5540000"));assertEquals(JsonPath.<String>read(response,"$.paymentCode"),JsonPath.<String>read(ticket(tenantToken,id),"$.paymentCode"));
+        mvc.perform(get("/api/v1/invoices/"+id+"/payment").header("Authorization","Bearer "+ownerToken)).andExpect(jsonPath("$.qrUrl").isEmpty());
+        mvc.perform(post("/api/v1/invoices/"+id+"/payment").header("Authorization","Bearer "+ownerToken)).andExpect(status().isForbidden());
         mvc.perform(post("/api/v1/invoices/"+id+"/payment").header("Authorization","Bearer "+token(otherTenant))).andExpect(status().isNotFound());
     }
     @Test void correctWebhookPaysOnceAndPreservesSentBillingChain()throws Exception{
@@ -158,7 +161,7 @@ class SepayIntegrationTests {
     @Test void smallTestPaymentSettlesOnceWithoutTouchingRealInvoice()throws Exception{
         String invoice=prepare();String realCode=JsonPath.read(ticket(tenantToken,invoice),"$.paymentCode");
         String receipt=createTest(ownerToken,"1000").andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-        String code=JsonPath.read(receipt,"$.payment.paymentCode"),id=JsonPath.read(receipt,"$.id");assertTrue(code.matches("ANCUTEST[A-F0-9]{24}"));assertNotEquals(realCode,code);assertTrue(JsonPath.<String>read(receipt,"$.payment.qrUrl").contains("amount=1000"));
+        String code=JsonPath.read(receipt,"$.payment.paymentCode"),id=JsonPath.read(receipt,"$.id");assertTrue(code.matches("ANCUTEST[A-F0-9]{24}"));assertNotEquals(realCode,code);assertNull(JsonPath.read(receipt,"$.payment.qrUrl"));
         deliver(key,webhook(0,code,"1000","1234567890","96247123456789","in")).andExpect(status().isOk());assertNull(testPayments.findById(Long.valueOf(id)).orElseThrow().getPaidAt());
         deliver(key,webhook(87001,code,"999","1234567890","96247123456789","in")).andExpect(status().isOk());assertNull(testPayments.findById(Long.valueOf(id)).orElseThrow().getPaidAt());
         String body=webhook(87002,code,"1000","1234567890","96247123456789","in");deliver(key,body).andExpect(status().isOk());deliver(key,body).andExpect(status().isOk());
@@ -215,6 +218,115 @@ class SepayIntegrationTests {
         jdbc.update("DELETE FROM sepay_events WHERE owner_id=?",owner.getId());jdbc.update("DELETE FROM invoice_payments WHERE owner_id=?",owner.getId());jdbc.update("DELETE FROM sepay_connections WHERE owner_id=?",owner.getId());
         jdbc.update("DELETE FROM invoice_notifications WHERE invoice_id IN(SELECT id FROM rental_invoices WHERE contract_id=?)",cid);jdbc.update("DELETE FROM rental_invoices WHERE contract_id=?",cid);jdbc.update("DELETE FROM rental_contracts WHERE id=?",cid);jdbc.update("DELETE FROM rental_apartment_amenities WHERE apartment_id=?",aid);jdbc.update("DELETE FROM rental_apartments WHERE id=?",aid);jdbc.update("DELETE FROM rental_properties WHERE id=?",property.getId().toString());
         for(var account:List.of(owner,tenant,otherOwner,otherTenant)){String id=account.getId().toString();jdbc.update("DELETE FROM auth_refresh_tokens WHERE session_id IN(SELECT id FROM auth_sessions WHERE account_id=?)",id);jdbc.update("DELETE FROM auth_sessions WHERE account_id=?",id);jdbc.update("DELETE FROM auth_accounts WHERE id=?",id);}
+    }
+
+    @Autowired com.ancu.proptech.service.payment.SepayService sepay;
+
+    @Test void platformKeepsLegacyReceiptsOutOfWalletAndPaysTheActualOwner() throws Exception {
+        String legacyInvoice = prepare();
+        String legacyCode = JsonPath.read(ticket(tenantToken, legacyInvoice), "$.paymentCode");
+        String sourceToken = token(otherOwner);
+        String sourceKey = JsonPath.read(setup(sourceToken, "bank1", "va1", 0), "$.webhookSecret");
+        String adminToken = token(account(AuthAccount.Role.ADMIN));
+        org.springframework.test.util.ReflectionTestUtils.setField(sepay, "platformSourceEmail", otherOwner.getEmail());
+        try {
+            wallet(ownerToken).andExpect(jsonPath("$.available").value("0"));
+            wallet(sourceToken).andExpect(jsonPath("$.available").value("0"));
+            wallet(tenantToken).andExpect(status().isForbidden());
+            mvc.perform(get("/api/v1/admin/settlements/connection").header("Authorization", "Bearer " + adminToken))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.configured").value(true))
+                    .andExpect(jsonPath("$.webhookUrl").value("https://payments.example.invalid/api/v1/payments/sepay/webhooks/" + otherOwner.getId()))
+                    .andExpect(jsonPath("$.webhookSecret").isEmpty());
+            mvc.perform(get("/api/v1/owner/payments/sepay/events").header("Authorization", "Bearer " + sourceToken))
+                    .andExpect(status().isForbidden());
+            deliver(key, webhook(89100, legacyCode, "5540000", "1234567890", "96247123456789", "in"))
+                    .andExpect(status().isOk());
+            wallet(ownerToken).andExpect(jsonPath("$.received").value("0"));
+
+            String invoice = JsonPath.read(create(ownerToken, body("2026-11", 2, "1200", "210"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
+            send(ownerToken, invoice, 0).andExpect(status().isOk());
+            String issued = ticket(tenantToken, invoice);
+            String code = JsonPath.read(issued, "$.paymentCode");
+            String amount = JsonPath.read(issued, "$.amount");
+            assertEquals(otherOwner.getId(), payments.findByInvoiceId(Long.valueOf(invoice)).orElseThrow().getCollectionOwnerId());
+            mvc.perform(get("/api/v1/invoices/" + invoice + "/payment").header("Authorization", "Bearer " + ownerToken))
+                    .andExpect(jsonPath("$.paymentCode").value(code)).andExpect(jsonPath("$.qrUrl").isEmpty());
+            deliver(key, webhook(89101, code, amount, "1234567890", "96247123456789", "in"))
+                    .andExpect(status().isOk());
+            wallet(ownerToken).andExpect(jsonPath("$.available").value("0"));
+            platformWebhook(sourceKey, webhook(0, code, amount, "1234567890", "96247123456789", "in"))
+                    .andExpect(status().isOk());
+            wallet(ownerToken).andExpect(jsonPath("$.available").value("0"));
+            String paymentEvent = webhook(89101, code, amount, "1234567890", "96247123456789", "in");
+            platformWebhook(sourceKey, paymentEvent).andExpect(status().isOk());
+            platformWebhook(sourceKey, paymentEvent).andExpect(status().isOk());
+            wallet(ownerToken).andExpect(jsonPath("$.available").value(new BigDecimal(amount).toBigIntegerExact().toString()))
+                    .andExpect(jsonPath("$.entries.length()").value(1));
+            wallet(sourceToken).andExpect(jsonPath("$.available").value("0"));
+
+            String receipt = sendTest(ownerToken, contract.getId().toString()).andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.payment.qrUrl").isEmpty()).andReturn().getResponse().getContentAsString();
+            String receiptCode = JsonPath.read(receipt, "$.payment.paymentCode");
+            receivedTests(tenantToken).andExpect(jsonPath("$[0].payment.qrUrl").isString());
+            platformWebhook(sourceKey, webhook(89102, receiptCode, "1000", "1234567890", "96247123456789", "in"))
+                    .andExpect(status().isOk());
+
+            String requestBody = withdrawalBody("5000");
+            String withdrawal = JsonPath.read(withdraw(ownerToken, requestBody).andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString(), "$.id");
+            withdraw(ownerToken, requestBody).andExpect(jsonPath("$.id").value(withdrawal));
+            withdraw(sourceToken, withdrawalBody("1")).andExpect(status().isConflict());
+            wallet(ownerToken).andExpect(jsonPath("$.reserved").value("5000"));
+            decision(false, sourceToken, withdrawal, "CANCEL", 0, "", "").andExpect(status().isNotFound());
+            decision(true, ownerToken, withdrawal, "START", 0, "", "").andExpect(status().isForbidden());
+            decision(true, adminToken, withdrawal, "START", 0, "", "")
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("PROCESSING"));
+            decision(false, ownerToken, withdrawal, "CANCEL", 1, "", "").andExpect(status().isConflict());
+            decision(true, adminToken, withdrawal, "PAID", 1, "FT-DEMO-89103", "")
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("PAID"));
+            decision(true, adminToken, withdrawal, "PAID", 1, "FT-DEMO-89103", "").andExpect(status().isConflict());
+            wallet(ownerToken).andExpect(jsonPath("$.reserved").value("0"))
+                    .andExpect(jsonPath("$.paid").value("5000"))
+                    .andExpect(jsonPath("$.available").value(new BigDecimal(amount).subtract(new BigDecimal("4000")).toBigIntegerExact().toString()));
+
+            String cancelled = JsonPath.read(withdraw(ownerToken, withdrawalBody("1000")).andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString(), "$.id");
+            decision(false, ownerToken, cancelled, "CANCEL", 0, "", "").andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("CANCELLED"));
+            wallet(ownerToken).andExpect(jsonPath("$.reserved").value("0"));
+            mvc.perform(get("/api/v1/invoices/" + invoice).header("Authorization", "Bearer " + tenantToken))
+                    .andExpect(jsonPath("$.status").value("SENT")).andExpect(jsonPath("$.paymentStatus").value("PAID"));
+        } finally {
+            org.springframework.test.util.ReflectionTestUtils.setField(sepay, "platformSourceEmail", "");
+        }
+    }
+
+    private ResultActions platformWebhook(String secret, String body) throws Exception {
+        return mvc.perform(post("/api/v1/payments/sepay/webhooks/" + otherOwner.getId())
+                .header("Authorization", "Apikey " + secret).contentType("application/json").content(body));
+    }
+
+    private ResultActions wallet(String token) throws Exception {
+        return mvc.perform(get("/api/v1/owner/settlements").header("Authorization", "Bearer " + token));
+    }
+
+    private static String withdrawalBody(String amount) {
+        return """
+                {"requestKey":"%s","amount":"%s","bank":"MB","accountNumber":"0123456789","accountHolder":"DEMO OWNER"}
+                """.formatted(UUID.randomUUID(), amount);
+    }
+
+    private ResultActions withdraw(String token, String body) throws Exception {
+        return mvc.perform(post("/api/v1/owner/settlements/withdrawals").header("Authorization", "Bearer " + token)
+                .contentType("application/json").content(body));
+    }
+
+    private ResultActions decision(boolean admin, String token, String id, String action, long version, String reference, String note) throws Exception {
+        return mvc.perform(post("/api/v1/" + (admin ? "admin" : "owner") + "/settlements/withdrawals/" + id + "/actions")
+                .header("Authorization", "Bearer " + token).contentType("application/json").content("""
+                        {"action":"%s","version":%d,"transferReference":"%s","note":"%s"}
+                        """.formatted(action, version, reference, note)));
     }
 
     @Test void contractQrReceiverCannotBeReplacedByDifferentSharedSepayAccount()throws Exception {

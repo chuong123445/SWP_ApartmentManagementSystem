@@ -4,5 +4,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 public interface InvoicePaymentRepository extends JpaRepository<InvoicePayment,Long>{
  Optional<InvoicePayment> findByInvoiceId(Long id);
+ boolean existsByCollectionOwnerId(Long ownerId);
  Optional<InvoicePayment> findByPaymentCode(String code);
 }
