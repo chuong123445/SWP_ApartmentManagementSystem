@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Pagination } from '@/components/common/Pagination';
-import { AccountDetails } from './AccountDetails';
+import { Link } from 'react-router';
 import {
   listAdminAccounts, manageAccount, type AccountAction, type AccountFilter, type ManagedAccount,
 } from '@/services/auth/adminAccountService';
@@ -24,7 +24,6 @@ const outcomes: Record<string, string> = {
 const button = 'rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:opacity-50';
 
 export function AccountsPage() {
-  const [details, setDetails] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<AccountFilter>('ALL');
@@ -53,8 +52,6 @@ export function AccountsPage() {
     });
     return () => controller.abort();
   }, [query, filter, page, revision]);
-
-  useEffect(() => { setDetails(null); }, [query, filter, page]);
 
   function choose(account: ManagedAccount, action: AccountAction) {
     setSelected({ account, action });
@@ -102,13 +99,12 @@ export function AccountsPage() {
       <div className="space-y-3">
         {data?.items.map(account => <article key={account.id} aria-label={'Tài khoản ' + account.email}
           className="rounded-xl border bg-white p-4 flex flex-wrap items-center gap-3 min-w-0">
-          <button type="button" aria-label={'Xem tài khoản ' + account.email}
-            className="flex-1 min-w-0 text-left space-y-1 rounded-lg focus-visible:outline-emerald-600"
-            onClick={() => setDetails(account.id)}>
+          <Link to={'/admin/accounts/' + encodeURIComponent(account.id)} aria-label={'Xem tài khoản ' + account.email}
+            className="flex-1 min-w-0 text-left space-y-1 rounded-lg focus-visible:outline-emerald-600">
           <h2 className="font-semibold break-words text-emerald-800">{account.fullName}</h2>
           <p className="break-all">{account.email}</p>
           <p className="text-sm text-slate-600">#{account.id} · {roles[account.role]} · {account.deletedAt ? filters.DELETED : filters[account.status]}</p>
-          </button>
+          </Link>
           {account.canManage && <div className="flex flex-wrap gap-2">
             {(account.status === 'ACTIVE' || account.status === 'PENDING_VERIFICATION') &&
               <button className={button} disabled={busy} onClick={() => choose(account, 'LOCK')}>Khóa</button>}
@@ -120,7 +116,6 @@ export function AccountsPage() {
       {!data?.items.length && <p>Chưa có tài khoản phù hợp.</p>}
       {data && <Pagination page={data.page} totalPages={data.totalPages} onChange={setPage} />}
     </>}
-    {details && <AccountDetails key={details} accountId={details} onClose={() => setDetails(null)} />}
     {selected && <div className="fixed inset-0 z-50 bg-slate-900/50 p-4 flex items-center justify-center">
       <section role="dialog" aria-modal="true" aria-labelledby="account-action-title"
         className="rounded-xl bg-white p-5 w-full max-w-lg max-h-[90vh] overflow-auto space-y-4">

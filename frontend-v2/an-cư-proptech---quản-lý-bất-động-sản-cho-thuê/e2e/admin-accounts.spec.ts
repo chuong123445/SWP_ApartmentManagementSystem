@@ -39,7 +39,7 @@ async function exercise(page: Page, base: string, width: number) {
     }
     if (/^\/api\/v1\/admin\/accounts\/[0-9]+$/.test(path)) {
       const row = rows.find(a => a.id === path.split('/').at(-1));
-      if (!row) return json({}, 404);
+      if (!row) return json({ message: 'Không tìm thấy tài khoản.' }, 404);
       return json({ account: row, phone: '0900123456', address: 'Địa chỉ hồ sơ chung', bio: 'Hồ sơ mẫu',
         dateOfBirth: '1995-01-02', emailVerified: true, phoneVerified: false });
     }
@@ -105,25 +105,45 @@ async function exercise(page: Page, base: string, width: number) {
     const firstRow = await card('admin@example.invalid').boundingBox();
     const secondRow = await card('blank@example.invalid').boundingBox();
     check(!!firstRow && !!secondRow && secondRow.y >= firstRow.y + firstRow.height, 'Accounts are still arranged in two columns');
-    await card('owner@example.invalid').getByRole('button', { name: 'Xem tài khoản owner@example.invalid' }).click();
-    let accountDetail = page.getByRole('dialog', { name: 'Chi tiết tài khoản' });
+    await card('owner@example.invalid').getByRole('link', { name: 'Xem tài khoản owner@example.invalid' }).click();
+    check(new URL(page.url()).pathname === '/admin/accounts/3', 'Account details did not navigate to its own route');
+    check(await page.getByRole('dialog').count() === 0, 'Account details still use a modal');
+    const accountDetail = page.getByRole('main');
+    await accountDetail.getByRole('heading', { name: 'Chi tiết tài khoản', exact: true }).waitFor();
     await accountDetail.getByRole('region', { name: 'Thông tin tài khoản' }).getByText('0900123456', { exact: true }).waitFor();
     const contractHistory = accountDetail.getByRole('region', { name: 'Hợp đồng của tài khoản' });
     const paidHistory = accountDetail.getByRole('region', { name: 'Hóa đơn đã thanh toán của tài khoản' });
     await contractHistory.getByRole('heading', { name: /Hợp đồng #77/ }).waitFor();
     await paidHistory.getByRole('heading', { name: /Hóa đơn tháng #5/ }).waitFor();
     await paidHistory.getByRole('heading', { name: /Khoản thu bổ sung #5/ }).waitFor();
+    const profileBox = await accountDetail.getByRole('region', { name: 'Thông tin tài khoản' }).boundingBox();
+    const contractBox = await contractHistory.boundingBox(), paidBox = await paidHistory.boundingBox();
+    if (!profileBox || !contractBox || !paidBox) throw Error('Account sections are missing');
+    check(profileBox.y + profileBox.height <= contractBox.y &&
+      profileBox.y + profileBox.height <= paidBox.y, 'Profile is not above account history');
+    check(width >= 1024 ? Math.abs(contractBox.y - paidBox.y) < 2 && paidBox.x > contractBox.x :
+      paidBox.y >= contractBox.y + contractBox.height, 'History columns do not match screen size');
     await contractHistory.getByRole('button', { name: 'Trang sau', exact: true }).click();
     await contractHistory.getByRole('heading', { name: /Hợp đồng #76/ }).waitFor();
     await paidHistory.getByRole('heading', { name: /Hóa đơn tháng #5/ }).waitFor();
     await paidHistory.getByRole('button', { name: 'Trang sau', exact: true }).click();
     await paidHistory.getByRole('heading', { name: /Hóa đơn tháng #4/ }).waitFor();
     await fits();
-    await accountDetail.getByRole('button', { name: 'Đóng', exact: true }).click();
-    await card('blank@example.invalid').getByRole('button', { name: 'Xem tài khoản blank@example.invalid' }).click();
+    await page.reload();
+    await contractHistory.getByRole('heading', { name: /Hợp đồng #77/ }).waitFor();
+    await paidHistory.getByRole('heading', { name: /Hóa đơn tháng #5/ }).waitFor();
+    await page.goBack();
+    await card('owner@example.invalid').waitFor();
+    await page.goForward();
+    await accountDetail.getByRole('heading', { name: 'Chi tiết tài khoản', exact: true }).waitFor();
+    await accountDetail.getByRole('link', { name: '← Danh sách tài khoản', exact: true }).click();
+    await card('blank@example.invalid').getByRole('link', { name: 'Xem tài khoản blank@example.invalid' }).click();
     await accountDetail.getByText('Chưa có hợp đồng.', { exact: true }).waitFor();
     await accountDetail.getByText('Chưa có hóa đơn đã thanh toán.', { exact: true }).waitFor();
-    await page.keyboard.press('Escape');
+    await fits();
+    await page.goto(base + '/admin/accounts/2');
+    await accountDetail.getByText('Chưa có hợp đồng.', { exact: true }).waitFor();
+    await accountDetail.getByRole('link', { name: '← Danh sách tài khoản', exact: true }).click();
 
     await card('blank@example.invalid').getByRole('button', { name: 'Khóa', exact: true }).click();
     let dialog = page.getByRole('dialog');
@@ -175,7 +195,7 @@ async function exercise(page: Page, base: string, width: number) {
 }
 
 for (const width of [1440, 390]) {
-  test(`Admin account entry, lock, unlock and deletion at ${width}px`, async ({ page, baseURL }) => {
+  test(`Admin account detail page, entry and actions at ${width}px`, async ({ page, baseURL }) => {
     await exercise(page, baseURL ?? 'http://localhost:3000', width);
   });
 }
