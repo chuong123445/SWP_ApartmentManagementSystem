@@ -38,6 +38,7 @@ class RegistrationIntegrationTests {
         legacy.setPhone(null);legacy.setPhoneVerified(true);accounts.flush();long version=legacy.getVersion();String hash=legacy.getPasswordHash();
         String retainedEmail="preserve-"+email;register(body().replace(email.toUpperCase(Locale.ROOT),retainedEmail)).andExpect(status().isCreated());
         var retained=accounts.findByEmail(retainedEmail).orElseThrow();long retainedVersion=retained.getVersion();
+        String legacyToken=auth.login(email,password).tokens().accessToken();String retainedToken=auth.login(retainedEmail,password).tokens().accessToken();
         var source=new org.springframework.core.io.ClassPathResource("db/migration/V51__registration_contact_details.sql");
         String script;try(var stream=source.getInputStream()){script=new String(stream.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);}
         var jdbc=new org.springframework.jdbc.core.JdbcTemplate(sourceDataSource);
@@ -47,6 +48,8 @@ class RegistrationIntegrationTests {
         assertEquals(version+1,result.getVersion());assertEquals(hash,result.getPasswordHash());assertEquals(AuthAccount.Status.PENDING_VERIFICATION,result.getStatus());
         assertNull(result.getContactDetailsConfirmedAt());assertEquals(retainedVersion,accounts.findById(retained.getId()).orElseThrow().getVersion());
         assertEquals("+84912345678",accounts.findById(retained.getId()).orElseThrow().getPhone());
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+legacyToken)).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+retainedToken)).andExpect(status().isOk());
     }
     @org.springframework.beans.factory.annotation.Autowired javax.sql.DataSource sourceDataSource;
     @org.springframework.beans.factory.annotation.Autowired jakarta.persistence.EntityManager sourceEntityManager;
