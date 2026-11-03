@@ -30,7 +30,10 @@ class ContractPdfLayoutTests {
             for(String section:List.of("Hôm nay, ngày 3 tháng 11 năm 2026.","Tại địa chỉ:","Chúng tôi gồm:","1. BÊN CHO THUÊ PHÒNG (Bên A)","2. BÊN THUÊ PHÒNG TRỌ (Bên B)","Sau khi bàn bạc hai bên cùng thống nhất như sau:","Bên A đồng ý cho Bên B thuê 1 phòng số 208","Giá thuê là:","Thanh toán vào ngày 3 hàng tháng.","Tiền điện:","Tiền nước:","ĐIỀU KHOẢN HỢP ĐỒNG","Thỏa thuận 1","Thỏa thuận 7","XÁC NHẬN CỦA HAI BÊN")){
                 int position=text.indexOf(section);assertTrue(position>previous,"Order of "+section);previous=position;
             }
-            assertEquals(2,text.split("Nơi công tác:",-1).length-1,"Both paper-form employment slots stay blank");
+            assertEquals(1,text.split("Nơi công tác:",-1).length-1,"Only the exact contract customer has a tenant form");
+            assertEquals(1,text.split("- Ông/Bà:",-1).length-1,"No extra blank tenant slot");
+            assertEquals(2,text.split("Sinh ngày:",-1).length-1,"One owner and one customer");
+            assertEquals(2,text.split("Số CCCD:",-1).length-1,"No third identity section");
             for(var page:pdf.getPages())for(var name:page.getResources().getFontNames())assertTrue(page.getResources().getFont(name).getName().contains("NotoSerif"));
             java.nio.file.Files.write(java.nio.file.Path.of("target/compact-contract.pdf"),bytes);
             var renderer=new org.apache.pdfbox.rendering.PDFRenderer(pdf);
