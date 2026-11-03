@@ -12,13 +12,12 @@ import static com.ancu.proptech.service.auth.AccountService.error;
 final class VneidCitizenDetails {
     private VneidCitizenDetails() {}
     static boolean present(Jwt jwt) {
-        return java.util.stream.Stream.of("phone_number","document_issue_date","document_issue_place","permanent_address")
+        return java.util.stream.Stream.of("document_issue_date","document_issue_place","permanent_address")
                 .anyMatch(key -> jwt.getClaims().containsKey(VneidTokenVerifier.NS+key));
     }
     static void read(Jwt jwt, ExternalIdentity target) {
-        String phone=optional(jwt,"phone_number",20), date=optional(jwt,"document_issue_date",10);
+        String date=optional(jwt,"document_issue_date",10);
         String place=optional(jwt,"document_issue_place",200), permanent=optional(jwt,"permanent_address",500);
-        if(phone!=null && !phone.matches("\\+[1-9][0-9]{7,14}"))throw invalid();
         if((date==null)!=(place==null))throw invalid();
         LocalDate issued=null;
         if(date!=null) {
@@ -26,7 +25,7 @@ final class VneidCitizenDetails {
             catch(DateTimeParseException ex){throw invalid();}
             if(issued.isAfter(LocalDate.now()) || issued.isBefore(target.getDateOfBirth()))throw invalid();
         }
-        target.setPhoneNumber(phone);target.setDocumentIssueDate(issued);target.setDocumentIssuePlace(place);target.setPermanentAddress(permanent);
+        target.setDocumentIssueDate(issued);target.setDocumentIssuePlace(place);target.setPermanentAddress(permanent);
     }
     static boolean fillMissing(ExternalIdentity saved, ExternalIdentity incoming) {
         if(!Objects.equals(saved.getIssuer(),incoming.getIssuer()) || !Objects.equals(saved.getSubject(),incoming.getSubject())
@@ -35,7 +34,6 @@ final class VneidCitizenDetails {
                 || !Objects.equals(saved.getAddress(),incoming.getAddress()) || !"VERIFIED".equals(saved.getVerificationStatus()))
             throw error(HttpStatus.CONFLICT,"VNEID_DETAILS_IDENTITY_CHANGED","Thông tin định danh nguồn đã thay đổi. Không tự ghi đè căn cước đã liên kết.");
         boolean changed=false;
-        if(saved.getPhoneNumber()==null && incoming.getPhoneNumber()!=null){saved.setPhoneNumber(incoming.getPhoneNumber());changed=true;}
         // Keep date/place together; never combine a prior date with another source's place.
         if(saved.getDocumentIssueDate()==null && saved.getDocumentIssuePlace()==null && incoming.getDocumentIssueDate()!=null){
             saved.setDocumentIssueDate(incoming.getDocumentIssueDate());saved.setDocumentIssuePlace(incoming.getDocumentIssuePlace());changed=true;

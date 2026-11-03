@@ -12,7 +12,6 @@
           "dob": "12/03/1988",
           "gender": "Nam",
           "address": "28 Nguyễn Văn Linh, Hải Châu, Đà Nẵng",
-          "phone_number": "+84999000001",
           "document_issue_date": "18/05/2021",
           "document_issue_place": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
           "permanent_address": "28 Nguyễn Văn Linh, phường Nam Dương, quận Hải Châu, thành phố Đà Nẵng"
@@ -57,7 +56,6 @@
           "dob": "21/09/1992",
           "gender": "Nữ",
           "address": "54 Hoàng Diệu, Hải Châu, Đà Nẵng",
-          "phone_number": "+84999000002",
           "document_issue_date": "16/06/2021",
           "document_issue_place": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
           "permanent_address": "54 Hoàng Diệu, phường Phước Ninh, quận Hải Châu, thành phố Đà Nẵng"
@@ -123,7 +121,6 @@
           "dob": "15/05/1985",
           "gender": "Nam",
           "address": "17 Trần Phú, Nha Trang, Khánh Hòa",
-          "phone_number": "+84999000003",
           "document_issue_date": "09/08/2021",
           "document_issue_place": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
           "permanent_address": "17 Trần Phú, phường Vĩnh Nguyên, thành phố Nha Trang, tỉnh Khánh Hòa"
@@ -190,7 +187,6 @@
           "dob": "08/11/1994",
           "gender": "Nữ",
           "address": "36 Nguyễn Trãi, Thanh Xuân, Hà Nội",
-          "phone_number": "+84999000004",
           "document_issue_date": "22/09/2021",
           "document_issue_place": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
           "permanent_address": "36 Nguyễn Trãi, phường Thượng Đình, quận Thanh Xuân, thành phố Hà Nội"
@@ -271,7 +267,6 @@
           "dob": "26/02/1980",
           "gender": "Nam",
           "address": "102 Lê Văn Việt, Thủ Đức, TP. Hồ Chí Minh",
-          "phone_number": "+84999000005",
           "document_issue_date": "12/11/2021",
           "document_issue_place": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
           "permanent_address": "102 Lê Văn Việt, phường Hiệp Phú, thành phố Thủ Đức, Thành phố Hồ Chí Minh"
@@ -388,7 +383,6 @@
           "dob": "19/07/1990",
           "gender": "Nữ",
           "address": "24 Phan Đình Phùng, Đà Lạt, Lâm Đồng",
-          "phone_number": "+84999000006",
           "document_issue_date": "14/03/2022",
           "document_issue_place": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
           "permanent_address": "24 Phan Đình Phùng, Phường 2, thành phố Đà Lạt, tỉnh Lâm Đồng"
@@ -433,7 +427,6 @@
           "dob": "03/12/1987",
           "gender": "Nam",
           "address": "65 Đống Đa, Hải Châu, Đà Nẵng",
-          "phone_number": "+84999000007",
           "document_issue_date": "07/04/2022",
           "document_issue_place": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
           "permanent_address": "65 Đống Đa, phường Thạch Thang, quận Hải Châu, thành phố Đà Nẵng"
@@ -535,7 +528,6 @@
           "dob": "30/04/1995",
           "gender": "Nữ",
           "address": "41 Tố Hữu, An Cựu, Huế",
-          "phone_number": "+84999000008",
           "document_issue_date": "19/05/2022",
           "document_issue_place": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
           "permanent_address": "41 Tố Hữu, phường Xuân Phú, thành phố Huế, tỉnh Thừa Thiên Huế"
@@ -645,7 +637,6 @@
           "dob": "17/10/1983",
           "gender": "Nam",
           "address": "72 Nguyễn Huệ, Quy Nhơn, Gia Lai",
-          "phone_number": "+84999000009",
           "document_issue_date": "24/06/2022",
           "document_issue_place": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
           "permanent_address": "72 Nguyễn Huệ, phường Lê Lợi, thành phố Quy Nhơn, tỉnh Bình Định"
@@ -712,7 +703,6 @@
           "dob": "06/06/1989",
           "gender": "Nữ",
           "address": "88 Nguyễn Văn Cừ, Ninh Kiều, Cần Thơ",
-          "phone_number": "+84999000010",
           "document_issue_date": "11/07/2022",
           "document_issue_place": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
           "permanent_address": "88 Nguyễn Văn Cừ, phường An Hòa, quận Ninh Kiều, thành phố Cần Thơ"

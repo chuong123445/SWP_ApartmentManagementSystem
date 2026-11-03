@@ -2,7 +2,7 @@
 
 ## Cập nhật thông tin chi tiết 03/11/2026
 
-Đã bổ sung phone_number, document_issue_date, document_issue_place và permanent_address cho đủ10citizen; nơi cấp giấy chứng nhận dùng tên cơ quan cụ thể. Bộ vẫn là dữ liệu hư cấu, không phải danh tính/giấy tờ thật. Email, CCCD và21asset/43unit IDs giữ nguyên.
+Đã bổ sung document_issue_date, document_issue_place và permanent_address cho đủ10citizen; nơi cấp giấy chứng nhận dùng tên cơ quan cụ thể. Theo xác nhận tiếp theo của user, phone_number được loại khỏi citizen/claim; số điện thoại chỉ ở hồ sơ tài khoản thông thường. Bộ vẫn là dữ liệu hư cấu, không phải danh tính/giấy tờ thật. Email, CCCD và21asset/43unit IDs giữ nguyên.
 
 Nếu10user đã tồn tại trên Auth0, dùng hướng dẫn [nhập metadata bổ sung](IMPORT-PROFILE-DETAILS.md) và công cụ `node tools/prepare-auth0-metadata-import.cjs` từ Backend. File users-upsert.json chỉ chứa email+toàn bộ app_metadata, không chứa password hoặc cờ xác thực; không dùng bộ Create User/password cũ để cập nhật. Cần Deploy Action mới, cập nhật Backend/V45 và đăng nhập lại qua VNeID để bổ sung trường còn trống. Hợp đồng đã lưu không tự thay snapshot.
 
@@ -92,4 +92,6 @@ Schema tham khảo: [Auth0 bulk user import](https://auth0.com/docs/manage-users
 
 19unit test đạt:2test dữ liệu mới,6test Auth0AssetReader,11test token verifier. Adapter đọc đủ10profile/21tài sản/43căn, không loại nhầm tài sản. Action PostLogin lúc đó tạo8claim ID/access token cho cả10profile. Generator kiểm tra bcrypt10 khớp password, từ chối ghi đè bộ đã tồn tại; kiểm tra10file Create,10record Bulk,14file ZIP và JSON UTF-8 đạt. Không gọi provider thật hoặc nhập user vào tenant trong task này.
 
-Kiểm chứng bản mở rộng03/11/2026: Action tạo12claim cho cả10profile;98backend/source tests và100frontend unit tests PASS,4callback Playwright MCP desktop/mobile PASS. Bộ metadata-only có13file, không có password/hash, giữ nguyên credential của user đã tồn tại. Xem [report chi tiết](../../reports/contract-party-details-2026-11-03.md).
+Kiểm chứng bản mở rộng đầu tiên03/11/2026: Action tạo12claim cho cả10profile;98backend/source tests và100frontend unit tests PASS,4callback Playwright MCP desktop/mobile PASS. Bộ metadata-only có13file, không có password/hash, giữ nguyên credential của user đã tồn tại. Xem [report chi tiết](../../reports/contract-party-details-2026-11-03.md).
+
+Bản v2 sau khi tách số điện thoại: Action còn11claim; citizen chỉ có3trường bổ sung ngày/nơi cấp và thường trú. Bộ cập nhật dùng thư mục/ZIP `auth0-profile-details-2026-11-03-v2`; số điện thoại lấy ở tài khoản thông thường.99backend/source tests,101frontend unit và4callback trình duyệt PASS; [report tách số điện thoại và thao tác local](../../reports/account-phone-separation-and-local-reset-2026-11-03.md).
