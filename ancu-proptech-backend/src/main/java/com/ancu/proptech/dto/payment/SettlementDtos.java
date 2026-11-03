@@ -14,8 +14,10 @@ public final class SettlementDtos {
     public record Request(@NotNull UUID requestKey,
                           @NotNull @Positive @Digits(integer = 15, fraction = 0) BigDecimal amount,
                           @NotBlank @Size(max = 50) String bank,
-                          @NotBlank @Pattern(regexp = "[0-9]{4,30}") String accountNumber,
+                          @NotBlank @Pattern(regexp = "[A-Za-z0-9]{1,34}") String accountNumber,
                           @NotBlank @Size(max = 100) String accountHolder) {}
+
+    public record DestinationPreview(String bank, String accountNumber, String accountHolder) {}
 
     public enum Action { START, PAID, REJECT, CANCEL }
 

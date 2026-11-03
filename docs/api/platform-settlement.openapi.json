@@ -38,6 +38,39 @@
         }
       }
     },
+    "/owner/settlements/withdrawal-qr": {
+      "post": {
+        "summary": "Đọc ảnh VietQR để điền thông tin tài khoản rút tiền. Không lưu ảnh hoặc thay đổi số dư.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {"file": {"type": "string", "format": "binary", "description": "PNG/JPEG tối đa 1 MB"}}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thông tin đọc được. accountHolder là chuỗi rỗng nếu mã không chứa tên.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {"bank": {"type": "string"}, "accountNumber": {"type": "string"}, "accountHolder": {"type": "string"}}
+                }
+              }
+            }
+          },
+          "400": {"description": "Ảnh không hợp lệ hoặc không chứa VietQR nhận tiền hỗ trợ"},
+          "401": {"description": "Chưa đăng nhập"},
+          "403": {"description": "Sai vai trò hoặc chưa đủ điều kiện"}
+        }
+      }
+    },
     "/owner/settlements/withdrawals": {
       "get": {
         "summary": "Lịch sử yêu cầu của chính Owner",
@@ -406,7 +439,7 @@
           },
           "accountNumber": {
             "type": "string",
-            "pattern": "^[0-9]{4,30}$"
+            "pattern": "^[A-Za-z0-9]{1,34}$"
           },
           "accountHolder": {
             "type": "string",
@@ -463,7 +496,7 @@
           },
           "accountNumber": {
             "type": "string",
-            "pattern": "^[0-9]{4,30}$"
+            "pattern": "^[A-Za-z0-9]{1,34}$"
           },
           "accountHolder": {
             "type": "string",

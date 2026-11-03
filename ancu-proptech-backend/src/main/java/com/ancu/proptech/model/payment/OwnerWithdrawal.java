@@ -24,7 +24,7 @@ public class OwnerWithdrawal {
     private BigDecimal amount;
     @Column(nullable = false, length = 50)
     private String bank;
-    @Column(nullable = false, length = 30)
+    @Column(nullable = false, length = 34)
     private String accountNumber;
     @Nationalized @Column(nullable = false, length = 100)
     private String accountHolder;

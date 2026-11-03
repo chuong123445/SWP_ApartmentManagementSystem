@@ -43,6 +43,25 @@ class OwnerPaymentQrIntegrationTests {
 
 
  private org.springframework.mock.web.MockMultipartFile qr()throws Exception{var matrix=new com.google.zxing.qrcode.QRCodeWriter().encode(PaymentQrDecoderTests.payload("00123456789",null),com.google.zxing.BarcodeFormat.QR_CODE,500,500);var out=new java.io.ByteArrayOutputStream();com.google.zxing.client.j2se.MatrixToImageWriter.writeToStream(matrix,"PNG",out);return new org.springframework.mock.web.MockMultipartFile("file","qr.png","image/png",out.toByteArray());}
+ @Test void withdrawalQrPrefillsDestinationWithoutSavingOwnerQrOrChangingWallet() throws Exception {
+  var owner=account(AuthAccount.Role.OWNER);
+  var tenant=account(AuthAccount.Role.CUSTOMER);
+  String path="/api/v1/owner/settlements/withdrawal-qr";
+  long initialQrCount=paymentQrs.count();
+  mvc.perform(multipart(path).file(qr()).header("Authorization",token(owner)))
+    .andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store"))
+    .andExpect(jsonPath("$.bank").value("MBBank"))
+    .andExpect(jsonPath("$.accountNumber").value("00123456789"))
+    .andExpect(jsonPath("$.accountHolder").value(""));
+  mvc.perform(multipart(path).file(qr()).header("Authorization",token(tenant))).andExpect(status().isForbidden());
+  mvc.perform(multipart(path).file(new org.springframework.mock.web.MockMultipartFile("file","invalid.png","image/png",new byte[]{1,2,3}))
+      .header("Authorization",token(owner))).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_PAYMENT_QR"));
+  mvc.perform(get("/api/v1/owner/settlements").header("Authorization",token(owner)))
+      .andExpect(status().isOk()).andExpect(jsonPath("$.available").value("0"))
+      .andExpect(jsonPath("$.entries.length()").value(0));
+  org.junit.jupiter.api.Assertions.assertEquals(initialQrCount,paymentQrs.count());
+ }
+
  @Test void scansWithoutActivatingAndConfirmsOnlyForOwner()throws Exception {
   var owner=account(AuthAccount.Role.OWNER);var other=account(AuthAccount.Role.OWNER);String t=token(owner),o=token(other),base="/api/v1/owner/payment-qr";
   mvc.perform(get(base+"/current").header("Authorization",t)).andExpect(status().isNoContent());

@@ -12,6 +12,7 @@ import com.ancu.proptech.repository.payment.OwnerWithdrawalRepository;
 import com.ancu.proptech.repository.payment.SettlementEntryRepository;
 import com.ancu.proptech.service.apartment.ApartmentService;
 import com.ancu.proptech.service.auth.AccountAccessService;
+import com.ancu.proptech.service.property.PaymentQrDecoder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
@@ -33,6 +34,13 @@ public class SettlementService {
     private final AuthAccountRepository accounts;
     private final SettlementEntryRepository entries;
     private final OwnerWithdrawalRepository withdrawals;
+    private final PaymentQrDecoder qrDecoder;
+
+    public DestinationPreview previewDestination(Jwt jwt, byte[] image) {
+        access.owner(jwt);
+        var decoded = qrDecoder.decode(image);
+        return new DestinationPreview(decoded.bankName(), decoded.accountNumber(), decoded.accountHolderName());
+    }
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void credit(Long ownerId, Kind kind, Long sourceId, BigDecimal amount) {
