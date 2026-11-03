@@ -1,7 +1,5 @@
 -- Additive: historical evidence and saved contract snapshots are not rewritten.
-IF COL_LENGTH('dbo.auth_external_identities','phone_number') IS NULL
-    ALTER TABLE dbo.auth_external_identities ADD phone_number varchar(20) NULL;
-GO
+-- Phone is an ordinary account field. Any legacy identity phone column is left unused, never dropped.
 IF COL_LENGTH('dbo.auth_external_identities','document_issue_date') IS NULL
     ALTER TABLE dbo.auth_external_identities ADD document_issue_date date NULL;
 GO
