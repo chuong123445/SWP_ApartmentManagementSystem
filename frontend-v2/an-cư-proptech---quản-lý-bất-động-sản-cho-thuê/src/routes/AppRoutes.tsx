@@ -26,6 +26,7 @@ import { PropertyCreatePage } from '@/pages/account/PropertyCreatePage';
 import { PropertyApplicationsPage } from '@/pages/account/PropertyApplicationsPage';
 import { PropertyNoticesPage } from '@/pages/account/PropertyNoticesPage';
 import { AdminPage } from '@/pages/admin/AdminPage';
+import { AccountDetailPage } from '@/pages/admin/AccountDetailPage';
 import { MyContractsPage } from '@/pages/customer/MyContractsPage';
 import { MyMaintenancePage } from '@/pages/customer/MyMaintenancePage';
 import { ResidentHomePage } from '@/pages/customer/ResidentHomePage';
@@ -59,6 +60,7 @@ export function AppRoutes() {
     <Route path="/app" element={<RequireAccount role="MANAGER"><WorkspacePage /></RequireAccount>} />
     <Route path="/admin/settlements" element={<RequireAccount role="ADMIN" verified={false}><Navigate to="/admin/property-dossiers?tab=withdrawals" replace /></RequireAccount>} />
     <Route path="/admin/property-dossiers" element={<RequireAccount role="ADMIN" verified={false}><AdminPage /></RequireAccount>} />
+    <Route path="/admin/accounts/:id" element={<RequireAccount role="ADMIN" verified={false}><AccountDetailPage /></RequireAccount>} />
     <Route path="/my/rental-requests" element={<RequireAccount role="CUSTOMER"><MyRentalRequestsPage /></RequireAccount>} />
     <Route path="/my/test-payments" element={<RequireAccount role="CUSTOMER"><SepayTestPaymentsPage tenant /></RequireAccount>} />
     <Route path="/my/invoices" element={<RequireAccount role="CUSTOMER"><MyInvoicesPage /></RequireAccount>} />
