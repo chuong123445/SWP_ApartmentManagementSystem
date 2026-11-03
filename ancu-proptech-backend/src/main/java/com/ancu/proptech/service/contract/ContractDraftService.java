@@ -214,7 +214,7 @@ public class ContractDraftService {
     }
     ContractSnapshot snapshot(RentalRequest r) {
         var a=r.getApartment();var p=a.getProperty();
-        var evidence=propertyEvidence.resolve(p);
+        var evidence=propertyEvidence.resolve(a);
         var qr=paymentQrResolver.resolve(p);
         var provenance=evidence.evidence();
         if(qr!=null&&provenance!=null)provenance=new ContractSnapshot.Evidence(provenance.source(),provenance.reference(),provenance.sourceHash(),provenance.recordedAt(),null);
