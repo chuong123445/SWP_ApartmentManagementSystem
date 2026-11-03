@@ -27,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = "app.auth.secure-cookie=false")
 @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
 class AuthIntegrationTests {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean com.ancu.proptech.service.property.ai.DossierAiClient dossierAiClient;
     @Autowired MockMvc mvc;
     @Autowired AuthAccountRepository accounts;
     @Autowired PasswordEncoder passwords;
