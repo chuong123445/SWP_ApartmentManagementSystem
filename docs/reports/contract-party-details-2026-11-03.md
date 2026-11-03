@@ -27,3 +27,5 @@ Backend test JVM đã shutdown, browsermocks/listeners gỡ/aboutblank và Vite 
 Review/merge nhánh rồi cập nhật Backend/V45 và Frontend. Người vận hành sao lưu/so sánh metadata trên Auth0, dùng bulkupsert=true hoặc sửa app_metadata của đúng10user đang có (không Create User/xóa user), Deploy Action mới, đăng nhập lại qua VNeID. Context hợp đồng mới sẽ có trường được bổ sung. Hợp đồng/bản nháp đã lưu không tự đổi; không xóa tài liệu hoặc tạo lại tài khoản để cập nhật thông tin.
 
 Hướng dẫn chi tiết: [IMPORT-PROFILE-DETAILS](../samples/auth0/IMPORT-PROFILE-DETAILS.md); quyết định: [vneid-citizen-details-v1](../decisions/vneid-citizen-details-v1.md).
+
+Đã push nhánh và tạo [PR38 vào main](https://github.com/chuong123445/SWP_ApartmentManagementSystem/pull/38), không merge/push main. Ba unit code/data/UI lần lượt111a784/20942f7/f057f75; checkpoint tài liệu cuối ghi rõ kiểm thử mới so với bộ gốc. Root workspace main và các worktree/PR khác được giữ nguyên. Bộ ZIP13file đã được tạo; không có provider mutation hoặc mật khẩu được xuất vào bộ bổ sung.

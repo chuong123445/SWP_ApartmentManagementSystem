@@ -88,6 +88,8 @@ Generator sinh password ngẫu nhiên riêng cho mỗi user, kiểm tra bcrypt h
 
 Schema tham khảo: [Auth0 bulk user import](https://auth0.com/docs/manage-users/user-migration/bulk-user-import-schema). Code đọc nguồn hiện tại: `Auth0AssetReader`, Action PostLogin và `VneidService` của project.
 
-## Kiểm chứng đã thực hiện
+## Kiểm chứng bộ gốc ngày 28/10/2026
 
-19unit test đạt:2test dữ liệu mới,6test Auth0AssetReader,11test token verifier. Adapter đọc đủ10profile/21tài sản/43căn, không loại nhầm tài sản. Action PostLogin hiện tại tạo đủ8claim ID/access token cho cả10profile. Generator kiểm tra bcrypt10 khớp password, từ chối ghi đè bộ đã tồn tại; kiểm tra10file Create,10record Bulk,14file ZIP và JSON UTF-8 đạt. Không gọi provider thật hoặc nhập user vào tenant trong task này.
+19unit test đạt:2test dữ liệu mới,6test Auth0AssetReader,11test token verifier. Adapter đọc đủ10profile/21tài sản/43căn, không loại nhầm tài sản. Action PostLogin lúc đó tạo8claim ID/access token cho cả10profile. Generator kiểm tra bcrypt10 khớp password, từ chối ghi đè bộ đã tồn tại; kiểm tra10file Create,10record Bulk,14file ZIP và JSON UTF-8 đạt. Không gọi provider thật hoặc nhập user vào tenant trong task này.
+
+Kiểm chứng bản mở rộng03/11/2026: Action tạo12claim cho cả10profile;98backend/source tests và100frontend unit tests PASS,4callback Playwright MCP desktop/mobile PASS. Bộ metadata-only có13file, không có password/hash, giữ nguyên credential của user đã tồn tại. Xem [report chi tiết](../../reports/contract-party-details-2026-11-03.md).
