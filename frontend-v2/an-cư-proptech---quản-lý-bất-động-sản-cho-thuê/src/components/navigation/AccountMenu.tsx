@@ -10,9 +10,10 @@ interface AccountMenuProps {
   isLoggingOut: boolean;
   authError: string;
   isTenant?: boolean;
+  showAccountLinks?: boolean;
 }
 
-export function AccountMenu({ account, onLogout, isLoggingOut, authError, isTenant = false }: AccountMenuProps) {
+export function AccountMenu({ account, onLogout, isLoggingOut, authError, isTenant = false, showAccountLinks = true }: AccountMenuProps) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);const trigger = useRef<HTMLButtonElement>(null);
   const menuId = useId();const location = useLocation();
@@ -43,8 +44,10 @@ export function AccountMenu({ account, onLogout, isLoggingOut, authError, isTena
       </div>
       {canRent && <Link to="/my/rental-requests" onClick={() => setOpen(false)} className={linkClass}><ClipboardList className="w-4 h-4" />Yêu cầu & hợp đồng</Link>}
       {canRent&&<Link to="/my/invoices" onClick={()=>setOpen(false)} className={linkClass}><ReceiptText className="w-4 h-4"/>Hóa đơn của tôi</Link>}
+      {showAccountLinks && !account.roles.includes('ADMIN') && <>
       <Link to="/account/settings" onClick={()=>setOpen(false)} className={linkClass}><Settings className="w-4 h-4"/>Cài đặt tài khoản</Link>
       <Link to="/account/profile" onClick={() => setOpen(false)} className={linkClass}><UserRound className="w-4 h-4" />Hồ sơ & tài khoản</Link>
+      </>}
       {canRent&&<details className="border-t border-slate-100 mt-2 pt-1"><summary className={`${linkClass} cursor-pointer text-xs`}>{manager?'Hồ sơ cho thuê':'Dành cho người muốn cho thuê'}</summary><div className="pl-2 border-l border-slate-100 ml-3">
         <Link to="/account/properties" onClick={()=>setOpen(false)} className={linkClass}><LayoutDashboard className="w-4 h-4"/>Quản lý tài sản</Link>
         <Link to="/account/rental-properties" onClick={()=>setOpen(false)} className={linkClass}><ClipboardList className="w-4 h-4"/>Hồ sơ quyền cho thuê</Link>

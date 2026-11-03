@@ -1,0 +1,13 @@
+# Thu tiền SePay dùng chung và rút tiền thủ công
+
+Ở profile local, backend chọn kết nối của `owner@ancu.local` theo cấu hình `SEPAY_PLATFORM_SOURCE_EMAIL`. Kết nối phải có sẵn và đang bật. Giữ endpoint `/api/v1/payments/sepay/webhooks/{ownerId}`, tài khoản/VA nhận tiền và hash khóa webhook đã lưu. Nếu triển khai bằng profile khác, cần đặt rõ `SEPAY_PLATFORM_SOURCE_EMAIL` và `APP_PUBLIC_BASE_URL`. Khi dùng kết nối chung, dành tài khoản nguồn cho người vận hành có quyền giữ khóa webhook. URL và khóa hiện dùng ở SePay phải còn hợp lệ.
+
+Khoản thanh toán mới chốt người thụ hưởng từ hợp đồng và lưu `collection_owner_id` riêng. Khoản đã cấp mã trước đây giữ thông tin nhận tiền đã chốt và webhook cũ. V51 để trống trường nguồn thu ở bản ghi cũ. Không có bút toán mở sổ hay nhập lại giao dịch lịch sử, nên mọi số dư bắt đầu từ 0. Điều này áp dụng cả khi chủ nhà chính là tài khoản nguồn. QR cá nhân lưu trong hợp đồng cũ vẫn là dữ liệu lịch sử. Luồng thu chung cấp QR riêng cho hóa đơn và không dùng ảnh QR cá nhân thay thế.
+
+Chỉ đúng người thuê của hợp đồng mới nhận QR hóa đơn hoặc khoản thu bổ sung. Owner xem trạng thái và thông tin đối soát. Trong chế độ thu chung, Owner không tự cấu hình SePay hoặc đọc nhật ký webhook của kết nối chung. Admin có thể xem trạng thái kết nối và thời điểm nhận webhook gần nhất từ màn hình xử lý rút tiền.
+
+Webhook hợp lệ phải khớp nguồn thu, tài khoản/VA, mã, số tiền và chiều giao dịch. Đánh dấu hóa đơn đã trả và ghi một bút toán của đúng Owner trong cùng giao dịch. Gửi thử với ID 0 chỉ kiểm tra kết nối. Khoản thu bổ sung có sổ riêng với hóa đơn tháng. Mỗi Owner chỉ đọc sổ của mình.
+
+Owner xác nhận QR nhận tiền chung tại Cài đặt đơn giá, trong chế độ Tất cả tài sản. Ví dùng QR chung mới nhất đã xác nhận. Owner nhập số tiền và xem tài khoản thụ hưởng trước khi gửi. Backend kiểm tra ID QR vẫn đang áp dụng, rồi chốt thông tin tài khoản cho từng yêu cầu. Backend giữ khoản yêu cầu ngay khi gửi. Owner có thể hủy lúc chờ xử lý. Admin nhận xử lý, đối chiếu người nhận và chuyển tiền qua ứng dụng ngân hàng. QR chi trả được tạo trên server từ số tiền và tài khoản đã chốt trong yêu cầu, kèm nội dung RUT và mã yêu cầu. Chỉ Admin đang xử lý được tải ảnh. Chỉ Admin nhận xử lý mới ghi nhận đã chuyển hoặc từ chối yêu cầu đang chuyển. Ghi nhận đã chuyển cần mã giao dịch ngân hàng duy nhất. Nếu kết quả chuyển khoản chưa rõ, giữ trạng thái đang chuyển đến khi tra soát xong. Từ chối hoặc hủy trả tiền về số dư có thể rút. Mỗi bút toán có loại và tham chiếu nguồn duy nhất.
+
+API quyết toán nằm trong [OpenAPI](../api/platform-settlement.openapi.json). Bản ghi hóa đơn giữ nguyên trạng thái phát hành SENT khi thanh toán. Việc chi trả cho Owner có vòng đời riêng.

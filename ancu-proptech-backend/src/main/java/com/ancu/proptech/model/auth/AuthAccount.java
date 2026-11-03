@@ -68,6 +68,8 @@ public class AuthAccount {
     private Status status;
     @Column(nullable = false)
     private boolean contactVerified;
+    @Column(columnDefinition = "datetime2(6)") private java.time.Instant deletedAt;
+    @Enumerated(EnumType.STRING) @Column(length = 24) private Status lockedFromStatus;
     @Version
     private long version;
 }
