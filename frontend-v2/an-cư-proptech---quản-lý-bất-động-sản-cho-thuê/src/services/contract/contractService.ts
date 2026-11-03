@@ -1,5 +1,7 @@
 import { apiFetch, readApiError } from '@/services/http/client';
 import type { ContractContext, ContractDraft, ContractTerms, HandoverInput } from '@/types/contract';
+import type { RenewalInboxItem } from '@/types/contract';
+import type { PageResult } from '@/types/apartment';
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await apiFetch(url, options);
   if (!response.ok) throw await readApiError(response);
@@ -23,6 +25,21 @@ export const cancelRenewal = (id: string, version: number) => request<ContractDr
   method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version, consent: true }),
 });
 export const getContract = (id: string) => request<ContractDraft>(`/api/v1/contracts/${encodeURIComponent(id)}`);
+export function getRenewalInbox(page = 0, status?: RenewalInboxItem['status'], propertyId?: string) {
+  const query = new URLSearchParams({ page: String(page), size: '10' });
+  if (status) query.set('status', status);
+  if (propertyId) query.set('propertyId', propertyId);
+  return request<PageResult<RenewalInboxItem>>(`/api/v1/owner/renewal-requests?${query}`);
+}
+export const requestRenewal = (id: string, version: number, message: string) => request<ContractDraft>(`/api/v1/contracts/${encodeURIComponent(id)}/renewal-request`, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version, consent: true, message }),
+});
+export const decideRenewalRequest = (id: string, version: number, decision: 'ACCEPT' | 'REJECT', reason: string) => request<ContractDraft>(`/api/v1/owner/contracts/${encodeURIComponent(id)}/renewal-request/decision`, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version, decision, reason }),
+});
+export const cancelAcceptedRenewalRequest = (id: string, version: number) => request<ContractDraft>(`/api/v1/owner/contracts/${encodeURIComponent(id)}/renewal-request/cancel`, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version, consent: true }),
+});
 export async function getContractPdf(id: string): Promise<Blob> {
   const response = await apiFetch(`/api/v1/contracts/${encodeURIComponent(id)}/pdf`, { cache: 'no-store' });
   if (!response.ok) throw await readApiError(response);

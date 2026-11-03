@@ -95,9 +95,12 @@ public class InvoiceService {
     }
     @Transactional(readOnly=true) public PageResponse<InvoiceResponse> owner(Jwt jwt,int page,int size){return owner(jwt,page,size,null);}
     @Transactional(readOnly=true) public PageResponse<InvoiceResponse> owner(Jwt jwt,int page,int size,Long propertyId){
+        return owner(jwt,page,size,propertyId,OwnerInvoiceFilter.ALL);
+    }
+    @Transactional(readOnly=true) public PageResponse<InvoiceResponse> owner(Jwt jwt,int page,int size,Long propertyId,OwnerInvoiceFilter filter){
         ApartmentService.validatePage(page,size);var ownerId=access.owner(jwt).getId();
-        var result=propertyId==null ? invoices.findByContractApartmentPropertyOwnerId(ownerId,paging(page,size))
-                : invoices.findByContractApartmentPropertyOwnerIdAndContractApartmentPropertyId(ownerId,propertyId,paging(page,size));
+        Boolean paid=filter==OwnerInvoiceFilter.PAID?Boolean.TRUE:filter==OwnerInvoiceFilter.UNPAID?Boolean.FALSE:null;
+        var result=invoices.ownerHistory(ownerId,propertyId,filter==OwnerInvoiceFilter.DRAFT?RentalInvoice.Status.DRAFT:null,paid,paging(page,size));
         return PageResponse.from(result.map(this::response));
     }
     @Transactional(readOnly=true) public PageResponse<InvoiceResponse> mine(Jwt jwt,int page,int size){return mine(jwt,page,size,InvoicePaymentFilter.ALL);}

@@ -17,6 +17,11 @@ public class ExternalIdentity {
     @Column(nullable=false) private LocalDate dateOfBirth;
     @Nationalized @Column(nullable=false,length=30) private String gender;
     @Nationalized @Column(nullable=false,length=300) private String address;
+    @Column(length=20) private String phoneNumber;
+    private LocalDate documentIssueDate;
+    @Nationalized @Column(length=200) private String documentIssuePlace;
+    @Nationalized @Column(length=500) private String permanentAddress;
+    private Instant detailsUpdatedAt;
     @Column(nullable=false,length=40) private String source;
     @Column(nullable=false,length=20) private String verificationStatus;
     @Column(nullable=false) private Instant verifiedAt;

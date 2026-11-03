@@ -9,8 +9,9 @@ import { ownerTenancies, ownerInvoices, tenancyViews, invoiceView, sendInvoice }
 import type { Tenancy } from '@/types/billing';
 import { createOwnerProperty } from '@/services/property/ownerPropertyService';
 import type { PropertyCreateInput } from '@/types/property';
+import { useOwnerInvoiceHistory } from '@/hooks/useOwnerInvoiceHistory';
 
-export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all') {
+export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all', invoiceHistoryEnabled = false) {
   // Global Data States
   const [rooms, setRooms] = useState<Room[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
@@ -24,6 +25,7 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
   const [billingError, setBillingError] = useState('');
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingRevision, setBillingRevision] = useState(0);
+  const invoiceHistory = useOwnerInvoiceHistory(canManage && invoiceHistoryEnabled, selectedPropertyId, billingRevision);
   const [invoicePage, setInvoicePage] = useState(0);
   const [invoiceTotalPages, setInvoiceTotalPages] = useState(0);
   const [tickets, setTickets] = useState<MaintenanceTicket[]>([]);
@@ -166,7 +168,7 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
 
   const handleCreateInvoice = (_invoice: Invoice) => setBillingRevision(value => value + 1);
   const handleSendInvoice = async (id: string) => {
-    const source = invoices.find(i => i.id === id)?.apiInvoice;
+    const source = invoiceHistory.monthly?.items.find(i => i.id === id) ?? invoices.find(i => i.id === id)?.apiInvoice;
     if (!source) throw new Error('Không tìm thấy hóa đơn để gửi.');
     const sent = invoiceView(await sendInvoice(id, source.version));
     setInvoices(prev => prev.map(i => i.id === id ? sent : i));
@@ -178,7 +180,7 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
   }, ...prev]);
   return {
     rooms, tenants, contracts, invoices, tickets, transactions, config, escrows, maintenanceError, maintenanceLoading,
-    tenancies, billingError, billingLoading, invoicePage, setInvoicePage, invoiceTotalPages,
+    tenancies, billingError, billingLoading, invoicePage, setInvoicePage, invoiceTotalPages, invoiceHistory,
     reloadBilling: () => setBillingRevision(value => value + 1), handleSendInvoice,
     buildings, inventoryError, inventoryLoading, reloadInventory,
     selectedRoom, setSelectedRoom, selectedInvoice, setSelectedInvoice,
