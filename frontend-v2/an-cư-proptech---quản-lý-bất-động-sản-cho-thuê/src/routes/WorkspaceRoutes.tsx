@@ -94,12 +94,13 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
 
           {activeTab === 'invoices' && (
             <InvoicesPage
-              invoices={invoices}
+              invoices={workspace.invoiceHistory.invoices}
+              history={workspace.invoiceHistory}
               onOpenInvoiceModal={(inv) => setSelectedInvoice(inv)}
               onOpenCreateInvoiceModal={() => setIsCreateInvoiceOpen(true)}
               onSendInvoice={workspace.handleSendInvoice}
-              error={workspace.billingError} loading={workspace.billingLoading} onReload={workspace.reloadBilling}
-              page={workspace.invoicePage} totalPages={workspace.invoiceTotalPages} onPageChange={workspace.setInvoicePage}
+              error={workspace.invoiceHistory.monthlyError} loading={workspace.invoiceHistory.loading} onReload={workspace.reloadBilling}
+              page={workspace.invoiceHistory.page} totalPages={workspace.invoiceHistory.monthly?.totalPages ?? 0} onPageChange={workspace.invoiceHistory.setPage}
             />
           )}
 
