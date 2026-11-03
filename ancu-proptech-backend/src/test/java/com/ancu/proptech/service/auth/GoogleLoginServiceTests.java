@@ -43,7 +43,7 @@ class GoogleLoginServiceTests {
     @Test void newGoogleAccountHasOnlyCustomerRoleAndVerifiedEmail() {
         token();
         when(passwords.encode(anyString())).thenReturn("random-password-hash");
-        service("client").login("credential");
+        service("client").login("credential","0912345678");
         var captor = org.mockito.ArgumentCaptor.forClass(AuthAccount.class);
         verify(accounts).saveAndFlush(captor.capture());
         var account = captor.getValue();
@@ -52,8 +52,15 @@ class GoogleLoginServiceTests {
         assertEquals(AuthAccount.Role.CUSTOMER, account.getRole());
         assertTrue(account.isEmailVerified());
         assertTrue(account.isContactVerified());
+        assertEquals("+84912345678",account.getPhone());assertFalse(account.isPhoneVerified());
         assertEquals(AuthAccount.Status.ACTIVE, account.getStatus());
         verify(auth).googleLogin(account);
+    }
+    @Test void newGoogleRegistrationCannotBypassPhoneRequirement(){
+        token();var service=service("client");
+        var error=assertThrows(AuthException.class,()->service.login("credential"));assertEquals("GOOGLE_PHONE_REQUIRED",error.code);
+        assertThrows(AuthException.class,()->service.login("credential","+12025550123"));
+        verify(accounts,never()).saveAndFlush(any());verifyNoInteractions(auth);
     }
 
     @Test void existingPasswordAccountIsNeverAutomaticallyLinked() {

@@ -89,12 +89,13 @@ public class AuthController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(result.tokens());
     }
 
-    public record GoogleRequest(@jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max = 8192) String credential) {}
+    public record GoogleRequest(@jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max = 8192) String credential,
+            @jakarta.validation.constraints.Size(max=20) String phone) {}
 
     @PostMapping("/api/v1/auth/google")
     public ResponseEntity<TokenResponse> google(@Valid @RequestBody GoogleRequest request,
             HttpServletRequest http, HttpServletResponse response) {
-        AuthService.LoginResult result = google.login(request.credential());
+        AuthService.LoginResult result = google.login(request.credential(),request.phone());
         setRefreshCookie(response, result.refreshToken(), result.refreshMaxAge());
         csrfRepository.saveToken(null, http, response);
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(result.tokens());

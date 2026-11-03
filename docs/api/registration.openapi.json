@@ -1,29 +1,143 @@
 {
   "openapi": "3.0.3",
-  "info": {"title": "An Cu Registration", "version": "1.1.0", "description": "Ordinary registration requires a Vietnamese phone contact. Format validation does not verify ownership. Auth0 contact completion is specified in vneid.openapi.json."},
+  "info": {
+    "title": "An Cu Registration",
+    "version": "1.1.0",
+    "description": "Ordinary registration requires a Vietnamese phone contact. Format validation does not verify ownership. Auth0 contact completion is specified in vneid.openapi.json."
+  },
   "paths": {
-    "/api/v1/auth/register": {"post": {
-      "summary": "Create a pending CUSTOMER with email, required Vietnamese phone and local password",
-      "security": [{"csrfHeader": []}],
-      "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Registration"}}}},
-      "responses": {
-        "201": {"description": "AuthUserResponse, PENDING_VERIFICATION; no session, no verified phone, no caller-selected role"},
-        "400": {"description": "VALIDATION_ERROR, invalid/missing phone, invalid password or unknown fields"},
-        "403": {"description": "Missing/invalid CSRF cookie and header"},
-        "409": {"description": "CONTACT_IN_USE; existing account unchanged"}
+    "/api/v1/auth/register": {
+      "post": {
+        "summary": "Create a pending CUSTOMER with email, required Vietnamese phone and local password",
+        "security": [
+          {
+            "csrfHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Registration"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "AuthUserResponse, PENDING_VERIFICATION; no session, no verified phone, no caller-selected role"
+          },
+          "400": {
+            "description": "VALIDATION_ERROR, invalid/missing phone, invalid password or unknown fields"
+          },
+          "403": {
+            "description": "Missing/invalid CSRF cookie and header"
+          },
+          "409": {
+            "description": "CONTACT_IN_USE; existing account unchanged"
+          }
+        }
       }
-    }}
+    },
+    "/api/v1/auth/google": {
+      "post": {
+        "summary": "Sign in Google; first registration requires Vietnamese phone",
+        "security": [
+          {
+            "csrfHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "credential"
+                ],
+                "properties": {
+                  "credential": {
+                    "type": "string",
+                    "maxLength": 8192,
+                    "writeOnly": true
+                  },
+                  "phone": {
+                    "type": "string",
+                    "maxLength": 20,
+                    "description": "Required when creating a new account; email is obtained from the validated Google token"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Internal session after validated Google token and complete new-account phone"
+          },
+          "400": {
+            "description": "Invalid Vietnamese phone"
+          },
+          "401": {
+            "description": "Invalid Google evidence"
+          },
+          "409": {
+            "description": "Existing email is never auto-linked"
+          },
+          "428": {
+            "description": "GOOGLE_PHONE_REQUIRED; no new account/session before phone completion"
+          }
+        }
+      }
+    }
   },
   "components": {
-    "securitySchemes": {"csrfHeader": {"type": "apiKey", "in": "header", "name": "X-XSRF-TOKEN", "description": "Obtain token and matching cookie from GET /api/v1/auth/csrf"}},
-    "schemas": {"Registration": {
-      "type": "object", "additionalProperties": false, "required": ["fullName", "email", "phone", "password"],
-      "properties": {
-        "fullName": {"type": "string", "minLength": 1, "maxLength": 100},
-        "email": {"type": "string", "format": "email", "maxLength": 254},
-        "phone": {"type": "string", "minLength": 1, "maxLength": 20, "description": "Vietnamese mobile 03/05/07/08/09 plus 8 digits, or landline 02 plus 9 digits; equivalent +84 form. Spaces/dots/parentheses/hyphens allowed. Stored as +84; no SMS verification or ownership claim."},
-        "password": {"type": "string", "minLength": 12, "maxLength": 72, "writeOnly": true, "description": "Maximum 72 UTF-8 bytes is enforced server-side"}
+    "securitySchemes": {
+      "csrfHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-XSRF-TOKEN",
+        "description": "Obtain token and matching cookie from GET /api/v1/auth/csrf"
       }
-    }}
+    },
+    "schemas": {
+      "Registration": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fullName",
+          "email",
+          "phone",
+          "password"
+        ],
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254
+          },
+          "phone": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20,
+            "description": "Vietnamese mobile 03/05/07/08/09 plus 8 digits, or landline 02 plus 9 digits; equivalent +84 form. Spaces/dots/parentheses/hyphens allowed. Stored as +84; no SMS verification or ownership claim."
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 72,
+            "writeOnly": true,
+            "description": "Maximum 72 UTF-8 bytes is enforced server-side"
+          }
+        }
+      }
+    }
   }
 }

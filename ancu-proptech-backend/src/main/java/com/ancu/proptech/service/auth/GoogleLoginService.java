@@ -41,6 +41,10 @@ public class GoogleLoginService {
 
     @Transactional
     public AuthService.LoginResult login(String credential) {
+        return login(credential,null);
+    }
+    @Transactional
+    public AuthService.LoginResult login(String credential,String phone) {
         Jwt token=decodeCredential(credential);
         AuthAccount account = accounts.findByGoogleSubject(token.getSubject()).orElse(null);
         if (account == null) {
@@ -51,8 +55,11 @@ public class GoogleLoginService {
             if (accounts.findByEmail(email).isPresent())
                 throw new AuthException(HttpStatus.CONFLICT, "GOOGLE_ACCOUNT_EXISTS",
                         "Email này đã có tài khoản. Vui lòng đăng nhập bằng mật khẩu.");
+            if(phone==null||phone.isBlank())throw new AuthException(HttpStatus.PRECONDITION_REQUIRED,"GOOGLE_PHONE_REQUIRED","Bổ sung số điện thoại để hoàn tất đăng ký bằng Google.");
+            String normalizedPhone=VietnamesePhone.required(phone);
             account = new AuthAccount();
             account.setEmail(email);
+            account.setPhone(normalizedPhone);account.setPhoneVerified(false);
             account.setGoogleSubject(token.getSubject());
             String name = token.getClaimAsString("name");
             if (name == null || name.isBlank()) name = email;
