@@ -5,16 +5,16 @@ import { ContractWizard } from '@/components/contract/ContractWizard';
 import { cancelHandover, cancelRenewal, confirmHandover, getContract, proposeHandover, requestRenewal, decideRenewalRequest, cancelAcceptedRenewalRequest } from '@/services/contract/contractService';
 import { billingMoney } from '@/services/billing/billingService';
 import type { ContractDraft } from '@/types/contract';
+import { contractLifecycleActions } from '@/utils/contractDisplay';
 
 const button = 'rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold disabled:opacity-50';
 const primary = `${button} bg-emerald-700 border-emerald-700 text-white`;
 const input = 'mt-2 block w-full border border-slate-300 bg-white rounded-lg p-3 text-sm';
 
-export function ContractLifecyclePanel({ draft, onUpdated }: { draft: ContractDraft; onUpdated: (draft: ContractDraft) => void }) {
+export function ContractLifecyclePanel({ draft, onUpdated, initialAction }: { draft: ContractDraft; onUpdated: (draft: ContractDraft) => void; initialAction?: 'renewal' | 'handover' }) {
   const { user } = useAuth();const life = draft.lifecycle;
-  const owner = user?.id === (draft.signing?.ownerAccountId ?? draft.snapshot.owner.id);
-  const customer = user?.id === (draft.signing?.customerAccountId ?? draft.snapshot.customer.id);
-  const [renewing, setRenewing] = useState(false);const [formOpen, setFormOpen] = useState(false);
+  const { owner, customer, canRequest, canCreate, canHandover } = contractLifecycleActions(draft, user?.id);
+  const [renewing, setRenewing] = useState(false);const [formOpen, setFormOpen] = useState(initialAction === 'handover');
   const [returnDate, setReturnDate] = useState(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date()));
   const [electricity, setElectricity] = useState('');const [water, setWater] = useState('');const [notes, setNotes] = useState('');
   const [electricityStart, setElectricityStart] = useState('');const [waterStart, setWaterStart] = useState('');
@@ -26,9 +26,6 @@ export function ContractLifecyclePanel({ draft, onUpdated }: { draft: ContractDr
   const pending = life.handover?.status === 'PENDING';
   const activeExpired = draft.status === 'ACTIVE' && life.expired;
   const renewal = life.renewalRequest;
-  const canRequest = customer && draft.status === 'ACTIVE' && !pending && !life.renewalContractId && !renewal;
-  const canCreate = owner && draft.status === 'ACTIVE' && !pending && !life.renewalContractId && renewal?.status === 'ACCEPTED';
-  const canHandover = owner && life.handoverAvailable === true;
   const perform = async (operation: () => Promise<ContractDraft>) => {
     if (operating.current) return;operating.current = true;setBusy(true);setError('');
     try { onUpdated(await operation());setFormOpen(false);setConsent(false);setConfirmConsent(false);window.dispatchEvent(new Event('ancu:tenancy-changed')); }
@@ -59,7 +56,7 @@ export function ContractLifecyclePanel({ draft, onUpdated }: { draft: ContractDr
     </form>}
     {(canCreate || canHandover) && <div className="flex flex-wrap gap-3">
       {canCreate && <button type="button" className={primary} disabled={busy} onClick={() => setRenewing(true)}>Tạo hợp đồng ký tiếp</button>}
-      {canHandover && <button type="button" className={button} disabled={busy} onClick={() => { setFormOpen(value => !value);setError(''); }}>Lập biên bản bàn giao</button>}
+      {canHandover && initialAction !== 'handover' && <button type="button" className={button} disabled={busy} onClick={() => { setFormOpen(value => !value);setError(''); }}>Lập biên bản bàn giao</button>}
     </div>}
     {owner && draft.status === 'DRAFT' && draft.signing?.state !== 'SIGNED' && life.previousContractId && <button type="button" className={`${button} text-rose-700`} disabled={busy} onClick={() => {
       if (window.confirm('Hủy bản ký tiếp chưa đủ hai chữ ký? Bản cũ và mọi chữ ký đã lưu vẫn được giữ trong lịch sử.')) void perform(() => cancelRenewal(draft.id, life.version));
