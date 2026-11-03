@@ -129,22 +129,7 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
   // Do not release a real Apartment through a preview action.
   const handleCheckOut = (_roomId: string) => setInventoryError('Chưa hỗ trợ kết thúc hợp đồng và bàn giao qua màn hình này.');
 
-  // Update meter indices
-  const handleUpdateIndices = (updates: { roomId: string; electric: number; water: number }[]) => {
-    setRooms((prev) =>
-      prev.map((r) => {
-        const u = updates.find((item) => item.roomId === r.id);
-        if (u) {
-          return {
-            ...r,
-            electricityIndex: u.electric,
-            waterIndex: u.water,
-          };
-        }
-        return r;
-      })
-    );
-  };
+
 
   // Reserve room with escrow deposit
   const handleReserveEscrow = (roomId: string) => {
@@ -200,7 +185,6 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
     buildings, inventoryError, inventoryLoading, reloadInventory,
     selectedRoom, setSelectedRoom, selectedInvoice, setSelectedInvoice,
     handleMarkPaid, handleAddTenant, handleAddContract, handleAddRoom, handleAddProperty, handlePrices, handlePublication, handleCheckOut,
-    handleUpdateIndices,
     handleReserveEscrow,
     handleCreateInvoice, handleAddTransaction, handleSaveConfig: setConfig,
     currentResidentTenant, currentResidentRoom, currentResidentContract, residentInvoices, residentTickets,

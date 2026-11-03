@@ -29,7 +29,10 @@ async function fixture(page:Page,hasLease=true,withBank=true){
 test('Menu gọn và từng phòng nối đúng sự cố, hóa đơn, tài khoản nhận tiền',async({page},info)=>{
   const state=await fixture(page);await page.goto('/my/home');
   await page.getByRole('button',{name:'Vai trò và tài khoản'}).click();const menu=page.getByRole('navigation',{name:'Điều hướng tài khoản'});
-  for(const name of ['Nhà đang thuê','Yêu cầu & hợp đồng','Hồ sơ & tài khoản'])await expect(menu.getByRole('link',{name,exact:true})).toBeVisible();
+  for(const name of ['Yêu cầu & hợp đồng','Hồ sơ & tài khoản'])await expect(menu.getByRole('link',{name,exact:true})).toBeVisible();
+  const header=page.getByRole('navigation',{name:'Điều hướng chính'});
+  for(const [name,href] of [['Trang chủ','/'],['Đăng cho thuê','/account/properties/new'],['Nhà đang thuê','/my/home']])await expect(header.getByRole('link',{name,exact:true})).toHaveAttribute('href',href);
+  await expect(menu.getByRole('link',{name:'Nhà đang thuê',exact:true})).toHaveCount(0);
   await expect(menu.getByRole('link',{name:'Sự cố của tôi',exact:true})).toHaveCount(0);await expect(menu.getByRole('link',{name:'Hóa đơn của tôi',exact:true})).toHaveCount(1);
   await expect(menu.getByRole('link',{name:'Hồ sơ quyền cho thuê'})).not.toBeVisible();await page.keyboard.press('Escape');
   await page.getByRole('button',{name:'Hóa đơn & thanh toán',exact:true}).click();await expect(page.locator('.resident-invoice')).toHaveCount(2);

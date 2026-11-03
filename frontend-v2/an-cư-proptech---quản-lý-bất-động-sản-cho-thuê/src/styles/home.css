@@ -10,3 +10,16 @@
 
 /* Kho tài sản dùng shell Customer; không để shorthand .home-wrap xóa khoảng cách dọc. */
 .asset-page{padding-top:32px;padding-bottom:48px}
+
+/* Shared shell for public, resident, listing and management pages. */
+.site-header{--home-green:#176b4f;--home-line:#e8ece8;font-family:'Be Vietnam Pro',Arial,sans-serif;color:#202b27;background:#fff;isolation:isolate}
+.site-header .customer-header-inner{width:100%;min-height:94px;box-sizing:border-box}
+.site-header .customer-nav{min-width:0;gap:16px;flex-wrap:wrap;justify-content:flex-end}
+.site-header nav a{white-space:nowrap}
+.customer-shell{display:flex;flex-direction:column;min-width:0;background:#f6f8fa}
+.customer-shell>main{width:100%;box-sizing:border-box;flex:1;min-width:0}
+.customer-shell>.home-wrap{width:100%;box-sizing:border-box}
+.customer-footer{width:100%;margin-top:auto;background:transparent}
+.management-shell{font-family:'Be Vietnam Pro',Arial,sans-serif;background:#f6f8fa}
+@media(max-width:850px){.site-header .customer-header-inner{gap:12px}.site-header .customer-nav{gap:8px}}
+@media(max-width:500px){.site-header .customer-nav{width:100%;margin-left:0;justify-content:space-between}.site-header nav[aria-label="Điều hướng chính"]{width:100%;justify-content:space-between;gap:0}.site-header nav[aria-label="Điều hướng chính"] a{padding:8px 4px;font-size:11px}.site-header .customer-nav>div:last-child{margin-left:auto}}

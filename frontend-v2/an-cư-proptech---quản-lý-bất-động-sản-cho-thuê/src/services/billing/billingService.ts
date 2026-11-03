@@ -1,5 +1,5 @@
 import { apiFetch, readApiError } from '@/services/http/client';
-import type { BillingContext, BillingInvoice, InvoiceCreate, Tenancy } from '@/types/billing';
+import type { BillingContext, MeterReadingInput, BillingInvoice, InvoiceCreate, Tenancy } from '@/types/billing';
 import type { PageResult } from '@/types/apartment';
 import type { Invoice, Tenant, Contract } from '@/types';
 import type { TestReceipt } from '@/services/payment/sepayService';
@@ -14,6 +14,7 @@ async function request<T>(url: string, body?: unknown): Promise<T> {
 export function ownerTenancies() { return request<Tenancy[]>('/api/v1/owner/tenancies'); }
 export function myTenancies() { return request<Tenancy[]>('/api/v1/me/tenancies'); }
 export function getBillingContext(id: string) { return request<BillingContext>(`/api/v1/owner/contracts/${encodeURIComponent(id)}/billing-context`); }
+export function saveMeterReadings(id:string,input:MeterReadingInput){return request<BillingContext>(`/api/v1/owner/contracts/${encodeURIComponent(id)}/meter-readings`,input);}
 export function createInvoice(id: string, input: InvoiceCreate) { return request<BillingInvoice>(`/api/v1/owner/contracts/${encodeURIComponent(id)}/invoices`, input); }
 export function sendInvoice(id: string, version: number) { return request<BillingInvoice>(`/api/v1/owner/invoices/${encodeURIComponent(id)}/send`, { version }); }
 export function getInvoice(id: string) { return request<BillingInvoice>(`/api/v1/invoices/${encodeURIComponent(id)}`); }
