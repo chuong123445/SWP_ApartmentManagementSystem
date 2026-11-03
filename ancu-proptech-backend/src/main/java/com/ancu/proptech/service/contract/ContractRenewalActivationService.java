@@ -45,7 +45,7 @@ public class ContractRenewalActivationService {
         var a=apartments.findForRequest(c.getApartment().getId()).orElseThrow();
         if(a.getAvailability()!=Apartment.Availability.OCCUPIED||contracts.findByApartmentId(a.getId()).stream().anyMatch(other->!other.getId().equals(id)&&!other.getId().equals(previous.getId())&&other.getStatus()!=RentalContract.Status.ENDED))throw blocked();
         var landlord=a.getProperty().getOwner();
-        if(landlord.getStatus()!=AuthAccount.Status.ACTIVE||landlord.getRole()!=AuthAccount.Role.OWNER||!verification.isVerified(landlord)||c.getCustomer().getStatus()!=AuthAccount.Status.ACTIVE||!verification.isRentalVerified(c.getCustomer()))throw blocked();
+        if(landlord.getStatus()!=AuthAccount.Status.ACTIVE||!landlord.hasRole(AuthAccount.Role.OWNER)||!verification.isVerified(landlord)||c.getCustomer().getStatus()!=AuthAccount.Status.ACTIVE||!verification.isRentalVerified(c.getCustomer()))throw blocked();
         rights.contract(a.getProperty(),c.getStartDate(),c.getEndDate());
         previous.setStatus(RentalContract.Status.ENDED);previous.setEndedAt(Instant.now());previous.setEndReason("RENEWED");contracts.saveAndFlush(previous);
         var last=invoices.findFirstByContractIdAndStatusOrderByPeriodDesc(previous.getId(),RentalInvoice.Status.SENT);

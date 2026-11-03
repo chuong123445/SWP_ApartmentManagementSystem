@@ -84,8 +84,8 @@ public class PropertyDossierService {
                 validateRights(d.getRightType(),d.getRightsValidFrom(),d.getRightsValidUntil(),d.getOriginalLeaseFrom(),d.getOriginalLeaseUntil());
                 if(d.getRightType()!=PropertyDossier.RightType.OWNERSHIP&&!input.isRightsConfirmed())throw bad("Admin cần xác nhận đã đối chiếu quyền và thời hạn trên giấy tờ.");
                 if(p.isOnboardingApplication()){
-                    if(applicant.getRole()==com.ancu.proptech.model.auth.AuthAccount.Role.CUSTOMER)applicant.setRole(com.ancu.proptech.model.auth.AuthAccount.Role.OWNER);
-                    else if(applicant.getRole()!=com.ancu.proptech.model.auth.AuthAccount.Role.OWNER)throw conflict("APPLICANT_NOT_ELIGIBLE","Tài khoản không phù hợp để nâng cấp.");
+                    if(applicant.hasRole(com.ancu.proptech.model.auth.AuthAccount.Role.CUSTOMER))applicant.grantRole(com.ancu.proptech.model.auth.AuthAccount.Role.OWNER);
+                    else if(!applicant.hasRole(com.ancu.proptech.model.auth.AuthAccount.Role.OWNER))throw conflict("APPLICANT_NOT_ELIGIBLE","Tài khoản không phù hợp để nâng cấp.");
                 }
                 d.setStatus(PropertyDossier.Status.APPROVED);p.setApprovalStatus(Property.ApprovalStatus.APPROVED);
                 p.setRightType(d.getRightType());p.setRightsValidFrom(d.getRightsValidFrom());p.setRightsValidUntil(d.getRightsValidUntil());p.setApprovedRightsDossierId(d.getId());
