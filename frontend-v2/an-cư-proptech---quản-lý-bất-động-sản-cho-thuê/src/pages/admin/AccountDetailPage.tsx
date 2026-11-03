@@ -74,7 +74,7 @@ function AccountDetails({ accountId }: { accountId: string }) {
         <p className="font-semibold break-words">{profile.account.fullName}</p>
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {[
-            ['Email', profile.account.email], ['Vai trò', roles[profile.account.role]],
+            ['Email', profile.account.email], ['Vai trò', profile.account.roles.map(role => roles[role]).join(' · ')],
             ['Trạng thái', profile.account.deletedAt ? 'Đã xóa mềm' : statuses[profile.account.status]],
             ['Số điện thoại', present(profile.phone)], ['Địa chỉ liên hệ', present(profile.address)],
             ['Ngày sinh', profile.dateOfBirth ?? 'Chưa cập nhật'],

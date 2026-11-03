@@ -322,13 +322,14 @@
           "fullName": {
             "type": "string"
           },
-          "role": {
-            "type": "string",
-            "enum": [
-              "ADMIN",
-              "OWNER",
-              "CUSTOMER"
-            ]
+          "roles": {
+            "type": "array",
+            "uniqueItems": true,
+            "description": "Canonical role memberships; an Owner also has Customer membership.",
+            "items": {
+              "type": "string",
+              "enum": ["ADMIN", "OWNER", "CUSTOMER"]
+            }
           },
           "status": {
             "type": "string",

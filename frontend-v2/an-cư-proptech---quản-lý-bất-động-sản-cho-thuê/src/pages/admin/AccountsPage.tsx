@@ -103,7 +103,7 @@ export function AccountsPage() {
             className="flex-1 min-w-0 text-left space-y-1 rounded-lg focus-visible:outline-emerald-600">
           <h2 className="font-semibold break-words text-emerald-800">{account.fullName}</h2>
           <p className="break-all">{account.email}</p>
-          <p className="text-sm text-slate-600">#{account.id} · {roles[account.role]} · {account.deletedAt ? filters.DELETED : filters[account.status]}</p>
+          <p className="text-sm text-slate-600">#{account.id} · {account.roles.map(role => roles[role]).join(' · ')} · {account.deletedAt ? filters.DELETED : filters[account.status]}</p>
           </Link>
           {account.canManage && <div className="flex flex-wrap gap-2">
             {(account.status === 'ACTIVE' || account.status === 'PENDING_VERIFICATION') &&

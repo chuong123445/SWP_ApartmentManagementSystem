@@ -22,7 +22,7 @@ public class LocalBillingDataService {
     @Transactional public synchronized void initialize(String ownerEmail,String emailOne,String passwordOne,String emailTwo,String passwordTwo){
         if(contracts.countByLocalFixtureTrue()>=2)return; // Account contact/password changes must not recreate fixtures.
         var owner=accounts.findByEmail(ownerEmail.toLowerCase(Locale.ROOT)).orElseThrow(()->new IllegalStateException("Configure the existing local Owner for billing fixtures."));
-        if(owner.getRole()!=AuthAccount.Role.OWNER||owner.getStatus()!=AuthAccount.Status.ACTIVE||!owner.isContactVerified())throw new IllegalStateException("Local fixture Owner is not eligible; no account state was changed.");
+        if(!owner.hasRole(AuthAccount.Role.OWNER)||owner.getStatus()!=AuthAccount.Status.ACTIVE||!owner.isContactVerified())throw new IllegalStateException("Local fixture Owner is not eligible; no account state was changed.");
         fixture(owner,emailOne,passwordOne,"Khách thuê Một","T.101","An Cư local - Xuân Hòa","TP. Hồ Chí Minh","Khu vực Quận 3","Phường Xuân Hòa",new BigDecimal("5000000"),new BigDecimal("1000"),new BigDecimal("200"));
         fixture(owner,emailTwo,passwordTwo,"Khách thuê Hai","T.102","An Cư local - Hải Châu","TP. Đà Nẵng","Khu vực Hải Châu","Phường Hải Châu",new BigDecimal("6500000"),new BigDecimal("800"),new BigDecimal("100"));
     }
@@ -31,7 +31,7 @@ public class LocalBillingDataService {
             if(password==null||password.length()<12)throw new IllegalStateException("Set local Tenant passwords (12+ characters) or disable APP_BILLING_FIXTURES.");
             AuthAccount u=new AuthAccount();u.setEmail(email.toLowerCase(Locale.ROOT));u.setFullName(name);u.setPasswordHash(passwords.encode(password));u.setRole(AuthAccount.Role.CUSTOMER);u.setStatus(AuthAccount.Status.ACTIVE);u.setContactVerified(true);u.setEmailVerified(true);return accounts.save(u);
         });
-        if(customer.getRole()!=AuthAccount.Role.CUSTOMER||customer.getStatus()!=AuthAccount.Status.ACTIVE||!customer.isContactVerified())throw new IllegalStateException("Existing local Tenant account is not eligible; no account was overwritten.");
+        if(!customer.hasRole(AuthAccount.Role.CUSTOMER)||customer.getStatus()!=AuthAccount.Status.ACTIVE||!customer.isContactVerified())throw new IllegalStateException("Existing local Tenant account is not eligible; no account was overwritten.");
         if(contracts.existsByCustomerIdAndLocalFixtureTrue(customer.getId()))return;
         var property=properties.findByOwnerIdOrderByNameAscIdAsc(owner.getId()).stream().filter(p->p.getName().equals(propertyName)).findFirst().orElseGet(()->{
             Property p=new Property();p.setOwner(owner);p.setName(propertyName);p.setCity(city);p.setDistrict(district);p.setWard(ward);p.setAddress("Địa chỉ căn hộ mẫu local — "+ward+", "+city);p.setApprovalStatus(Property.ApprovalStatus.APPROVED);return properties.save(p);

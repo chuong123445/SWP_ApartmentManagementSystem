@@ -36,7 +36,7 @@ public class VneidService {
                 .filter(identity -> "VERIFIED".equals(identity.getVerificationStatus()))
                 .map(identity -> new AccountVerificationResponse.Vneid("VERIFIED", identity.getVerifiedAt(),
                         new AccountVerificationResponse.Citizen(identity.getDocumentNumber(), identity.getLegalName(),
-                                identity.getDateOfBirth(), identity.getGender(), identity.getAddress(), identity.getPhoneNumber(),
+                                identity.getDateOfBirth(), identity.getGender(), identity.getAddress(),
                                 identity.getDocumentIssueDate(),identity.getDocumentIssuePlace(),identity.getPermanentAddress())))
                 .orElseGet(() -> new AccountVerificationResponse.Vneid("UNVERIFIED", null, null));
         return new AccountVerificationResponse(account.isEmailVerified(), vneid);

@@ -78,6 +78,7 @@ IF @admin='00000000-0000-0000-0000-000000000000' OR EXISTS(SELECT 1 FROM auth_ac
  THROW 51000, 'Expected unique Admin fixture and exact test Owner.', 1;
 INSERT INTO auth_accounts(id,email,full_name,password_hash,role,status,contact_verified,email_verified,phone_verified,version)
  SELECT @admin,@adminEmail,@name,password_hash,'ADMIN','ACTIVE',0,0,0,0 FROM auth_accounts WHERE id=@owner AND email=@email;
+INSERT auth_account_roles(account_id,role_id) SELECT @admin,id FROM auth_roles WHERE code='ADMIN';
 COMMIT;
 '@
         [void]$taskCommand.ExecuteNonQuery()
@@ -102,7 +103,9 @@ DELETE FROM rental_properties WHERE owner_id=@owner AND name IN(@single,@multi);
 DELETE FROM email_change_challenges WHERE account_id IN(@owner,@admin);
 DELETE FROM auth_refresh_tokens WHERE session_id IN(SELECT id FROM auth_sessions WHERE account_id IN(@owner,@admin));
 DELETE FROM auth_sessions WHERE account_id IN(@owner,@admin);
+DELETE FROM auth_account_roles WHERE account_id=@owner;
 DELETE FROM auth_accounts WHERE id=@owner AND email=@email AND full_name=@name;
+DELETE FROM auth_account_roles WHERE account_id=@admin;
 DELETE FROM auth_accounts WHERE id=@admin AND email=@adminEmail AND full_name=@name;
 SELECT (SELECT COUNT(*) FROM auth_accounts WHERE id IN(@owner,@admin)) AS accountsRemaining,
  (SELECT COUNT(*) FROM rental_properties WHERE owner_id=@owner) AS propertiesRemaining;

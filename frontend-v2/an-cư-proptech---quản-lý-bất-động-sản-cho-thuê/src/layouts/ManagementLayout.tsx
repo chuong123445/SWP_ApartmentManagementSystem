@@ -1,6 +1,7 @@
 import { SiteHeader } from '@/components/navigation/SiteHeader';
 import { useState, type ReactNode } from 'react';
 import { Menu } from 'lucide-react';
+import { managementRole } from '@/utils/auth';
 import type { AuthUser } from '@/types/auth';
 import type { Building } from '@/types';
 import type { WorkspaceNavigation } from '@/hooks/useWorkspaceNavigation';
@@ -36,7 +37,7 @@ export function ManagementLayout({ account, canManage, navigation, counters, onL
         propertiesLoading={propertiesLoading}
         propertiesError={propertiesError}
         canManage={canManage}
-        accountRole={account.roles[0]}
+        accountRole={managementRole(account) ?? ''}
         activeTab={navigation.activeTab}
         onSelectTab={tab => { navigation.selectTab(tab); setMenuOpen(false); }}
         selectedBuildingId={navigation.selectedBuildingId}

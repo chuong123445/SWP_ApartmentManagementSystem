@@ -40,7 +40,7 @@ async function exercise(page: Page, base: string, width: number) {
     if (path === '/auth/csrf') return json({ token: 'fixture', headerName: 'X-XSRF-TOKEN' });
     if (path === '/auth/vneid-config') return json({ enabled: false });
     const user = { id: role === 'OWNER' ? '3' : role === 'ADMIN' ? '1' : '41', fullName: 'Tài khoản mẫu',
-      email: 'demo@example.invalid', roles: [role], accountStatus: 'ACTIVE', contactVerificationStatus: 'VERIFIED', version: 0 };
+      email: 'demo@example.invalid', roles: role === 'OWNER' ? ['OWNER', 'CUSTOMER'] : [role], accountStatus: 'ACTIVE', contactVerificationStatus: 'VERIFIED', version: 0 };
     if (path === '/auth/refresh') return json({ accessToken: 'fixture', user });
     if (path === '/me') return json(user);
     if (path === '/me/tenancies' || path === '/owner/tenancies' || path === '/owner/maintenance-tickets') return json([]);

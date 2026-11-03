@@ -51,6 +51,16 @@ class ContractDraftIntegrationTests {
     private String token,customerToken,otherToken;
     private static String hash;
     private static final String PASSWORD="Contract-test!12345";
+    @Test void dualRoleTenantSignsTheirOwnSlotWithoutManagingOtherOwnersContract()throws Exception {
+        customer.setRole(AuthAccount.Role.OWNER);accounts.saveAndFlush(customer);
+        String saved=create();String hash=JsonPath.read(saved,"$.signing.contentHash");
+        sign(saved,token,hash,signature(),true).andExpect(status().isOk());
+        sign(saved,customerToken,hash,signature(),true).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"));
+        mvc.perform(get("/api/v1/me/contract-drafts").header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
+        mvc.perform(get("/api/v1/owner/contract-drafts").header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get("/api/v1/owner/contracts/"+id(saved)+"/billing-context").header("Authorization",customerToken)).andExpect(status().isNotFound());
+        assertEquals(Set.of(AuthAccount.Role.OWNER,AuthAccount.Role.CUSTOMER),customer.getRoles());
+    }
     @Test void customerRequestInboxExcludesConvertedSelectionsBeforePagingButKeepsTheirDocuments()throws Exception {
         String saved=create();
         for(var state:List.of(RentalRequest.Status.REJECTED,RentalRequest.Status.CANCELLED)){
@@ -101,15 +111,15 @@ class ContractDraftIntegrationTests {
     @Autowired PropertyExternalImportRepository imports;
     @Test void completeVerifiedPartyDetailsReachNewDraftButExistingSnapshotStaysFrozen()throws Exception {
         var verified=com.ancu.proptech.support.VerifiedIdentityFixtures.bind(verifiedIdentities,customer);
-        customer.setPhone(null);accounts.saveAndFlush(customer);
-        verified.setPhoneNumber("+84999000002");verified.setDocumentIssueDate(LocalDate.of(2021,6,16));
+        customer.setPhone("+84999000002");accounts.saveAndFlush(customer);
+        verified.setDocumentIssueDate(LocalDate.of(2021,6,16));
         verified.setDocumentIssuePlace("Cục Cảnh sát quản lý hành chính về trật tự xã hội");
         verified.setPermanentAddress("54 Hoàng Diệu, phường Phước Ninh, quận Hải Châu, thành phố Đà Nẵng");verifiedIdentities.saveAndFlush(verified);
         String saved=create();assertEquals("+84999000002",JsonPath.read(saved,"$.snapshot.customer.phone"));
         assertEquals("2021-06-16",JsonPath.read(saved,"$.snapshot.customer.documentIssueDate"));
         assertEquals(verified.getDocumentIssuePlace(),JsonPath.read(saved,"$.snapshot.customer.documentIssuePlace"));
         assertEquals(verified.getPermanentAddress(),JsonPath.read(saved,"$.snapshot.customer.permanentAddress"));
-        verified.setPhoneNumber("+84999000999");verified.setDocumentIssuePlace("Một cơ quan khác");verifiedIdentities.saveAndFlush(verified);
+        customer.setPhone("+84999000999");accounts.saveAndFlush(customer);verified.setDocumentIssuePlace("Một cơ quan khác");verifiedIdentities.saveAndFlush(verified);
         mvc.perform(get("/api/v1/contracts/"+id(saved)).header("Authorization",customerToken)).andExpect(status().isOk())
             .andExpect(jsonPath("$.snapshot.customer.phone").value("+84999000002"))
             .andExpect(jsonPath("$.snapshot.customer.documentIssuePlace").value("Cục Cảnh sát quản lý hành chính về trật tự xã hội"));

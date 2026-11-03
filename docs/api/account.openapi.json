@@ -512,6 +512,10 @@
             "maxLength": 1000
           },
           "roles": {
+            "description": "Canonical memberships: CUSTOMER, OWNER plus CUSTOMER, or separately provisioned ADMIN. Tenant is contract-derived; order has no authority meaning.",
+            "uniqueItems": true,
+            "minItems": 1,
+            "readOnly": true,
             "type": "array",
             "items": {
               "type": "string",

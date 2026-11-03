@@ -70,7 +70,7 @@ public class AdminAccountService {
         Long admin = access.admin(jwt).getId();
         var account = accounts.findForIdentityUpdate(id).orElseThrow(() ->
                 error(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Không tìm thấy tài khoản."));
-        if (id.equals(admin) || account.getRole() == AuthAccount.Role.ADMIN) {
+        if (id.equals(admin) || account.hasRole(AuthAccount.Role.ADMIN)) {
             throw error(HttpStatus.FORBIDDEN, "ADMIN_ACCOUNT_PROTECTED", "Chức năng này chỉ quản lý tài khoản Owner và Customer.");
         }
         if (account.getDeletedAt() != null) throw conflict("ACCOUNT_DELETED", "Tài khoản đã được xóa.");
@@ -121,8 +121,8 @@ public class AdminAccountService {
     }
 
     private static Account view(AuthAccount account, Long admin) {
-        boolean manageable = !account.getId().equals(admin) && account.getRole() != AuthAccount.Role.ADMIN && account.getDeletedAt() == null;
-        return new Account(account.getId().toString(), account.getEmail(), account.getFullName(), account.getRole().name(),
+        boolean manageable = !account.getId().equals(admin) && !account.hasRole(AuthAccount.Role.ADMIN) && account.getDeletedAt() == null;
+        return new Account(account.getId().toString(), account.getEmail(), account.getFullName(), account.roleNames(),
                 account.getStatus(), account.getDeletedAt(), account.getVersion(), manageable,
                 manageable && account.getStatus() == AuthAccount.Status.LOCKED && account.getLockedFromStatus() != null);
     }
