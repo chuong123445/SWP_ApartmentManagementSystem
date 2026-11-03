@@ -81,7 +81,7 @@ class VneidIntegrationTests {
             .claim(VneidTokenVerifier.NS+"document_issue_place","Cục Cảnh sát quản lý hành chính về trật tự xã hội")
             .claim(VneidTokenVerifier.NS+"permanent_address","54 Hoàng Diệu, phường Phước Ninh, quận Hải Châu, thành phố Đà Nẵng").build();
         when(verifier.decode(token)).thenReturn(detailed);login();
-        var filled=identities.findById(account.getId()).orElseThrow();assertEquals("+84999000002",filled.getPhoneNumber());
+        var filled=identities.findById(account.getId()).orElseThrow();assertNotNull(filled.getDocumentIssuePlace());
         assertEquals(LocalDate.of(2021,6,16),filled.getDocumentIssueDate());assertEquals(verifiedAt,filled.getVerifiedAt());assertNotNull(filled.getDetailsUpdatedAt());
         assertEquals(displayName,account.getFullName());assertNull(account.getPhone());assertNull(account.getPasswordHash());
         assertFalse(account.isEmailVerified());assertFalse(account.isPhoneVerified());long version=filled.getVersion();

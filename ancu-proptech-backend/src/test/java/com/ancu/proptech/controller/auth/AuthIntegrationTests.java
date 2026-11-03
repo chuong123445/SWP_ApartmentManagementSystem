@@ -33,9 +33,62 @@ class AuthIntegrationTests {
     @Autowired PasswordEncoder passwords;
     @Autowired JwtEncoder jwtEncoder;
     @Autowired JwtDecoder jwtDecoder;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @Autowired jakarta.persistence.EntityManager entities;
     private AuthAccount owner;
     private final String password = "Auth-test-only!123";
     private record Login(String accessToken, Cookie refresh) {}
+
+    @Test void roleCatalogIsSharedAndMembershipHasTwoForeignKeys() {
+        assertEquals(List.of("ADMIN","OWNER","CUSTOMER"),jdbc.queryForList("SELECT code FROM auth_roles ORDER BY id",String.class));
+        assertEquals(2,jdbc.queryForObject("SELECT COUNT(*) FROM sys.foreign_keys WHERE parent_object_id=OBJECT_ID('dbo.auth_account_roles') AND referenced_object_id IN(OBJECT_ID('dbo.auth_accounts'),OBJECT_ID('dbo.auth_roles')) AND is_disabled=0 AND is_not_trusted=0",Integer.class));
+        owner.setRole(AuthAccount.Role.CUSTOMER);accounts.saveAndFlush(owner);
+        assertEquals(3,jdbc.queryForObject("SELECT COUNT(*) FROM auth_roles",Integer.class));
+        assertEquals("Chủ cho thuê",jdbc.queryForObject("SELECT name FROM auth_roles WHERE code='OWNER'",String.class));
+    }
+
+    @Test void startupReplayDoesNotRegrantMembershipFromLegacyProjection() throws Exception {
+        Login login=login(owner.getEmail(),password);Long id=owner.getId();
+        owner.setRole(AuthAccount.Role.CUSTOMER);accounts.saveAndFlush(owner);
+        jdbc.update("UPDATE auth_accounts SET role='OWNER' WHERE id=?",id);entities.clear();
+        for(String migration:List.of("V50__account_roles.sql","V52__role_catalog.sql")){
+            var resource=new org.springframework.core.io.ClassPathResource("db/migration/"+migration);
+            String sql;try(var input=resource.getInputStream()){sql=new String(input.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);}
+            for(String batch:sql.split("(?im)^GO\\s*$"))if(!batch.isBlank())jdbc.execute(batch);
+        }
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM auth_account_roles a JOIN auth_roles r ON r.id=a.role_id WHERE a.account_id=? AND r.code='OWNER'",Integer.class,id));
+        mvc.perform(get("/api/v1/owner/apartments").header("Authorization","Bearer "+login.accessToken())).andExpect(status().isForbidden());
+    }
+
+    @Test void ownerMembershipsAppearInLoginJwtMeAndRefresh() throws Exception {
+        Login login=login(owner.getEmail(),password);
+        assertEquals(List.of("OWNER","CUSTOMER"),jwtDecoder.decode(login.accessToken()).getClaimAsStringList("roles"));
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+login.accessToken()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.roles.length()").value(2)).andExpect(jsonPath("$.roles[0]").value("OWNER")).andExpect(jsonPath("$.roles[1]").value("CUSTOMER"));
+        mvc.perform(post("/api/v1/auth/refresh").with(csrf().asHeader()).cookie(login.refresh()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.user.roles.length()").value(2)).andExpect(jsonPath("$.user.roles[0]").value("OWNER")).andExpect(jsonPath("$.user.roles[1]").value("CUSTOMER"));
+        assertEquals(2,jdbc.queryForObject("SELECT COUNT(*) FROM auth_account_roles WHERE account_id=?",Integer.class,owner.getId()));
+    }
+
+    @Test void legacyProjectionAndOldJwtCannotGrantRemovedOwnerMembership() throws Exception {
+        Login login=login(owner.getEmail(),password);Long id=owner.getId();
+        owner.setRole(AuthAccount.Role.CUSTOMER);accounts.saveAndFlush(owner);
+        jdbc.update("UPDATE auth_accounts SET role='OWNER' WHERE id=?",id);entities.clear();
+        mvc.perform(get("/api/v1/owner/apartments").header("Authorization","Bearer "+login.accessToken())).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+login.accessToken())).andExpect(status().isOk()).andExpect(jsonPath("$.roles.length()").value(1)).andExpect(jsonPath("$.roles[0]").value("CUSTOMER"));
+    }
+
+    @Test void forgedAdminClaimDoesNotOverrideDatabaseMembershipAndAdminIsNotCustomer() throws Exception {
+        Login login=login(owner.getEmail(),password);var original=jwtDecoder.decode(login.accessToken());
+        var claims=JwtClaimsSet.builder().issuer(AuthService.ISSUER).audience(List.of(AuthService.AUDIENCE)).subject(original.getSubject())
+            .issuedAt(Instant.now()).expiresAt(Instant.now().plusSeconds(60)).claim("sid",original.getClaimAsString("sid")).claim("roles",List.of("ADMIN")).build();
+        String forged=jwtEncoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(),claims)).getTokenValue();
+        mvc.perform(get("/api/v1/admin/property-dossiers").header("Authorization","Bearer "+forged)).andExpect(status().isForbidden());
+        owner.setRole(AuthAccount.Role.ADMIN);accounts.saveAndFlush(owner);
+        assertEquals(Set.of(AuthAccount.Role.ADMIN),owner.getRoles());
+        mvc.perform(get("/api/v1/me/invoices").header("Authorization","Bearer "+login.accessToken())).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/owner/apartments").header("Authorization","Bearer "+login.accessToken())).andExpect(status().isForbidden());
+    }
 
     @BeforeEach void fixture() {
         owner = new AuthAccount();

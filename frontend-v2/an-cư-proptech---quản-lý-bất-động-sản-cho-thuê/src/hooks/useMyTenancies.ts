@@ -10,7 +10,7 @@ export function useMyTenancies() {
   const [loading, setLoading] = useState(false);
   const [revision,setRevision]=useState(0);
   const reload=useCallback(()=>setRevision(v=>v+1),[]);
-  const eligible = user?.roles.some(role => role === 'CUSTOMER' || role === 'OWNER') && user.accountStatus === 'ACTIVE' && user.contactVerificationStatus === 'VERIFIED';
+  const eligible = user?.roles.includes('CUSTOMER') && user.accountStatus === 'ACTIVE' && user.contactVerificationStatus === 'VERIFIED';
   useEffect(() => {
     let active = true; setError('');
     if (!eligible) { setLoading(false); return; }

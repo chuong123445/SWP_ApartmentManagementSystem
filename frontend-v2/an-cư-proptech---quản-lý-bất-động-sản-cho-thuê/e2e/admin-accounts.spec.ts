@@ -15,9 +15,9 @@ async function exercise(page: Page, base: string, width: number) {
   const user = { id: '1', fullName: 'Quản trị viên', email: 'admin@example.invalid', roles: ['ADMIN'],
     accountStatus: 'ACTIVE', contactVerificationStatus: 'VERIFIED', version: 0 };
   let rows = [
-    { id: '1', email: user.email, fullName: user.fullName, role: 'ADMIN', status: 'ACTIVE', deletedAt: null, version: 0, canManage: false, canUnlock: false },
-    { id: '2', email: 'blank@example.invalid', fullName: 'Khách chưa có dữ liệu', role: 'CUSTOMER', status: 'ACTIVE', deletedAt: null, version: 0, canManage: true, canUnlock: false },
-    { id: '3', email: 'owner@example.invalid', fullName: 'Chủ nhà có tài sản', role: 'OWNER', status: 'ACTIVE', deletedAt: null, version: 0, canManage: true, canUnlock: false },
+    { id: '1', email: user.email, fullName: user.fullName, roles: ['ADMIN'], status: 'ACTIVE', deletedAt: null, version: 0, canManage: false, canUnlock: false },
+    { id: '2', email: 'blank@example.invalid', fullName: 'Khách chưa có dữ liệu', roles: ['CUSTOMER'], status: 'ACTIVE', deletedAt: null, version: 0, canManage: true, canUnlock: false },
+    { id: '3', email: 'owner@example.invalid', fullName: 'Chủ nhà có tài sản', roles: ['OWNER', 'CUSTOMER'], status: 'ACTIVE', deletedAt: null, version: 0, canManage: true, canUnlock: false },
   ];
   const empty = { items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 };
   const routeApi = async (route: Route) => {
@@ -111,6 +111,7 @@ async function exercise(page: Page, base: string, width: number) {
     const accountDetail = page.getByRole('main');
     await accountDetail.getByRole('heading', { name: 'Chi tiết tài khoản', exact: true }).waitFor();
     await accountDetail.getByRole('region', { name: 'Thông tin tài khoản' }).getByText('0900123456', { exact: true }).waitFor();
+    await accountDetail.getByRole('region', { name: 'Thông tin tài khoản' }).getByText('Chủ nhà · Khách thuê', { exact: true }).waitFor();
     const contractHistory = accountDetail.getByRole('region', { name: 'Hợp đồng của tài khoản' });
     const paidHistory = accountDetail.getByRole('region', { name: 'Hóa đơn đã thanh toán của tài khoản' });
     await contractHistory.getByRole('heading', { name: /Hợp đồng #77/ }).waitFor();

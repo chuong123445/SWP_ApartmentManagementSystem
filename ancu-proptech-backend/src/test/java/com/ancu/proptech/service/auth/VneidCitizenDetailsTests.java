@@ -19,15 +19,15 @@ class VneidCitizenDetailsTests {
         var builder=Jwt.withTokenValue("evidence").header("alg","RS256").subject("auth0|one");
         values.forEach((k,v)->builder.claim(VneidTokenVerifier.NS+k,v));return builder.build();
     }
-    Map<String,Object> complete() {return Map.of("phone_number","+84999000002","document_issue_date","16/06/2021",
+    Map<String,Object> complete() {return Map.of("document_issue_date","16/06/2021",
         "document_issue_place","Cục Cảnh sát quản lý hành chính về trật tự xã hội","permanent_address","54 Hoàng Diệu, phường Phước Ninh, quận Hải Châu, thành phố Đà Nẵng");}
     @Test void oldTokensRemainValidWithoutInventingDetails() {
         var i=identity();var jwt=token(Map.of());assertFalse(VneidCitizenDetails.present(jwt));VneidCitizenDetails.read(jwt,i);
-        assertNull(i.getPhoneNumber());assertNull(i.getDocumentIssueDate());assertNull(i.getDocumentIssuePlace());assertNull(i.getPermanentAddress());
+        assertNull(i.getDocumentIssueDate());assertNull(i.getDocumentIssuePlace());assertNull(i.getPermanentAddress());
     }
     @Test void acceptsConcreteProviderFieldsWithoutMarkingPhoneVerified() {
         var i=identity();VneidCitizenDetails.read(token(complete()),i);
-        assertEquals("+84999000002",i.getPhoneNumber());assertEquals(LocalDate.of(2021,6,16),i.getDocumentIssueDate());
+        assertEquals(LocalDate.of(2021,6,16),i.getDocumentIssueDate());
         assertEquals(complete().get("document_issue_place"),i.getDocumentIssuePlace());assertEquals(complete().get("permanent_address"),i.getPermanentAddress());
     }
     @Test void strictDatesRejectImpossibleFutureAndPreBirthDates() {
@@ -36,16 +36,16 @@ class VneidCitizenDetailsTests {
             assertThrows(AuthException.class,()->VneidCitizenDetails.read(token(input),identity()));
         }
     }
-    @Test void invalidTypesLengthsControlsPhoneAndIncompleteIssueGroupAreRejected() {
-        for(var input:java.util.List.<Map<String,Object>>of(Map.of("phone_number",84999000002L),Map.of("phone_number","0900000000"),
+    @Test void invalidTypesLengthsControlsAndIncompleteIssueGroupAreRejected() {
+        for(var input:java.util.List.<Map<String,Object>>of(Map.of("document_issue_date",20210616),Map.of("permanent_address"," "),
                 Map.of("document_issue_date","16/06/2021"),Map.of("document_issue_place","Cơ quan cấp"),
                 Map.of("permanent_address","x".repeat(501)),Map.of("permanent_address","Địa chỉ\nKhác")))
             assertThrows(AuthException.class,()->VneidCitizenDetails.read(token(input),identity()));
     }
     @Test void fillsOnlyMissingFieldsKeepsBindingVerifiedTimeAndPreviouslySavedValues() {
-        var saved=identity();saved.setPhoneNumber("+84999000999");var incoming=identity();VneidCitizenDetails.read(token(complete()),incoming);
+        var saved=identity();saved.setPermanentAddress("Địa chỉ thường trú đã lưu");var incoming=identity();VneidCitizenDetails.read(token(complete()),incoming);
         var originalTime=saved.getVerifiedAt();assertTrue(VneidCitizenDetails.fillMissing(saved,incoming));
-        assertEquals("+84999000999",saved.getPhoneNumber());assertEquals(originalTime,saved.getVerifiedAt());
+        assertEquals("Địa chỉ thường trú đã lưu",saved.getPermanentAddress());assertEquals(originalTime,saved.getVerifiedAt());
         assertNotNull(saved.getDetailsUpdatedAt());assertEquals("auth0|one",saved.getSubject());assertEquals("VERIFIED",saved.getVerificationStatus());
         assertFalse(VneidCitizenDetails.fillMissing(saved,incoming));
     }
@@ -56,11 +56,16 @@ class VneidCitizenDetailsTests {
                 case "name"->incoming.setLegalName("Tên khác");case "birth"->incoming.setDateOfBirth(LocalDate.of(1990,1,1));
                 case "gender"->incoming.setGender("Nam");case "address"->incoming.setAddress("Địa chỉ khác");
                 case "issuer"->incoming.setIssuer("https://other.invalid/");case "status"->saved.setVerificationStatus("UNVERIFIED");}
-            assertThrows(AuthException.class,()->VneidCitizenDetails.fillMissing(saved,incoming));assertNull(saved.getPhoneNumber());
+            assertThrows(AuthException.class,()->VneidCitizenDetails.fillMissing(saved,incoming));assertNull(saved.getDocumentIssueDate());
         }
     }
     @Test void willNotCombineOldIssueDateWithNewPlace() {
         var saved=identity();saved.setDocumentIssueDate(LocalDate.of(2020,1,1));var incoming=identity();VneidCitizenDetails.read(token(complete()),incoming);
         VneidCitizenDetails.fillMissing(saved,incoming);assertEquals(LocalDate.of(2020,1,1),saved.getDocumentIssueDate());assertNull(saved.getDocumentIssuePlace());
+    }
+    @Test void legacyPhoneClaimIsIgnoredAndDoesNotTriggerIdentitySupplement() {
+        var jwt=token(Map.of("phone_number",Map.of("untrusted","value")));var i=identity();
+        assertFalse(VneidCitizenDetails.present(jwt));VneidCitizenDetails.read(jwt,i);
+        assertNull(i.getDocumentIssueDate());assertNull(i.getDocumentIssuePlace());assertNull(i.getPermanentAddress());
     }
 }

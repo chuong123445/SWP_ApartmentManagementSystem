@@ -13,7 +13,7 @@ public final class AdminAccountDtos {
     public record Command(@NotNull Action action, @NotNull @PositiveOrZero Long version,
                           @NotBlank @Size(max = 500) String reason) {}
 
-    public record Account(String id, String email, String fullName, String role,
+    public record Account(String id, String email, String fullName, java.util.List<String> roles,
                           AuthAccount.Status status, Instant deletedAt, long version, boolean canManage,
                           boolean canUnlock) {}
 

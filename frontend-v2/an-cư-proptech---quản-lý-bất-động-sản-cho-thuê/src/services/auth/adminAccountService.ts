@@ -7,7 +7,7 @@ export interface ManagedAccount {
   id: string;
   email: string;
   fullName: string;
-  role: 'OWNER' | 'CUSTOMER' | 'ADMIN';
+  roles: ('OWNER' | 'CUSTOMER' | 'ADMIN')[];
   status: Exclude<AccountFilter, 'ALL' | 'DELETED'>;
   deletedAt: string | null;
   version: number;

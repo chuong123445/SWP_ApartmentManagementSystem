@@ -2,6 +2,8 @@
 
 Admin đang hoạt động có thể tìm tên/email, lọc trạng thái và khóa, mở khóa hoặc xóa tài khoản Owner/Customer. Nút Quản trị hệ thống xuất hiện ở thanh điều hướng và menu tài khoản Admin. Tab Tài khoản người dùng nằm cùng trang với Kiểm duyệt tài sản và Yêu cầu rút tiền.
 
+Sau khi ghép main ngày 04/11/2026, quyền Admin và bảo vệ tài khoản Admin dùng membership từ auth_account_roles/auth_roles, không dùng cột role cũ. DTO danh sách/chi tiết trả roles là mảng; giao diện hiển thị đầy đủ OWNER và CUSTOMER của cùng tài khoản. Xóa cứng chỉ xóa membership của tài khoản đích, giữ catalog dùng chung. Khóa/xóa mềm không thay đổi membership. Startup giữ V49, V50, V52 từ main cùng V51 settlement và V53 quản trị, theo thứ tự V49 → V50 → V51 → V52 → V53.
+
 Mọi thao tác ghi cần phiên bản hiện tại và lý do. Khóa lưu trạng thái trước đó, chuyển sang LOCKED và thu hồi toàn bộ phiên. Mở khóa trả đúng trạng thái trước đó, gồm cả PENDING_VERIFICATION, và yêu cầu đăng nhập lại. Tài khoản khóa từ dữ liệu cũ chưa có trạng thái trước đó cần được xử lý riêng. Chức năng này bảo vệ mọi tài khoản Admin, kể cả chính người thao tác.
 
 Xóa dùng toàn bộ lịch sử nghiệp vụ để chọn cách thực hiện. Tài sản, hồ sơ, yêu cầu thuê, hợp đồng, thanh toán, rút tiền, bằng chứng định danh đã lưu và các quan hệ nghiệp vụ khác giữ tài khoản theo dạng xóa mềm. Xóa mềm đặt deleted_at và INACTIVE, thu hồi phiên, giữ định danh và quan hệ lịch sử. Email tiếp tục thuộc tài khoản đó. Bộ lọc mặc định ẩn tài khoản đã xóa mềm, bộ lọc Đã xóa mềm cho phép Admin xem.

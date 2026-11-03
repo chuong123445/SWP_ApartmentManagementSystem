@@ -98,6 +98,27 @@ class AdminAccountIntegrationTests {
         assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM admin_account_events WHERE target_account_id=?", Integer.class, user.getId()));
     }
 
+    @Test void adminProtectionAndManagementUseMembershipsInsteadOfLegacyProjection() throws Exception {
+        var otherAdmin = account(AuthAccount.Role.ADMIN, AuthAccount.Status.ACTIVE);
+        var customer = account(AuthAccount.Role.CUSTOMER, AuthAccount.Status.ACTIVE);
+        String customerToken = token(customer);
+        jdbc.update("UPDATE auth_accounts SET role='CUSTOMER' WHERE id IN (?,?)", admin.getId(), otherAdmin.getId());
+        jdbc.update("UPDATE auth_accounts SET role='ADMIN' WHERE id=?", customer.getId());
+        em.clear();
+        list("ALL", otherAdmin.getEmail()).andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].roles[0]").value("ADMIN"))
+                .andExpect(jsonPath("$.items[0].canManage").value(false));
+        for (String action : java.util.List.of("LOCK", "DELETE")) {
+            command(adminToken, otherAdmin, action, otherAdmin.getVersion()).andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.code").value("ADMIN_ACCOUNT_PROTECTED"));
+        }
+        mvc.perform(get("/api/v1/admin/accounts").header("Authorization", "Bearer " + customerToken))
+                .andExpect(status().isForbidden());
+        list("ALL", customer.getEmail()).andExpect(jsonPath("$.items[0].roles[0]").value("CUSTOMER"))
+                .andExpect(jsonPath("$.items[0].canManage").value(true));
+        command(adminToken, customer, "LOCK", customer.getVersion()).andExpect(status().isOk());
+    }
+
     @Test void staleCommandAndMissingReasonCannotChangeAnAccount() throws Exception {
         var user = account(AuthAccount.Role.CUSTOMER, AuthAccount.Status.ACTIVE);
         command(adminToken, user, "LOCK", user.getVersion() + 1).andExpect(status().isConflict());
@@ -115,6 +136,8 @@ class AdminAccountIntegrationTests {
         property.setCity("Thành phố"); property.setDistrict("Quận"); property.setWard("Phường");
         property.setApprovalStatus(Property.ApprovalStatus.DRAFT);
         properties.saveAndFlush(property);
+        list("ALL", owner.getEmail()).andExpect(jsonPath("$.items[0].roles[0]").value("OWNER"))
+                .andExpect(jsonPath("$.items[0].roles[1]").value("CUSTOMER"));
         command(adminToken, owner, "DELETE", owner.getVersion()).andExpect(status().isOk()).andExpect(jsonPath("$.outcome").value("SOFT_DELETED"));
         var deleted = reload(owner);
         assertEquals(AuthAccount.Status.INACTIVE, deleted.getStatus());
@@ -127,7 +150,7 @@ class AdminAccountIntegrationTests {
     }
 
     @Test void blankAccountIsHardDeletedWithOnlyItsTechnicalArtifacts() throws Exception {
-        var user = account(AuthAccount.Role.CUSTOMER, AuthAccount.Status.ACTIVE);
+        var user = account(AuthAccount.Role.OWNER, AuthAccount.Status.ACTIVE);
         String oldToken = token(user);
         var challenge = new EmailChangeChallenge();
         challenge.setAccount(user); challenge.setTargetEmail("target@example.invalid"); challenge.setCodeHash("a".repeat(64));
@@ -138,6 +161,8 @@ class AdminAccountIntegrationTests {
         command(adminToken, user, "DELETE", user.getVersion()).andExpect(status().isOk()).andExpect(jsonPath("$.outcome").value("HARD_DELETED"));
         em.clear();
         assertFalse(accounts.existsById(user.getId()));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM auth_account_roles WHERE account_id=?", Integer.class, user.getId()));
+        assertEquals(3, jdbc.queryForObject("SELECT COUNT(*) FROM auth_roles", Integer.class));
         assertFalse(challenges.existsById(challenge.getId()));
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM auth_sessions WHERE account_id=?", Integer.class, user.getId()));
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM admin_account_events WHERE target_account_id=? AND outcome='HARD_DELETED'", Integer.class, user.getId()));
@@ -171,6 +196,7 @@ class AdminAccountIntegrationTests {
             for (Long id : java.util.List.of(targetId, admin.getId())) {
                 jdbc.update("DELETE FROM auth_refresh_tokens WHERE session_id IN (SELECT id FROM auth_sessions WHERE account_id=?)", id);
                 jdbc.update("DELETE FROM auth_sessions WHERE account_id=?", id);
+                jdbc.update("DELETE FROM auth_account_roles WHERE account_id=?", id);
                 jdbc.update("DELETE FROM auth_accounts WHERE id=?", id);
             }
         }
