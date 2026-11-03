@@ -254,6 +254,19 @@
         }
       }
     },
+    "/admin/settlements/withdrawals/{id}/qr": {
+      "get": {
+        "summary": "Ảnh QR chuyển khoản từ thông tin đã chốt trong yêu cầu đang xử lý, chỉ dành cho Admin đã nhận xử lý",
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}],
+        "responses": {
+          "200": {"description": "Ảnh PNG, Cache-Control no-store", "content": {"image/png": {"schema": {"type": "string", "format": "binary"}}}},
+          "401": {"description": "Chưa đăng nhập"},
+          "403": {"description": "Không có quyền Admin"},
+          "404": {"description": "Không tìm thấy yêu cầu"},
+          "409": {"description": "Yêu cầu chưa hoặc không còn đang xử lý, thuộc Admin khác hoặc không tạo được QR"}
+        }
+      }
+    },
     "/admin/settlements/withdrawals/{id}/actions": {
       "post": {
         "summary": "Admin nhận xử lý, ghi nhận đã chuyển hoặc từ chối",

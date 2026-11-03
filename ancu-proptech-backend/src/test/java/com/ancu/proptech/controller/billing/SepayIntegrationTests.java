@@ -283,6 +283,8 @@ class SepayIntegrationTests {
             String requestBody = withdrawalBody("5000", qrId);
             String withdrawal = JsonPath.read(withdraw(ownerToken, requestBody).andExpect(status().isOk())
                     .andReturn().getResponse().getContentAsString(), "$.id");
+            String payoutQrPath = "/api/v1/admin/settlements/withdrawals/" + withdrawal + "/qr";
+            mvc.perform(get(payoutQrPath).header("Authorization", "Bearer " + adminToken)).andExpect(status().isConflict());
             Long updatedQrId = savePayoutQr(owner, "0000012345");
             withdraw(ownerToken, requestBody).andExpect(jsonPath("$.id").value(withdrawal))
                     .andExpect(jsonPath("$.accountNumber").value("0123456789"));
@@ -292,10 +294,22 @@ class SepayIntegrationTests {
             decision(true, ownerToken, withdrawal, "START", 0, "", "").andExpect(status().isForbidden());
             decision(true, adminToken, withdrawal, "START", 0, "", "")
                     .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("PROCESSING"));
+            mvc.perform(get(payoutQrPath).header("Authorization", "Bearer " + ownerToken)).andExpect(status().isForbidden());
+            mvc.perform(get(payoutQrPath).header("Authorization", "Bearer " + token(account(AuthAccount.Role.ADMIN))))
+                    .andExpect(status().isConflict());
+            byte[] png = mvc.perform(get(payoutQrPath).header("Authorization", "Bearer " + adminToken))
+                    .andExpect(status().isOk()).andExpect(content().contentType("image/png"))
+                    .andExpect(header().string("Cache-Control", "no-store")).andReturn().getResponse().getContentAsByteArray();
+            String payload = decodeQr(png);
+            assertTrue(payload.contains("000697042201100123456789"));
+            assertFalse(payload.contains("0000012345"));
+            assertTrue(payload.contains("54045000"));
+            assertTrue(payload.contains("RUT " + withdrawal));
             decision(false, ownerToken, withdrawal, "CANCEL", 1, "", "").andExpect(status().isConflict());
             decision(true, adminToken, withdrawal, "PAID", 1, "FT-DEMO-89103", "")
                     .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("PAID"));
             decision(true, adminToken, withdrawal, "PAID", 1, "FT-DEMO-89103", "").andExpect(status().isConflict());
+            mvc.perform(get(payoutQrPath).header("Authorization", "Bearer " + adminToken)).andExpect(status().isConflict());
             wallet(ownerToken).andExpect(jsonPath("$.reserved").value("0"))
                     .andExpect(jsonPath("$.paid").value("5000"))
                     .andExpect(jsonPath("$.available").value(new BigDecimal(amount).subtract(new BigDecimal("4000")).toBigIntegerExact().toString()));
@@ -310,6 +324,13 @@ class SepayIntegrationTests {
         } finally {
             org.springframework.test.util.ReflectionTestUtils.setField(sepay, "platformSourceEmail", "");
         }
+    }
+
+    private static String decodeQr(byte[] png) throws Exception {
+        var image = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(png));
+        var luminance = new com.google.zxing.client.j2se.BufferedImageLuminanceSource(image);
+        var bitmap = new com.google.zxing.BinaryBitmap(new com.google.zxing.common.HybridBinarizer(luminance));
+        return new com.google.zxing.qrcode.QRCodeReader().decode(bitmap).getText();
     }
 
     private ResultActions platformWebhook(String secret, String body) throws Exception {

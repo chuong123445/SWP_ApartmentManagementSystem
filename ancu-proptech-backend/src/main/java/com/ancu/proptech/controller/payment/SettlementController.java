@@ -9,6 +9,7 @@ import com.ancu.proptech.service.payment.SepayService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -52,6 +53,13 @@ public class SettlementController {
             @RequestParam(required = false) Status status, @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return privateResponse(service.adminWithdrawals(jwt, status, page, size));
+    }
+
+    @GetMapping("/api/v1/admin/settlements/withdrawals/{id}/qr")
+    public ResponseEntity<byte[]> withdrawalQr(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .header("X-Content-Type-Options", "nosniff").contentType(MediaType.IMAGE_PNG)
+                .body(service.withdrawalQr(jwt, id));
     }
 
     @PostMapping("/api/v1/admin/settlements/withdrawals/{id}/actions")
