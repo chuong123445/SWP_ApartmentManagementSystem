@@ -226,7 +226,7 @@ public class ContractDraftService {
     }
     private ContractSnapshot.Party party(AuthAccount a) {
         var verified=verifiedIdentities.findById(a.getId()).filter(i->"VERIFIED".equals(i.getVerificationStatus())).orElse(null);
-        if(verified!=null)return new ContractSnapshot.Party(a.getId().toString(),verified.getLegalName(),a.getEmail(),a.getPhone()==null?verified.getPhoneNumber():a.getPhone(),verified.getAddress(),verified.getDateOfBirth(),a.isEmailVerified(),
+        if(verified!=null)return new ContractSnapshot.Party(a.getId().toString(),verified.getLegalName(),a.getEmail(),a.getPhone(),verified.getAddress(),verified.getDateOfBirth(),a.isEmailVerified(),
             verified.getDocumentNumber(),verified.getDocumentIssueDate(),verified.getDocumentIssuePlace(),verified.getPermanentAddress(),"VERIFIED",false);
         var identity=identities.findById(a.getId()).orElse(null);
         return new ContractSnapshot.Party(a.getId().toString(),identity==null?a.getFullName():identity.getLegalName(),a.getEmail(),a.getPhone(),

@@ -6,5 +6,5 @@ import java.time.*;
 public record AccountVerificationResponse(boolean emailVerified, Vneid vneid) {
     public record Vneid(String status, Instant verifiedAt, Citizen identity) {}
     public record Citizen(String documentNumber, String legalName, LocalDate dateOfBirth, String gender, String address,
-                          String phoneNumber,LocalDate documentIssueDate,String documentIssuePlace,String permanentAddress) {}
+                          LocalDate documentIssueDate,String documentIssuePlace,String permanentAddress) {}
 }
