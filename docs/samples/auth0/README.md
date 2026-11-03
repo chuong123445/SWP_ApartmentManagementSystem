@@ -1,5 +1,11 @@
 # Bộ 10 tài khoản Auth0 và tài sản
 
+## Cập nhật thông tin chi tiết 03/11/2026
+
+Đã bổ sung phone_number, document_issue_date, document_issue_place và permanent_address cho đủ10citizen; nơi cấp giấy chứng nhận dùng tên cơ quan cụ thể. Bộ vẫn là dữ liệu hư cấu, không phải danh tính/giấy tờ thật. Email, CCCD và21asset/43unit IDs giữ nguyên.
+
+Nếu10user đã tồn tại trên Auth0, dùng hướng dẫn [nhập metadata bổ sung](IMPORT-PROFILE-DETAILS.md) và công cụ `node tools/prepare-auth0-metadata-import.cjs` từ Backend. File users-upsert.json chỉ chứa email+toàn bộ app_metadata, không chứa password hoặc cờ xác thực; không dùng bộ Create User/password cũ để cập nhật. Cần Deploy Action mới, cập nhật Backend/V45 và đăng nhập lại qua VNeID để bổ sung trường còn trống. Hợp đồng đã lưu không tự thay snapshot.
+
 Ngày chuẩn bị: 28/10/2026. **Toàn bộ tên, CCCD, giấy chứng nhận và thông tin sở hữu là dữ liệu hư cấu để test SWP**, không xác nhận quyền sở hữu thực tế. Dùng miền `example.com` dành cho tài liệu; không gửi email/OTP tới các địa chỉ này.
 
 Email dùng họ tên không dấu viết liền + `@example.com`, không chứa vai trò tài khoản.
