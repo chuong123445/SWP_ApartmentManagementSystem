@@ -101,15 +101,15 @@ class ContractDraftIntegrationTests {
     @Autowired PropertyExternalImportRepository imports;
     @Test void completeVerifiedPartyDetailsReachNewDraftButExistingSnapshotStaysFrozen()throws Exception {
         var verified=com.ancu.proptech.support.VerifiedIdentityFixtures.bind(verifiedIdentities,customer);
-        customer.setPhone(null);accounts.saveAndFlush(customer);
-        verified.setPhoneNumber("+84999000002");verified.setDocumentIssueDate(LocalDate.of(2021,6,16));
+        customer.setPhone("+84999000002");accounts.saveAndFlush(customer);
+        verified.setDocumentIssueDate(LocalDate.of(2021,6,16));
         verified.setDocumentIssuePlace("Cục Cảnh sát quản lý hành chính về trật tự xã hội");
         verified.setPermanentAddress("54 Hoàng Diệu, phường Phước Ninh, quận Hải Châu, thành phố Đà Nẵng");verifiedIdentities.saveAndFlush(verified);
         String saved=create();assertEquals("+84999000002",JsonPath.read(saved,"$.snapshot.customer.phone"));
         assertEquals("2021-06-16",JsonPath.read(saved,"$.snapshot.customer.documentIssueDate"));
         assertEquals(verified.getDocumentIssuePlace(),JsonPath.read(saved,"$.snapshot.customer.documentIssuePlace"));
         assertEquals(verified.getPermanentAddress(),JsonPath.read(saved,"$.snapshot.customer.permanentAddress"));
-        verified.setPhoneNumber("+84999000999");verified.setDocumentIssuePlace("Một cơ quan khác");verifiedIdentities.saveAndFlush(verified);
+        customer.setPhone("+84999000999");accounts.saveAndFlush(customer);verified.setDocumentIssuePlace("Một cơ quan khác");verifiedIdentities.saveAndFlush(verified);
         mvc.perform(get("/api/v1/contracts/"+id(saved)).header("Authorization",customerToken)).andExpect(status().isOk())
             .andExpect(jsonPath("$.snapshot.customer.phone").value("+84999000002"))
             .andExpect(jsonPath("$.snapshot.customer.documentIssuePlace").value("Cục Cảnh sát quản lý hành chính về trật tự xã hội"));

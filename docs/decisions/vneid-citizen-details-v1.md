@@ -1,5 +1,8 @@
 # Thông tin căn cước bổ sung cho hợp đồng — 03/11/2026
 
+Current override 03/11/2026: phone is an ordinary account field only. The Action/persistence/verification DTO/citizen JSON no longer collect phone, and contract snapshots always read AuthAccount.phone. V45 adds only four non-phone columns; an already-existing legacy phone_number column is preserved unused. Historical description below documents the first revision.
+
+
 User yêu cầu bỏ trạng thái xác thực email khỏi thông tin các bên trên hợp đồng và hoàn thiện10profile Auth0 để import lại. Chỉ giao diện hợp đồng bỏ dòng trạng thái; emailVerified thực tế vẫn giữ nguyên trong account/API/snapshot để tương thích. Không thay đổi gate thuê nhà/email OTP/Owner/quyền tài sản.
 
 Action PostLogin chuyển tiếp thêm4claim tùy chọn từ app_metadata.vneid.citizen sang namespace https://vneid.gov.vn/: phone_number, document_issue_date (dd/MM/yyyy), document_issue_place, permanent_address. Không đọc các trường này từ user_metadata hoặc client; không thay kiểm tra chữ ký/issuer/audience/client/source/connection hiện có. Claim thiếu vẫn tương thích; nếu có thì kiểm tra kiểu/độ dài/control characters, phone E.164, ngày strict không tương lai/trước ngày sinh, ngày cấp+nơi cấp thành một nhóm đầy đủ.
