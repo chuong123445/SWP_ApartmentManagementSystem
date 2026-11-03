@@ -13,23 +13,24 @@ export function ContractDetailPage() {
   const { user } = useAuth();
   const { id } = useParams();const [draft, setDraft] = useState<ContractDraft | null>(null);const [error, setError] = useState('');
   const [legacy, setLegacy] = useState<Tenancy | null>(null);
-  const owner = Boolean(user?.roles.includes('OWNER'));
+  const canManage = Boolean(user?.roles.includes('OWNER'));
+  const owner = Boolean(user && (draft?.snapshot.owner.id === user.id || (legacy && canManage && legacy.customerId !== user.id)));
   useEffect(() => {
     let active = true;setDraft(null);setLegacy(null);setError('');
     const load = async () => {
       try { const value = await getContract(id!);if (active) setDraft(value); }
       catch (error) {
         if (!(error instanceof ApiError) || error.status !== 404) throw error;
-        const items = await (owner ? ownerTenancies() : myTenancies());
+        const items = await myTenancies();
         let saved = items.find(item => item.id === id);
-        if (!saved && owner) saved = (await myTenancies()).find(item => item.id === id);
+        if (!saved && canManage) saved = (await ownerTenancies()).find(item => item.id === id);
         if (!saved) throw error;
         if (active) setLegacy(saved);
       }
     };
     void load().catch(error => { if (active) setError(error instanceof Error ? error.message : 'Không thể tải hợp đồng.'); });
     return () => { active = false; };
-  }, [id, owner, user?.id]);
+  }, [id, canManage, user?.id]);
   return <CustomerLayout><main className="max-w-4xl mx-auto p-4 sm:p-6 py-8 space-y-5"><Link to={owner ? '/app' : '/my/contracts'} className="text-sm text-emerald-700">← {owner ? 'Về quản lý' : 'Hợp đồng của tôi'}</Link><h1 className="text-2xl font-bold">Chi tiết hợp đồng</h1>{error ? <p role="alert" className="text-rose-700">{error}</p> : draft ? <ContractDocument draft={draft} onUpdated={setDraft} /> : legacy ? <section aria-label="Hồ sơ quan hệ thuê cũ" className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
     <h2 className="text-xl font-bold">HD-{legacy.id} · {legacy.roomNumber}</h2>
     <p className="font-semibold text-amber-800">{contractStatusLabel(legacy.status, legacy.endDate)}</p>
