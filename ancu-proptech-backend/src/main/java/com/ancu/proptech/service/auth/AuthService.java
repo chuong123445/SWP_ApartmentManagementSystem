@@ -151,7 +151,7 @@ public class AuthService {
     }
 
     private void requireUsableAccount(AuthAccount account) {
-        if (account.getStatus() == AuthAccount.Status.LOCKED || account.getStatus() == AuthAccount.Status.INACTIVE) {
+        if (account.getDeletedAt() != null || account.getStatus() == AuthAccount.Status.LOCKED || account.getStatus() == AuthAccount.Status.INACTIVE) {
             throw new AuthException(HttpStatus.FORBIDDEN, "ACCOUNT_UNAVAILABLE", "Tài khoản đã bị khóa hoặc ngừng hoạt động.");
         }
     }
