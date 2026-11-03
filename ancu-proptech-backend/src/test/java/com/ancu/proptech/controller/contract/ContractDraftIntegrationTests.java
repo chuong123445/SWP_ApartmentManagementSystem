@@ -356,7 +356,9 @@ class ContractDraftIntegrationTests {
             String text=new org.apache.pdfbox.text.PDFTextStripper().getText(pdf);
             assertTrue(text.contains("HỢP ĐỒNG THUÊ CĂN HỘ"));assertTrue(text.contains("Điều khoản riêng"));
             assertTrue(text.contains("BÊN CHO THUÊ (BÊN A)"));assertTrue(text.contains("BÊN THUÊ (BÊN B)"));
-            assertTrue(text.contains("Ký, ghi rõ họ tên"));assertTrue(text.contains("SHA-256:"));assertTrue(pdf.getNumberOfPages()>=2);
+            assertTrue(text.contains("Ký, ghi rõ họ tên"));assertTrue(text.contains("SHA-256:"));assertTrue(pdf.getNumberOfPages()<=2);
+            assertFalse(text.contains("Phòng ngủ"));assertFalse(text.contains("phòng tắm"));assertFalse(text.contains("Trang bị:"));
+            assertFalse(text.contains("Email:"));assertFalse(text.contains("Giấy chứng nhận:"));
             java.nio.file.Files.write(java.nio.file.Path.of("target/contract-preview-unsigned.pdf"),bytes);
             var renderer=new org.apache.pdfbox.rendering.PDFRenderer(pdf);
             javax.imageio.ImageIO.write(renderer.renderImageWithDPI(0,100),"png",new java.io.File("target/contract-preview-first.png"));

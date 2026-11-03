@@ -1,5 +1,11 @@
 # Contract drafts v1 — 14 October 2026
 
+## Override 3 November 2026 — direct PDF completion
+
+The final wizard step is now **Bản PDF**. **Tạo và xem PDF** on the clause step saves the draft (or its pending edits), then immediately loads the existing private server PDF endpoint. It does not repeat the HTML party/asset/terms table. Save failures permit an explicit retry; conflicts require reloading current context, and PDF-only failures retry the read without creating another contract. Signing remains a separate explicit action; ordinary and renewal authoring share this behavior.
+
+PDF layout follows the supplied paper rental form's field groups: names/date of birth, permanent address (or explicitly labelled contact address when absent), CCCD/issue date/issuer, account phone; room/unit and full address; agreed term, rent, deposit, payment day/method, utility/service charges, receiving account when present, all clauses and both signatures. Catalog names, bedroom/bathroom counts, floor/area, amenities, certificate/exploitation metadata and email are omitted from the PDF. No employment field or extra tenant is fabricated from the photo. Compact paired lines and spacing reduce pages while preserving complete long clauses, signature areas, page numbers, hash and fixture notices. Stored snapshots and signature/content-hash rules are unchanged; PDFs are regenerated from those snapshots with the revised presentation.
+
 User authorization: Owner chooses **Tạo hợp đồng** after an ACCEPTED rental request; follow the nine images in `Sample_Contract_progress/SWTi_AHC [14-10-2026 09_33]`. Six steps: apartment template, Owner review, Customer review, asset review/commercial conditions, editable clauses, complete preview. User corrected “5 pages” to **at least five clauses**. User subsequently confirmed “Hoàn thiện tạo và rà soát bản nháp trước” in the async question. No new account roles, signing provider, payment integration or release rules were authorized.
 
 ## Stored data and privacy
