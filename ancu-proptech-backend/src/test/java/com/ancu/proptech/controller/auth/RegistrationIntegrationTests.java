@@ -41,6 +41,7 @@ class RegistrationIntegrationTests {
         String legacyToken=auth.login(email,password).tokens().accessToken();String retainedToken=auth.login(retainedEmail,password).tokens().accessToken();
         var source=new org.springframework.core.io.ClassPathResource("db/migration/V51__registration_contact_details.sql");
         String script;try(var stream=source.getInputStream()){script=new String(stream.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);}
+        try(var stream=new org.springframework.core.io.ClassPathResource("db/local/backfill_legacy_contact_phones.sql").getInputStream()){script+="\n"+new String(stream.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);}
         var jdbc=new org.springframework.jdbc.core.JdbcTemplate(sourceDataSource);
         for(int repeat=0;repeat<2;repeat++)for(String batch:script.split("(?im)^GO\\s*$"))if(!batch.isBlank())jdbc.execute(batch);
         sourceEntityManager.clear();var result=accounts.findById(legacy.getId()).orElseThrow();
