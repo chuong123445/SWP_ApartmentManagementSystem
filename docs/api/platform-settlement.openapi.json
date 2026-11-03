@@ -1,0 +1,595 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "An Cư – Thu tiền chung và quyết toán chủ nhà",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/owner/settlements": {
+      "get": {
+        "summary": "Số dư và 50 bút toán mới nhất của Owner",
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Wallet"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập"
+          },
+          "403": {
+            "description": "Sai vai trò hoặc chưa đủ điều kiện"
+          }
+        }
+      }
+    },
+    "/owner/settlements/withdrawals": {
+      "get": {
+        "summary": "Lịch sử yêu cầu của chính Owner",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WithdrawalPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập"
+          },
+          "403": {
+            "description": "Sai vai trò hoặc chưa đủ điều kiện"
+          }
+        }
+      },
+      "post": {
+        "summary": "Tạo yêu cầu và giữ số dư trong cùng giao dịch",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Withdrawal"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Thông tin yêu cầu không hợp lệ"
+          },
+          "401": {
+            "description": "Chưa đăng nhập"
+          },
+          "403": {
+            "description": "Sai vai trò hoặc chưa đủ điều kiện"
+          },
+          "409": {
+            "description": "Không đủ số dư hoặc dùng lại requestKey với nội dung khác"
+          }
+        }
+      }
+    },
+    "/owner/settlements/withdrawals/{id}/actions": {
+      "post": {
+        "summary": "Owner hủy yêu cầu đang chờ của mình",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Decision",
+                "description": "CANCEL"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Withdrawal"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Mã giao dịch hoặc lý do không hợp lệ"
+          },
+          "401": {
+            "description": "Chưa đăng nhập"
+          },
+          "403": {
+            "description": "Sai vai trò hoặc chưa đủ điều kiện"
+          },
+          "404": {
+            "description": "Không tìm thấy yêu cầu trong phạm vi quyền"
+          },
+          "409": {
+            "description": "Phiên bản/trạng thái đã đổi, Admin khác đang xử lý hoặc mã giao dịch trùng"
+          }
+        }
+      }
+    },
+    "/admin/settlements/connection": {
+      "get": {
+        "summary": "Trạng thái kết nối chung, không trả khóa webhook",
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập"
+          },
+          "403": {
+            "description": "Sai vai trò hoặc chưa đủ điều kiện"
+          }
+        }
+      }
+    },
+    "/admin/settlements/withdrawals": {
+      "get": {
+        "summary": "Danh sách yêu cầu cho Admin",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "PROCESSING",
+                "PAID",
+                "REJECTED",
+                "CANCELLED"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WithdrawalPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập"
+          },
+          "403": {
+            "description": "Sai vai trò hoặc chưa đủ điều kiện"
+          }
+        }
+      }
+    },
+    "/admin/settlements/withdrawals/{id}/actions": {
+      "post": {
+        "summary": "Admin nhận xử lý, ghi nhận đã chuyển hoặc từ chối",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Decision",
+                "description": "START, PAID hoặc REJECT"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Withdrawal"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Mã giao dịch hoặc lý do không hợp lệ"
+          },
+          "401": {
+            "description": "Chưa đăng nhập"
+          },
+          "403": {
+            "description": "Sai vai trò hoặc chưa đủ điều kiện"
+          },
+          "404": {
+            "description": "Không tìm thấy yêu cầu trong phạm vi quyền"
+          },
+          "409": {
+            "description": "Phiên bản/trạng thái đã đổi, Admin khác đang xử lý hoặc mã giao dịch trùng"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "Wallet": {
+        "type": "object",
+        "required": [
+          "received",
+          "available",
+          "reserved",
+          "paid",
+          "entries"
+        ],
+        "properties": {
+          "received": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          },
+          "available": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          },
+          "reserved": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          },
+          "paid": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Entry"
+            }
+          }
+        }
+      },
+      "Entry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "INVOICE",
+              "ADDITIONAL_RECEIPT",
+              "RESERVE",
+              "RELEASE",
+              "PAYOUT"
+            ]
+          },
+          "sourceId": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Request": {
+        "type": "object",
+        "required": [
+          "requestKey",
+          "amount",
+          "bank",
+          "accountNumber",
+          "accountHolder"
+        ],
+        "properties": {
+          "requestKey": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^[0-9]+$",
+            "minLength": 1,
+            "maxLength": 15
+          },
+          "bank": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "accountNumber": {
+            "type": "string",
+            "pattern": "^[0-9]{4,30}$"
+          },
+          "accountHolder": {
+            "type": "string",
+            "maxLength": 100
+          }
+        }
+      },
+      "Decision": {
+        "type": "object",
+        "required": [
+          "action",
+          "version"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "START",
+              "PAID",
+              "REJECT",
+              "CANCEL"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "transferReference": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 300
+          }
+        }
+      },
+      "Withdrawal": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "ownerId": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          },
+          "bank": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "accountNumber": {
+            "type": "string",
+            "pattern": "^[0-9]{4,30}$"
+          },
+          "accountHolder": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "PROCESSING",
+              "PAID",
+              "REJECTED",
+              "CANCELLED"
+            ]
+          },
+          "transferReference": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "canComplete": {
+            "type": "boolean"
+          }
+        }
+      },
+      "WithdrawalPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Withdrawal"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalElements": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalPages": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "Connection": {
+        "type": "object",
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "bank": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "accountNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "accountHolderName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "virtualAccount": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "webhookUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastWebhookAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "webhookSecret": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  }
+}

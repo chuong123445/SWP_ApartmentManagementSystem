@@ -125,6 +125,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/owner/payment-qr/**", "/api/v1/invoices/*/payment-qr").authenticated()
                         .requestMatchers("/api/v1/owner/properties/*/payment-qr").authenticated()
                         .requestMatchers("/api/v1/me/notifications", "/api/v1/me/notifications/**").authenticated()
+                        .requestMatchers("/api/v1/owner/settlements", "/api/v1/owner/settlements/**", "/api/v1/admin/settlements/**").authenticated()
                         .anyRequest().denyAll())
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((request, response, error) -> writeError(response, 401, "UNAUTHENTICATED", "Vui lòng đăng nhập lại."))
