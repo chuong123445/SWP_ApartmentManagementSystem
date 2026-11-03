@@ -8,7 +8,12 @@ import com.ancu.proptech.service.payment.SettlementService;
 import com.ancu.proptech.service.payment.SepayService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import com.ancu.proptech.exception.common.ApiException;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -23,6 +28,15 @@ public class SettlementController {
     @GetMapping("/api/v1/owner/settlements")
     public ResponseEntity<Wallet> wallet(@AuthenticationPrincipal Jwt jwt) {
         return privateResponse(service.wallet(jwt));
+    }
+
+    @PostMapping(value = "/api/v1/owner/settlements/withdrawal-qr", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<DestinationPreview> previewDestination(@AuthenticationPrincipal Jwt jwt,
+            @RequestPart("file") MultipartFile file) throws IOException {
+        if (file.isEmpty() || file.getSize() > 1_000_000) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_PAYMENT_QR", "Chọn ảnh VietQR có kích thước tối đa 1 MB.");
+        }
+        return privateResponse(service.previewDestination(jwt, file.getBytes()));
     }
 
     @GetMapping("/api/v1/owner/settlements/withdrawals")

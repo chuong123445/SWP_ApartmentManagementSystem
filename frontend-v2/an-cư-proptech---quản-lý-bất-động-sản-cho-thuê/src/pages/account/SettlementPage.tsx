@@ -5,7 +5,7 @@ import { Pagination } from '@/components/common/Pagination';
 import { billingMoney } from '@/services/billing/billingService';
 import type { SepayConfig } from '@/services/payment/sepayService';
 import {
-  decideWithdrawal, getSettlementConnection, getWallet, getWithdrawals, requestWithdrawal,
+  decideWithdrawal, getSettlementConnection, getWallet, getWithdrawals, previewWithdrawalQr, requestWithdrawal,
   type SettlementWallet, type Withdrawal, type WithdrawalAction, type WithdrawalStatus,
 } from '@/services/payment/settlementService';
 
@@ -40,6 +40,7 @@ export function SettlementPage({ admin = false }: { admin?: boolean }) {
   const [revision, setRevision] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [error, setError] = useState('');
   const [loadError, setLoadError] = useState('');
   const [notice, setNotice] = useState('');
@@ -74,9 +75,32 @@ export function SettlementPage({ admin = false }: { admin?: boolean }) {
     setDestination(previous => ({ ...previous, [name]: value }));
   }
 
+  async function uploadQr(file: File) {
+    if (busy || scanning) return;
+    setError('');
+    setNotice('');
+    if (!file.size || file.size > 1_000_000) {
+      setError('Chọn ảnh VietQR có kích thước tối đa 1 MB.');
+      return;
+    }
+    setScanning(true);
+    try {
+      const preview = await previewWithdrawalQr(file);
+      requestKey.current = null;
+      setDestination(previous => ({ ...previous, ...preview }));
+      setNotice(preview.accountHolder
+        ? 'Đã điền thông tin từ QR. Hãy kiểm tra tên và số tài khoản trước khi gửi.'
+        : 'Đã điền ngân hàng và số tài khoản. Hãy nhập tên chủ tài khoản.');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Không thể đọc ảnh VietQR.');
+    } finally {
+      setScanning(false);
+    }
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || scanning || wallet?.available === '0') return;
     setBusy(true);
     setError('');
     setNotice('');
@@ -141,12 +165,22 @@ export function SettlementPage({ admin = false }: { admin?: boolean }) {
         <form className={card} onSubmit={event => void submit(event)}>
           <h2 className="font-semibold">Gửi yêu cầu rút tiền</h2>
           <p className="text-sm text-slate-600">Nhập tài khoản thụ hưởng để quản trị viên đối chiếu và chuyển khoản cho yêu cầu này.</p>
-          <fieldset disabled={busy || wallet.available === '0'} className="grid gap-3 sm:grid-cols-2 min-w-0">
+          <label className="block">
+            Tải ảnh VietQR tài khoản rút tiền
+            <input className={field} type="file" accept="image/png,image/jpeg" disabled={busy || scanning} onChange={event => {
+              const file = event.currentTarget.files?.[0];
+              event.currentTarget.value = '';
+              if (file) void uploadQr(file);
+            }} />
+          </label>
+          <p className="text-sm text-slate-600">Dùng ảnh PNG hoặc JPEG tối đa 1 MB, có một mã VietQR nhận tiền và chưa điền số tiền.</p>
+          {scanning && <p role="status">Đang đọc ảnh VietQR...</p>}
+          <fieldset disabled={busy || scanning} className="grid gap-3 sm:grid-cols-2 min-w-0">
             <label>Số tiền (đồng)<input className={field} required inputMode="numeric" pattern="[1-9][0-9]{0,14}" value={destination.amount} onChange={event => editDestination('amount', event.target.value)} /></label>
             <label>Ngân hàng<input className={field} required maxLength={50} value={destination.bank} onChange={event => editDestination('bank', event.target.value)} /></label>
-            <label>Số tài khoản<input className={field} required inputMode="numeric" pattern="[0-9]{4,30}" value={destination.accountNumber} onChange={event => editDestination('accountNumber', event.target.value)} /></label>
+            <label>Số tài khoản<input className={field} required pattern="[A-Za-z0-9]{1,34}" value={destination.accountNumber} onChange={event => editDestination('accountNumber', event.target.value)} /></label>
             <label>Tên chủ tài khoản<input className={field} required maxLength={100} value={destination.accountHolder} onChange={event => editDestination('accountHolder', event.target.value)} /></label>
-            <div><button className={primary}>{busy ? 'Đang gửi...' : 'Gửi yêu cầu rút'}</button></div>
+            <div><button className={primary} disabled={wallet.available === '0'}>{busy ? 'Đang gửi...' : 'Gửi yêu cầu rút'}</button></div>
           </fieldset>
           {wallet.available === '0' && <p className="text-sm text-slate-600">Chưa có số dư có thể rút.</p>}
         </form>

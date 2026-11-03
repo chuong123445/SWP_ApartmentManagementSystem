@@ -1,3 +1,4 @@
+import { apiFetch, readApiError } from '@/services/http/client';
 import { paymentApi, type SepayConfig } from './sepayService';
 
 export type WithdrawalStatus = 'PENDING' | 'PROCESSING' | 'PAID' | 'REJECTED' | 'CANCELLED';
@@ -54,6 +55,14 @@ export const getWallet = (signal: AbortSignal) => paymentApi<SettlementWallet>(o
 export const getSettlementConnection = (signal: AbortSignal) => paymentApi<SepayConfig>(adminPath + '/connection', 'GET', undefined, signal);
 export const getWithdrawals = (admin: boolean, page: number, status: WithdrawalStatus | '', signal: AbortSignal) =>
   paymentApi<WithdrawalPage>(`${admin ? adminPath : ownerPath}/withdrawals?page=${page}${status ? `&status=${status}` : ''}`, 'GET', undefined, signal);
+export async function previewWithdrawalQr(file: File): Promise<Pick<WithdrawalInput, 'bank' | 'accountNumber' | 'accountHolder'>> {
+  const form = new FormData();
+  form.append('file', file);
+  const response = await apiFetch('/api/v1' + ownerPath + '/withdrawal-qr', { method: 'POST', body: form, cache: 'no-store' });
+  if (!response.ok) throw await readApiError(response);
+  return response.json();
+}
+
 export const requestWithdrawal = (body: WithdrawalInput) => paymentApi<Withdrawal>(ownerPath + '/withdrawals', 'POST', body);
 export const decideWithdrawal = (admin: boolean, withdrawal: Withdrawal, action: WithdrawalAction, transferReference = '', note = '') =>
   paymentApi<Withdrawal>(`${admin ? adminPath : ownerPath}/withdrawals/${withdrawal.id}/actions`, 'POST', {
