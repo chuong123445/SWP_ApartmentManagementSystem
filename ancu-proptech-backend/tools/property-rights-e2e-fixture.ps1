@@ -43,7 +43,7 @@ INSERT INTO auth_external_identities(account_id,issuer,subject,document_number,l
  VALUES(@applicant,'https://rights-e2e.invalid/',@subject,@document,@name,'1990-01-01',N'Nam',N'Địa chỉ kiểm thử','AUTH0_VNEID_SIMULATION','VERIFIED',SYSUTCDATETIME(),0);
 INSERT INTO auth_accounts(id,email,full_name,password_hash,role,status,contact_verified,email_verified,phone_verified,version)
  SELECT @admin,@adminEmail,@name,password_hash,'ADMIN','ACTIVE',0,0,0,0 FROM auth_accounts WHERE id=@applicant;
-INSERT auth_account_roles(account_id,role) VALUES(@admin,'ADMIN');
+INSERT auth_account_roles(account_id,role_id) SELECT @admin,id FROM auth_roles WHERE code='ADMIN';
 COMMIT;
 '@
         [void]$taskCommand.ExecuteNonQuery();Write-Output '{"prepared":true}'

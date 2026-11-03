@@ -38,6 +38,27 @@ class AuthIntegrationTests {
     private final String password = "Auth-test-only!123";
     private record Login(String accessToken, Cookie refresh) {}
 
+    @Test void roleCatalogIsSharedAndMembershipHasTwoForeignKeys() {
+        assertEquals(List.of("ADMIN","OWNER","CUSTOMER"),jdbc.queryForList("SELECT code FROM auth_roles ORDER BY id",String.class));
+        assertEquals(2,jdbc.queryForObject("SELECT COUNT(*) FROM sys.foreign_keys WHERE parent_object_id=OBJECT_ID('dbo.auth_account_roles') AND referenced_object_id IN(OBJECT_ID('dbo.auth_accounts'),OBJECT_ID('dbo.auth_roles')) AND is_disabled=0 AND is_not_trusted=0",Integer.class));
+        owner.setRole(AuthAccount.Role.CUSTOMER);accounts.saveAndFlush(owner);
+        assertEquals(3,jdbc.queryForObject("SELECT COUNT(*) FROM auth_roles",Integer.class));
+        assertEquals("Chủ cho thuê",jdbc.queryForObject("SELECT name FROM auth_roles WHERE code='OWNER'",String.class));
+    }
+
+    @Test void startupReplayDoesNotRegrantMembershipFromLegacyProjection() throws Exception {
+        Login login=login(owner.getEmail(),password);Long id=owner.getId();
+        owner.setRole(AuthAccount.Role.CUSTOMER);accounts.saveAndFlush(owner);
+        jdbc.update("UPDATE auth_accounts SET role='OWNER' WHERE id=?",id);entities.clear();
+        for(String migration:List.of("V50__account_roles.sql","V52__role_catalog.sql")){
+            var resource=new org.springframework.core.io.ClassPathResource("db/migration/"+migration);
+            String sql;try(var input=resource.getInputStream()){sql=new String(input.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);}
+            for(String batch:sql.split("(?im)^GO\\s*$"))if(!batch.isBlank())jdbc.execute(batch);
+        }
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM auth_account_roles a JOIN auth_roles r ON r.id=a.role_id WHERE a.account_id=? AND r.code='OWNER'",Integer.class,id));
+        mvc.perform(get("/api/v1/owner/apartments").header("Authorization","Bearer "+login.accessToken())).andExpect(status().isForbidden());
+    }
+
     @Test void ownerMembershipsAppearInLoginJwtMeAndRefresh() throws Exception {
         Login login=login(owner.getEmail(),password);
         assertEquals(List.of("OWNER","CUSTOMER"),jwtDecoder.decode(login.accessToken()).getClaimAsStringList("roles"));

@@ -36,29 +36,32 @@ public class AuthAccount {
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 20)
     // Compatibility projection for old data/tools; authorization uses memberships.
     private Role role;
-    @ElementCollection(fetch=FetchType.EAGER)
-    @CollectionTable(name="auth_account_roles", joinColumns=@JoinColumn(name="account_id",foreignKey=@ForeignKey(name="fk_auth_account_roles_account")))
-    @Enumerated(EnumType.STRING) @Column(name="role",nullable=false,length=20)
-    @Setter(lombok.AccessLevel.NONE)
-    private java.util.Set<Role> roles=java.util.EnumSet.noneOf(Role.class);
+    @ManyToMany(fetch=FetchType.EAGER)
+    @JoinTable(name="auth_account_roles",
+        joinColumns=@JoinColumn(name="account_id",nullable=false),
+        inverseJoinColumns=@JoinColumn(name="role_id",nullable=false),
+        foreignKey=@ForeignKey(name="fk_auth_account_roles_account"),
+        inverseForeignKey=@ForeignKey(name="fk_auth_account_roles_role"))
+    @Getter(lombok.AccessLevel.NONE) @Setter(lombok.AccessLevel.NONE)
+    private java.util.Set<AuthRole> roleDefinitions=new java.util.HashSet<>();
 
-    public java.util.Set<Role> getRoles(){return java.util.Collections.unmodifiableSet(roles);}
-    public boolean hasRole(Role value){return roles.contains(value);}
-    public java.util.List<String> roleNames(){return roles.stream().sorted().map(Enum::name).toList();}
+    public java.util.Set<Role> getRoles(){return roleDefinitions.stream().map(AuthRole::getCode).collect(java.util.stream.Collectors.toUnmodifiableSet());}
+    public boolean hasRole(Role value){return roleDefinitions.stream().anyMatch(definition->definition.getCode()==value);}
+    public java.util.List<String> roleNames(){return getRoles().stream().sorted().map(Enum::name).toList();}
 
     /** Internal account creation/explicit replacement only; never bind account entities to public input. */
     public void setRole(Role value){
         java.util.Objects.requireNonNull(value);
-        roles.clear();roles.add(value);
-        if(value==Role.OWNER)roles.add(Role.CUSTOMER);
+        roleDefinitions.clear();roleDefinitions.add(AuthRole.reference(value));
+        if(value==Role.OWNER)roleDefinitions.add(AuthRole.reference(Role.CUSTOMER));
         role=value;
     }
     /** Authorized property onboarding adds OWNER without losing CUSTOMER. */
     public void grantRole(Role value){
         java.util.Objects.requireNonNull(value);
         if(value==Role.ADMIN||hasRole(Role.ADMIN))throw new IllegalArgumentException("Admin membership is provisioned separately.");
-        roles.add(value);
-        if(value==Role.OWNER)roles.add(Role.CUSTOMER);
+        roleDefinitions.add(AuthRole.reference(value));
+        if(value==Role.OWNER)roleDefinitions.add(AuthRole.reference(Role.CUSTOMER));
         role=hasRole(Role.OWNER)?Role.OWNER:Role.CUSTOMER;
     }
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 24)
