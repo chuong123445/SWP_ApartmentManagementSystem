@@ -13,11 +13,9 @@ public final class SettlementDtos {
 
     public record Request(@NotNull UUID requestKey,
                           @NotNull @Positive @Digits(integer = 15, fraction = 0) BigDecimal amount,
-                          @NotBlank @Size(max = 50) String bank,
-                          @NotBlank @Pattern(regexp = "[A-Za-z0-9]{1,34}") String accountNumber,
-                          @NotBlank @Size(max = 100) String accountHolder) {}
+                          @NotNull @Positive Long qrId) {}
 
-    public record DestinationPreview(String bank, String accountNumber, String accountHolder) {}
+    public record Destination(String qrId, String bank, String accountNumber, String accountHolder) {}
 
     public enum Action { START, PAID, REJECT, CANCEL }
 
@@ -31,5 +29,5 @@ public final class SettlementDtos {
 
     public record Entry(String id, SettlementEntry.Kind kind, String sourceId, String amount, Instant createdAt) {}
 
-    public record Wallet(String received, String available, String reserved, String paid, List<Entry> entries) {}
+    public record Wallet(String received, String available, String reserved, String paid, List<Entry> entries, Destination destination) {}
 }

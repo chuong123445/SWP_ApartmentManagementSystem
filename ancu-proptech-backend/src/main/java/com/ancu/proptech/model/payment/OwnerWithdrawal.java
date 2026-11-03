@@ -22,11 +22,11 @@ public class OwnerWithdrawal {
     private String requestKey;
     @Column(nullable = false, precision = 31, scale = 0)
     private BigDecimal amount;
-    @Column(nullable = false, length = 50)
+    @Column(nullable = false, length = 100)
     private String bank;
     @Column(nullable = false, length = 34)
     private String accountNumber;
-    @Nationalized @Column(nullable = false, length = 100)
+    @Nationalized @Column(nullable = false, length = 200)
     private String accountHolder;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)

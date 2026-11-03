@@ -6,6 +6,7 @@ async function exercise(page: Page, base: string, width: number) {
   const writes: string[] = [];
   let role = 'OWNER';
   let collected = false;
+  let hasDestination = false;
   let invoiceIssued = false;
   let withdrawalStatus = '';
   let withdrawalVersion = 0;
@@ -65,18 +66,15 @@ async function exercise(page: Page, base: string, width: number) {
     if (path === '/owner/settlements') return json({ received: collected ? '5000' : '0',
       available: collected ? (withdrawalStatus ? '2000' : '5000') : '0',
       reserved: ['PENDING', 'PROCESSING'].includes(withdrawalStatus) ? '3000' : '0',
-      paid: withdrawalStatus === 'PAID' ? '3000' : '0', entries: [] });
+      paid: withdrawalStatus === 'PAID' ? '3000' : '0', entries: [],
+      destination: hasDestination ? { qrId: '17', bank: 'Vietcombank', accountNumber: '0123456789', accountHolder: 'CHU NHA MAU' } : null });
     if (path === '/admin/settlements/connection') return json({ configured: true, enabled: true,
       bank: 'BIDV', accountNumber: '0123456789', accountHolderName: 'TAI KHOAN THU CHUNG',
       virtualAccount: null, webhookUrl: 'https://example.invalid/webhook', lastWebhookAt: '2026-11-03T08:00:00Z' });
-    if (path === '/owner/settlements/withdrawal-qr' && post) {
-      if (!req.headers()['content-type']?.startsWith('multipart/form-data;')) throw Error('Expected multipart QR upload');
-      writes.push('read-payout-qr');
-      return json({ bank: 'Vietcombank', accountNumber: '0123456789', accountHolder: '' });
-    }
+    if (path === '/owner/payment-qr/current') return route.fulfill({ status: 204 });
     if (path === '/owner/settlements/withdrawals' && post) {
       const input = req.postDataJSON();
-      if (input.amount !== '3000' || !input.requestKey || input.accountNumber !== '0123456789' || input.bank !== 'Vietcombank') throw Error('Invalid withdrawal input');
+      if (input.amount !== '3000' || !input.requestKey || input.qrId !== '17' || Object.keys(input).length !== 3) throw Error('Invalid withdrawal input');
       withdrawalStatus = 'PENDING';
       writes.push('request');
       return json(withdrawal());
@@ -110,7 +108,10 @@ async function exercise(page: Page, base: string, width: number) {
     await page.setViewportSize({ width, height: 900 });
     await go('/account/settings/payments');
     await page.getByText('Chưa có số dư có thể rút.', { exact: true }).waitFor();
-    check(await page.getByRole('button', { name: 'Gửi yêu cầu rút' }).isDisabled(), 'Zero balance allowed withdrawals');
+    check(await page.getByRole('button', { name: 'Gửi yêu cầu rút' }).count() === 0, 'No QR allowed a withdrawal');
+    await page.getByRole('link', { name: 'Mở Cài đặt đơn giá' }).click();
+    await page.getByRole('heading', { name: 'Cài đặt đơn giá & tài khoản nhận tiền' }).waitFor();
+    await page.getByLabel('Tải ảnh QR cá nhân').waitFor();
     await fits();
 
     role = 'CUSTOMER';
@@ -129,15 +130,12 @@ async function exercise(page: Page, base: string, width: number) {
     await fits();
 
     collected = true;
+    hasDestination = true;
     await go('/account/settings/payments');
     await page.getByLabel('Số tiền (đồng)', { exact: true }).fill('3000');
-    await page.getByLabel('Tải ảnh VietQR tài khoản rút tiền').setInputFiles({
-      name: 'vietqr-owner.png', mimeType: 'image/png', buffer: Buffer.from('QR fixture handled by the mocked API'),
-    });
-    await page.getByText('Đã điền ngân hàng và số tài khoản. Hãy nhập tên chủ tài khoản.').waitFor();
-    check(await page.getByLabel('Ngân hàng', { exact: true }).inputValue() === 'Vietcombank', 'Wrong bank from QR');
-    check(await page.getByLabel('Số tài khoản', { exact: true }).inputValue() === '0123456789', 'Lost account number or leading zero');
-    await page.getByLabel('Tên chủ tài khoản', { exact: true }).fill('CHU NHA MAU');
+    await page.getByText('Vietcombank · 0123456789 · CHU NHA MAU', { exact: true }).waitFor();
+    check(await page.locator('input[type=file]').count() === 0, 'Wallet still allows QR upload');
+    check(await page.getByLabel('Số tài khoản', { exact: true }).count() === 0, 'Wallet still allows manual bank entry');
     await page.getByRole('button', { name: 'Gửi yêu cầu rút' }).click();
     await page.getByRole('button', { name: /#12 · Chờ xử lý/ }).waitFor();
     await fits();
@@ -157,7 +155,7 @@ async function exercise(page: Page, base: string, width: number) {
     await go('/account/settings/payments');
     await page.getByRole('button', { name: /#12 · Đã chuyển/ }).click();
     await page.getByText('Mã giao dịch: FT-MAU-12').waitFor();
-    check(writes.join(',') === 'issue-qr,read-payout-qr,request,START,PAID', 'Unexpected write: ' + writes);
+    check(writes.join(',') === 'issue-qr,request,START,PAID', 'Unexpected write: ' + writes);
     check(!errors.length && !unexpected.length, JSON.stringify({ errors, unexpected }));
     return { width, writes, errors, unexpected };
   } finally {

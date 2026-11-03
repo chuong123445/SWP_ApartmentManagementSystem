@@ -272,11 +272,21 @@ class SepayIntegrationTests {
             platformWebhook(sourceKey, webhook(89102, receiptCode, "1000", "1234567890", "96247123456789", "in"))
                     .andExpect(status().isOk());
 
-            String requestBody = withdrawalBody("5000");
+            wallet(ownerToken).andExpect(jsonPath("$.destination").isEmpty());
+            withdraw(ownerToken, withdrawalBody("1", 1L)).andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("WITHDRAWAL_DESTINATION_REQUIRED"));
+            Long qrId = savePayoutQr(owner, "0123456789");
+            wallet(ownerToken).andExpect(jsonPath("$.destination.qrId").value(qrId.toString()))
+                    .andExpect(jsonPath("$.destination.accountNumber").value("0123456789"));
+            withdraw(ownerToken, withdrawalBody("1", qrId + 1)).andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("WITHDRAWAL_DESTINATION_CHANGED"));
+            String requestBody = withdrawalBody("5000", qrId);
             String withdrawal = JsonPath.read(withdraw(ownerToken, requestBody).andExpect(status().isOk())
                     .andReturn().getResponse().getContentAsString(), "$.id");
-            withdraw(ownerToken, requestBody).andExpect(jsonPath("$.id").value(withdrawal));
-            withdraw(sourceToken, withdrawalBody("1")).andExpect(status().isConflict());
+            Long updatedQrId = savePayoutQr(owner, "0000012345");
+            withdraw(ownerToken, requestBody).andExpect(jsonPath("$.id").value(withdrawal))
+                    .andExpect(jsonPath("$.accountNumber").value("0123456789"));
+            withdraw(sourceToken, withdrawalBody("1", qrId)).andExpect(status().isConflict());
             wallet(ownerToken).andExpect(jsonPath("$.reserved").value("5000"));
             decision(false, sourceToken, withdrawal, "CANCEL", 0, "", "").andExpect(status().isNotFound());
             decision(true, ownerToken, withdrawal, "START", 0, "", "").andExpect(status().isForbidden());
@@ -290,7 +300,7 @@ class SepayIntegrationTests {
                     .andExpect(jsonPath("$.paid").value("5000"))
                     .andExpect(jsonPath("$.available").value(new BigDecimal(amount).subtract(new BigDecimal("4000")).toBigIntegerExact().toString()));
 
-            String cancelled = JsonPath.read(withdraw(ownerToken, withdrawalBody("1000")).andExpect(status().isOk())
+            String cancelled = JsonPath.read(withdraw(ownerToken, withdrawalBody("1000", updatedQrId)).andExpect(status().isOk()).andExpect(jsonPath("$.accountNumber").value("0000012345"))
                     .andReturn().getResponse().getContentAsString(), "$.id");
             decision(false, ownerToken, cancelled, "CANCEL", 0, "", "").andExpect(status().isOk())
                     .andExpect(jsonPath("$.status").value("CANCELLED"));
@@ -311,10 +321,27 @@ class SepayIntegrationTests {
         return mvc.perform(get("/api/v1/owner/settlements").header("Authorization", "Bearer " + token));
     }
 
-    private static String withdrawalBody(String amount) {
+    @Autowired com.ancu.proptech.repository.property.OwnerPaymentQrRepository payoutQrs;
+
+    private Long savePayoutQr(AuthAccount account, String accountNumber) {
+        var qr = new com.ancu.proptech.model.property.OwnerPaymentQr();
+        qr.setOwnerId(account.getId());
+        qr.setBankBin("970422");
+        qr.setBank("MBBank");
+        qr.setAccountNumber(accountNumber);
+        qr.setAccountHolderName("DEMO OWNER");
+        qr.setAiStatus("NOT_REQUESTED");
+        qr.setContentType("image/png");
+        qr.setContent(new byte[]{1});
+        qr.setCreatedAt(java.time.Instant.now());
+        qr.setConfirmedAt(qr.getCreatedAt().truncatedTo(java.time.temporal.ChronoUnit.SECONDS));
+        return payoutQrs.saveAndFlush(qr).getId();
+    }
+
+    private static String withdrawalBody(String amount, Long qrId) {
         return """
-                {"requestKey":"%s","amount":"%s","bank":"MB","accountNumber":"0123456789","accountHolder":"DEMO OWNER"}
-                """.formatted(UUID.randomUUID(), amount);
+                {"requestKey":"%s","amount":"%s","qrId":"%s"}
+                """.formatted(UUID.randomUUID(), amount, qrId);
     }
 
     private ResultActions withdraw(String token, String body) throws Exception {
