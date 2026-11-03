@@ -1,5 +1,11 @@
 # Bộ 10 tài khoản Auth0 và tài sản
 
+## Cập nhật thông tin chi tiết 03/11/2026
+
+Đã bổ sung phone_number, document_issue_date, document_issue_place và permanent_address cho đủ10citizen; nơi cấp giấy chứng nhận dùng tên cơ quan cụ thể. Bộ vẫn là dữ liệu hư cấu, không phải danh tính/giấy tờ thật. Email, CCCD và21asset/43unit IDs giữ nguyên.
+
+Nếu10user đã tồn tại trên Auth0, dùng hướng dẫn [nhập metadata bổ sung](IMPORT-PROFILE-DETAILS.md) và công cụ `node tools/prepare-auth0-metadata-import.cjs` từ Backend. File users-upsert.json chỉ chứa email+toàn bộ app_metadata, không chứa password hoặc cờ xác thực; không dùng bộ Create User/password cũ để cập nhật. Cần Deploy Action mới, cập nhật Backend/V45 và đăng nhập lại qua VNeID để bổ sung trường còn trống. Hợp đồng đã lưu không tự thay snapshot.
+
 Ngày chuẩn bị: 28/10/2026. **Toàn bộ tên, CCCD, giấy chứng nhận và thông tin sở hữu là dữ liệu hư cấu để test SWP**, không xác nhận quyền sở hữu thực tế. Dùng miền `example.com` dành cho tài liệu; không gửi email/OTP tới các địa chỉ này.
 
 Email dùng họ tên không dấu viết liền + `@example.com`, không chứa vai trò tài khoản.
@@ -82,6 +88,8 @@ Generator sinh password ngẫu nhiên riêng cho mỗi user, kiểm tra bcrypt h
 
 Schema tham khảo: [Auth0 bulk user import](https://auth0.com/docs/manage-users/user-migration/bulk-user-import-schema). Code đọc nguồn hiện tại: `Auth0AssetReader`, Action PostLogin và `VneidService` của project.
 
-## Kiểm chứng đã thực hiện
+## Kiểm chứng bộ gốc ngày 28/10/2026
 
-19unit test đạt:2test dữ liệu mới,6test Auth0AssetReader,11test token verifier. Adapter đọc đủ10profile/21tài sản/43căn, không loại nhầm tài sản. Action PostLogin hiện tại tạo đủ8claim ID/access token cho cả10profile. Generator kiểm tra bcrypt10 khớp password, từ chối ghi đè bộ đã tồn tại; kiểm tra10file Create,10record Bulk,14file ZIP và JSON UTF-8 đạt. Không gọi provider thật hoặc nhập user vào tenant trong task này.
+19unit test đạt:2test dữ liệu mới,6test Auth0AssetReader,11test token verifier. Adapter đọc đủ10profile/21tài sản/43căn, không loại nhầm tài sản. Action PostLogin lúc đó tạo8claim ID/access token cho cả10profile. Generator kiểm tra bcrypt10 khớp password, từ chối ghi đè bộ đã tồn tại; kiểm tra10file Create,10record Bulk,14file ZIP và JSON UTF-8 đạt. Không gọi provider thật hoặc nhập user vào tenant trong task này.
+
+Kiểm chứng bản mở rộng03/11/2026: Action tạo12claim cho cả10profile;98backend/source tests và100frontend unit tests PASS,4callback Playwright MCP desktop/mobile PASS. Bộ metadata-only có13file, không có password/hash, giữ nguyên credential của user đã tồn tại. Xem [report chi tiết](../../reports/contract-party-details-2026-11-03.md).

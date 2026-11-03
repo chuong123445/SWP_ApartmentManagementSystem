@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.oauth2.jwt.*;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.*;
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -69,6 +70,22 @@ class VneidIntegrationTests {
         account(AuthAccount.Role.OWNER,AuthAccount.Status.PENDING_VERIFICATION);
         mvc.perform(post("/api/v1/auth/vneid-login").with(csrf().asHeader()).header("Authorization","Bearer "+token))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("VNEID_ACCOUNT_LINK_REQUIRED"));
+    }
+    @Test void sameBindingFreshLoginFillsMissingCitizenDetailsWithoutContactOrCredentialChanges()throws Exception {
+        login();var account=accounts.findByEmail(email).orElseThrow();var original=identities.findById(account.getId()).orElseThrow();
+        Instant verifiedAt=original.getVerifiedAt();String displayName=account.getFullName();
+        var detailed=Jwt.withTokenValue(token).headers(h->h.putAll(claims("20/05/1990").getHeaders()))
+            .claims(c->c.putAll(claims("20/05/1990").getClaims()))
+            .claim(VneidTokenVerifier.NS+"phone_number","+84999000002")
+            .claim(VneidTokenVerifier.NS+"document_issue_date","16/06/2021")
+            .claim(VneidTokenVerifier.NS+"document_issue_place","Cục Cảnh sát quản lý hành chính về trật tự xã hội")
+            .claim(VneidTokenVerifier.NS+"permanent_address","54 Hoàng Diệu, phường Phước Ninh, quận Hải Châu, thành phố Đà Nẵng").build();
+        when(verifier.decode(token)).thenReturn(detailed);login();
+        var filled=identities.findById(account.getId()).orElseThrow();assertEquals("+84999000002",filled.getPhoneNumber());
+        assertEquals(LocalDate.of(2021,6,16),filled.getDocumentIssueDate());assertEquals(verifiedAt,filled.getVerifiedAt());assertNotNull(filled.getDetailsUpdatedAt());
+        assertEquals(displayName,account.getFullName());assertNull(account.getPhone());assertNull(account.getPasswordHash());
+        assertFalse(account.isEmailVerified());assertFalse(account.isPhoneVerified());long version=filled.getVersion();
+        login();assertEquals(version,identities.findById(account.getId()).orElseThrow().getVersion());
     }
     @Test void needsCsrfAndDoesNotAcceptInternalJwtAsAuth0() throws Exception {
         mvc.perform(post("/api/v1/auth/vneid-login").header("Authorization","Bearer "+token)).andExpect(status().isForbidden());
