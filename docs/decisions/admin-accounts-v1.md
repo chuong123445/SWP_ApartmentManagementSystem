@@ -11,3 +11,5 @@ Tài khoản còn trắng được xóa cứng cùng các bản ghi phiên/token
 Repository đọc metadata khóa ngoại và các cột ID tài khoản của bảng cũ chưa có FK. Chỉ danh sách bảng kỹ thuật được phép dọn. Quan hệ chưa biết có tham chiếu tài khoản sẽ dẫn tới xóa mềm. Các truy vấn kiểm tra dùng UPDLOCK/HOLDLOCK và transaction SERIALIZABLE, cùng khóa tài khoản và version để xử lý cạnh tranh. Backend kiểm tra trạng thái tài khoản và phiên ở mỗi request.
 
 V53 thêm deleted_at, locked_from_status và admin_account_events. Không đổi dữ liệu tài khoản hiện có. API ở [OpenAPI](../api/admin-accounts.openapi.json).
+
+Admin có thể bấm mỗi hàng tài khoản để xem hồ sơ liên hệ chung, danh sách hợp đồng và hóa đơn đã thanh toán. Hai danh sách phân trang độc lập, truy vấn theo đúng bên cho thuê hoặc bên thuê của hợp đồng, gồm dữ liệu tài khoản đã xóa mềm. Lịch sử thanh toán gồm hóa đơn tháng SENT có paid_at và khoản thu bổ sung đã trả gắn đúng hợp đồng/người thuê. Các phiếu chỉ thử trên tài khoản chủ nhà được giữ riêng. Màn hình ghi rõ nguồn khoản thu. Hồ sơ chỉ trả trường liên hệ của AuthAccount qua DTO, không trả tài liệu căn cước, token hay mật khẩu.

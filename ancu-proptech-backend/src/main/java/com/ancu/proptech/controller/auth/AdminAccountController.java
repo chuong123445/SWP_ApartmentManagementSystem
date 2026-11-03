@@ -24,6 +24,23 @@ public class AdminAccountController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.list(jwt, q, filter, page, size));
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<Profile> profile(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.profile(jwt, id));
+    }
+
+    @GetMapping("/{id}/contracts")
+    public ResponseEntity<PageResponse<Contract>> contracts(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.contracts(jwt, id, page, size));
+    }
+
+    @GetMapping("/{id}/paid-invoices")
+    public ResponseEntity<PageResponse<PaidInvoice>> paidInvoices(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.paidInvoices(jwt, id, page, size));
+    }
+
     @PostMapping("/{id}/actions")
     public ResponseEntity<Result> command(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id,
             @Valid @RequestBody Command command) {

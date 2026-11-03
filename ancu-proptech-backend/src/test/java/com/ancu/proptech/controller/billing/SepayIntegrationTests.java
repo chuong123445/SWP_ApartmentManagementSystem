@@ -377,6 +377,62 @@ class SepayIntegrationTests {
                         """.formatted(action, version, reference, note)));
     }
 
+    @Test void adminReadsAccountContractsAndOnlyActualPaidInvoicesAcrossBothParties() throws Exception {
+        String adminToken = token(account(AuthAccount.Role.ADMIN));
+        owner.setPhone("0900123456");
+        owner.setAddress("Địa chỉ hồ sơ chung");
+        accounts.saveAndFlush(owner);
+        String invoice = prepare();
+        String monthlyCode = JsonPath.read(ticket(tenantToken, invoice), "$.paymentCode");
+        deliver(key, webhook(89910, monthlyCode, "5540000", "1234567890", "96247123456789", "in")).andExpect(status().isOk());
+        String unpaid = JsonPath.read(create(ownerToken, body("2026-11", 2, "1200", "210"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
+        send(ownerToken, unpaid, 0).andExpect(status().isOk());
+        ticket(tenantToken, unpaid);
+        String additional = sendTest(ownerToken, contract.getId().toString()).andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String receiptCode = JsonPath.read(additional, "$.payment.paymentCode");
+        deliver(key, webhook(89911, receiptCode, "1000", "1234567890", "96247123456789", "in")).andExpect(status().isOk());
+        sendTest(ownerToken, contract.getId().toString()).andExpect(status().isCreated());
+        String ownerOnly = createTest(ownerToken, "1000").andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        deliver(key, webhook(89912, JsonPath.read(ownerOnly, "$.payment.paymentCode"), "1000", "1234567890", "96247123456789", "in"))
+                .andExpect(status().isOk());
+
+        String ownerPath = "/api/v1/admin/accounts/" + owner.getId();
+        mvc.perform(get(ownerPath).header("Authorization", "Bearer " + adminToken)).andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store")).andExpect(jsonPath("$.phone").value("0900123456"))
+                .andExpect(jsonPath("$.account.passwordHash").doesNotExist()).andExpect(jsonPath("$.documentNumber").doesNotExist());
+        mvc.perform(get(ownerPath + "/contracts").header("Authorization", "Bearer " + adminToken))
+                .andExpect(jsonPath("$.totalElements").value(1)).andExpect(jsonPath("$.items[0].id").value(contract.getId().toString()))
+                .andExpect(jsonPath("$.items[0].relationship").value("OWNER"));
+        mvc.perform(get("/api/v1/admin/accounts/" + tenant.getId() + "/contracts").header("Authorization", "Bearer " + adminToken))
+                .andExpect(jsonPath("$.totalElements").value(1)).andExpect(jsonPath("$.items[0].relationship").value("TENANT"));
+        for (var party : List.of(owner, tenant)) {
+            String path = "/api/v1/admin/accounts/" + party.getId() + "/paid-invoices";
+            mvc.perform(get(path).header("Authorization", "Bearer " + adminToken))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2))
+                    .andExpect(jsonPath("$.items[0].paidAt").isNotEmpty()).andExpect(jsonPath("$.items[0].source").isNotEmpty());
+            mvc.perform(get(path + "?size=1&page=1").header("Authorization", "Bearer " + adminToken))
+                    .andExpect(jsonPath("$.totalElements").value(2)).andExpect(jsonPath("$.totalPages").value(2))
+                    .andExpect(jsonPath("$.items.length()").value(1));
+        }
+        mvc.perform(get("/api/v1/admin/accounts/" + otherOwner.getId() + "/paid-invoices").header("Authorization", "Bearer " + adminToken))
+                .andExpect(jsonPath("$.totalElements").value(0));
+        for (String suffix : List.of("", "/contracts", "/paid-invoices")) {
+            mvc.perform(get(ownerPath + suffix)).andExpect(status().isUnauthorized());
+            mvc.perform(get(ownerPath + suffix).header("Authorization", "Bearer " + ownerToken)).andExpect(status().isForbidden());
+            mvc.perform(get(ownerPath + suffix).header("Authorization", "Bearer " + tenantToken)).andExpect(status().isForbidden());
+            mvc.perform(get("/api/v1/admin/accounts/9223372036854775807" + suffix).header("Authorization", "Bearer " + adminToken))
+                    .andExpect(status().isNotFound());
+        }
+        mvc.perform(get(ownerPath + "/contracts?size=101").header("Authorization", "Bearer " + adminToken)).andExpect(status().isBadRequest());
+        long version = accounts.findById(owner.getId()).orElseThrow().getVersion();
+        mvc.perform(post(ownerPath + "/actions").header("Authorization", "Bearer " + adminToken).contentType("application/json")
+                .content("{\"action\":\"DELETE\",\"version\":" + version + ",\"reason\":\"Giữ lịch sử\"}")).andExpect(status().isOk());
+        mvc.perform(get(ownerPath).header("Authorization", "Bearer " + adminToken)).andExpect(jsonPath("$.account.deletedAt").isNotEmpty());
+        mvc.perform(get(ownerPath + "/contracts").header("Authorization", "Bearer " + adminToken)).andExpect(jsonPath("$.totalElements").value(1));
+        mvc.perform(get(ownerPath + "/paid-invoices").header("Authorization", "Bearer " + adminToken)).andExpect(jsonPath("$.totalElements").value(2));
+    }
     @Test void contractQrReceiverCannotBeReplacedByDifferentSharedSepayAccount()throws Exception {
       setup(ownerToken,"bank1","va1",0);String id=createDraft();send(ownerToken,id,0).andExpect(status().isOk());
       jdbc.update("INSERT INTO rental_requests(apartment_id,customer_id,message,status,created_at,version) VALUES(?,?,N'QR merge test','ACCEPTED',SYSUTCDATETIME(),0)",apartment.getId(),tenant.getId());
