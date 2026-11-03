@@ -33,6 +33,39 @@ class BillingIntegrationTests {
     @Autowired ApartmentRepository apartments;@Autowired RentalContractRepository contracts;
     @Autowired InvoiceNotificationRepository notifications;@Autowired AuthService auth;@Autowired PasswordEncoder encoder;@Autowired JdbcTemplate jdbc;
     private AuthAccount owner,tenant,otherOwner,otherTenant;private Property property;private Apartment apartment;private RentalContract contract;private String ownerToken,tenantToken;
+    @Autowired com.ancu.proptech.repository.payment.TestPaymentRepository receipts;
+    private com.ancu.proptech.model.payment.TestPayment receipt(boolean paid,boolean received){
+        var p=new com.ancu.proptech.model.payment.TestPayment();p.setOwnerId(owner.getId());p.setCustomerId(received?tenant.getId():null);p.setContractId(received?contract.getId():null);
+        p.setPaymentCode("ANCUTEST"+UUID.randomUUID().toString().replace("-","").substring(0,24));p.setBank("MB");p.setAccountNumber("12345678");p.setAccountHolderName("Owner");p.setAmount(new BigDecimal("2000"));p.setCreatedAt(java.time.Instant.now());if(paid)p.setPaidAt(java.time.Instant.now());return receipts.saveAndFlush(p);
+    }
+    @Test void ownerReceivedHistoryIncludesOlderPaidReceiptsAndEnforcesScopeBeforePaging()throws Exception{
+        var first=receipt(true,true);for(int i=0;i<20;i++)receipt(true,true);receipt(false,true);var ownerOnly=receipt(true,false);
+        var mismatched=receipt(true,true);mismatched.setCustomerId(otherTenant.getId());receipts.saveAndFlush(mismatched);
+        String path="/api/v1/owner/invoices/additional";
+        mvc.perform(get(path).header("Authorization","Bearer "+ownerToken).param("paymentStatus","PAID").param("page","1").param("size","20"))
+            .andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store")).andExpect(jsonPath("$.totalElements").value(21)).andExpect(jsonPath("$.items.length()").value(1)).andExpect(jsonPath("$.items[0].id").value(first.getId().toString())).andExpect(jsonPath("$.items[0].payment.status").value("PAID"));
+        mvc.perform(get(path).header("Authorization","Bearer "+ownerToken).param("paymentStatus","UNPAID")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1));
+        mvc.perform(get(path).header("Authorization","Bearer "+ownerToken).param("propertyId",property.getId().toString())).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(22));
+        mvc.perform(get(path).header("Authorization","Bearer "+ownerToken).param("propertyId","999999999")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get(path).header("Authorization","Bearer "+token(otherOwner))).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get(path+"/"+first.getId()).header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.payment.paidAt").isNotEmpty());
+        mvc.perform(get(path+"/"+first.getId()).header("Authorization","Bearer "+token(otherOwner))).andExpect(status().isNotFound());
+        mvc.perform(get(path+"/"+ownerOnly.getId()).header("Authorization","Bearer "+ownerToken)).andExpect(status().isNotFound());
+        mvc.perform(get(path+"/"+mismatched.getId()).header("Authorization","Bearer "+ownerToken)).andExpect(status().isNotFound());
+        mvc.perform(get(path).header("Authorization","Bearer "+tenantToken)).andExpect(status().isForbidden());
+        mvc.perform(get(path)).andExpect(status().isUnauthorized());
+        mvc.perform(get(path).header("Authorization","Bearer "+ownerToken).param("size","101")).andExpect(status().isBadRequest());
+    }
+    @Test void ownerMonthlyFiltersPaidAndUnpaidSeparatelyFromIssuanceBeforePaging()throws Exception{
+        String paidId=createDraft();send(ownerToken,paidId,0).andExpect(status().isOk());
+        String second=JsonPath.read(create(ownerToken,body("2026-11",2,"1200","212")).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(),"$.id");send(ownerToken,second,0).andExpect(status().isOk());
+        create(ownerToken,body("2026-12",4,"1300","215")).andExpect(status().isCreated());
+        jdbc.update("INSERT INTO invoice_payments(invoice_id,owner_id,payment_code,bank,account_number,account_holder_name,amount,paid_at) SELECT id,?,?,'MB','12345678','Owner',total_amount,SYSUTCDATETIME() FROM rental_invoices WHERE id=?",owner.getId(),"ANCU"+UUID.randomUUID().toString().replace("-","").substring(0,24),Long.valueOf(paidId));
+        for(var filter:List.of("PAID","UNPAID","DRAFT"))mvc.perform(get("/api/v1/owner/invoices").header("Authorization","Bearer "+ownerToken).param("filter",filter).param("size","1").param("propertyId",property.getId().toString())).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1));
+        mvc.perform(get("/api/v1/owner/invoices").header("Authorization","Bearer "+ownerToken).param("filter","PAID")).andExpect(status().isOk()).andExpect(jsonPath("$.items[0].id").value(paidId)).andExpect(jsonPath("$.items[0].status").value("SENT")).andExpect(jsonPath("$.items[0].paymentStatus").value("PAID"));
+        mvc.perform(get("/api/v1/owner/invoices").header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(3));
+        mvc.perform(get("/api/v1/owner/invoices").header("Authorization","Bearer "+token(otherOwner)).param("filter","PAID")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+    }
     @BeforeEach void fixture(){
         owner=account(AuthAccount.Role.OWNER);tenant=account(AuthAccount.Role.CUSTOMER);otherOwner=account(AuthAccount.Role.OWNER);otherTenant=account(AuthAccount.Role.CUSTOMER);
         property=new Property();property.setOwner(owner);property.setName("Billing test");property.setAddress("Test address");property.setCity("Test city");property.setDistrict("District");property.setWard("Ward");property.setApprovalStatus(Property.ApprovalStatus.APPROVED);property=properties.saveAndFlush(property);

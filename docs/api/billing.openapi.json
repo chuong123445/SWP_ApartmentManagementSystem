@@ -254,6 +254,22 @@
               "pattern": "^[1-9][0-9]*$"
             },
             "description": "Intersect exact property with current Owner scope before count/pagination; another Owner or absent property yields empty page."
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ALL",
+                "DRAFT",
+                "UNPAID",
+                "PAID"
+              ],
+              "default": "ALL"
+            },
+            "description": "Owner/property scoped status filter before paging/count. SENT and payment status remain separate; UNPAID and PAID include sent invoices only."
           }
         ],
         "responses": {
