@@ -12,7 +12,7 @@ import static com.ancu.proptech.service.auth.AccountService.error;
 public class AssetManagementAccess {
     private final AccountAccessService access;private final AccountVerificationPolicy verification;
     private final PropertyApplicantAccess applicants;private final ExternalIdentityRepository identities;
-    public AuthAccount read(Jwt jwt){var a=access.account(jwt);if(a.getRole()!=AuthAccount.Role.CUSTOMER&&a.getRole()!=AuthAccount.Role.OWNER)throw error(HttpStatus.FORBIDDEN,"FORBIDDEN","Chỉ tài khoản thuê/cho thuê có kho tài sản cá nhân.");return a;}
-    public AuthAccount write(Jwt jwt){var a=read(jwt);return a.getRole()==AuthAccount.Role.OWNER?access.owner(jwt):applicants.verified(jwt);}
-    public boolean editable(AuthAccount a){return a.getStatus()==AuthAccount.Status.ACTIVE&&(a.getRole()==AuthAccount.Role.OWNER?verification.isVerified(a):a.getRole()==AuthAccount.Role.CUSTOMER&&identities.existsByAccountIdAndVerificationStatus(a.getId(),"VERIFIED"));}
+    public AuthAccount read(Jwt jwt){var a=access.account(jwt);if(!a.hasRole(AuthAccount.Role.CUSTOMER)&&!a.hasRole(AuthAccount.Role.OWNER))throw error(HttpStatus.FORBIDDEN,"FORBIDDEN","Chỉ tài khoản thuê/cho thuê có kho tài sản cá nhân.");return a;}
+    public AuthAccount write(Jwt jwt){var a=read(jwt);return a.hasRole(AuthAccount.Role.OWNER)?access.owner(jwt):applicants.verified(jwt);}
+    public boolean editable(AuthAccount a){return a.getStatus()==AuthAccount.Status.ACTIVE&&(a.hasRole(AuthAccount.Role.OWNER)?verification.isVerified(a):a.hasRole(AuthAccount.Role.CUSTOMER)&&identities.existsByAccountIdAndVerificationStatus(a.getId(),"VERIFIED"));}
 }

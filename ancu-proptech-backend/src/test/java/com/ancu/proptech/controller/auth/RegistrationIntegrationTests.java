@@ -52,6 +52,7 @@ class RegistrationIntegrationTests {
         assertTrue(accounts.findByEmail(email).isEmpty());
     }
     @Test void forgedAuthorityAndIdentityFieldsAreRejected()throws Exception{
+        register(body().replace("}",",\"roles\":[\"CUSTOMER\",\"OWNER\",\"ADMIN\"]}")).andExpect(status().isBadRequest());
         for(String extra:List.of("\"status\":\"ACTIVE\"","\"contactVerified\":true","\"role\":\"ADMIN\"","\"id\":\""+com.ancu.proptech.support.TestIds.next()+"\"","\"emailVerified\":true"))
             register(body().replace("}",","+extra+"}")).andExpect(status().isBadRequest());
         assertTrue(accounts.findByEmail(email).isEmpty());

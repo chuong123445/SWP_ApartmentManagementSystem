@@ -14,6 +14,8 @@ IF EXISTS(SELECT 1 FROM rental_properties WHERE owner_id=@account AND name<>@nam
 '@
  if($Mode -eq 'prepare'){$command.CommandText=$guard+@'
 UPDATE auth_accounts SET role='OWNER',status='ACTIVE',identity_verified=1,version=version+1 WHERE id=@account;
+INSERT auth_account_roles(account_id,role) SELECT @account,'OWNER' WHERE NOT EXISTS(SELECT 1 FROM auth_account_roles WHERE account_id=@account AND role='OWNER');
+INSERT auth_account_roles(account_id,role) SELECT @account,'CUSTOMER' WHERE NOT EXISTS(SELECT 1 FROM auth_account_roles WHERE account_id=@account AND role='CUSTOMER');
 INSERT auth_external_identities(account_id,issuer,subject,document_number,legal_name,date_of_birth,gender,address,source,verification_status,verified_at,version)
 VALUES(@account,'https://creation-fixture.invalid/',@subject,@document,@name,'1990-01-01',N'Nam',N'Địa chỉ kiểm thử','AUTH0_VNEID_SIMULATION','VERIFIED',SYSUTCDATETIME(),0);
 COMMIT TRANSACTION;
@@ -29,6 +31,7 @@ DELETE FROM rental_properties WHERE owner_id=@account;
 DELETE FROM auth_external_identities WHERE account_id=@account;
 DELETE t FROM auth_refresh_tokens t JOIN auth_sessions s ON s.id=t.session_id WHERE s.account_id=@account;
 DELETE FROM auth_sessions WHERE account_id=@account;
+DELETE FROM auth_account_roles WHERE account_id=@account;
 DELETE FROM auth_accounts WHERE id=@account;
 COMMIT TRANSACTION;
 SELECT (SELECT COUNT(*) FROM auth_accounts WHERE id=@account) accounts,(SELECT COUNT(*) FROM rental_properties WHERE owner_id=@account) properties;

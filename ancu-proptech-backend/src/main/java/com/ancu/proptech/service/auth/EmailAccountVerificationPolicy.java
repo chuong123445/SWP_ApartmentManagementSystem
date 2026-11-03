@@ -14,7 +14,7 @@ public class EmailAccountVerificationPolicy implements AccountVerificationPolicy
     @Override public boolean isVerified(AuthAccount account) {
         // Evidence do Backend ghi nhận; không tin contactVerified hoặc cờ của client.
         return account.isEmailVerified()
-                || (account.getRole() != AuthAccount.Role.CUSTOMER && account.isPhoneVerified())
+                || ((account.hasRole(AuthAccount.Role.OWNER)||account.hasRole(AuthAccount.Role.ADMIN)) && account.isPhoneVerified())
                 || identities.existsByAccountIdAndVerificationStatus(account.getId(), "VERIFIED");
     }
 }

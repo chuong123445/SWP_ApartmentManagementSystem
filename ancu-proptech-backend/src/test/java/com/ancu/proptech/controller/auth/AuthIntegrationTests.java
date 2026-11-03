@@ -32,9 +32,41 @@ class AuthIntegrationTests {
     @Autowired PasswordEncoder passwords;
     @Autowired JwtEncoder jwtEncoder;
     @Autowired JwtDecoder jwtDecoder;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @Autowired jakarta.persistence.EntityManager entities;
     private AuthAccount owner;
     private final String password = "Auth-test-only!123";
     private record Login(String accessToken, Cookie refresh) {}
+
+    @Test void ownerMembershipsAppearInLoginJwtMeAndRefresh() throws Exception {
+        Login login=login(owner.getEmail(),password);
+        assertEquals(List.of("OWNER","CUSTOMER"),jwtDecoder.decode(login.accessToken()).getClaimAsStringList("roles"));
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+login.accessToken()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.roles.length()").value(2)).andExpect(jsonPath("$.roles[0]").value("OWNER")).andExpect(jsonPath("$.roles[1]").value("CUSTOMER"));
+        mvc.perform(post("/api/v1/auth/refresh").with(csrf().asHeader()).cookie(login.refresh()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.user.roles.length()").value(2)).andExpect(jsonPath("$.user.roles[0]").value("OWNER")).andExpect(jsonPath("$.user.roles[1]").value("CUSTOMER"));
+        assertEquals(2,jdbc.queryForObject("SELECT COUNT(*) FROM auth_account_roles WHERE account_id=?",Integer.class,owner.getId()));
+    }
+
+    @Test void legacyProjectionAndOldJwtCannotGrantRemovedOwnerMembership() throws Exception {
+        Login login=login(owner.getEmail(),password);Long id=owner.getId();
+        owner.setRole(AuthAccount.Role.CUSTOMER);accounts.saveAndFlush(owner);
+        jdbc.update("UPDATE auth_accounts SET role='OWNER' WHERE id=?",id);entities.clear();
+        mvc.perform(get("/api/v1/owner/apartments").header("Authorization","Bearer "+login.accessToken())).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+login.accessToken())).andExpect(status().isOk()).andExpect(jsonPath("$.roles.length()").value(1)).andExpect(jsonPath("$.roles[0]").value("CUSTOMER"));
+    }
+
+    @Test void forgedAdminClaimDoesNotOverrideDatabaseMembershipAndAdminIsNotCustomer() throws Exception {
+        Login login=login(owner.getEmail(),password);var original=jwtDecoder.decode(login.accessToken());
+        var claims=JwtClaimsSet.builder().issuer(AuthService.ISSUER).audience(List.of(AuthService.AUDIENCE)).subject(original.getSubject())
+            .issuedAt(Instant.now()).expiresAt(Instant.now().plusSeconds(60)).claim("sid",original.getClaimAsString("sid")).claim("roles",List.of("ADMIN")).build();
+        String forged=jwtEncoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(),claims)).getTokenValue();
+        mvc.perform(get("/api/v1/admin/property-dossiers").header("Authorization","Bearer "+forged)).andExpect(status().isForbidden());
+        owner.setRole(AuthAccount.Role.ADMIN);accounts.saveAndFlush(owner);
+        assertEquals(Set.of(AuthAccount.Role.ADMIN),owner.getRoles());
+        mvc.perform(get("/api/v1/me/invoices").header("Authorization","Bearer "+login.accessToken())).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/owner/apartments").header("Authorization","Bearer "+login.accessToken())).andExpect(status().isForbidden());
+    }
 
     @BeforeEach void fixture() {
         owner = new AuthAccount();

@@ -42,7 +42,7 @@ public class ApartmentService {
             return cb.and(cb.equal(root.get("publicationStatus"), Apartment.PublicationStatus.PUBLISHED),
                     cb.equal(property.get("approvalStatus"), Property.ApprovalStatus.APPROVED),
                     cb.equal(owner.get("status"), AuthAccount.Status.ACTIVE), cb.or(cb.isTrue(owner.get("contactVerified")),cb.exists(evidence)),
-                    cb.equal(owner.get("role"), AuthAccount.Role.OWNER));
+                    cb.isMember(AuthAccount.Role.OWNER, owner.<java.util.Set<AuthAccount.Role>>get("roles")));
         };
     }
 
@@ -78,7 +78,7 @@ public class ApartmentService {
     public ApartmentDetail detail(Long id,org.springframework.security.oauth2.jwt.Jwt jwt) {
         var actor=jwt==null?null:access.account(jwt);
         var a=apartments.findById(id).orElseThrow(()->new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy căn hộ."));
-        boolean own=actor!=null&&actor.getId().equals(a.getProperty().getOwner().getId())&&(actor.getRole()==AuthAccount.Role.CUSTOMER||actor.getRole()==AuthAccount.Role.OWNER);
+        boolean own=actor!=null&&actor.getId().equals(a.getProperty().getOwner().getId())&&(actor.hasRole(AuthAccount.Role.CUSTOMER)||actor.hasRole(AuthAccount.Role.OWNER));
         if(!own&&apartments.findOne(visible().and((root,query,cb)->cb.equal(root.get("id"),id))).isEmpty())throw new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy căn hộ đang được đăng công khai.");
         ApartmentDetail.Management management=null;
         if(own){
