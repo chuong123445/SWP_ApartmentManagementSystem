@@ -37,6 +37,33 @@ async function exercise(page: Page, base: string, width: number) {
         (a.deletedAt ? filter === 'DELETED' : filter === 'ALL' || a.status === filter));
       return json({ ...empty, items, totalElements: items.length, totalPages: items.length ? 1 : 0 });
     }
+    if (/^\/api\/v1\/admin\/accounts\/[0-9]+$/.test(path)) {
+      const row = rows.find(a => a.id === path.split('/').at(-1));
+      if (!row) return json({}, 404);
+      return json({ account: row, phone: '0900123456', address: 'Địa chỉ hồ sơ chung', bio: 'Hồ sơ mẫu',
+        dateOfBirth: '1995-01-02', emailVerified: true, phoneVerified: false });
+    }
+    if (/^\/api\/v1\/admin\/accounts\/[0-9]+\/contracts$/.test(path)) {
+      const account = path.split('/').at(-2);
+      if (account !== '3') return json(empty);
+      const pageNumber = Number(url.searchParams.get('page'));
+      return json({ ...empty, page: pageNumber, totalElements: 21, totalPages: 2, items: [{
+        id: pageNumber ? '76' : '77', relationship: 'OWNER', roomNumber: 'A.101', propertyName: 'Tài sản mẫu',
+        ownerName: 'Chủ nhà có tài sản', tenantName: 'Người thuê mẫu', status: 'ACTIVE', startDate: '2026-01-01', endDate: '2027-01-01', monthlyRent: '5000000',
+      }] });
+    }
+    if (/^\/api\/v1\/admin\/accounts\/[0-9]+\/paid-invoices$/.test(path)) {
+      const account = path.split('/').at(-2);
+      if (account !== '3') return json(empty);
+      const pageNumber = Number(url.searchParams.get('page'));
+      const paid = (source: string, id: string) => ({
+        id, source, contractId: '77', period: source === 'MONTHLY' ? '2026-10' : null,
+        roomNumber: 'A.101', ownerName: 'Chủ nhà có tài sản', tenantName: 'Người thuê mẫu',
+        amount: '5000000', paidAt: '2026-11-03T08:00:00Z',
+      });
+      return json({ ...empty, page: pageNumber, totalElements: 21, totalPages: 2,
+        items: pageNumber ? [paid('MONTHLY', '4')] : [paid('MONTHLY', '5'), paid('ADDITIONAL', '5')] });
+    }
     if (/^\/api\/v1\/admin\/accounts\/[0-9]+\/actions$/.test(path) && req.method() === 'POST') {
       const input = req.postDataJSON(), id = path.split('/').at(-2), row = rows.find(a => a.id === id);
       if (!row || !row.canManage || !input.reason?.trim()) throw Error('Invalid administration request');
@@ -73,8 +100,30 @@ async function exercise(page: Page, base: string, width: number) {
     await page.getByRole('button', { name: 'Vai trò và tài khoản' }).click();
     await page.getByRole('link', { name: 'Tài khoản người dùng', exact: true }).click();
     await card('blank@example.invalid').waitFor();
-    check(await card('admin@example.invalid').getByRole('button').count() === 0, 'Admin account has destructive actions');
+    check(await card('admin@example.invalid').getByRole('button', { name: /^(Khóa|Mở khóa|Xóa)$/ }).count() === 0, 'Admin account has destructive actions');
     await fits();
+    const firstRow = await card('admin@example.invalid').boundingBox();
+    const secondRow = await card('blank@example.invalid').boundingBox();
+    check(!!firstRow && !!secondRow && secondRow.y >= firstRow.y + firstRow.height, 'Accounts are still arranged in two columns');
+    await card('owner@example.invalid').getByRole('button', { name: 'Xem tài khoản owner@example.invalid' }).click();
+    let accountDetail = page.getByRole('dialog', { name: 'Chi tiết tài khoản' });
+    await accountDetail.getByRole('region', { name: 'Thông tin tài khoản' }).getByText('0900123456', { exact: true }).waitFor();
+    const contractHistory = accountDetail.getByRole('region', { name: 'Hợp đồng của tài khoản' });
+    const paidHistory = accountDetail.getByRole('region', { name: 'Hóa đơn đã thanh toán của tài khoản' });
+    await contractHistory.getByRole('heading', { name: /Hợp đồng #77/ }).waitFor();
+    await paidHistory.getByRole('heading', { name: /Hóa đơn tháng #5/ }).waitFor();
+    await paidHistory.getByRole('heading', { name: /Khoản thu bổ sung #5/ }).waitFor();
+    await contractHistory.getByRole('button', { name: 'Trang sau', exact: true }).click();
+    await contractHistory.getByRole('heading', { name: /Hợp đồng #76/ }).waitFor();
+    await paidHistory.getByRole('heading', { name: /Hóa đơn tháng #5/ }).waitFor();
+    await paidHistory.getByRole('button', { name: 'Trang sau', exact: true }).click();
+    await paidHistory.getByRole('heading', { name: /Hóa đơn tháng #4/ }).waitFor();
+    await fits();
+    await accountDetail.getByRole('button', { name: 'Đóng', exact: true }).click();
+    await card('blank@example.invalid').getByRole('button', { name: 'Xem tài khoản blank@example.invalid' }).click();
+    await accountDetail.getByText('Chưa có hợp đồng.', { exact: true }).waitFor();
+    await accountDetail.getByText('Chưa có hóa đơn đã thanh toán.', { exact: true }).waitFor();
+    await page.keyboard.press('Escape');
 
     await card('blank@example.invalid').getByRole('button', { name: 'Khóa', exact: true }).click();
     let dialog = page.getByRole('dialog');
@@ -96,7 +145,7 @@ async function exercise(page: Page, base: string, width: number) {
     await page.getByText('Đã xóa mềm tài khoản và lưu lại lịch sử nghiệp vụ.', { exact: true }).waitFor();
     await page.getByLabel('Trạng thái tài khoản', { exact: true }).selectOption('DELETED');
     await card('owner@example.invalid').waitFor();
-    check(await card('owner@example.invalid').getByRole('button').count() === 0, 'Deleted account still has commands');
+    check(await card('owner@example.invalid').getByRole('button', { name: /^(Khóa|Mở khóa|Xóa)$/ }).count() === 0, 'Deleted account still has commands');
     await page.getByLabel('Trạng thái tài khoản', { exact: true }).selectOption('ALL');
 
     await card('blank@example.invalid').getByRole('button', { name: 'Xóa', exact: true }).click();
