@@ -49,11 +49,20 @@ public class OwnerApartmentService {
     public OwnerApartmentResponse create(Jwt jwt, OwnerApartmentCreate input) {
         return createInternal(jwt,input,false);
     }
+    /** Called only after the source-import service validates fresh source IDs. */
+    @Transactional public OwnerApartmentResponse createSourceUnit(Jwt jwt,OwnerApartmentCreate input) {
+        return createInternal(jwt,input,false,true);
+    }
     private OwnerApartmentResponse createInternal(Jwt jwt,OwnerApartmentCreate input,boolean application){
+        return createInternal(jwt,input,application,false);
+    }
+    private OwnerApartmentResponse createInternal(Jwt jwt,OwnerApartmentCreate input,boolean application,boolean sourceAppend){
         var owner = application?applicantAccess.verified(jwt):access.owner(jwt);
         var property = properties.findOwnedForCreation(input.getPropertyId(), owner.getId()).orElseThrow(() ->
                 new ApiException(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Không tìm thấy tài sản thuộc tài khoản của bạn."));
-        if(imports.existsById(property.getId()))throw new ApiException(HttpStatus.CONFLICT,"SOURCE_UNITS_MANAGED","Các căn/phòng của tài sản VNeID được lấy từ nguồn xác thực, không thêm thủ công vào tài sản này.");
+        boolean imported=imports.existsById(property.getId());
+        if(imported&&!sourceAppend)throw new ApiException(HttpStatus.CONFLICT,"SOURCE_UNITS_MANAGED","Dùng chức năng bổ sung phòng từ Auth0 cho tài sản nguồn này.");
+        if(sourceAppend&&!imported)throw new ApiException(HttpStatus.CONFLICT,"SOURCE_PROPERTY_REQUIRED","Tài sản không có liên kết nguồn.");
         if(application&&(!property.isOnboardingApplication()||property.getApprovalStatus()!=Property.ApprovalStatus.DRAFT||input.getPublicationStatus()!=Apartment.PublicationStatus.DRAFT))
             throw new ApiException(HttpStatus.CONFLICT,"APPLICATION_DRAFT_REQUIRED","Chỉ chuẩn bị căn nháp cho hồ sơ của bạn.");
         if(input.getPublicationStatus()==Apartment.PublicationStatus.PUBLISHED)rights.requireCurrent(property);

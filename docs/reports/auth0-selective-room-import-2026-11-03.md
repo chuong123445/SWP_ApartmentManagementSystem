@@ -1,0 +1,9 @@
+# Source-room selection and append validation
+
+Isolated branch feat/auth0-selective-room-import from cached origin/main c4891c7, worktree tmp/auth0-selective-room-import-20261103. User authorized initial subset selection, later append, safe legacy reconciliation and a unit PR. Other worktrees, user servers and the application database are preserved.
+
+Backend checkpoint: 64 SQL Server integration checks PASS (26 VneidPropertyImportIntegrationTests, 38 ContractDraftIntegrationTests) against the task-only fresh database ancu_source_units_20261103. All selected-source prices/validation, exact owner/identity/source binding, append preservation, hidden rooms, stale/duplicate/unknown/empty selections, missing prices, source removal/legal change, no manual-source bypass, old full-import reconciliation, ambiguous partial-data blocking and migration rerun checks passed. Two concurrent real requests yielded one 201 and one 409, with exactly one new room. Contract evidence/hash and the original source snapshot remained stable while new rooms use their own source batch.
+
+The first expanded run identified datetime2(6) rounding in new batch timestamps; fixed with microsecond truncation before writing and all checks rerun. One pre-existing contract test used a fixed November 1 start but a moving rights-from yesterday, which became inconsistent after November 2; its rights fixture now derives from the test agreement start. Production rights rules were not changed.
+
+V45 creates only mapping/audit structures and supporting scope constraints, then backfills complete exact legacy matches. Tested on a fresh SQL database and rerun with transactional legacy fixtures. No live proptech_db migration or application-data write was performed. No live Auth0 metadata mutation or provider round trip is claimed. Frontend/browser and publication results follow at the next checkpoint.
