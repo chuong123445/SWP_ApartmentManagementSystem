@@ -21,6 +21,7 @@ export function OwnerApartmentField({apartment:a,field,onSaved,children}:{apartm
   const id=useId();const [open,setOpen]=useState(false);const [value,setValue]=useState('');const [busy,setBusy]=useState(false);const [error,setError]=useState('');
   const price=field==='monthlyRent'||field==='electricityUnitPrice'||field==='waterUnitPrice';
   const locked=price&&!a.management?.pricesEditable;
+  const canEditField=a.management?.canEdit&&!locked;
   async function save(){
     if(busy||locked)return;setBusy(true);setError('');
     try{
@@ -30,8 +31,8 @@ export function OwnerApartmentField({apartment:a,field,onSaved,children}:{apartm
     }catch(e){setError(e instanceof Error?e.message:'Không thể lưu thay đổi.');}finally{setBusy(false);}
   }
   return <div className="min-w-0">
-    <div className="flex flex-wrap items-center gap-2">{children}{a.management?.canEdit&&<button type="button" disabled={locked||busy} title={locked?a.management.priceLockReason??'Hiện không thể đổi giá':undefined} aria-label={`Chỉnh sửa ${labels[field]}`} onClick={()=>{setValue(fieldValue(a,field));setError('');setOpen(v=>!v);}} className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-800 border border-emerald-200 rounded-lg px-2 py-2 min-h-11 disabled:opacity-50"><Pencil aria-hidden="true" className="w-4 h-4"/>Sửa</button>}</div>
-    {open&&a.management?.canEdit&&<form onSubmit={e=>{e.preventDefault();void save();}} className="mt-2 mb-3 rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 space-y-3">
+    <div className="flex flex-wrap items-center gap-2">{children}{canEditField&&<button type="button" disabled={busy} aria-label={`Chỉnh sửa ${labels[field]}`} onClick={()=>{setValue(fieldValue(a,field));setError('');setOpen(v=>!v);}} className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-800 border border-emerald-200 rounded-lg px-2 py-2 min-h-11 disabled:opacity-50"><Pencil aria-hidden="true" className="w-4 h-4"/>Sửa</button>}</div>
+    {open&&canEditField&&<form onSubmit={e=>{e.preventDefault();void save();}} className="mt-2 mb-3 rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 space-y-3">
       <fieldset disabled={busy||locked} className="min-w-0 space-y-3"><div><label htmlFor={id} className="block text-sm font-medium">{inputLabels[field]}</label>{field==='description'?<textarea autoFocus id={id} rows={5} maxLength={3000} value={value} onChange={e=>setValue(e.target.value)} className={input}/>:<input autoFocus id={id} required={field!=='amenities'} type={price||field==='maxOccupants'?'number':'text'} min={field==='monthlyRent'?'0.01':field==='maxOccupants'?1:0} max={field==='maxOccupants'?1000:price?'9999999999999.99':undefined} step={price?'0.01':1} maxLength={field==='title'?150:undefined} value={value} onChange={e=>setValue(e.target.value)} className={input}/>}</div>
       <div className="flex flex-wrap gap-2"><button className={`${button} bg-emerald-700 text-white`}>{busy?'Đang lưu...':`Lưu ${labels[field]}`}</button><button type="button" onClick={()=>setOpen(false)} className={button}>Hủy sửa {labels[field]}</button></div></fieldset>
       {error&&<p role="alert" className="text-sm text-rose-700">{error}</p>}
