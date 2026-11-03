@@ -27,6 +27,7 @@ public class AuthAccount {
     @Nationalized @Column(nullable = false, length = 100)
     private String fullName;
     @Column(length=20) private String phone;
+    private java.time.Instant contactDetailsConfirmedAt;
     @Nationalized @Column(length=300) private String address;
     @Nationalized @Column(length=1000) private String bio;
     private LocalDate dateOfBirth;

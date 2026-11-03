@@ -21,7 +21,7 @@ class VneidNameConfirmationTests {
         auth=mock(AuthService.class);verifier=mock(VneidTokenVerifier.class);
         config=new VneidProperties();config.setEnabled(true);config.setIssuer("https://issuer.invalid/");
         store=new VneidLinkConfirmationStore();
-        service=new VneidService(accounts,identities,auth,verifier,config,store,mock(EntityManager.class));
+        service=new VneidService(accounts,identities,auth,verifier,config,store,mock(AuthSessionRepository.class),mock(EmailChangeChallengeRepository.class),mock(EntityManager.class));
         account=new AuthAccount();account.setId(1L);account.setFullName("Tên hiển thị");account.setVersion(2);
         account.setRole(AuthAccount.Role.CUSTOMER);account.setStatus(AuthAccount.Status.PENDING_VERIFICATION);
         session=session("one");external=Jwt.withTokenValue("external").header("alg","RS256").subject("auth0|self")

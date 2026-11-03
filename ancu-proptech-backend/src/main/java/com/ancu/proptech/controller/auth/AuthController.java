@@ -45,8 +45,9 @@ public class AuthController {
 
     @PostMapping("/api/v1/auth/vneid-login")
     public ResponseEntity<TokenResponse> vneidLogin(@AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody(required=false) com.ancu.proptech.dto.auth.VneidContactInput contact,
             HttpServletRequest http,HttpServletResponse response) {
-        var result=vneid.login(jwt);
+        var result=vneid.login(jwt,contact);
         setRefreshCookie(response,result.refreshToken(),result.refreshMaxAge());
         csrfRepository.saveToken(null,http,response);
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(result.tokens());

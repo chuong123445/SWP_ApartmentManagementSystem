@@ -33,6 +33,33 @@ class RegistrationIntegrationTests {
     @BeforeEach void setup(){email="register-test-"+com.ancu.proptech.support.TestIds.next()+"@example.invalid";when(sender.isConfigured()).thenReturn(true);doAnswer(i->{code=i.getArgument(1);return null;}).when(sender).send(anyString(),anyString());}
     private String body(){return "{\"email\":\""+email.toUpperCase(Locale.ROOT)+"\",\"password\":\""+password+"\",\"fullName\":\" Chủ nhà mới \",\"phone\":\"0912345678\"}";}
     private ResultActions register(String content)throws Exception{return mvc.perform(post("/api/v1/auth/register").with(csrf().asHeader()).contentType("application/json").content(content));}
+    @Test void legacyBackfillOnlyFillsBlanksUnverifiedAndIsIdempotent()throws Exception {
+        register(body()).andExpect(status().isCreated());var legacy=accounts.findByEmail(email).orElseThrow();
+        legacy.setPhone(null);legacy.setPhoneVerified(true);accounts.flush();long version=legacy.getVersion();String hash=legacy.getPasswordHash();
+        String retainedEmail="preserve-"+email;register(body().replace(email.toUpperCase(Locale.ROOT),retainedEmail)).andExpect(status().isCreated());
+        var retained=accounts.findByEmail(retainedEmail).orElseThrow();long retainedVersion=retained.getVersion();
+        var source=new org.springframework.core.io.ClassPathResource("db/migration/V51__registration_contact_details.sql");
+        String script;try(var stream=source.getInputStream()){script=new String(stream.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);}
+        var jdbc=new org.springframework.jdbc.core.JdbcTemplate(sourceDataSource);
+        for(int repeat=0;repeat<2;repeat++)for(String batch:script.split("(?im)^GO\\s*$"))if(!batch.isBlank())jdbc.execute(batch);
+        sourceEntityManager.clear();var result=accounts.findById(legacy.getId()).orElseThrow();
+        assertEquals("+849"+String.format("%08d",legacy.getId()%100000000),result.getPhone());assertFalse(result.isPhoneVerified());
+        assertEquals(version+1,result.getVersion());assertEquals(hash,result.getPasswordHash());assertEquals(AuthAccount.Status.PENDING_VERIFICATION,result.getStatus());
+        assertNull(result.getContactDetailsConfirmedAt());assertEquals(retainedVersion,accounts.findById(retained.getId()).orElseThrow().getVersion());
+        assertEquals("+84912345678",accounts.findById(retained.getId()).orElseThrow().getPhone());
+    }
+    @org.springframework.beans.factory.annotation.Autowired javax.sql.DataSource sourceDataSource;
+    @org.springframework.beans.factory.annotation.Autowired jakarta.persistence.EntityManager sourceEntityManager;
+    private javax.sql.DataSource dataSource(){return sourceDataSource;}
+    private jakarta.persistence.EntityManager entityManager(){return sourceEntityManager;}
+    @Test void phoneIsMandatoryAndMustHaveVietnameseFormat()throws Exception {
+        for(String phone:List.of(""," ","+12025550123","091234567","01234567890","0612345678"))register(body().replace("0912345678",phone)).andExpect(status().isBadRequest());
+        register(body().replace(",\"phone\":\"0912345678\"","")).andExpect(status().isBadRequest());
+        assertTrue(accounts.findByEmail(email).isEmpty());
+        register(body().replace("0912345678","+84 912 345 678")).andExpect(status().isCreated());
+        assertEquals("+84912345678",accounts.findByEmail(email).orElseThrow().getPhone());
+        assertFalse(accounts.findByEmail(email).orElseThrow().isPhoneVerified());
+    }
     @Test void defaultCustomerPersistsUnverifiedWithoutSecretsOrSessions()throws Exception{
         for(String role:List.of("CUSTOMER")){
             email="register-test-"+com.ancu.proptech.support.TestIds.next()+"@example.invalid";

@@ -38,7 +38,7 @@
     "/api/v1/auth/vneid-login": {
       "post": {
         "summary": "Register CUSTOMER or sign in an already linked external identity",
-        "description": "Requires Auth0 RS256 access token for configured audience/client/source/connection and CSRF cookie/header. Does not auto-link matching email/CCCD. Returns existing TokenResponse shape and rotates internal refresh credential. Creates no password and does not set emailVerified. No citizen JSON accepted as proof. A fresh validated token for an existing binding may fill only missing optional citizen fields when issuer, subject, document number, legal name, date of birth, gender and core address match. Existing values, verifiedAt, contact flags, display name, credentials and contract snapshots are unchanged; changed core identity returns VNEID_DETAILS_IDENTITY_CHANGED (409).",
+        "description": "Requires Auth0 RS256 access token for configured audience/client/source/connection and CSRF cookie/header. Does not auto-link matching email/CCCD. Returns existing TokenResponse shape and rotates internal refresh credential. Creates no password and does not set emailVerified. No citizen JSON accepted as proof. A fresh validated token for an existing binding may fill only missing optional citizen fields when issuer, subject, document number, legal name, date of birth, gender and core address match. Existing values, verifiedAt, contact flags, display name, credentials and contract snapshots are unchanged; changed core identity returns VNEID_DETAILS_IDENTITY_CHANGED (409). Contact completion: first login or legacy unconfirmed contact returns 428 before any internal session/account creation. Resubmit the validated Auth0 token with email and Vietnamese phone; no citizen JSON accepted. Existing email must match; email changes remain OTP-protected. Changed phone is unverified, invalidates old sessions/challenges; contacts/evidence persist before creating the new session. Completed accounts need no body on later logins. New registrations can collect email when the provider omits its email claim.",
         "security": [
           {
             "auth0Bearer": [],
@@ -59,10 +59,41 @@
             "description": "Missing CSRF or ACCOUNT_UNAVAILABLE"
           },
           "409": {
-            "description": "VNEID_ACCOUNT_LINK_REQUIRED, VNEID_IDENTITY_IN_USE or uniqueness conflict"
+            "description": "VNEID_ACCOUNT_LINK_REQUIRED, VNEID_IDENTITY_IN_USE or uniqueness conflict, VNEID_EMAIL_CHANGE_REQUIRED or VNEID_CONTACT_ALREADY_CONFIRMED"
+          },
+          "428": {
+            "description": "VNEID_CONTACT_REQUIRED; no internal access token/refresh cookie/account created"
           },
           "429": {
             "description": "RATE_LIMITED; retry in one minute"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "email",
+                  "phone"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "maxLength": 254
+                  },
+                  "phone": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20,
+                    "description": "Required Vietnamese phone; normalized to +84, format only, never auto-verified"
+                  }
+                }
+              }
+            }
           }
         }
       }

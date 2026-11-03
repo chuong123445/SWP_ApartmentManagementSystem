@@ -30,7 +30,7 @@ public class RegistrationService {
         account.setPasswordHash(passwords.encode(input.getPassword()));
         account.setRole(AuthAccount.Role.CUSTOMER);
         account.setStatus(AuthAccount.Status.PENDING_VERIFICATION);
-        account.setPhone(AccountService.normalizePhone(input.getPhone()));
+        account.setPhone(VietnamesePhone.required(input.getPhone()));
         // Unverified registration never grants business authority or property approval.
         account.setEmailVerified(false);account.setPhoneVerified(false);account.setContactVerified(false);
         return auth.user(accounts.saveAndFlush(account));

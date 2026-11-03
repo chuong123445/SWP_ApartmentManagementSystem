@@ -25,6 +25,8 @@ public class VneidService {
     private final VneidTokenVerifier verifier;
     private final VneidProperties config;
     private final VneidLinkConfirmationStore confirmations;
+    private final AuthSessionRepository sessions;
+    private final EmailChangeChallengeRepository emailChallenges;
     private final jakarta.persistence.EntityManager entityManager;
     private final Map<String, Window> attempts = new ConcurrentHashMap<>();
     private record Window(long minute, int count) {}
@@ -44,28 +46,63 @@ public class VneidService {
 
     @Transactional
     public AuthService.LoginResult login(Jwt external) {
+        return login(external,null);
+    }
+    @Transactional
+    public AuthService.LoginResult login(Jwt external,com.ancu.proptech.dto.auth.VneidContactInput contact) {
         requireEnabled();limit(external.getSubject());
         var existing = identities.findByIssuerAndSubject(config.getIssuer(), external.getSubject());
         if (existing.isPresent()) {
             var account = accounts.findForIdentityUpdate(existing.get().getAccountId()).orElseThrow();
+            entityManager.refresh(account);
             requireUsable(account);
+            boolean phoneChanged=false;
+            if(account.getContactDetailsConfirmedAt()==null || account.getPhone()==null || account.getPhone().isBlank()) {
+                requireContact(contact);
+                if(!account.getEmail().equalsIgnoreCase(contact.getEmail().strip()))
+                    throw error(HttpStatus.CONFLICT,"VNEID_EMAIL_CHANGE_REQUIRED","Email phải trùng email hiện tại của tài khoản. Đăng nhập rồi dùng mục đổi email có OTP nếu muốn đổi địa chỉ.");
+                String phone=VietnamesePhone.required(contact.getPhone());
+                phoneChanged=!phone.equals(account.getPhone());
+                if(phoneChanged){account.setPhone(phone);account.setPhoneVerified(false);}
+                account.setContactDetailsConfirmedAt(Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS));accounts.flush();
+            } else if(contact!=null && (!account.getEmail().equalsIgnoreCase(contact.getEmail().strip())||!account.getPhone().equals(VietnamesePhone.required(contact.getPhone()))))
+                throw error(HttpStatus.CONFLICT,"VNEID_CONTACT_ALREADY_CONFIRMED","Thông tin liên hệ đã được lưu. Hãy thay đổi trong cài đặt tài khoản.");
             supplement(existing.get(), external);
+            if(phoneChanged){
+                Instant now=Instant.now();Long id=account.getId();
+                emailChallenges.findByAccountIdAndUsedAtIsNullAndInvalidatedAtIsNull(id).forEach(c->c.setInvalidatedAt(now));
+                accounts.flush(); // Bulk revocation clears the persistence context: persist onboarding/evidence first.
+                sessions.revokeAll(id,now);account=accounts.findById(id).orElseThrow();
+            }
             return auth.createSession(account);
         }
         var identity = identity(external);
-        String email = text(external, "email", 254).toLowerCase(Locale.ROOT);
-        if (!email.matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+")) throw invalidClaims();
-        if (accounts.findByEmail(email).isPresent())
+        Object emailClaim=external.getClaims().get(VneidTokenVerifier.NS+"email");
+        String email=emailClaim instanceof String value?value.strip().toLowerCase(Locale.ROOT):"";
+        if(emailClaim!=null && (!(emailClaim instanceof String)||email.length()>254||!email.matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+")))throw invalidClaims();
+        if (!email.isEmpty() && accounts.findByEmail(email).isPresent())
             throw error(HttpStatus.CONFLICT,"VNEID_ACCOUNT_LINK_REQUIRED","Email đã có tài khoản. Hãy đăng nhập tài khoản đó để liên kết VNeID.");
         if (identities.existsByDocumentNumber(identity.getDocumentNumber())) throw conflict();
+        requireContact(contact);
+        String contactEmail=contact.getEmail().strip().toLowerCase(Locale.ROOT);
+        if(accounts.findByEmail(contactEmail).isPresent())
+            throw error(HttpStatus.CONFLICT,"VNEID_ACCOUNT_LINK_REQUIRED","Email đã có tài khoản. Hãy đăng nhập tài khoản đó để liên kết VNeID.");
         var account = new AuthAccount();
-        account.setEmail(email);account.setFullName(identity.getLegalName());
+        account.setEmail(contactEmail);account.setPhone(VietnamesePhone.required(contact.getPhone()));account.setFullName(identity.getLegalName());
+        account.setContactDetailsConfirmedAt(Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS));
         account.setDateOfBirth(identity.getDateOfBirth());account.setAddress(identity.getAddress());
         account.setRole(AuthAccount.Role.CUSTOMER);account.setStatus(AuthAccount.Status.ACTIVE);
         accounts.saveAndFlush(account);
         identity.setAccountId(account.getId());identities.saveAndFlush(identity);account.setIdentityVerified(true);accounts.saveAndFlush(account);
         account.setContactVerified(true);
         return auth.createSession(account);
+    }
+
+    private static void requireContact(com.ancu.proptech.dto.auth.VneidContactInput contact) {
+        if(contact==null)throw error(HttpStatus.PRECONDITION_REQUIRED,"VNEID_CONTACT_REQUIRED","Bổ sung email và số điện thoại để hoàn tất đăng nhập.");
+        if(contact.getEmail()==null || contact.getEmail().length()>254 || !contact.getEmail().strip().matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+"))
+            throw error(HttpStatus.BAD_REQUEST,"VALIDATION_ERROR","Email liên hệ không hợp lệ.");
+        VietnamesePhone.required(contact.getPhone());
     }
 
     public record LinkAttempt(AuthUserResponse user, com.ancu.proptech.dto.auth.VneidNameConfirmation confirmation) {}

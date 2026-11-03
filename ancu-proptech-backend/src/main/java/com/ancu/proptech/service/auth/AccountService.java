@@ -51,6 +51,6 @@ public class AccountService {
     public void recompute(AuthAccount a){a.setContactVerified(verification.isVerified(a));if(a.getStatus()==AuthAccount.Status.ACTIVE&&!a.isContactVerified())a.setStatus(AuthAccount.Status.PENDING_VERIFICATION);else if(a.getStatus()==AuthAccount.Status.PENDING_VERIFICATION&&a.isContactVerified())a.setStatus(AuthAccount.Status.ACTIVE);}
     public ProfileResponse response(AuthAccount a){return new ProfileResponse(a.getId(),a.getEmail(),a.getPhone(),a.getFullName(),a.getDateOfBirth(),a.getAddress(),a.getBio(),List.of(a.getRole().name()),a.getStatus().name(),verification.isVerified(a)?"VERIFIED":"UNVERIFIED",a.isEmailVerified(),a.isPhoneVerified(),sender.isConfigured()&&hasher.isConfigured(),a.getVersion());}
     private static String clean(String text){return text==null?null:text.strip();}
-    static String normalizePhone(String raw){if(raw==null||raw.isBlank())return null;String phone=raw.strip().replaceAll("[ ()-]","");if(phone.matches("0[0-9]{9,10}"))phone="+84"+phone.substring(1);if(!phone.matches("\\+[1-9][0-9]{7,14}"))throw error(HttpStatus.BAD_REQUEST,"VALIDATION_ERROR","Số điện thoại cần dạng +849... hoặc số Việt Nam bắt đầu 0.");return phone;}
+    static String normalizePhone(String raw){return VietnamesePhone.normalize(raw);}
     public static AuthException error(HttpStatus status,String code,String message){return new AuthException(status,code,message);}
 }

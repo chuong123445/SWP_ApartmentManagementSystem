@@ -47,8 +47,9 @@ class VneidIntegrationTests {
                 .claim(VneidTokenVerifier.NS+"dob",dob).claim(VneidTokenVerifier.NS+"gender","Nam")
                 .claim(VneidTokenVerifier.NS+"address","Đà Nẵng").claim(VneidTokenVerifier.NS+"email",email).build();
     }
+    String contactBody(){return "{\"email\":\""+email+"\",\"phone\":\"0912345678\"}";}
     String login() throws Exception {
-        return mvc.perform(post("/api/v1/auth/vneid-login").with(csrf().asHeader()).header("Authorization","Bearer "+token))
+        return mvc.perform(post("/api/v1/auth/vneid-login").with(csrf().asHeader()).header("Authorization","Bearer "+token).contentType("application/json").content(contactBody()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.user.contactVerificationStatus").value("VERIFIED"))
                 .andExpect(jsonPath("$.user.roles[0]").value("CUSTOMER"))
                 .andExpect(header().string("Set-Cookie",org.hamcrest.Matchers.containsString("HttpOnly")))
@@ -60,6 +61,37 @@ class VneidIntegrationTests {
         assertEquals(AuthAccount.Status.ACTIVE,a.getStatus());assertEquals("VERIFIED",identities.findById(a.getId()).orElseThrow().getVerificationStatus());
         mvc.perform(post("/api/v1/auth/login").with(csrf().asHeader()).contentType("application/json")
                 .content("{\"email\":\""+email+"\",\"password\":\"Password-test-only!\"}")).andExpect(status().isUnauthorized());
+    }
+    @Test void firstLoginRequiresContactBeforeCreatingAccountOrSession()throws Exception {
+        mvc.perform(post("/api/v1/auth/vneid-login").with(csrf().asHeader()).header("Authorization","Bearer "+token))
+            .andExpect(status().isPreconditionRequired()).andExpect(jsonPath("$.code").value("VNEID_CONTACT_REQUIRED"))
+            .andExpect(header().doesNotExist("Set-Cookie")).andExpect(jsonPath("$.accessToken").doesNotExist());
+        assertTrue(accounts.findByEmail(email).isEmpty());assertTrue(identities.findByIssuerAndSubject("https://test.invalid/",subject).isEmpty());
+        for(String phone:List.of("","+12025550123","01234567890"))mvc.perform(post("/api/v1/auth/vneid-login").with(csrf().asHeader()).header("Authorization","Bearer "+token)
+            .contentType("application/json").content(contactBody().replace("0912345678",phone))).andExpect(status().isBadRequest());
+        assertTrue(accounts.findByEmail(email).isEmpty());
+        login();var a=accounts.findByEmail(email).orElseThrow();assertEquals("+84912345678",a.getPhone());assertNotNull(a.getContactDetailsConfirmedAt());
+        mvc.perform(post("/api/v1/auth/vneid-login").with(csrf().asHeader()).header("Authorization","Bearer "+token)).andExpect(status().isOk());
+    }
+    @Test void usernameOnlyProviderCanCollectUnverifiedContactEmailWithoutEmailClaim()throws Exception {
+        var noEmail=Jwt.withTokenValue(token).headers(h->h.putAll(external.getHeaders())).claims(c->{c.putAll(external.getClaims());c.remove(VneidTokenVerifier.NS+"email");}).build();
+        when(verifier.decode(token)).thenReturn(noEmail);login();
+        var a=accounts.findByEmail(email).orElseThrow();assertFalse(a.isEmailVerified());assertFalse(a.isPhoneVerified());
+    }
+    @Test void legacyBindingMustConfirmContactsWithoutBypassingEmailChangeOrPreservingOldSessions()throws Exception {
+        String previous=login();String oldAccess=com.jayway.jsonpath.JsonPath.read(previous,"$.accessToken");
+        var a=accounts.findByEmail(email).orElseThrow();a.setContactDetailsConfirmedAt(null);accounts.flush();
+        mvc.perform(post("/api/v1/auth/vneid-login").with(csrf().asHeader()).header("Authorization","Bearer "+token)).andExpect(status().isPreconditionRequired());
+        mvc.perform(post("/api/v1/auth/vneid-login").with(csrf().asHeader()).header("Authorization","Bearer "+token).contentType("application/json")
+            .content(contactBody().replace(email,"changed@example.invalid"))).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("VNEID_EMAIL_CHANGE_REQUIRED"));
+        assertEquals(email,a.getEmail());assertNull(a.getContactDetailsConfirmedAt());
+        mvc.perform(post("/api/v1/auth/vneid-login").with(csrf().asHeader()).header("Authorization","Bearer "+token).contentType("application/json")
+            .content(contactBody().replace("0912345678","0387654321"))).andExpect(status().isOk());
+        assertEquals("+84387654321",a.getPhone());assertNotNull(a.getContactDetailsConfirmedAt());assertFalse(a.isPhoneVerified());
+        assertNotNull(accounts.findById(a.getId()).orElseThrow().getContactDetailsConfirmedAt());
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+oldAccess)).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/v1/auth/vneid-login").with(csrf().asHeader()).header("Authorization","Bearer "+token).contentType("application/json")
+            .content(contactBody())).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("VNEID_CONTACT_ALREADY_CONFIRMED"));
     }
     @Test void sameSubjectLogsInAgainWithoutOverwritingProfile() throws Exception {
         login();var a=accounts.findByEmail(email).orElseThrow();a.setFullName("Tên người dùng đã sửa");accounts.flush();
@@ -83,7 +115,7 @@ class VneidIntegrationTests {
         when(verifier.decode(token)).thenReturn(detailed);login();
         var filled=identities.findById(account.getId()).orElseThrow();assertNotNull(filled.getDocumentIssuePlace());
         assertEquals(LocalDate.of(2021,6,16),filled.getDocumentIssueDate());assertEquals(verifiedAt,filled.getVerifiedAt());assertNotNull(filled.getDetailsUpdatedAt());
-        assertEquals(displayName,account.getFullName());assertNull(account.getPhone());assertNull(account.getPasswordHash());
+        assertEquals(displayName,account.getFullName());assertEquals("+84912345678",account.getPhone());assertNull(account.getPasswordHash());
         assertFalse(account.isEmailVerified());assertFalse(account.isPhoneVerified());long version=filled.getVersion();
         login();assertEquals(version,identities.findById(account.getId()).orElseThrow().getVersion());
     }
@@ -134,7 +166,7 @@ class VneidIntegrationTests {
         java.util.concurrent.Callable<Integer> call=()->{
             barrier.await(10,java.util.concurrent.TimeUnit.SECONDS);
             return mvc.perform(post("/api/v1/auth/vneid-login").with(csrf().asHeader())
-                    .header("Authorization","Bearer "+token)).andReturn().getResponse().getStatus();
+                    .header("Authorization","Bearer "+token).contentType("application/json").content(contactBody())).andReturn().getResponse().getStatus();
         };
         try {
             var first=executor.submit(call);var second=executor.submit(call);

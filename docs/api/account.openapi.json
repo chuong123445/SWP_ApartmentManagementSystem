@@ -139,7 +139,7 @@
         },
         "responses": {
           "200": {
-            "description": "Stores unverified phone contact; normalizes 0-prefix Vietnamese numbers/E.164. Revokes sessions. No SMS or unproven identity reservation.",
+            "description": "Stores required unverified Vietnamese phone contact. Rejects foreign prefixes/invalid lengths; revokes sessions. No SMS or identity reservation.",
             "content": {
               "application/json": {
                 "schema": {
@@ -637,15 +637,15 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "version"
+          "version",
+          "phone"
         ],
         "properties": {
           "phone": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "maxLength": 20
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "description": "Required Vietnamese phone (mobile or landline); +84 normalization; format does not prove ownership"
           },
           "currentPassword": {
             "type": "string",
