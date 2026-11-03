@@ -30,7 +30,11 @@ const button = 'border rounded-lg px-3 py-2 disabled:opacity-50';
 const primary = `${button} bg-emerald-700 text-white`;
 const card = 'bg-white rounded-xl border p-4 space-y-3 min-w-0';
 
-export function SettlementPage({ admin = false }: { admin?: boolean }) {
+export function SettlementPage() {
+  return <AccountLayout><SettlementPanel /></AccountLayout>;
+}
+
+export function SettlementPanel({ admin = false }: { admin?: boolean }) {
   const [wallet, setWallet] = useState<SettlementWallet | null>(null);
   const [connection, setConnection] = useState<SepayConfig | null>(null);
   const [data, setData] = useState<Awaited<ReturnType<typeof getWithdrawals>> | null>(null);
@@ -116,11 +120,8 @@ export function SettlementPage({ admin = false }: { admin?: boolean }) {
     }
   }
 
-  return <AccountLayout>
-    <div className="space-y-5">
-      <Link className="underline text-emerald-800" to={admin ? '/admin/property-dossiers' : '/app?tab=invoices'}>
-        {admin ? 'Kiểm duyệt tài sản' : 'Hóa đơn & thu'}
-      </Link>
+  return <div className="space-y-5">
+      {!admin && <Link className="underline text-emerald-800" to="/app?tab=invoices">Hóa đơn & thu</Link>}
       <h1 className="text-2xl font-bold">{admin ? 'Xử lý yêu cầu rút tiền' : 'Số dư và rút tiền'}</h1>
       {admin && connection && <section className={card} aria-label="Kết nối SePay dùng chung">
         <h2 className="font-semibold">Kết nối SePay dùng chung</h2>
@@ -204,6 +205,5 @@ export function SettlementPage({ admin = false }: { admin?: boolean }) {
           <strong className="break-all">{billingMoney(entry.amount)}</strong>
         </li>)}</ul>
       </section>}
-    </div>
-  </AccountLayout>;
+  </div>;
 }
