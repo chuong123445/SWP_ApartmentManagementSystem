@@ -34,6 +34,7 @@ DELETE FROM account_identity_profiles WHERE account_id=@id;
 DELETE FROM email_change_challenges WHERE account_id=@id;
 DELETE FROM auth_refresh_tokens WHERE session_id IN(SELECT id FROM auth_sessions WHERE account_id=@id);
 DELETE FROM auth_sessions WHERE account_id=@id;
+DELETE FROM auth_account_roles WHERE account_id=@id;
 DELETE FROM auth_accounts WHERE id=@id AND email=@email AND full_name=@name;
 SELECT (SELECT COUNT(*) FROM auth_accounts WHERE id=@id) AS accountsRemaining,
  (SELECT COUNT(*) FROM account_identity_profiles WHERE account_id=@id) AS profilesRemaining,

@@ -14,14 +14,13 @@ public class AccountAccessService {
     public AuthAccount owner(Jwt jwt) { return require(jwt, AuthAccount.Role.OWNER); }
     public AuthAccount admin(Jwt jwt) {
         AuthAccount account = auth.authenticate(jwt);
-        if (account.getRole() != AuthAccount.Role.ADMIN || account.getStatus() != AuthAccount.Status.ACTIVE)
+        if (!account.hasRole(AuthAccount.Role.ADMIN) || account.getStatus() != AuthAccount.Status.ACTIVE)
             throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Chỉ Admin đang hoạt động được kiểm duyệt hồ sơ tài sản.");
         return account;
     }
     private AuthAccount require(Jwt jwt, AuthAccount.Role role) {
         AuthAccount account = auth.authenticate(jwt);
-        boolean ordinaryAccount = role == AuthAccount.Role.CUSTOMER && account.getRole() == AuthAccount.Role.OWNER;
-        if (account.getRole() != role && !ordinaryAccount) throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Tài khoản không có quyền thực hiện thao tác này.");
+        if (!account.hasRole(role)) throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Tài khoản không có quyền thực hiện thao tác này.");
         boolean verified = role == AuthAccount.Role.CUSTOMER ? verification.isRentalVerified(account) : verification.isVerified(account);
         if (account.getStatus() != AuthAccount.Status.ACTIVE || !verified)
             throw new ApiException(HttpStatus.FORBIDDEN, "CONTACT_NOT_VERIFIED", role == AuthAccount.Role.CUSTOMER
