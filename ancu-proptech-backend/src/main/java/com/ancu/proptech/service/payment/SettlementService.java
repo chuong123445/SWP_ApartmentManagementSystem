@@ -72,6 +72,14 @@ public class SettlementService {
         return PageResponse.from(result.map(w -> view(w, admin)));
     }
 
+    @Transactional(readOnly = true)
+    public byte[] withdrawalQr(Jwt jwt, Long id) {
+        Long admin = access.admin(jwt).getId();
+        var withdrawal = withdrawals.findById(id).orElseThrow(SettlementService::missing);
+        requireProcessingAdmin(withdrawal, admin);
+        return WithdrawalPaymentQr.png(withdrawal);
+    }
+
     @Transactional
     public Withdrawal request(Jwt jwt, Request input) {
         Long owner = access.owner(jwt).getId();

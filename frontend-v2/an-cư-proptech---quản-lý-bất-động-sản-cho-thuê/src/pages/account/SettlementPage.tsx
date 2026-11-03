@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { AccountLayout } from '@/layouts/AccountLayout';
+import { PrivatePaymentQr } from '@/components/billing/PrivatePaymentQr';
 import { Pagination } from '@/components/common/Pagination';
 import { billingMoney } from '@/services/billing/billingService';
 import type { SepayConfig } from '@/services/payment/sepayService';
@@ -186,12 +187,16 @@ export function SettlementPanel({ admin = false }: { admin?: boolean }) {
         {admin && (selected.status === 'PENDING' || selected.canComplete) && <fieldset disabled={busy} className="space-y-3 min-w-0">
           {selected.status === 'PENDING' && <button className={primary} onClick={() => void decide(selected, 'START')}>Nhận xử lý</button>}
           {selected.canComplete && <>
-            <p>Đối chiếu người nhận và chuyển khoản bằng ứng dụng ngân hàng. Nhập mã giao dịch sau khi chuyển thành công.</p>
-            <label>Mã giao dịch ngân hàng<input className={field} maxLength={100} value={reference} onChange={event => setReference(event.target.value)} /></label>
+            <div className="space-y-2">
+              <p>Quét QR hoặc nhập thông tin ở trên trong ứng dụng ngân hàng. Đối chiếu người nhận và số tiền trước khi chuyển.</p>
+              <PrivatePaymentQr key={selected.id} path={`/api/v1/admin/settlements/withdrawals/${encodeURIComponent(selected.id)}/qr`}
+                alt="QR chuyển khoản cho chủ nhà" />
+            </div>
+            <label className="block">Mã giao dịch ngân hàng<input className={field} maxLength={100} value={reference} onChange={event => setReference(event.target.value)} /></label>
             <label className="flex items-start gap-2"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} /> Tôi đã chuyển khoản thành công theo thông tin trên.</label>
             <button className={primary} disabled={!confirmed || !reference.trim()} onClick={() => void decide(selected, 'PAID')}>Ghi nhận đã chuyển</button>
           </>}
-          <label>Lý do từ chối<textarea className={field} maxLength={300} value={note} onChange={event => setNote(event.target.value)} /></label>
+          <label className="block border-t border-slate-200 pt-3">Lý do từ chối<textarea className={field} maxLength={300} value={note} onChange={event => setNote(event.target.value)} /></label>
           <button className={button} disabled={!note.trim() || confirmed} onClick={() => void decide(selected, 'REJECT')}>
             {selected.canComplete ? 'Xác nhận chưa chuyển và từ chối' : 'Từ chối yêu cầu'}
           </button>

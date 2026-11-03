@@ -85,6 +85,13 @@ async function exercise(page: Page, base: string, width: number) {
       if (!withdrawalStatus || (filter && filter !== withdrawalStatus)) return json(emptyPage);
       return json({ ...emptyPage, items: [withdrawal()], totalElements: 1, totalPages: 1 });
     }
+    if (path === '/admin/settlements/withdrawals/12/qr') {
+      if (role !== 'ADMIN' || withdrawalStatus !== 'PROCESSING' || req.headers().authorization !== 'Bearer fixture') {
+        throw Error('Payout QR requested outside authorized processing');
+      }
+      return route.fulfill({ contentType: 'image/svg+xml', body:
+        '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100"/></svg>' });
+    }
     if (path === '/admin/settlements/withdrawals/12/actions' && post) {
       const input = req.postDataJSON();
       if (input.version !== withdrawalVersion) throw Error('Wrong withdrawal version');
@@ -162,18 +169,23 @@ async function exercise(page: Page, base: string, width: number) {
     await page.getByRole('heading', { name: 'Kiểm duyệt tài sản', exact: true }).waitFor();
     await go('/admin/settlements');
     await page.getByRole('button', { name: /#12 · Chờ xử lý/ }).click();
+    const payoutQr = page.getByRole('img', { name: 'QR chuyển khoản cho chủ nhà' });
+    check(await payoutQr.count() === 0, 'QR shown before accepting the withdrawal');
     await page.getByRole('button', { name: 'Nhận xử lý' }).click();
+    await payoutQr.waitFor();
     await page.getByLabel('Mã giao dịch ngân hàng').fill('FT-MAU-12');
     check(await page.getByRole('button', { name: 'Ghi nhận đã chuyển' }).isDisabled(), 'Transfer can be confirmed without review');
     await page.getByRole('checkbox', { name: /Tôi đã chuyển khoản thành công/ }).check();
     await page.getByRole('button', { name: 'Ghi nhận đã chuyển' }).click();
     await page.getByRole('heading', { name: /Yêu cầu #12 · Đã chuyển/ }).waitFor();
+    check(await payoutQr.count() === 0, 'QR still shown after payout completion');
     await fits();
 
     role = 'OWNER';
     await go('/account/settings/payments');
     await page.getByRole('button', { name: /#12 · Đã chuyển/ }).click();
     await page.getByText('Mã giao dịch: FT-MAU-12').waitFor();
+    check(await payoutQr.count() === 0, 'Payout QR is visible to owner');
     check(writes.join(',') === 'issue-qr,request,START,PAID', 'Unexpected write: ' + writes);
     check(!errors.length && !unexpected.length, JSON.stringify({ errors, unexpected }));
     return { width, writes, errors, unexpected };
