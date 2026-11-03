@@ -40,3 +40,37 @@ export async function manageAccount(account: ManagedAccount, action: AccountActi
   if (!response.ok) throw await readApiError(response);
   return response.json();
 }
+
+export interface AdminHistoryPage<T> {
+  items: T[];
+  page: number;
+  totalElements: number;
+  totalPages: number;
+}
+export interface AccountProfile {
+  account: ManagedAccount;
+  phone: string | null;
+  address: string | null;
+  bio: string | null;
+  dateOfBirth: string | null;
+  emailVerified: boolean;
+  phoneVerified: boolean;
+}
+export interface AccountContract {
+  id: string; relationship: 'OWNER' | 'TENANT'; roomNumber: string; propertyName: string;
+  ownerName: string; tenantName: string; status: string; startDate: string; endDate: string; monthlyRent: string;
+}
+export interface PaidAccountInvoice {
+  id: string; source: 'MONTHLY' | 'ADDITIONAL'; contractId: string; period: string | null;
+  roomNumber: string; ownerName: string; tenantName: string; amount: string; paidAt: string;
+}
+async function accountRead<T>(id: string, suffix: string, signal: AbortSignal): Promise<T> {
+  const response = await apiFetch('/api/v1/admin/accounts/' + encodeURIComponent(id) + suffix, { signal, cache: 'no-store' });
+  if (!response.ok) throw await readApiError(response);
+  return response.json();
+}
+export const adminAccountProfile = (id: string, signal: AbortSignal) => accountRead<AccountProfile>(id, '', signal);
+export const adminAccountContracts = (id: string, page: number, signal: AbortSignal) =>
+  accountRead<AdminHistoryPage<AccountContract>>(id, '/contracts?page=' + page, signal);
+export const adminAccountPaidInvoices = (id: string, page: number, signal: AbortSignal) =>
+  accountRead<AdminHistoryPage<PaidAccountInvoice>>(id, '/paid-invoices?page=' + page, signal);
