@@ -11,6 +11,8 @@ import java.util.*;
 @RestController @RequiredArgsConstructor
 public class SepayController {
  private final SepayService service;
+ @GetMapping("/api/v1/owner/invoices/additional") public ResponseEntity<com.ancu.proptech.dto.common.PageResponse<TestReceipt>> ownerReceived(@AuthenticationPrincipal Jwt jwt,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size,@RequestParam(required=false) Long propertyId,@RequestParam(defaultValue="ALL") com.ancu.proptech.dto.billing.InvoicePaymentFilter paymentStatus){return ok(service.ownerReceivedHistory(jwt,page,size,propertyId,paymentStatus));}
+ @GetMapping("/api/v1/owner/invoices/additional/{id}") public ResponseEntity<TestReceipt> ownerReceivedDetail(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id){return ok(service.ownerReceivedDetail(jwt,id));}
  private <T> ResponseEntity<T> ok(T body){return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(body);}
  @PostMapping("/api/v1/owner/payments/sepay/bank-accounts") public ResponseEntity<BankPage> banks(@AuthenticationPrincipal Jwt jwt,@Valid @RequestBody ApiToken body){return ok(service.banks(jwt,body));}
  @PostMapping("/api/v1/owner/payments/sepay/virtual-accounts") public ResponseEntity<VaPage> vas(@AuthenticationPrincipal Jwt jwt,@Valid @RequestBody VaRequest body){return ok(service.vas(jwt,body));}
