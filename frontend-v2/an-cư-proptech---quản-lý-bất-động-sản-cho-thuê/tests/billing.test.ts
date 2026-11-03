@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
-import { createInvoice, sendInvoice, myInvoices, getInvoice, tenancyViews, billingMoney } from '@/services/billing/billingService';
+import { createInvoice, sendInvoice, myInvoices, getInvoice, tenancyViews, billingMoney, ownerInvoices, ownerReceivedInvoices, getOwnerReceivedInvoice } from '@/services/billing/billingService';
 import { getApartments, getAddressOptions } from '@/services/apartments/apartmentService';
 const originalFetch = globalThis.fetch;
 test('Money rendering preserves decimal precision beyond JavaScript safe integers', () => {
@@ -8,6 +8,13 @@ test('Money rendering preserves decimal precision beyond JavaScript safe integer
   assert.equal(billingMoney('5540000.0000'), '5.540.000 đ');
 });
 afterEach(() => { globalThis.fetch = originalFetch; });
+test('Owner history requests server payment filters and independent receipt pagination using GET only', async () => {
+  const urls: string[] = [];
+  globalThis.fetch = async (url, options) => { urls.push(String(url));assert.equal(options?.method ?? 'GET', 'GET');return Response.json({ items: [] }); };
+  await ownerInvoices();await ownerInvoices(1, 20, 'property-2', 'PAID');
+  await ownerReceivedInvoices(2, 20, 'property-2', 'PAID');await getOwnerReceivedInvoice('receipt/21');
+  assert.deepEqual(urls, ['/api/v1/owner/invoices?page=0&size=20', '/api/v1/owner/invoices?page=1&size=20&propertyId=property-2&filter=PAID', '/api/v1/owner/invoices/additional?page=2&size=20&paymentStatus=PAID&propertyId=property-2', '/api/v1/owner/invoices/additional/receipt%2F21']);
+});
 test('Invoice create sends only period/end readings/due date/server baseline version', async () => {
   globalThis.fetch = async (url, options) => {
     assert.equal(url, '/api/v1/owner/contracts/contract-uuid/invoices');
