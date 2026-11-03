@@ -38,9 +38,10 @@ export function AccountMenu({ account, onLogout, isLoggingOut, authError, isTena
     </button>
     {open && <nav id={menuId} aria-label="Điều hướng tài khoản" className="absolute right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-xl border border-slate-200 p-2 z-50 text-sm">
       <div className="px-3 py-2 mb-1 border-b border-slate-100"><p className="font-semibold text-slate-900">{roleLabel}</p><p className="text-xs text-slate-500 truncate">{account.email}</p></div>
+      {account.roles.includes('ADMIN') && <Link to="/admin/property-dossiers" onClick={() => setOpen(false)} className={linkClass}><LayoutDashboard className="w-4 h-4" />Quản trị hệ thống</Link>}
       {canRent && <Link to="/my/rental-requests" onClick={() => setOpen(false)} className={linkClass}><ClipboardList className="w-4 h-4" />Yêu cầu & hợp đồng</Link>}
       {canRent&&<Link to="/my/invoices" onClick={()=>setOpen(false)} className={linkClass}><ReceiptText className="w-4 h-4"/>Hóa đơn của tôi</Link>}
-      {showAccountLinks && <>
+      {showAccountLinks && !account.roles.includes('ADMIN') && <>
       <Link to="/account/settings" onClick={()=>setOpen(false)} className={linkClass}><Settings className="w-4 h-4"/>Cài đặt tài khoản</Link>
       <Link to="/account/profile" onClick={() => setOpen(false)} className={linkClass}><UserRound className="w-4 h-4" />Hồ sơ & tài khoản</Link>
       </>}

@@ -3,16 +3,18 @@ import { AccountMenu } from '@/components/navigation/AccountMenu';
 import { useAuth } from '@/hooks/useAuth';
 import { SettlementPanel } from '@/pages/account/SettlementPage';
 import { PropertyDossiersPage } from './PropertyDossiersPage';
+import { AccountsPage } from './AccountsPage';
 
 const tabs = [
   { key: 'dossiers', label: 'Kiểm duyệt tài sản', search: '' },
   { key: 'withdrawals', label: 'Yêu cầu rút tiền', search: '?tab=withdrawals' },
+  { key: 'accounts', label: 'Tài khoản người dùng', search: '?tab=accounts' },
 ] as const;
 
 export function AdminPage() {
   const { user, logout, isLoggingOut, error } = useAuth();
   const [params] = useSearchParams();
-  const active = params.get('tab') === 'withdrawals' ? 'withdrawals' : 'dossiers';
+  const active = tabs.find(tab => tab.key === params.get('tab'))?.key ?? 'dossiers';
 
   return <div className="min-h-screen bg-slate-50 text-slate-800">
     <header className="bg-white border-b px-4 md:px-8 py-4 flex items-center justify-between gap-3">
@@ -29,7 +31,7 @@ export function AdminPage() {
           {tab.label}
         </Link>)}
       </nav>
-      {active === 'withdrawals' ? <SettlementPanel admin /> : <PropertyDossiersPage />}
+      {active === 'accounts' ? <AccountsPage /> : active === 'withdrawals' ? <SettlementPanel admin /> : <PropertyDossiersPage />}
     </main>
   </div>;
 }
