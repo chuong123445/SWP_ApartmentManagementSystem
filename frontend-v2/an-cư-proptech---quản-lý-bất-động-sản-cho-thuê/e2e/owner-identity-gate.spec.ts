@@ -66,11 +66,12 @@ test('Verified identity page has no legacy form or document request, including r
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   mkdirSync('test-results/visual', { recursive: true });await page.screenshot({ path: 'test-results/visual/owner-verified-identity-mobile.png', fullPage: true });fixture.check();
 });
-test('Unverified Owner without manual profile is directed to identity; manual form remains available', async ({ page }) => {
+test('Unverified Owner without manual profile is directed to VNeID verification', async ({ page }) => {
   const fixture = await setup(page, { verified: false });await openAdd(page);
   await expect(page.getByText('Yêu cầu cập nhật CCCD', { exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Xác thực danh tính ngay', exact: true }).click();
-  await expect(page.locator('#identity-number')).toBeVisible();await expect(page.locator('input[type=file]')).toHaveCount(2);
+  await expect(page.getByRole('button', { name: 'Xác thực bằng VNeID mô phỏng', exact: true })).toBeVisible();
+  await expect(page.locator('#identity-number')).toHaveCount(0);await expect(page.locator('input[type=file]')).toHaveCount(0);
   expect(fixture.writes()).toBe(0);fixture.check();
 });
 test('Legacy Owner with a manual identity can still open property form', async ({ page }) => {
