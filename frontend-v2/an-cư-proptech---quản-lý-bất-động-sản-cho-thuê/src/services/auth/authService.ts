@@ -26,15 +26,15 @@ export async function login(email: string, password: string): Promise<AuthSessio
   return (await authRequest('login', { email: email.trim(), password })).json();
 }
 
-export async function loginWithGoogle(credential: string): Promise<AuthSession> {
-  return (await authRequest('google', { credential })).json();
+export async function loginWithGoogle(credential: string, phone?: string): Promise<AuthSession> {
+  return (await authRequest('google', { credential, ...(phone ? {phone} : {}) })).json();
 }
 
 export interface RegistrationInput {
   fullName: string;
   email: string;
   password: string;
-  phone?: string;
+  phone: string;
 }
 export async function register(input: RegistrationInput): Promise<AuthUser> {
   return (await authRequest('register', { fullName: input.fullName.trim(), email: input.email.trim(),

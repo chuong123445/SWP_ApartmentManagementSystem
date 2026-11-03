@@ -21,9 +21,11 @@ async function csrfHeaders() {
   if (!response.ok) throw await readApiError(response);
   const csrf = await response.json(); return new Headers({ [csrf.headerName]: csrf.token });
 }
-export async function vneidLogin(token: string): Promise<AuthSession> {
+export interface VneidContactInput { email: string; phone: string }
+export async function vneidLogin(token: string, contact?: VneidContactInput): Promise<AuthSession> {
   const headers = await csrfHeaders(); headers.set('Authorization', `Bearer ${token}`);
-  const response = await fetch('/api/v1/auth/vneid-login', { method: 'POST', credentials: 'same-origin', headers });
+  if(contact)headers.set('Content-Type','application/json');
+  const response = await fetch('/api/v1/auth/vneid-login', { method: 'POST', credentials: 'same-origin', headers, body: contact ? JSON.stringify(contact) : undefined });
   if (!response.ok) throw await readApiError(response);
   return response.json();
 }

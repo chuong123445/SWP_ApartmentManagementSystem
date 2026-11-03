@@ -5,6 +5,8 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import { loginDestination } from '@/utils/navigation';
 import { VneidButton } from '@/components/auth/VneidButton';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
+import { ApiError } from '@/services/http/client';
+import { normalizeVietnamesePhone, vietnamesePhoneHint } from '@/utils/vietnamesePhone';
 
 export function LoginPage() {
   const { login, loginWithGoogle, error: sessionError } = useAuth();
@@ -15,6 +17,14 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [googleCredential,setGoogleCredential]=useState('');
+  const [googlePhone,setGooglePhone]=useState('');
+  const completeGoogle=async(credential:string,phone?:string)=>{
+    if(isSubmitting)return;setError('');setIsSubmitting(true);
+    try{const account=await loginWithGoogle(credential,phone);setGoogleCredential('');navigate(loginDestination(account,location.state?.returnTo),{replace:true});}
+    catch(err){if(err instanceof ApiError&&err.code==='GOOGLE_PHONE_REQUIRED'){setGoogleCredential(credential);setError('');}else{setError(err instanceof Error?err.message:'Không thể đăng nhập Google.');if(err instanceof ApiError&&err.status===401)setGoogleCredential('');}}
+    finally{setIsSubmitting(false);}
+  };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -64,15 +74,13 @@ export function LoginPage() {
             </button>
           </form>
           <VneidButton intent="login" label="Đăng nhập bằng VNeID mô phỏng" />
-          <GoogleSignInButton disabled={isSubmitting} onCredential={async credential => {
-            setError('');
-            setIsSubmitting(true);
-            try {
-              const user = await loginWithGoogle(credential);
-              navigate(loginDestination(user, location.state?.returnTo), { replace: true });
-            } catch (err) { setError(err instanceof Error ? err.message : 'Không thể đăng nhập Google.'); }
-            finally { setIsSubmitting(false); }
-          }} />
+          <GoogleSignInButton disabled={isSubmitting} onCredential={credential=>completeGoogle(credential)} />
+          {googleCredential&&<form className="mt-5 space-y-3 border-t pt-4" onSubmit={event=>{event.preventDefault();if(!normalizeVietnamesePhone(googlePhone)){setError(vietnamesePhoneHint);return;}void completeGoogle(googleCredential,googlePhone);}}>
+            <h3 className="font-semibold">Bổ sung số điện thoại</h3><label htmlFor="google-contact-phone" className="block text-sm">Số điện thoại liên hệ</label>
+            <input id="google-contact-phone" type="tel" required maxLength={20} autoComplete="tel" disabled={isSubmitting} value={googlePhone} onChange={event=>setGooglePhone(event.target.value)} className="w-full rounded-lg border p-3"/>
+            <p className="text-xs text-slate-500">{vietnamesePhoneHint} Email lấy từ tài khoản Google đã xác thực.</p>
+            <button type="submit" disabled={isSubmitting} className="w-full rounded-lg bg-emerald-700 py-3 text-white font-semibold disabled:opacity-50">Hoàn tất đăng ký bằng Google</button>
+          </form>}
           <p className="text-sm text-slate-500 mt-6 text-center">Chưa có tài khoản? <Link to="/register" className="text-emerald-700 font-semibold">Đăng ký</Link></p>
         </section>
       </div>

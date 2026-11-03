@@ -6,6 +6,7 @@ import { register, type RegistrationInput } from '@/services/auth/authService';
 import { requestEmailChange } from '@/services/auth/accountService';
 import { SessionLoading } from '@/components/feedback/SessionLoading';
 import { VneidButton } from '@/components/auth/VneidButton';
+import { normalizeVietnamesePhone, vietnamesePhoneHint } from '@/utils/vietnamesePhone';
 
 export function RegisterPage() {
   const { user, loading, login } = useAuth();const navigate = useNavigate();
@@ -14,6 +15,7 @@ export function RegisterPage() {
   const [registrationCreated, setRegistrationCreated] = useState(false);
   const submit = async (event: FormEvent) => {
     event.preventDefault();if (busy) return;setError('');
+    if (!normalizeVietnamesePhone(input.phone ?? '')) { setError(`Số điện thoại là bắt buộc và phải hợp lệ. ${vietnamesePhoneHint}`);return; }
     if (input.password !== confirmation) { setError('Mật khẩu xác nhận không khớp.');return; }
     if (new TextEncoder().encode(input.password).length > 72) { setError('Mật khẩu tối đa 72 byte UTF-8.');return; }
     setBusy(true);
@@ -43,7 +45,7 @@ export function RegisterPage() {
       <form onSubmit={submit}><fieldset disabled={busy} className="space-y-4">
         <div><label htmlFor="register-name">Tên hiển thị</label><input id="register-name" required maxLength={100} autoComplete="nickname" value={input.fullName} onChange={e => setInput({ ...input, fullName: e.target.value })} className={cls} /><p className="text-xs text-slate-500 mt-1">Tên dùng trên giao diện. Họ tên theo VNeID sẽ được lưu riêng khi xác thực.</p></div>
         <div><label htmlFor="register-email">Email</label><input id="register-email" type="email" required maxLength={254} autoComplete="email" value={input.email} onChange={e => setInput({ ...input, email: e.target.value })} className={cls} /></div>
-        <div><label htmlFor="register-phone">Số điện thoại (không bắt buộc)</label><input id="register-phone" type="tel" maxLength={20} autoComplete="tel" value={input.phone} onChange={e => setInput({ ...input, phone: e.target.value })} className={cls} /></div>
+        <div><label htmlFor="register-phone">Số điện thoại</label><input id="register-phone" type="tel" required maxLength={20} autoComplete="tel" aria-describedby="register-phone-hint" value={input.phone} onChange={e => setInput({ ...input, phone: e.target.value })} className={cls} /><p id="register-phone-hint" className="mt-1 text-xs text-slate-500">{vietnamesePhoneHint}</p></div>
         <div><label htmlFor="register-password">Mật khẩu</label><input id="register-password" type="password" required minLength={12} maxLength={72} autoComplete="new-password" value={input.password} onChange={e => setInput({ ...input, password: e.target.value })} className={cls} /><p className="text-xs text-slate-500 mt-1">Ít nhất 12 ký tự, tối đa 72 byte UTF-8.</p></div>
         <div><label htmlFor="register-confirm">Nhập lại mật khẩu</label><input id="register-confirm" type="password" required autoComplete="new-password" value={confirmation} onChange={e => setConfirmation(e.target.value)} className={cls} /></div>
         <button type="submit" className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white font-semibold py-3 rounded-lg disabled:opacity-60">{busy ? <><LoaderCircle className="w-4 h-4 animate-spin" />Đang tạo tài khoản...</> : 'Đăng ký'}</button>

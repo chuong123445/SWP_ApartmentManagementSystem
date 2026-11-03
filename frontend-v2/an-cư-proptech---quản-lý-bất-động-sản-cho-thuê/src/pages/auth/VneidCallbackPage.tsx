@@ -5,6 +5,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useVneidConfig } from '@/contexts/VneidContext';
 import { verifyVneid, confirmVneid, cancelVneid, type VneidNameConfirmation } from '@/services/auth/vneidService';
 import { loginDestination } from '@/utils/navigation';
+import { ApiError } from '@/services/http/client';
+import { normalizeVietnamesePhone, vietnamesePhoneHint } from '@/utils/vietnamesePhone';
 export function VneidCallbackPage() {
   const { config, loading: configLoading, error: configError } = useVneidConfig();
   const { isLoading, error: auth0Error, isAuthenticated, getAccessTokenSilently } = useAuth0();
@@ -12,6 +14,10 @@ export function VneidCallbackPage() {
   const location = useLocation(); const navigate = useNavigate(); const [error, setError] = useState('');
   const [pending, setPending] = useState<VneidNameConfirmation | null>(null);
   const [busy, setBusy] = useState(false);
+  const [contactRequired, setContactRequired] = useState(false);
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const submittingContact = useRef(false);
   const operation = useRef<Promise<string | VneidNameConfirmation> | null>(null);
   const mounted = useRef(false);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -53,7 +59,10 @@ export function VneidCallbackPage() {
       if (typeof result === 'string') navigate(result, { replace: true });
       else setPending(result);
     } })
-      .catch(e => { if (active) setError(e instanceof Error ? e.message : 'Không thể hoàn tất đăng nhập VNeID.'); });
+      .catch(e => { if (active) {
+        if(e instanceof ApiError && e.code==='VNEID_CONTACT_REQUIRED'){setContactRequired(true);setError('');}
+        else setError(e instanceof Error ? e.message : 'Không thể hoàn tất đăng nhập VNeID.');
+      } });
     return () => { active = false; };
   }, [configLoading, config?.enabled, isLoading, loading, auth0Error, isAuthenticated, location.state, user, getAccessTokenSilently, loginVneid, reloadUser, navigate]);
   const message = error || (accountChanged && !loading ? 'Phiên tài khoản cần xác thực đã thay đổi. Hãy đăng nhập và bắt đầu lại.' : '') || (auth0Error ? 'Đăng nhập VNeID bị hủy hoặc không thành công. Hãy bắt đầu lại.' : '') || configError
@@ -61,7 +70,23 @@ export function VneidCallbackPage() {
     || (config?.enabled && !isLoading && !location.state?.intent ? 'Không còn thông tin thao tác VNeID. Hãy bắt đầu lại.' : '');
   return <main className="min-h-screen bg-slate-50 flex items-center justify-center p-6"><section className="w-full max-w-md bg-white border rounded-2xl p-7">
     <h1 className="text-xl font-bold">Hoàn tất xác thực VNeID</h1>
-    {message ? <><p role="alert" className="mt-4 text-rose-700">{message}</p><Link to={user ? '/account/verification' : '/login'} className="inline-block mt-5 text-emerald-700 underline">Quay lại để thử lại</Link></>
+    {contactRequired && !user ? <form className="mt-4 space-y-4" onSubmit={async event=>{
+      event.preventDefault();if(submittingContact.current)return;
+      if(!normalizeVietnamesePhone(contactPhone)){setError(vietnamesePhoneHint);return;}
+      submittingContact.current=true;setBusy(true);setError('');
+      try{const token=await getAccessTokenSilently();if(!token)throw new Error('Phiên Auth0 đã hết hạn. Hãy đăng nhập lại.');const account=await loginVneid(token,{email:contactEmail.trim(),phone:contactPhone});if(mounted.current)navigate(loginDestination(account,location.state?.returnTo),{replace:true});}
+      catch(e){if(mounted.current)setError(e instanceof Error?e.message:'Không thể lưu thông tin liên hệ.');}
+      finally{submittingContact.current=false;if(mounted.current)setBusy(false);}
+    }}>
+      <h2 className="font-semibold">Bổ sung thông tin liên hệ</h2>
+      <p className="text-sm text-slate-600">Nhập email và số điện thoại của bạn để hoàn tất đăng nhập. Thông tin liên hệ được lưu riêng với căn cước; số điện thoại chưa được xác minh.</p>
+      {error&&<p role="alert" className="text-sm text-rose-700">{error}</p>}
+      <label className="block text-sm" htmlFor="vneid-contact-email">Email liên hệ</label><input id="vneid-contact-email" type="email" required maxLength={254} autoComplete="email" disabled={busy} value={contactEmail} onChange={e=>setContactEmail(e.target.value)} className="w-full rounded-lg border p-3"/>
+      <label className="block text-sm" htmlFor="vneid-contact-phone">Số điện thoại</label><input id="vneid-contact-phone" type="tel" required maxLength={20} autoComplete="tel" aria-describedby="vneid-phone-hint" disabled={busy} value={contactPhone} onChange={e=>setContactPhone(e.target.value)} className="w-full rounded-lg border p-3"/>
+      <p id="vneid-phone-hint" className="text-xs text-slate-500">{vietnamesePhoneHint}</p>
+      <button type="submit" disabled={busy} className="w-full rounded-lg bg-emerald-700 px-4 py-3 font-semibold text-white disabled:opacity-50">{busy?'Đang lưu...':'Lưu và hoàn tất đăng nhập'}</button>
+      <Link to="/login" className="inline-block text-sm text-emerald-700 underline">Quay lại đăng nhập</Link>
+    </form> : message ? <><p role="alert" className="mt-4 text-rose-700">{message}</p><Link to={user ? '/account/verification' : '/login'} className="inline-block mt-5 text-emerald-700 underline">Quay lại để thử lại</Link></>
       : pending ? <div className="mt-4 space-y-4">
         <h2 className="font-semibold">Họ tên khác với tên hiển thị</h2>
         <dl className="space-y-3 break-words"><div><dt className="text-sm text-slate-500">Tên hiển thị của tài khoản</dt><dd className="font-medium">{pending.displayName}</dd></div>

@@ -73,17 +73,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const loginWithGoogle = async (credential: string) => {
+  const loginWithGoogle = async (credential: string, phone?: string) => {
     generation.current++;
-    const session = await authApi.loginWithGoogle(credential);
+    const session = await authApi.loginWithGoogle(credential,phone);
     apply(session);
     return session.user;
   };
 
   const reloadUser = async () => { const current = generation.current;const next = await currentUser();if (current === generation.current) setUser(next); };
-  const loginVneid = async (token: string) => {
+  const loginVneid = async (token: string, contact?: import('@/services/auth/vneidService').VneidContactInput) => {
     const current = ++generation.current;
-    const session = await vneidLogin(token);
+    const session = await vneidLogin(token, contact);
     if (current !== generation.current) throw new Error('Phiên đăng nhập đã thay đổi. Hãy thử lại.');
     apply(session); return session.user;
   };
