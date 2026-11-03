@@ -35,11 +35,6 @@ public class ContractPdfService {
             boolean room="ROOM".equals(draft.templateType())||"SHARED".equals(draft.templateType());
             party(writer,"1. BÊN CHO THUÊ"+(room?" PHÒNG":"")+" (Bên A)",draft.snapshot().owner(),false);
             party(writer,"2. BÊN THUÊ"+(room?" PHÒNG TRỌ":"")+" (Bên B)",draft.snapshot().customer(),true);
-            // The paper form has an unfilled second occupant slot, not another saved/signing party.
-            writer.pair("- Ông/Bà",null,"Sinh ngày",null);
-            writer.formField("Thường trú tại",null);
-            writer.pair("Số CCCD",null,"Cấp ngày",null);
-            writer.formField("Tại",null);writer.formField("SĐT",null);writer.formField("Nơi công tác",null);
             var asset=draft.snapshot().asset();
             writer.text("Sau khi bàn bạc hai bên cùng thống nhất như sau:");
             writer.text("Bên A đồng ý cho Bên B thuê 1 "+(room?"phòng":template(draft.templateType()))+" số "+show(asset.roomNumber())+" tại địa chỉ "+show(asset.address())+".");
