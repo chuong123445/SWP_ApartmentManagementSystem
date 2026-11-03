@@ -42,7 +42,7 @@ public class ApartmentService {
             return cb.and(cb.equal(root.get("publicationStatus"), Apartment.PublicationStatus.PUBLISHED),
                     cb.equal(property.get("approvalStatus"), Property.ApprovalStatus.APPROVED),
                     cb.equal(owner.get("status"), AuthAccount.Status.ACTIVE), cb.or(cb.isTrue(owner.get("contactVerified")),cb.exists(evidence)),
-                    cb.isMember(AuthAccount.Role.OWNER, owner.<java.util.Set<AuthAccount.Role>>get("roles")));
+                    cb.equal(owner.join("roleDefinitions").get("code"), AuthAccount.Role.OWNER));
         };
     }
 

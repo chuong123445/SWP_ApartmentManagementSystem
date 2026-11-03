@@ -78,7 +78,7 @@ IF @admin='00000000-0000-0000-0000-000000000000' OR EXISTS(SELECT 1 FROM auth_ac
  THROW 51000, 'Expected unique Admin fixture and exact test Owner.', 1;
 INSERT INTO auth_accounts(id,email,full_name,password_hash,role,status,contact_verified,email_verified,phone_verified,version)
  SELECT @admin,@adminEmail,@name,password_hash,'ADMIN','ACTIVE',0,0,0,0 FROM auth_accounts WHERE id=@owner AND email=@email;
-INSERT auth_account_roles(account_id,role) VALUES(@admin,'ADMIN');
+INSERT auth_account_roles(account_id,role_id) SELECT @admin,id FROM auth_roles WHERE code='ADMIN';
 COMMIT;
 '@
         [void]$taskCommand.ExecuteNonQuery()
