@@ -5,7 +5,7 @@ import { useReceivedTestPayments } from '@/hooks/useReceivedTestPayments';
 import { useAuth } from '@/hooks/useAuth';
 export function TenantHomePanel() {
   const { user } = useAuth();
-  const eligible = user?.accountStatus === 'ACTIVE' && user.contactVerificationStatus === 'VERIFIED' && user.roles.some(role => role === 'CUSTOMER' || role === 'OWNER');
+  const eligible = user?.accountStatus === 'ACTIVE' && user.contactVerificationStatus === 'VERIFIED' && user.roles.includes('CUSTOMER');
   return eligible ? <UnpaidInvoiceNotice key={user.id} /> : null;
 }
 function UnpaidInvoiceNotice() {

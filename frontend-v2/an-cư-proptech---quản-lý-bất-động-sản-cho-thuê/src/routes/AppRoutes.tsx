@@ -39,7 +39,7 @@ function RequireAccount({ children, role, verified = true }: { children: ReactNo
   if (role === 'ADMIN' && !user.roles.includes('ADMIN')) return <Navigate to="/" replace />;
   if (role === 'MANAGER' && user.roles.includes('ADMIN')) return <Navigate to="/admin/property-dossiers" replace />;
   if (role === 'MANAGER' && !hasManagementRole(user)) return <Navigate to="/" replace />;
-  if (role === 'CUSTOMER' && !user.roles.some(role => role === 'CUSTOMER' || role === 'OWNER')) return <Navigate to="/app" replace />;
+  if (role === 'CUSTOMER' && !user.roles.includes('CUSTOMER')) return <Navigate to="/app" replace />;
   if (verified && (user.accountStatus !== 'ACTIVE' || user.contactVerificationStatus !== 'VERIFIED')) return <AccountVerificationPage />;
   return <div key={user.id} className="contents">{children}</div>;
 }
