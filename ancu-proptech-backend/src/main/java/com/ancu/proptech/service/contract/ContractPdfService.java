@@ -25,25 +25,21 @@ public class ContractPdfService {
             var writer=new Layout(document,font,strong);
             writer.center("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM",12,true);
             writer.center("Độc lập - Tự do - Hạnh phúc",11,false);
-            writer.gap(18);
-            writer.center("HỢP ĐỒNG THUÊ "+template(draft.templateType()).toUpperCase(Locale.ROOT),17,true);
+            writer.gap(6);
+            writer.center("HỢP ĐỒNG THUÊ "+template(draft.templateType()).toUpperCase(Locale.ROOT),16,true);
             writer.center("Số: "+draft.contractNumber(),10,false);
             String state="SIGNED".equals(draft.signing().state())?"HAI BÊN ĐÃ KÝ XÁC NHẬN":
                     "UNSIGNED".equals(draft.signing().state())?"BẢN NHÁP - CHƯA KÝ":"ĐANG CHỜ CHỮ KÝ CÒN LẠI";
-            writer.center(state,10,true);writer.gap(12);
-            writer.text("Hai bên dưới đây cùng rà soát và thỏa thuận nội dung hợp đồng thuê tài sản như sau:");
+            writer.center(state,9,true);writer.gap(4);
+            writer.text("Ngày lập: "+date(draft.createdAt().atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toLocalDate()));
+            writer.text("Tại địa chỉ: "+show(draft.snapshot().asset().address()));
+            writer.text("Chúng tôi gồm:");
             party(writer,"BÊN CHO THUÊ (BÊN A)",draft.snapshot().owner());
             party(writer,"BÊN THUÊ (BÊN B)",draft.snapshot().customer());
             var asset=draft.snapshot().asset();
             writer.heading("I. TÀI SẢN CHO THUÊ");
-            writer.field("Tài sản",asset.propertyName()+" / "+asset.title());
             writer.field("Phòng / căn",asset.roomNumber());writer.field("Địa chỉ",asset.address());
-            writer.field("Diện tích",asset.areaM2()+" m²");writer.field("Tầng",asset.floor());
-            writer.field("Phòng ngủ / phòng tắm",show(asset.bedrooms())+" / "+show(asset.bathrooms()));
-            writer.field("Trang bị",asset.amenities()==null||asset.amenities().isEmpty()?null:String.join(", ",asset.amenities()));
             writer.field("Mục đích thuê",draft.usagePurpose());
-            writer.field("Giấy chứng nhận",asset.certificateNumber());writer.field("Ngày cấp",date(asset.certificateIssueDate()));
-            writer.field("Nơi cấp",asset.certificateIssuePlace());writer.field("Căn cứ quyền cho thuê",asset.exploitationRightDescription());
             if(Boolean.TRUE.equals(asset.localFixture())) writer.text("Lưu ý: hồ sơ tài sản này được đánh dấu dữ liệu minh họa trong hệ thống.");
             writer.heading("II. GIÁ THUÊ, ĐẶT CỌC VÀ THANH TOÁN");
             writer.field("Thời hạn",date(draft.startDate())+" đến "+date(draft.endDate()));
@@ -75,9 +71,11 @@ public class ContractPdfService {
     private static String date(LocalDate value){return value==null?null:value.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));}
     private static String money(String value){return new java.text.DecimalFormat("#,##0.##",new java.text.DecimalFormatSymbols(Locale.forLanguageTag("vi-VN"))).format(new BigDecimal(value));}
     private static void party(Layout w,String title,ContractSnapshot.Party p)throws IOException{
-        w.heading(title);w.field("Họ và tên",p.fullName());w.field("Ngày sinh",date(p.dateOfBirth()));w.field("CCCD / CMND",p.documentNumber());
-        w.field("Ngày cấp",date(p.documentIssueDate()));w.field("Nơi cấp",p.documentIssuePlace());w.field("Điện thoại",p.phone());w.field("Email",p.email());
-        w.field("Địa chỉ",p.address());w.field("Thường trú",p.permanentAddress());
+        w.heading(title);w.pair("Ông/Bà",p.fullName(),"Sinh ngày",date(p.dateOfBirth()));
+        boolean hasPermanent=p.permanentAddress()!=null&&!p.permanentAddress().isBlank();
+        w.field(hasPermanent?"Thường trú tại":"Địa chỉ liên hệ",hasPermanent?p.permanentAddress():p.address());
+        w.pair("Số CCCD",p.documentNumber(),"Cấp ngày",date(p.documentIssueDate()));
+        w.field("Nơi cấp",p.documentIssuePlace());w.field("SĐT",p.phone());
         if(Boolean.TRUE.equals(p.localFixture())) w.small("Thông tin bên này được đánh dấu hồ sơ minh họa.");
     }
     private static class Layout {
@@ -94,7 +92,7 @@ public class ContractPdfService {
             return safe.toString();
         }
         void line(String text,float size,boolean strong,float x)throws IOException{var f=strong?bold:font;out.beginText();out.setFont(f,size);out.newLineAtOffset(x,y);out.showText(clean(text,f));out.endText();}
-        void center(String text,float size,boolean strong)throws IOException{room(size+10);var f=strong?bold:font;String s=clean(text,f);line(s,size,strong,(PDRectangle.A4.getWidth()-f.getStringWidth(s)/1000*size)/2);y-=size+9;}
+        void center(String text,float size,boolean strong)throws IOException{room(size+6);var f=strong?bold:font;String s=clean(text,f);line(s,size,strong,(PDRectangle.A4.getWidth()-f.getStringWidth(s)/1000*size)/2);y-=size+6;}
         void paragraph(String value,float size,boolean strong)throws IOException{
             var f=strong?bold:font;String text=clean(value,f);
             for(String paragraph:text.split("\n",-1)){
@@ -111,14 +109,20 @@ public class ContractPdfService {
                     }
                 }
                 room(size+6);line(current,size,strong,left);y-=size+6;
-            }gap(4);
+            }gap(1);
         }
-        void text(String value)throws IOException{paragraph(value,10.5f,false);}
+        void text(String value)throws IOException{paragraph(value,10,false);}
         void small(String value)throws IOException{paragraph(value,8.5f,false);}
-        void heading(String value)throws IOException{room(50);gap(10);paragraph(value,11.5f,true);}
+        void heading(String value)throws IOException{room(42);gap(6);paragraph(value,11,true);}
         void field(String label,Object value)throws IOException{text(label+": "+show(value));}
+        void pair(String first,Object a,String second,Object b)throws IOException{
+            String lhs=clean(first+": "+show(a),font),rhs=clean(second+": "+show(b),font);
+            float split=width*.62f;
+            if(font.getStringWidth(lhs)/1000*10>split-12 || font.getStringWidth(rhs)/1000*10>width-split){field(first,a);field(second,b);return;}
+            room(17);line(lhs,10,false,left);line(rhs,10,false,left+split);y-=17;
+        }
         void signatures(ContractDraftResponse d)throws IOException{
-            room(190);gap(10);float top=y;float half=(width-20)/2;
+            room(185);gap(6);float top=y;float half=(width-20)/2;
             for(int i=0;i<2;i++){
                 float x=left+i*(half+20);y=top;
                 line(i==0?"BÊN CHO THUÊ (BÊN A)":"BÊN THUÊ (BÊN B)",10,true,x);y-=19;
@@ -134,7 +138,7 @@ public class ContractPdfService {
                 line(name,nameSize,true,x);y-=17;
                 Instant at=i==0?d.signing().ownerSignedAt():d.signing().customerSignedAt();
                 line(at==null?"Chưa ký":at.atZone(ZoneId.of("Asia/Ho_Chi_Minh")).format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")),8,false,x);
-            }y=top-175;
+            }y=top-170;
         }
         void finish(ContractDraftResponse d)throws IOException{
             out.close();out=null;int count=document.getNumberOfPages();
