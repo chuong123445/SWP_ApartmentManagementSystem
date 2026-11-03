@@ -81,6 +81,8 @@ public class SecurityConfig {
                         .withObjectPostProcessor(VneidSecurityConfig.enforceCsrf(request -> !Set.of("GET", "HEAD", "OPTIONS", "TRACE").contains(request.getMethod())
                                 && (request.getRequestURI().startsWith(request.getContextPath() + "/api/v1/auth/")
                                 || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/verifications/vneid")
+                                || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/verifications/vneid/confirm")
+                                || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/verifications/vneid/cancel")
                                 || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/property-source-consent")
                                 || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/owner-upgrade")))))
                 .authorizeHttpRequests(a -> a
@@ -90,7 +92,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/contracts/*/pdf", "/api/v1/contracts/*/signatures").authenticated()
                         .requestMatchers("/api/v1/auth/google").permitAll()
                         .requestMatchers("/api/v1/auth/csrf", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout", "/error").permitAll()
-                        .requestMatchers("/api/v1/me/verifications", "/api/v1/me/verifications/vneid", "/api/v1/me/owner-upgrade").authenticated()
+                        .requestMatchers("/api/v1/me/verifications", "/api/v1/me/verifications/vneid", "/api/v1/me/verifications/vneid/confirm", "/api/v1/me/verifications/vneid/cancel", "/api/v1/me/owner-upgrade").authenticated()
                         .requestMatchers("/api/v1/auth/vneid-config").permitAll()
                         .requestMatchers("/api/v1/me/properties", "/api/v1/me/properties/*/images", "/api/v1/me/apartments/*", "/api/v1/me/apartments/*/prices").authenticated()
                         .requestMatchers("/api/v1/me/property-source-consent", "/api/v1/me/property-images").authenticated()
