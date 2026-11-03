@@ -29,6 +29,10 @@ public class OwnerPropertyController {
         return ResponseEntity.created(URI.create("/api/v1/owner/properties")).cacheControl(org.springframework.http.CacheControl.noStore()).body(result);
     }
     @GetMapping public List<OwnerPropertyResponse> list(@AuthenticationPrincipal Jwt jwt) { return properties.list(jwt); }
+    @PostMapping("/{id}/vneid-units") public ResponseEntity<OwnerPropertyCreated> appendSourceUnits(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,
+            @Valid @RequestBody com.ancu.proptech.dto.property.VneidUnitsAppendRequest input) {
+        return ResponseEntity.status(201).cacheControl(org.springframework.http.CacheControl.noStore()).body(vneid.appendUnits(jwt,id,input));
+    }
     @PostMapping public ResponseEntity<OwnerPropertyCreated> create(@AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody OwnerPropertyCreate input) {
         var result = properties.create(jwt, input);

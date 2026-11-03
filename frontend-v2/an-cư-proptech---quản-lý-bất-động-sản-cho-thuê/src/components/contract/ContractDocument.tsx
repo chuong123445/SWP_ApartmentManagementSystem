@@ -7,6 +7,7 @@ import type { ContractDraft } from '@/types/contract';
 import { ContractLifecyclePanel } from '@/components/contract/ContractLifecyclePanel';
 
 export const signingLabel = (draft: ContractDraft) => draft.status === 'ENDED' ? 'Đã kết thúc' :
+  draft.status === 'DRAFT' && draft.signing?.state === 'SIGNED' && draft.lifecycle?.previousContractId ? 'Đã ký — chờ chuyển kỳ thuê' :
   draft.status === 'ACTIVE' && draft.lifecycle?.expired ? 'Hết hạn — chờ ký tiếp hoặc bàn giao' :
   draft.signing?.state === 'SIGNED' ? 'Hai bên đã ký' : draft.signing?.state === 'WAITING_CUSTOMER' ? 'Chờ khách thuê ký' :
   draft.signing?.state === 'WAITING_OWNER' ? 'Chờ chủ nhà ký' : draft.status === 'ACTIVE' ? 'Đang hiệu lực' : 'Chờ hai bên ký';

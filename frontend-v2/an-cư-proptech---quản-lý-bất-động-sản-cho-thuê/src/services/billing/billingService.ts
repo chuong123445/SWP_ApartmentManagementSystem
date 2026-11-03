@@ -2,6 +2,8 @@ import { apiFetch, readApiError } from '@/services/http/client';
 import type { BillingContext, MeterReadingInput, BillingInvoice, InvoiceCreate, Tenancy } from '@/types/billing';
 import type { PageResult } from '@/types/apartment';
 import type { Invoice, Tenant, Contract } from '@/types';
+import type { TestReceipt } from '@/services/payment/sepayService';
+export type OwnerInvoiceFilter = 'ALL' | 'DRAFT' | 'UNPAID' | 'PAID';
 async function request<T>(url: string, body?: unknown): Promise<T> {
   const response = await apiFetch(url, body === undefined ? undefined : {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
@@ -16,11 +18,18 @@ export function saveMeterReadings(id:string,input:MeterReadingInput){return requ
 export function createInvoice(id: string, input: InvoiceCreate) { return request<BillingInvoice>(`/api/v1/owner/contracts/${encodeURIComponent(id)}/invoices`, input); }
 export function sendInvoice(id: string, version: number) { return request<BillingInvoice>(`/api/v1/owner/invoices/${encodeURIComponent(id)}/send`, { version }); }
 export function getInvoice(id: string) { return request<BillingInvoice>(`/api/v1/invoices/${encodeURIComponent(id)}`); }
-export function ownerInvoices(page = 0, size = 20, propertyId?: string) {
+export function ownerInvoices(page = 0, size = 20, propertyId?: string, filter: OwnerInvoiceFilter = 'ALL') {
   const query = new URLSearchParams({ page: String(page), size: String(size) });
   if (propertyId) query.set('propertyId', propertyId);
+  if (filter !== 'ALL') query.set('filter', filter);
   return request<PageResult<BillingInvoice>>(`/api/v1/owner/invoices?${query}`);
 }
+export function ownerReceivedInvoices(page = 0, size = 20, propertyId?: string, paymentStatus: InvoicePaymentFilter = 'ALL') {
+  const query = new URLSearchParams({ page: String(page), size: String(size), paymentStatus });
+  if (propertyId) query.set('propertyId', propertyId);
+  return request<PageResult<TestReceipt>>(`/api/v1/owner/invoices/additional?${query}`);
+}
+export const getOwnerReceivedInvoice = (id: string) => request<TestReceipt>(`/api/v1/owner/invoices/additional/${encodeURIComponent(id)}`);
 export type InvoicePaymentFilter = 'UNPAID' | 'PAID' | 'ALL';
 export function myInvoices(page = 0, size = 20, paymentStatus: InvoicePaymentFilter = 'ALL') { return request<PageResult<BillingInvoice>>(`/api/v1/me/invoices?page=${page}&size=${size}&paymentStatus=${paymentStatus}`); }
 // Adapt server data to the existing Owner layout. Numbers are for display only.

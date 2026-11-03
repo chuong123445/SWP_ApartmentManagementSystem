@@ -36,14 +36,14 @@ export function RequestList({
           <div className="flex flex-wrap justify-between gap-3">
             <div>
               <h2 className="font-bold text-slate-900">
-                <Link to={`/apartments/${request.apartmentId}`} className="hover:text-emerald-700">
+                <Link to={!owner && request.contractId ? `/contracts/${request.contractId}` : `/apartments/${request.apartmentId}`} className="hover:text-emerald-700">
                   {request.apartmentTitle}
                 </Link>
               </h2>
               <p className="text-xs text-slate-500 mt-1">{request.address}</p>
             </div>
             <span className={`text-xs font-semibold rounded-full px-3 py-1 self-start ${statusBadgeClass[request.status]}`}>
-              {request.status === 'ACCEPTED' && request.contractCompleted ? 'Đã tạo hợp đồng' : requestStatusLabel[request.status]}
+              {request.status === 'ACCEPTED' && request.contractCompleted ? 'Đã ký hợp đồng' : requestStatusLabel[request.status]}
             </span>
           </div>
 
@@ -66,7 +66,7 @@ export function RequestList({
           {request.decisionReason && <p className="mt-3 text-sm text-slate-700 whitespace-pre-wrap break-words"><span className="font-semibold">{request.status === 'REJECTED' ? 'Lý do từ chối: ' : 'Lý do xử lý: '}</span>{request.decisionReason}</p>}
           {/* Owner actions */}
           {owner && request.status === 'PENDING' && (
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-3">
+            <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 disabled={!!decidingId}
@@ -74,7 +74,7 @@ export function RequestList({
                 className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-50 transition-colors shadow-sm cursor-pointer"
               >
                 <Check className="w-4 h-4" />
-                {decidingId === request.id ? 'Đang xử lý...' : 'Đồng ý'}
+                {decidingId === request.id ? 'Đang xử lý...' : 'Đồng ý làm hợp đồng'}
               </button>
               <button
                 type="button"
@@ -92,7 +92,7 @@ export function RequestList({
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-3">
               <span className="text-xs text-emerald-700 font-medium inline-flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                {request.contractCompleted ? 'Đã tạo hợp đồng — hai bên đã ký đầy đủ' : 'Đã chấp nhận yêu cầu thuê'}
+                {request.contractCompleted ? 'Đã ký hợp đồng — hai bên đã ký đầy đủ' : 'Đang làm hợp đồng — chưa đủ hai chữ ký'}
               </span>
               {request.contractCompleted && request.contractId ? <Link to={`/contracts/${request.contractId}`} className="text-sm font-semibold text-emerald-700 underline">Xem hợp đồng</Link> : <button
                 type="button"
@@ -114,6 +114,12 @@ export function RequestList({
           )}
 
           {/* Customer actions & status notices */}
+          {!owner && request.contractId && (
+            <Link to={`/contracts/${request.contractId}`} className="mt-3 flex w-fit items-center gap-2 text-sm font-semibold text-emerald-700 underline">
+              <FileText className="w-4 h-4" />
+              {request.contractCompleted ? 'Xem hợp đồng' : 'Xem / ký hợp đồng'}
+            </Link>
+          )}
           {!owner && request.status === 'PENDING' && onCancel && (
             <button
               disabled={!!cancelling}
@@ -127,7 +133,7 @@ export function RequestList({
           {!owner && request.status === 'ACCEPTED' && (
             <div className="mt-3 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 inline-flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>{request.contractCompleted ? 'Đã tạo hợp đồng — hai bên đã ký đầy đủ.' : 'Chủ nhà đã chấp nhận yêu cầu thuê của bạn. Vui lòng liên hệ chủ nhà để thực hiện bước hợp đồng.'}</span>
+              <span>{request.contractCompleted ? 'Đã ký hợp đồng — hai bên đã ký đầy đủ.' : 'Đang làm hợp đồng. Hai bên cần rà soát nội dung và ký trước khi bắt đầu quan hệ thuê.'}</span>
             </div>
           )}
 

@@ -1,7 +1,7 @@
 import {useEffect,useState} from 'react';
 import {getSourceConsent,allowPropertySource,type SourceConsent} from '@/services/property/assetManagementService';
 import {VneidAssetImportForm} from '@/components/property/VneidAssetImportForm';
-export function SourcePropertyOnboarding(props:{onClose:()=>void;onBack:()=>void;onImported:(id:string)=>void}){
+export function SourcePropertyOnboarding(props:{onClose:()=>void;onBack:()=>void;onImported:(id:string)=>void;propertyId?:string}){
   const [state,setState]=useState<SourceConsent|null>(null);const [checked,setChecked]=useState(false);const [error,setError]=useState('');const [busy,setBusy]=useState(false);const [revision,setRevision]=useState(0);
   useEffect(()=>{const abort=new AbortController();setState(null);setError('');getSourceConsent(abort.signal).then(s=>{if(!abort.signal.aborted)setState(s);}).catch(e=>{if(!abort.signal.aborted)setError(e instanceof Error?e.message:'Chưa tải được quyền đọc tài sản.');});return()=>abort.abort();},[revision]);
   if(state?.consented)return <VneidAssetImportForm {...props}/>;
