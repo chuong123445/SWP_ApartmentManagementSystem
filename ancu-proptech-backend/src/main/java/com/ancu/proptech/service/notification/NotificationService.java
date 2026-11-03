@@ -83,7 +83,7 @@ public class NotificationService {
  FROM property_dossiers d JOIN rental_properties p ON p.id=d.property_id WHERE :role='ADMIN'
  )
  """;
- private Map<String,Object> params(Jwt jwt){var a=access.account(jwt);return new HashMap<>(Map.of("account",a.getId(),"role",a.getRole().name()));}
+ private Map<String,Object> params(Jwt jwt){var a=access.account(jwt);return new HashMap<>(Map.of("account",a.getId(),"role",a.hasRole(com.ancu.proptech.model.auth.AuthAccount.Role.ADMIN)?"ADMIN":"USER"));}
  @Transactional(readOnly=true) public Feed list(Jwt jwt,int page,int size){
   ApartmentService.validatePage(page,size);var params=params(jwt);var at=Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
   params.put("through",LocalDateTime.ofInstant(at,ZoneOffset.UTC).toString());params.put("offset",Math.multiplyExact((long)page,size));params.put("size",size);

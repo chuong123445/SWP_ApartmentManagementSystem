@@ -70,7 +70,7 @@ public class ContractDraftService {
         if(a.getAvailability()!=Apartment.Availability.CONTRACT_IN_PROGRESS || contracts.findByApartmentId(a.getId()).stream().anyMatch(c->c.getStatus()!=RentalContract.Status.ENDED))
             throw conflict("APARTMENT_NOT_SELECTED","Căn hộ không còn ở bước làm hợp đồng hoặc đã có hợp đồng hiện hành.");
         var customer=r.getCustomer();
-        if((customer.getRole()!=AuthAccount.Role.CUSTOMER&&customer.getRole()!=AuthAccount.Role.OWNER) || customer.getStatus()!=AuthAccount.Status.ACTIVE || !verification.isRentalVerified(customer))
+        if(!customer.hasRole(AuthAccount.Role.CUSTOMER) || customer.getStatus()!=AuthAccount.Status.ACTIVE || !verification.isRentalVerified(customer))
             throw conflict("CUSTOMER_NOT_ELIGIBLE","Tài khoản khách thuê không còn đủ điều kiện.");
         rights.requireCurrent(a.getProperty());
         var snapshot=snapshot(r);
@@ -149,7 +149,7 @@ public class ContractDraftService {
             throw conflict("ALREADY_SIGNED","Bạn đã ký hợp đồng này.");
         var apartment=apartments.findForRequest(c.getApartment().getId()).orElseThrow(ContractDraftService::notFound);
         var landlord=apartment.getProperty().getOwner();
-        if(landlord.getStatus()!=AuthAccount.Status.ACTIVE || landlord.getRole()!=AuthAccount.Role.OWNER || !verification.isVerified(landlord))
+        if(landlord.getStatus()!=AuthAccount.Status.ACTIVE || !landlord.hasRole(AuthAccount.Role.OWNER) || !verification.isVerified(landlord))
             throw conflict("OWNER_NOT_ELIGIBLE","Chủ nhà không còn đủ điều kiện ký hợp đồng.");
         rights.requireCurrent(apartment.getProperty());
         rights.contract(apartment.getProperty(),c.getStartDate(),c.getEndDate());

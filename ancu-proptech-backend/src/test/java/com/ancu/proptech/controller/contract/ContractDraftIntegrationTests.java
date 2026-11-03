@@ -51,6 +51,16 @@ class ContractDraftIntegrationTests {
     private String token,customerToken,otherToken;
     private static String hash;
     private static final String PASSWORD="Contract-test!12345";
+    @Test void dualRoleTenantSignsTheirOwnSlotWithoutManagingOtherOwnersContract()throws Exception {
+        customer.setRole(AuthAccount.Role.OWNER);accounts.saveAndFlush(customer);
+        String saved=create();String hash=JsonPath.read(saved,"$.signing.contentHash");
+        sign(saved,token,hash,signature(),true).andExpect(status().isOk());
+        sign(saved,customerToken,hash,signature(),true).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"));
+        mvc.perform(get("/api/v1/me/contract-drafts").header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
+        mvc.perform(get("/api/v1/owner/contract-drafts").header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get("/api/v1/owner/contracts/"+id(saved)+"/billing-context").header("Authorization",customerToken)).andExpect(status().isNotFound());
+        assertEquals(Set.of(AuthAccount.Role.OWNER,AuthAccount.Role.CUSTOMER),customer.getRoles());
+    }
     @Test void customerRequestInboxExcludesConvertedSelectionsBeforePagingButKeepsTheirDocuments()throws Exception {
         String saved=create();
         for(var state:List.of(RentalRequest.Status.REJECTED,RentalRequest.Status.CANCELLED)){

@@ -42,7 +42,7 @@ public class RentalRequestService {
         if (!activeRequests(customer.getId(), apartmentId).isEmpty())
             throw new ApiException(HttpStatus.CONFLICT, "RENTAL_REQUEST_EXISTS", "Bạn đã có yêu cầu thuê cho căn hộ này. Hãy xem hoặc hủy yêu cầu đang chờ xử lý.");
         if (apartment.getPublicationStatus() != Apartment.PublicationStatus.PUBLISHED || p.getApprovalStatus() != Property.ApprovalStatus.APPROVED
-                || owner.getStatus() != AuthAccount.Status.ACTIVE || !verification.isVerified(owner) || owner.getRole() != AuthAccount.Role.OWNER) throw notFound();
+                || owner.getStatus() != AuthAccount.Status.ACTIVE || !verification.isVerified(owner) || !owner.hasRole(AuthAccount.Role.OWNER)) throw notFound();
         if (apartment.getAvailability() != Apartment.Availability.VACANT)
             throw new ApiException(HttpStatus.CONFLICT, "APARTMENT_NOT_AVAILABLE", "Căn hộ hiện không còn nhận yêu cầu thuê.");
         RentalRequest request = new RentalRequest();
