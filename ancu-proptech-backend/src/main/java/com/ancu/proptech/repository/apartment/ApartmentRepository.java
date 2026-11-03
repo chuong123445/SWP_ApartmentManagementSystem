@@ -15,6 +15,7 @@ public interface ApartmentRepository extends JpaRepository<Apartment, Long>, Jpa
     List<Apartment> findByPropertyOwnerIdOrderByCreatedAtAscIdAsc(Long ownerId);
     boolean existsByPropertyIdAndRoomNumber(Long propertyId, String roomNumber);
     long countByPropertyId(Long propertyId);
+    List<Apartment> findByPropertyIdOrderByIdAsc(Long propertyId);
     boolean existsByPropertyIdAndPublicationStatus(Long propertyId,Apartment.PublicationStatus publicationStatus);
     @Query("select a.property.id from Apartment a where a.id=:id")
     Optional<Long> findPropertyId(@Param("id") Long id);

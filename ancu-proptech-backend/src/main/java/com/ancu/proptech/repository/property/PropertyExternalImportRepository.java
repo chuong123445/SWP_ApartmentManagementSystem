@@ -4,4 +4,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PropertyExternalImportRepository extends JpaRepository<PropertyExternalImport,Long> {
     boolean existsByIssuerAndExternalAssetId(String issuer,String externalAssetId);
+    java.util.Optional<PropertyExternalImport> findByIssuerAndExternalAssetId(String issuer,String externalAssetId);
 }

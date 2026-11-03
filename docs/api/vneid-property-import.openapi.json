@@ -16,7 +16,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Private/no-store candidates; each {asset:{externalAssetId,name,address,rentalMode,certificateNumber,certificateDate,certificatePlace,units:[{externalUnitId,code,areaM2,bedrooms,bathrooms}]},sourceVersion:SHA256,imported:boolean}. No issuer/subject/token/credentials."
+            "description": "Private/no-store candidates: asset + sourceVersion + imported; own imports additionally expose propertyId (decimal string), propertyVersion, unitStates [{externalUnitId,apartmentId,publicationStatus}] and nullable appendBlockedReason. Unmapped legacy properties return SOURCE_UNIT_RECONCILIATION_REQUIRED. Foreign imports expose no local property ID or unit states. Existing hidden rooms remain imported. No issuer/subject/token/credentials."
           },
           "401": {
             "description": "Invalid session"
@@ -33,7 +33,7 @@
     "/api/v1/owner/properties/vneid-imports": {
       "post": {
         "summary": "Complete rental terms and import/publish a source-owned asset without Admin review",
-        "description": "Server rereads exact linked subject and exact asset, checks sourceVersion and complete exact unit set; locks/rechecks owner session/link; unique issuer+external_asset_id. Atomic Property APPROVED, Apartment PUBLISHED/VACANT, rates/baselines and V15 private source audit. No fake Admin decision. Cannot add manual units into imported property. Caller cannot select account/owner/approval/area/address/source/verified fields. Rentable status is not contract activation or payment. Exact verified CUSTOMER/OWNER and consent required. Atomic validated creation, source evidence and CUSTOMER→OWNER at successful commit. Failure/stale/missing fields never promotes.",
+        "description": "Create one property and only the selected nonempty subset of source rooms. Validate fresh sourceVersion, exact identity/consent, unique valid source unit IDs and complete terms for selected rooms only. In one transaction persist approved source-owned property, selected published apartments, immutable source batch/mappings and eligible owner activation. Unselected rooms have no local apartment or invented price/readings. Old clients selecting all rooms remain supported.",
         "security": [
           {
             "internalBearer": []
@@ -118,6 +118,61 @@
           },
           "409": {
             "description": "VERSION_CONFLICT or SOURCE_PROPERTY_REQUIRED"
+          }
+        }
+      }
+    },
+    "/api/v1/owner/properties/{id}/vneid-units": {
+      "post": {
+        "summary": "Append selected source rooms to an own existing source property",
+        "description": "Internal session, ACTIVE persisted VNeID and current exact source consent required. Fresh provider read occurs outside SQL locks. Inside the account/property lock recheck binding, property version/approval/ownership, unchanged legal evidence, complete legacy mappings and source-unit uniqueness. Creates/publishes selected new rooms and one immutable audit batch atomically. Preserves parent metadata/images/receiving configuration, existing rooms, requests, signed/unsigned saved contracts and financial history. Duplicate/racing selections fail without partial creation. New manual-unit endpoints remain forbidden for source imports.",
+        "security": [
+          {
+            "internalBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppendUnits"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OwnerPropertyCreated: existing property plus all its current apartments; no-store"
+          },
+          "400": {
+            "description": "Empty/duplicate/unknown selected IDs, incomplete or invalid terms, forged authority/parent fields"
+          },
+          "401": {
+            "description": "Invalid/revoked session"
+          },
+          "403": {
+            "description": "VNeID or source consent required"
+          },
+          "404": {
+            "description": "Foreign/local non-source property or current source asset unavailable"
+          },
+          "409": {
+            "description": "STALE_VERSION, ASSET_SOURCE_CHANGED, VNEID_LINK_CHANGED, SOURCE_UNIT_ALREADY_IMPORTED, SOURCE_ROOM_CODE_CONFLICT, SOURCE_UNIT_RECONCILIATION_REQUIRED, ASSET_LEGAL_SOURCE_CHANGED or SOURCE_PROPERTY_NOT_ELIGIBLE"
+          },
+          "503": {
+            "description": "Source provider unavailable"
           }
         }
       }
@@ -280,6 +335,34 @@
           "accountHolderName",
           "version"
         ]
+      },
+      "AppendUnits": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "sourceVersion",
+          "units"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "sourceVersion": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "units": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "items": {
+              "$ref": "#/components/schemas/UnitTerms"
+            }
+          }
+        }
       }
     }
   }
