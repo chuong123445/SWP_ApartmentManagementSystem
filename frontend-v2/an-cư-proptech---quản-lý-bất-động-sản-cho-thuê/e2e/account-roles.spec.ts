@@ -26,6 +26,7 @@ export async function checkAccountWorkspaces(page: Page, width: number, scenario
     if(path.endsWith('/refresh'))return json({accessToken:'fixture',tokenType:'Bearer',expiresIn:900,user:user()});
     if(path==='/api/v1/me')return json(user());
     if(path==='/api/v1/me/profile')return json({...user(),phone:null,dateOfBirth:null,address:null,bio:null,emailVerified:true,phoneVerified:false});
+    if(path==='/api/v1/me/verifications')return json({emailVerified:true,phoneVerified:false,vneid:{status:'NOT_VERIFIED'}});
     if(path.endsWith('/notifications'))return json({...empty,unreadCount:0});
     if(path==='/api/v1/me/tenancies')return json(scenario==='tenant'?[{id:'42',apartmentId:'5',roomNumber:'A.101',apartmentTitle:'Căn hộ kiểm thử',propertyName:'Tài sản bên cho thuê',customerId:'2',customerName:user().fullName,status:'ACTIVE',startDate:draft.startDate,endDate:draft.endDate,monthlyRent:draft.monthlyRent,version:0}]:[]);
     if(path==='/api/v1/contracts/42')return json(draft);
@@ -61,6 +62,12 @@ export async function checkAccountWorkspaces(page: Page, width: number, scenario
       roles=['CUSTOMER'];await page.goto('/app');await until(async()=>new URL(page.url()).pathname==='/','Revoked Owner retained workspace');
       await open();ensure(await menu().getByRole('link',{name:'Quản lý cho thuê',exact:true}).count()===0,'Revoked Owner link remains');
     }
+  }
+  if(scenario==='dual'||scenario==='reverse'){
+    await page.goto('/account/settings');
+    await page.getByRole('link',{name:'Số dư và rút tiền',exact:true}).waitFor({state:'visible'});
+    ensure(await page.getByRole('link',{name:'Thiết lập thanh toán SePay',exact:true}).count()===0,'Owner still configures a separate SePay account');
+    ensure(await page.getByRole('heading',{name:'Cho thuê căn hộ',exact:true}).count()===0,'Owner sees Customer-only acquisition prompt');
   }
   ensure(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Horizontal overflow');
   ensure(unexpected.length===0,'Unexpected API: '+unexpected.join(';'));ensure(network.length===0,'Network errors: '+network.join(';'));ensure(errors.length===0,'Browser errors: '+errors.join(';'));ensure(writes.length===0,'Workspace navigation changed server state: '+writes.join(';'));

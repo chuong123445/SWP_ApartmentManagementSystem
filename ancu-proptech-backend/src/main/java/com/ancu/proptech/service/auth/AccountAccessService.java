@@ -15,7 +15,7 @@ public class AccountAccessService {
     public AuthAccount admin(Jwt jwt) {
         AuthAccount account = auth.authenticate(jwt);
         if (!account.hasRole(AuthAccount.Role.ADMIN) || account.getStatus() != AuthAccount.Status.ACTIVE)
-            throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Chỉ Admin đang hoạt động được kiểm duyệt hồ sơ tài sản.");
+            throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Chỉ Admin đang hoạt động được thực hiện chức năng quản trị.");
         return account;
     }
     private AuthAccount require(Jwt jwt, AuthAccount.Role role) {

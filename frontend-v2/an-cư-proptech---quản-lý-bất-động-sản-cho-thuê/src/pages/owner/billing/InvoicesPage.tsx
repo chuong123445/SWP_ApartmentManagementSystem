@@ -35,7 +35,7 @@ export function InvoicesPage({ invoices, history, onOpenInvoiceModal, onOpenCrea
         <div className="op-eyebrow">Tài chính · Thu tiền thuê</div><h1>Hóa đơn người thuê</h1>
         <p>Lập hóa đơn từ hợp đồng và chỉ số công tơ, gửi trực tiếp đến người thuê.</p>
       </div></div>
-      <div className="op-buttons"><Link to="/account/settings/payments/test" className="op-button">Tạo phiếu thanh toán thử</Link><button onClick={onReload} className="op-button" disabled={loading}><RefreshCw size={14}/>Làm mới</button><button id="btn-create-invoice-page" onClick={onOpenCreateInvoiceModal} className="op-button op-button-primary"><Plus size={15}/>Lập hóa đơn mới</button></div>
+      <div className="op-buttons"><Link to="/account/settings/payments" className="op-button">Số dư và rút tiền</Link><Link to="/account/settings/payments/test" className="op-button">Tạo phiếu thanh toán thử</Link><button onClick={onReload} className="op-button" disabled={loading}><RefreshCw size={14}/>Làm mới</button><button id="btn-create-invoice-page" onClick={onOpenCreateInvoiceModal} className="op-button op-button-primary"><Plus size={15}/>Lập hóa đơn mới</button></div>
     </header>
     <div className="op-stats">
       {[{label:'Hóa đơn tháng trên trang',value:invoices.length,icon:ReceiptText,tone:''},{label:'Bản nháp trên trang',value:draftCount,icon:FileText,tone:'amber'},{label:'Đã thanh toán trên trang',value:paidCount,icon:CheckCircle2,tone:'blue'}].map(s=><div className="op-stat" key={s.label}><span className={`op-stat-icon ${s.tone}`}><s.icon size={19}/></span><div><small>{s.label}</small><strong>{loading?'—':s.value}</strong></div></div>)}
