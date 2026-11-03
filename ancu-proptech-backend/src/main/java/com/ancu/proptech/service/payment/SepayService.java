@@ -104,6 +104,13 @@ public class SepayService {
   var p=new TestPayment();p.setContractId(contract==null?null:contract.getId());p.setCustomerId(contract==null?null:contract.getCustomer().getId());p.setOwnerId(owner);p.setAmount(input.amount());p.setPaymentCode("ANCUTEST"+randomHex(12));p.setBank(c.getBank());p.setAccountNumber(c.getAccountNumber());p.setVirtualAccount(c.getVirtualAccount());p.setAccountHolderName(c.getAccountHolderName());p.setCreatedAt(Instant.now());testPayments.saveAndFlush(p);return testView(p);
  }
  @Transactional(readOnly=true) public List<TestReceipt> testHistory(Jwt jwt){return testPayments.findTop20ByOwnerIdOrderByIdDesc(access.owner(jwt).getId()).stream().map(this::testView).toList();}
+ @Transactional(readOnly=true) public com.ancu.proptech.dto.common.PageResponse<TestReceipt> ownerReceivedHistory(Jwt jwt,int page,int size,Long propertyId,com.ancu.proptech.dto.billing.InvoicePaymentFilter paymentStatus){
+  com.ancu.proptech.service.apartment.ApartmentService.validatePage(page,size);
+  Boolean paid=paymentStatus==com.ancu.proptech.dto.billing.InvoicePaymentFilter.PAID?Boolean.TRUE:paymentStatus==com.ancu.proptech.dto.billing.InvoicePaymentFilter.UNPAID?Boolean.FALSE:null;
+  var items=testPayments.ownerReceived(access.owner(jwt).getId(),propertyId,paid,org.springframework.data.domain.PageRequest.of(page,size,org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,"createdAt","id")));
+  return com.ancu.proptech.dto.common.PageResponse.from(items.map(this::testView));
+ }
+ @Transactional(readOnly=true) public TestReceipt ownerReceivedDetail(Jwt jwt,Long id){return testView(testPayments.ownerReceivedDetail(access.owner(jwt).getId(),null,null,id).orElseThrow(SepayService::missing));}
  @Transactional(readOnly=true) public List<TestRecipient> testRecipients(Jwt jwt){return contracts.findByApartmentPropertyOwnerIdAndStatusOrderByStartDateDescIdAsc(access.owner(jwt).getId(),RentalContract.Status.ACTIVE).stream().filter(c->!c.getCustomer().getId().equals(c.getApartment().getProperty().getOwner().getId())).map(c->new TestRecipient(c.getId().toString(),c.getCustomer().getFullName(),c.getApartment().getRoomNumber())).toList();}
  @Transactional(readOnly=true) public List<TestReceipt> tenantTestHistory(Jwt jwt,com.ancu.proptech.dto.billing.InvoicePaymentFilter paymentStatus){
   Long customer=access.customer(jwt).getId();
