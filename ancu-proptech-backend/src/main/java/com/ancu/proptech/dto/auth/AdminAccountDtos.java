@@ -17,5 +17,15 @@ public final class AdminAccountDtos {
                           AuthAccount.Status status, Instant deletedAt, long version, boolean canManage,
                           boolean canUnlock) {}
 
+    public record Profile(Account account, String phone, String address, String bio, java.time.LocalDate dateOfBirth,
+                          boolean emailVerified, boolean phoneVerified) {}
+
+    public record Contract(String id, String relationship, String roomNumber, String propertyName, String ownerName,
+                           String tenantName, String status, java.time.LocalDate startDate, java.time.LocalDate endDate,
+                           String monthlyRent) {}
+
+    public record PaidInvoice(String id, String source, String contractId, String period, String roomNumber,
+                              String ownerName, String tenantName, String amount, Instant paidAt) {}
+
     public record Result(String id, String outcome) {}
 }

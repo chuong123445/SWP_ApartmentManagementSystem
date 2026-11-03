@@ -24,6 +24,7 @@ public class AdminAccountService {
     private final AccountAccessService access;
     private final AuthAccountRepository accounts;
     private final AccountAdministrationRepository administration;
+    private final com.ancu.proptech.repository.auth.AdminAccountHistoryRepository history;
 
     @Transactional(readOnly = true)
     public PageResponse<Account> list(Jwt jwt, String search, Filter filter, int page, int size) {
@@ -36,6 +37,34 @@ public class AdminAccountService {
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"))).map(a -> view(a, admin)));
     }
 
+    @Transactional(readOnly = true)
+    public Profile profile(Jwt jwt, Long id) {
+        Long admin = access.admin(jwt).getId();
+        var account = findAccount(id);
+        return new Profile(view(account, admin), account.getPhone(), account.getAddress(), account.getBio(),
+                account.getDateOfBirth(), account.isEmailVerified(), account.isPhoneVerified());
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<Contract> contracts(Jwt jwt, Long id, int page, int size) {
+        access.admin(jwt);
+        findAccount(id);
+        ApartmentService.validatePage(page, size);
+        return PageResponse.from(history.contracts(id, PageRequest.of(page, size)));
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<PaidInvoice> paidInvoices(Jwt jwt, Long id, int page, int size) {
+        access.admin(jwt);
+        findAccount(id);
+        ApartmentService.validatePage(page, size);
+        return PageResponse.from(history.paidInvoices(id, PageRequest.of(page, size)));
+    }
+
+    private AuthAccount findAccount(Long id) {
+        return accounts.findById(id).orElseThrow(() ->
+                error(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Không tìm thấy tài khoản."));
+    }
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public Result command(Jwt jwt, Long id, Command input) {
         Long admin = access.admin(jwt).getId();
