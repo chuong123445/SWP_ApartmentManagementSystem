@@ -1,0 +1,29 @@
+# Required Vietnamese phone and external contact completion
+
+Ordinary signup now requires a Vietnamese phone on both client and server; phone settings use the same normalization. Domestic mobile 10-digit prefixes 03/05/07/08/09 and 11-digit 02 landlines, or their +84 forms, are accepted. Formatting separators are supported; foreign prefixes, wrong lengths, old mobile format, letters and non-ASCII digits are rejected. This validates format and does not grant phone verification.
+
+Auth0 first/legacy-unconfirmed login returns HTTP428 before creating an internal account/session. Callback collects email and phone, then resubmits the same validated provider evidence. Existing bindings require the current stored email; changing it remains OTP-protected. Confirmed contacts cannot be changed through login. A changed phone invalidates old sessions/challenges; confirmation and optional evidence are flushed before bulk revocation clears the persistence context. Returning confirmed users are not asked again. New accounts support a provider without an email claim, collecting an unverified contact email instead. Source/issuer/audience/identity evidence and no-auto-link protections remain; no contact is accepted as citizen proof.
+
+Google quick signup also requires Vietnamese phone before creating an account, closing the alternate path around required signup fields. Existing Google subject lookup/no-auto-link remains. Provider credentials stay in memory; no password handling changes.
+
+## Legacy local operation
+
+The user explicitly approved generating format-correct numbers for legacy blanks without a real mapping or verification. Applied V51 to local `proptech_db`: **19 blank phones filled**, none remain; existing nonblank phones and non-contact account fields, contracts, drafts, identities, properties, apartments and invoices retain SHA-256 fingerprints. `phone_verified` stays false for generated contacts; numbers are not claimed to belong to the users. Added nullable contact confirmation timestamp; Auth0 users must supply their own contacts on next completed login.
+
+COPY_ONLY/CHECKSUM backup: `F:/2026/Fa26/DTD/tmp/proptech_db-before-contact-20261103-203713.bak`, RESTORE VERIFYONLY passed and actual restoration to `ancu_contact_before_20261103` succeeded. That pre-change copy identifies the exact 19-account cohort: revoked **14 prior sessions**, invalidated **14 pending email challenges**, with all account rows and other accounts' session/challenge fingerprints unchanged. No histories were deleted. V51 now performs that revocation atomically for newly backfilled rows and is idempotent. Final migration regression verifies a changed account loses access while an unaffected account retains its session.
+
+Private local helpers/evidence: `tmp/apply-registration-contacts.ps1`, `tmp/proptech_db-contact-backfill-result.json`, `tmp/revoke-legacy-contact-sessions.ps1`, `tmp/legacy-contact-session-revocation-result.json`. No credentials or backup/restore files committed. Other user services/source branches, fixtures and snapshots preserved; backend not restarted.
+
+## Validation
+
+- 52 auth/account/registration/VNeID/phone tests PASS on dedicated `ancu_registration_contact_20261103` (50 SQL integration + 2 phone unit); 8 Google service/config tests PASS; final 11 registration integration tests PASS after migration session-revocation enhancement. Overlapping reruns are not additional cases.
+- TypeScript, **105 frontend unit tests**, native Vite production build PASS (1.08s; existing bundle-size warning).
+- **12 Playwright MCP cases PASS** at 1440/390: ordinary missing/foreign/valid phone submission, Google registration phone completion, Auth0 first completion/returning/email conflict/token expiry. Checked page errors, unexpected requests, Auth0 console/network errors, no token display and no horizontal overflow; mobile contact screenshot inspected. Fixtures use real SPA/provider SDK flow with mocked providers/APIs, not a live Auth0 login or real Google account creation.
+- Migration repeated twice on isolated fixtures: valid old numbers/credentials/status retained, only blanks filled once, generated numbers unverified, target sessions revoked and unrelated sessions preserved. Live apply preceded by clone execution; subsequent readback has zero blanks.
+- Initial compile fixtures needed the new service constructor arguments; TypeScript fixtures needed required phones; a CJS test-loader incompatibility was handled by ESM dynamic import. A real persistence bug exposed by session-revocation tests was fixed before passing runs. No dependencies added.
+
+## Auth0 CCCD username deployment
+
+Auth0 Database supports username/password; metadata alone does not create a login identifier. Bundled generator prepares **10 exact-user username PATCHes** with 12-digit CCCD strings, preserving leading zeros and excluding passwords/verification flags/metadata updates. Output: `output/auth0-cccd-username-patches-2026-11-03.json` in the workspace. It is not a bulk-import file. See `docs/setup/auth0-cccd-login.md` for existing-connection configuration and official references.
+
+**Provider configuration/PATCHes have not been applied or live-verified.** Require Username permits email or username; username-only login requires suitable Flexible Identifier settings. Keep the existing user_id/subject, connection and Action. Application contact behavior is implemented/tested but requires loading this branch's backend/frontend. V51 was applied locally; it must accompany deployment elsewhere. Independent V50 multiple-role work must be preserved when merging.
