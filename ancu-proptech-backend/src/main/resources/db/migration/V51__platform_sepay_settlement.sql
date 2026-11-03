@@ -21,9 +21,9 @@ BEGIN
         owner_id BIGINT NOT NULL REFERENCES dbo.auth_accounts(id),
         request_key VARCHAR(36) NOT NULL,
         amount DECIMAL(31,0) NOT NULL CHECK (amount > 0),
-        bank VARCHAR(50) NOT NULL,
+        bank VARCHAR(100) NOT NULL,
         account_number VARCHAR(34) NOT NULL,
-        account_holder NVARCHAR(100) NOT NULL,
+        account_holder NVARCHAR(200) NOT NULL,
         status VARCHAR(16) NOT NULL CHECK (status IN ('PENDING','PROCESSING','PAID','REJECTED','CANCELLED')),
         transfer_reference VARCHAR(100) NULL,
         note NVARCHAR(300) NULL,
@@ -38,6 +38,10 @@ BEGIN
             OR (status <> 'PAID' AND transfer_reference IS NULL AND (status <> 'PROCESSING' OR processing_admin_id IS NOT NULL)))
     );
 END;
+IF COL_LENGTH('dbo.owner_withdrawals', 'bank') < 100
+    ALTER TABLE dbo.owner_withdrawals ALTER COLUMN bank VARCHAR(100) NOT NULL;
+IF COL_LENGTH('dbo.owner_withdrawals', 'account_holder') < 400
+    ALTER TABLE dbo.owner_withdrawals ALTER COLUMN account_holder NVARCHAR(200) NOT NULL;
 IF COL_LENGTH('dbo.owner_withdrawals', 'account_number') < 34
     ALTER TABLE dbo.owner_withdrawals ALTER COLUMN account_number VARCHAR(34) NOT NULL;
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID('dbo.owner_withdrawals') AND name = 'ux_owner_withdrawal_transfer')

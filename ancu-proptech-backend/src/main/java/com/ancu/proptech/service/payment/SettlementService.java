@@ -12,7 +12,7 @@ import com.ancu.proptech.repository.payment.OwnerWithdrawalRepository;
 import com.ancu.proptech.repository.payment.SettlementEntryRepository;
 import com.ancu.proptech.service.apartment.ApartmentService;
 import com.ancu.proptech.service.auth.AccountAccessService;
-import com.ancu.proptech.service.property.PaymentQrDecoder;
+import com.ancu.proptech.service.property.OwnerPaymentQrService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
@@ -34,12 +34,11 @@ public class SettlementService {
     private final AuthAccountRepository accounts;
     private final SettlementEntryRepository entries;
     private final OwnerWithdrawalRepository withdrawals;
-    private final PaymentQrDecoder qrDecoder;
+    private final OwnerPaymentQrService paymentQrs;
 
-    public DestinationPreview previewDestination(Jwt jwt, byte[] image) {
-        access.owner(jwt);
-        var decoded = qrDecoder.decode(image);
-        return new DestinationPreview(decoded.bankName(), decoded.accountNumber(), decoded.accountHolderName());
+    private Destination destination(Jwt jwt) {
+        var qr = paymentQrs.current(jwt);
+        return qr == null ? null : new Destination(qr.id(), qr.bank(), qr.accountNumber(), qr.accountHolderName());
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
@@ -56,7 +55,7 @@ public class SettlementService {
                 .map(e -> new Entry(e.getId().toString(), e.getKind(), e.getSourceId().toString(),
                         money(e.getAmount()), e.getCreatedAt())).toList();
         return new Wallet(money(balance.received()), money(balance.available()),
-                money(balance.reserved()), money(balance.paid()), history);
+                money(balance.reserved()), money(balance.paid()), history, destination(jwt));
     }
 
     @Transactional(readOnly = true)
@@ -78,15 +77,19 @@ public class SettlementService {
         Long owner = access.owner(jwt).getId();
         lockOwner(owner);
         String key = input.requestKey().toString();
-        String bank = input.bank().strip();
-        String holder = input.accountHolder().strip();
         var previous = withdrawals.findByOwnerIdAndRequestKey(owner, key).orElse(null);
         if (previous != null) {
-            if (previous.getAmount().compareTo(input.amount()) != 0 || !previous.getBank().equals(bank)
-                    || !previous.getAccountHolder().equals(holder) || !previous.getAccountNumber().equals(input.accountNumber())) {
+            if (previous.getAmount().compareTo(input.amount()) != 0) {
                 throw conflict("WITHDRAWAL_REQUEST_CHANGED", "Mã yêu cầu đã được dùng với thông tin khác.");
             }
             return view(previous, null);
+        }
+        var destination = destination(jwt);
+        if (destination == null) {
+            throw conflict("WITHDRAWAL_DESTINATION_REQUIRED", "Hãy xác nhận QR nhận tiền chung trong Cài đặt đơn giá.");
+        }
+        if (!destination.qrId().equals(input.qrId().toString())) {
+            throw conflict("WITHDRAWAL_DESTINATION_CHANGED", "Tài khoản nhận tiền đã thay đổi. Kiểm tra lại trước khi gửi.");
         }
         if (balance(owner).available().compareTo(input.amount()) < 0) {
             throw conflict("INSUFFICIENT_SETTLEMENT_BALANCE", "Số tiền yêu cầu vượt quá số dư có thể rút.");
@@ -95,9 +98,9 @@ public class SettlementService {
         w.setOwnerId(owner);
         w.setRequestKey(key);
         w.setAmount(input.amount());
-        w.setBank(bank);
-        w.setAccountNumber(input.accountNumber());
-        w.setAccountHolder(holder);
+        w.setBank(destination.bank());
+        w.setAccountNumber(destination.accountNumber());
+        w.setAccountHolder(destination.accountHolder());
         w.setStatus(Status.PENDING);
         w.setCreatedAt(Instant.now());
         w.setUpdatedAt(w.getCreatedAt());
