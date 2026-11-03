@@ -68,6 +68,7 @@ async function exercise(page: Page, base: string, width: number) {
       reserved: ['PENDING', 'PROCESSING'].includes(withdrawalStatus) ? '3000' : '0',
       paid: withdrawalStatus === 'PAID' ? '3000' : '0', entries: [],
       destination: hasDestination ? { qrId: '17', bank: 'Vietcombank', accountNumber: '0123456789', accountHolder: 'CHU NHA MAU' } : null });
+    if (path === '/admin/property-dossiers') return json(emptyPage);
     if (path === '/admin/settlements/connection') return json({ configured: true, enabled: true,
       bank: 'BIDV', accountNumber: '0123456789', accountHolderName: 'TAI KHOAN THU CHUNG',
       virtualAccount: null, webhookUrl: 'https://example.invalid/webhook', lastWebhookAt: '2026-11-03T08:00:00Z' });
@@ -141,6 +142,24 @@ async function exercise(page: Page, base: string, width: number) {
     await fits();
 
     role = 'ADMIN';
+    await go('/admin/property-dossiers');
+    const adminTabs = page.getByRole('navigation', { name: 'Quản trị', exact: true });
+    const dossiersTab = adminTabs.getByRole('link', { name: 'Kiểm duyệt tài sản', exact: true });
+    const withdrawalsTab = adminTabs.getByRole('link', { name: 'Yêu cầu rút tiền', exact: true });
+    await page.getByRole('heading', { name: 'Kiểm duyệt tài sản', exact: true }).waitFor();
+    check(await dossiersTab.getAttribute('aria-current') === 'page', 'Dossiers tab was not selected');
+    await page.getByRole('button', { name: 'Vai trò và tài khoản' }).click();
+    const adminMenu = page.getByRole('navigation', { name: 'Điều hướng tài khoản' });
+    check(await adminMenu.getByRole('link', { name: /Hồ sơ|Cài đặt tài khoản/ }).count() === 0, 'Admin account links are visible');
+    await adminMenu.getByRole('button', { name: 'Đăng xuất' }).waitFor();
+    await page.getByRole('button', { name: 'Vai trò và tài khoản' }).click();
+    await withdrawalsTab.click();
+    await page.getByRole('heading', { name: 'Xử lý yêu cầu rút tiền' }).waitFor();
+    check(await withdrawalsTab.getAttribute('aria-current') === 'page', 'Withdrawals tab was not selected');
+    check(await page.getByRole('link', { name: /Hồ sơ cá nhân|Cài đặt tài khoản/ }).count() === 0, 'Owner account layout is visible');
+    check(new URL(page.url()).pathname === '/admin/property-dossiers', 'Admin tabs use separate pages');
+    await page.goBack();
+    await page.getByRole('heading', { name: 'Kiểm duyệt tài sản', exact: true }).waitFor();
     await go('/admin/settlements');
     await page.getByRole('button', { name: /#12 · Chờ xử lý/ }).click();
     await page.getByRole('button', { name: 'Nhận xử lý' }).click();
