@@ -31,6 +31,8 @@ export interface ContractLifecycle {
   version: number; expired: boolean; previousContractId: string | null; renewalContractId: string | null;
   endReason: string | null; handover: ContractHandover | null;
   handoverAvailable?: boolean;
+  renewalRequestAvailable?: boolean;
+  renewalRequestOpensOn?: string;
   renewalRequest?: { id: string; status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'FULFILLED' | 'CANCELLED'; message: string; decision: 'ACCEPT' | 'REJECT' | null; decisionReason: string | null; createdAt: string; decidedAt: string | null; version: number } | null;
 }
 export interface RenewalInboxItem {

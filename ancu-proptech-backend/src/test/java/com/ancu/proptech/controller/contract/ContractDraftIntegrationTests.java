@@ -28,6 +28,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
 class ContractDraftIntegrationTests {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    com.ancu.proptech.service.property.ai.DossierAiClient dossierAiClient;
     @Autowired MockMvc mvc;
     @Autowired AuthAccountRepository accounts;
     @Autowired PropertyRepository properties;
@@ -249,6 +251,23 @@ class ContractDraftIntegrationTests {
     }
     private ResultActions askRenewal(String id,String account,String message)throws Exception {
         return mvc.perform(post("/api/v1/contracts/"+id+"/renewal-request").header("Authorization",account).contentType("application/json").content("{\"version\":"+JsonPath.read(readContract(id),"$.lifecycle.version")+",\"consent\":true,\"message\":\""+message+"\"}"));
+    }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints={11,10,1,0,-1})
+    void renewalRequestStartsTenDaysBeforeExpiryUsingServerDate(int daysUntilEnd) throws Exception {
+        String saved=create();String contractId=id(saved);
+        var contract=contracts.findById(Long.valueOf(contractId)).orElseThrow();
+        var today=java.time.LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+        contract.setStatus(RentalContract.Status.ACTIVE);contract.setStartDate(today.minusMonths(1));
+        contract.setEndDate(today.plusDays(daysUntilEnd));contracts.saveAndFlush(contract);
+        String current=readContract(contractId);
+        assertEquals(contract.getEndDate().minusDays(10).toString(),JsonPath.read(current,"$.lifecycle.renewalRequestOpensOn"));
+        assertEquals(Boolean.valueOf(daysUntilEnd<=10),JsonPath.<Boolean>read(current,"$.lifecycle.renewalRequestAvailable"));
+        var response=askRenewal(contractId,customerToken,"Muốn thuê tiếp");
+        if(daysUntilEnd>10){
+            response.andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("RENEWAL_REQUEST_TOO_EARLY"));
+            assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM contract_renewal_requests WHERE contract_id=?",Integer.class,Long.valueOf(contractId)));
+        }else response.andExpect(status().isOk()).andExpect(jsonPath("$.lifecycle.renewalRequest.status").value("PENDING"));
     }
     private void acceptRenewal(String id)throws Exception {
         String requested=askRenewal(id,customerToken,"Muốn thuê tiếp").andExpect(status().isOk()).andReturn().getResponse().getContentAsString();

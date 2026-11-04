@@ -26,6 +26,7 @@ import java.util.*;
 
 @Service @RequiredArgsConstructor
 public class ContractDraftService {
+    static final int RENEWAL_REQUEST_DAYS = 10;
     private final ContractDraftRepository drafts;
     private final RentalContractRepository contracts;
     private final RentalRequestRepository requests;
@@ -252,6 +253,8 @@ public class ContractDraftService {
                 d.getOwnerSignedAt(),d.getCustomerSignedAt(),image(d.getOwnerSignature()),image(d.getCustomerSignature())),lifecycle(c),c.getWaterBillingMode().name(),c.getOccupantCount(),c.getInternetFee().toPlainString(),c.getGarbageFee().toPlainString());
     }
     private ContractDraftResponse.Lifecycle lifecycle(RentalContract c) {
+        var today = rights.today();
+        var renewalRequestOpensOn = c.getEndDate().minusDays(RENEWAL_REQUEST_DAYS);
         var next=contracts.findByRenewalOfContractIdAndStatusNot(c.getId(),RentalContract.Status.ENDED).stream().findFirst().orElse(null);
         var h=handovers.findFirstByContractIdOrderByIdDesc(c.getId()).orElse(null);
         var r=renewalRequests.findByContractId(c.getId()).orElse(null);
@@ -262,7 +265,9 @@ public class ContractDraftService {
             h==null?null:new ContractDraftResponse.Handover(h.getId().toString(),h.getVersion(),h.getStatus().name(),h.getReturnDate(),
                 h.getElectricityReading().toPlainString(),h.getWaterReading().toPlainString(),h.getElectricityStartReading()==null?null:h.getElectricityStartReading().toPlainString(),h.getWaterStartReading()==null?null:h.getWaterStartReading().toPlainString(),h.isKeysReturned(),h.getConditionNotes(),h.getDepositAmount().toPlainString(),
                 h.getDeductionAmount().toPlainString(),h.getUtilityAmount().toPlainString(),h.getRefundAmount().toPlainString(),h.getExtraAmountDue().toPlainString(),h.getOwnerConfirmedAt(),h.getCustomerConfirmedAt()),renewal,
-            c.getStatus()==RentalContract.Status.ACTIVE&&!c.getEndDate().isAfter(rights.today())&&next==null&&!requestOpen&&(h==null||h.getStatus()==ContractHandover.Status.CANCELLED));
+            c.getStatus()==RentalContract.Status.ACTIVE&&!c.getEndDate().isAfter(today)&&next==null&&!requestOpen&&(h==null||h.getStatus()==ContractHandover.Status.CANCELLED),
+            c.getStatus()==RentalContract.Status.ACTIVE&&!renewalRequestOpensOn.isAfter(today)&&next==null&&r==null
+                &&!handovers.existsByContractIdAndStatus(c.getId(),ContractHandover.Status.PENDING),renewalRequestOpensOn);
     }
     private String image(byte[] bytes){return bytes==null?null:"data:image/png;base64,"+Base64.getEncoder().encodeToString(bytes);}
     private String contentHash(ContractDraft d) {
