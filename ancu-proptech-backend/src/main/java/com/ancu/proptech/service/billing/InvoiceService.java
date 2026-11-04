@@ -118,13 +118,13 @@ public class InvoiceService {
     }
     private Source source(RentalContract c){
         if(c.getStatus()!=RentalContract.Status.ACTIVE)throw conflict("INVALID_STATE","Chỉ lập hóa đơn cho hợp đồng đang hoạt động.");
-        if(c.getElectricityBaseline()==null||c.getWaterBaseline()==null||c.getBaselineDate()==null||!c.getBaselineDate().equals(c.getStartDate()))throw conflict("METER_BASELINE_MISSING","Hợp đồng chưa có đủ chỉ số bàn giao đúng ngày bắt đầu.");
-        if(c.getStartDate().getDayOfMonth()!=1)throw conflict("PARTIAL_MONTH_UNSUPPORTED","Hợp đồng có tháng lẻ cần quy tắc tính tiền được thống nhất trước.");
+        // The agreed policy charges the full monthly rent for the initial partial month.
         if(invoices.existsByContractIdAndStatus(c.getId(),RentalInvoice.Status.DRAFT))throw conflict("BILLING_SEQUENCE_CONFLICT","Cần gửi hóa đơn nháp hiện tại trước khi lập kỳ tiếp theo.");
         var last=invoices.findFirstByContractIdAndStatusOrderByPeriodDesc(c.getId(),RentalInvoice.Status.SENT);
         var period=last.map(i->YearMonth.parse(i.getPeriod()).plusMonths(1)).orElse(YearMonth.from(c.getStartDate()));
         if(period.atEndOfMonth().isAfter(c.getEndDate()))throw conflict("BILLING_PERIOD_OUT_OF_RANGE","Không có kỳ trọn tháng tiếp theo trong hợp đồng.");
-        return new Source(period,last.map(RentalInvoice::getElectricityEndReading).orElse(c.getElectricityBaseline()),last.map(RentalInvoice::getWaterEndReading).orElse(c.getWaterBaseline()));
+        return new Source(period,last.map(RentalInvoice::getElectricityEndReading).orElse(c.getElectricityBaseline()==null?BigDecimal.ZERO:c.getElectricityBaseline()),
+            last.map(RentalInvoice::getWaterEndReading).orElse(c.getWaterBaseline()==null?BigDecimal.ZERO:c.getWaterBaseline()));
     }
     private static Pageable paging(int p,int s){return PageRequest.of(p,s,Sort.by(Sort.Direction.DESC,"createdAt","id"));}
     private static void owned(RentalContract c,Long owner){if(!c.getApartment().getProperty().getOwner().getId().equals(owner))throw missing();}
