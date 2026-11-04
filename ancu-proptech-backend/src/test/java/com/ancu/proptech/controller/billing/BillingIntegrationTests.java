@@ -164,6 +164,13 @@ class BillingIntegrationTests {
         create(ownerToken,body("2026-10",1,"1120","208")).andExpect(status().isCreated());
         saveMeter(ownerToken,body("2026-10",2,"1130","208")).andExpect(status().isConflict());
     }
+    @Test void previewIncludesMeteredChargesAndMatchesCreatedMonthlyInvoice()throws Exception{
+        var preview=saveMeter(ownerToken,body("2026-10",0,"1120","208")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertEquals(0,new BigDecimal(JsonPath.<String>read(preview,"$.estimate.electricityAmount")).compareTo(new BigDecimal("420000")));
+        assertEquals(0,new BigDecimal(JsonPath.<String>read(preview,"$.estimate.waterAmount")).compareTo(new BigDecimal("120000")));
+        var invoice=create(ownerToken,"{\"period\":\"2026-10\",\"baselineVersion\":1,\"useSavedReadings\":true,\"dueDate\":\"2026-11-05\"}").andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        for(String field:List.of("electricityQuantity","electricityAmount","waterQuantity","waterAmount","totalAmount"))assertEquals(0,new BigDecimal(JsonPath.<String>read(preview,"$.estimate."+field)).compareTo(new BigDecimal(JsonPath.<String>read(invoice,"$."+field))));
+    }
     private void cleanupCommitted(){
         String cid=contract.getId().toString(),aid=apartment.getId().toString();
         jdbc.update("DELETE FROM invoice_notifications WHERE invoice_id IN(SELECT id FROM rental_invoices WHERE contract_id=?)",cid);jdbc.update("DELETE FROM rental_invoices WHERE contract_id=?",cid);jdbc.update("DELETE FROM rental_contracts WHERE id=?",cid);jdbc.update("DELETE FROM rental_apartment_amenities WHERE apartment_id=?",aid);jdbc.update("DELETE FROM rental_apartments WHERE id=?",aid);jdbc.update("DELETE FROM rental_properties WHERE id=?",property.getId().toString());

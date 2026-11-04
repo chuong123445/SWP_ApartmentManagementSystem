@@ -36,7 +36,24 @@ public class InvoiceService {
     private BillingContext billingContext(RentalContract c){
         var s=source(c);var saved=readings.findByContractIdAndPeriod(c.getId(),s.period().toString()).orElse(null);
         var defaults=settings.findById(c.getApartment().getProperty().getId()).map(p->new BillingTariff(str(p.getElectricityUnitPrice()),str(p.getWaterUnitPrice()),p.getWaterBillingMode().name(),str(p.getInternetFee()),str(p.getGarbageFee()),p.getVersion())).orElse(null);
-        return new BillingContext(c.getId(),c.getApartment().getId(),c.getApartment().getRoomNumber(),c.getCustomer().getFullName(),s.period().toString(),str(c.getMonthlyRent()),str(s.electric()),str(saved==null?c.getElectricityUnitPrice():saved.getElectricityUnitPrice()),str(s.water()),str(saved==null?c.getWaterUnitPrice():saved.getWaterUnitPrice()),c.getBillingVersion(),(saved==null?c.getWaterBillingMode():saved.getWaterBillingMode()).name(),c.getOccupantCount(),str(saved==null?c.getInternetFee():saved.getInternetFee()),str(saved==null?c.getGarbageFee():saved.getGarbageFee()),saved==null?null:new SavedMeterReading(str(saved.getElectricityEndReading()),str(saved.getWaterEndReading()),saved.isPropertyRates(),saved.getSavedAt()),defaults,new BillingTariff(str(c.getElectricityUnitPrice()),str(c.getWaterUnitPrice()),c.getWaterBillingMode().name(),str(c.getInternetFee()),str(c.getGarbageFee()),0));
+        return new BillingContext(c.getId(),c.getApartment().getId(),c.getApartment().getRoomNumber(),c.getCustomer().getFullName(),s.period().toString(),str(c.getMonthlyRent()),str(s.electric()),str(saved==null?c.getElectricityUnitPrice():saved.getElectricityUnitPrice()),str(s.water()),str(saved==null?c.getWaterUnitPrice():saved.getWaterUnitPrice()),c.getBillingVersion(),(saved==null?c.getWaterBillingMode():saved.getWaterBillingMode()).name(),c.getOccupantCount(),str(saved==null?c.getInternetFee():saved.getInternetFee()),str(saved==null?c.getGarbageFee():saved.getGarbageFee()),saved==null?null:new SavedMeterReading(str(saved.getElectricityEndReading()),str(saved.getWaterEndReading()),saved.isPropertyRates(),saved.getSavedAt()),defaults,new BillingTariff(str(c.getElectricityUnitPrice()),str(c.getWaterUnitPrice()),c.getWaterBillingMode().name(),str(c.getInternetFee()),str(c.getGarbageFee()),0),estimate(c,s,saved));
+    }
+    private InvoiceEstimate estimate(RentalContract c,Source source,MeterReading meter){
+        if(meter==null)return null;
+        var i=new RentalInvoice();i.setMonthlyRent(c.getMonthlyRent());
+        i.setElectricityStartReading(source.electric());i.setElectricityEndReading(meter.getElectricityEndReading());i.setElectricityUnitPrice(meter.getElectricityUnitPrice());
+        i.setWaterStartReading(source.water());i.setWaterEndReading(meter.getWaterEndReading());i.setWaterUnitPrice(meter.getWaterUnitPrice());i.setWaterBillingMode(meter.getWaterBillingMode());i.setOccupantCount(meter.getOccupantCount());i.setInternetFee(meter.getInternetFee());i.setGarbageFee(meter.getGarbageFee());
+        calculateAmounts(i);
+        return new InvoiceEstimate(str(i.getElectricityQuantity()),str(i.getElectricityAmount()),str(i.getWaterQuantity()),str(i.getWaterAmount()),str(i.getTotalAmount()));
+    }
+    private static void calculateAmounts(RentalInvoice i){
+        i.setElectricityQuantity(i.getElectricityEndReading().subtract(i.getElectricityStartReading()));
+        i.setElectricityAmount(i.getElectricityQuantity().multiply(i.getElectricityUnitPrice()));
+        
+        if(i.getWaterBillingMode()==com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.PER_PERSON){i.setWaterEndReading(i.getWaterStartReading());i.setWaterQuantity(BigDecimal.valueOf(i.getOccupantCount()));}
+        else i.setWaterQuantity(i.getWaterEndReading().subtract(i.getWaterStartReading()));
+        i.setWaterAmount(i.getWaterQuantity().multiply(i.getWaterUnitPrice()));
+        i.setTotalAmount(i.getMonthlyRent().add(i.getElectricityAmount()).add(i.getWaterAmount()).add(i.getInternetFee()).add(i.getGarbageFee()));
     }
     @Transactional public BillingContext saveReadings(Jwt jwt,Long id,MeterReadingSave input){
         var owner=access.owner(jwt);var c=contracts.lockById(id).orElseThrow(InvoiceService::missing);owned(c,owner.getId());
@@ -74,11 +91,10 @@ public class InvoiceService {
         if(input.getDueDate().isBefore(period.atDay(1)))throw bad("VALIDATION_ERROR","Hạn đóng không được trước kỳ hóa đơn.");
         if(input.getElectricityEndReading().compareTo(s.electric())<0||(waterMode==com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.METERED && input.getWaterEndReading().compareTo(s.water())<0))throw bad("INVALID_METER_READING","Chỉ số cuối không được nhỏ hơn chỉ số đầu.");
         RentalInvoice i=new RentalInvoice();i.setContract(c);i.setPeriod(period.toString());i.setDueDate(input.getDueDate());i.setMonthlyRent(c.getMonthlyRent());
-        i.setElectricityStartReading(s.electric());i.setElectricityEndReading(input.getElectricityEndReading());i.setElectricityQuantity(input.getElectricityEndReading().subtract(s.electric()));i.setElectricityUnitPrice(meter==null?c.getElectricityUnitPrice():meter.getElectricityUnitPrice());i.setElectricityAmount(i.getElectricityQuantity().multiply(i.getElectricityUnitPrice()));
-        i.setWaterStartReading(s.water());i.setWaterEndReading(input.getWaterEndReading());i.setWaterQuantity(input.getWaterEndReading().subtract(s.water()));i.setWaterUnitPrice(meter==null?c.getWaterUnitPrice():meter.getWaterUnitPrice());i.setWaterAmount(i.getWaterQuantity().multiply(i.getWaterUnitPrice()));
+        i.setElectricityStartReading(s.electric());i.setElectricityEndReading(input.getElectricityEndReading());i.setElectricityUnitPrice(meter==null?c.getElectricityUnitPrice():meter.getElectricityUnitPrice());
+        i.setWaterStartReading(s.water());i.setWaterEndReading(input.getWaterEndReading());i.setWaterUnitPrice(meter==null?c.getWaterUnitPrice():meter.getWaterUnitPrice());
         i.setWaterBillingMode(waterMode);i.setOccupantCount(meter==null?c.getOccupantCount():meter.getOccupantCount());i.setInternetFee(meter==null?c.getInternetFee():meter.getInternetFee());i.setGarbageFee(meter==null?c.getGarbageFee():meter.getGarbageFee());
-        if(waterMode==com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.PER_PERSON){i.setWaterEndReading(s.water());i.setWaterQuantity(BigDecimal.valueOf(i.getOccupantCount()));i.setWaterAmount(i.getWaterQuantity().multiply(i.getWaterUnitPrice()));}
-        i.setTotalAmount(i.getInternetFee().add(i.getGarbageFee()).add(i.getMonthlyRent()).add(i.getElectricityAmount()).add(i.getWaterAmount()));i.setStatus(RentalInvoice.Status.DRAFT);i.setCreatedAt(Instant.now());
+        calculateAmounts(i);i.setStatus(RentalInvoice.Status.DRAFT);i.setCreatedAt(Instant.now());
         c.setBillingVersion(c.getBillingVersion()+1);return response(invoices.saveAndFlush(i));
     }
     @Transactional public InvoiceResponse send(Jwt jwt,Long id,InvoiceSend input){
