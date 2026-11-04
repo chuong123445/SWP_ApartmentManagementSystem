@@ -28,7 +28,7 @@ async function fixture(page:Page,hasLease=true,withBank=true){
 }
 test('Menu gọn và từng phòng nối đúng sự cố, hóa đơn, tài khoản nhận tiền',async({page},info)=>{
   const state=await fixture(page);await page.goto('/my/home');
-  await page.getByRole('button',{name:'Vai trò và tài khoản'}).click();const menu=page.getByRole('navigation',{name:'Điều hướng tài khoản'});
+  await page.getByRole('button',{name:'Tài khoản'}).click();const menu=page.getByRole('navigation',{name:'Điều hướng tài khoản'});
   for(const name of ['Yêu cầu & hợp đồng','Hồ sơ & tài khoản'])await expect(menu.getByRole('link',{name,exact:true})).toBeVisible();
   const header=page.getByRole('navigation',{name:'Điều hướng chính'});
   for(const [name,href] of [['Trang chủ','/'],['Đăng cho thuê','/account/properties/new'],['Nhà đang thuê','/my/home']])await expect(header.getByRole('link',{name,exact:true})).toHaveAttribute('href',href);

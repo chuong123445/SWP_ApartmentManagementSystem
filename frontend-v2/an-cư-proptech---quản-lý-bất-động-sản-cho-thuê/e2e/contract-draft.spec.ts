@@ -25,7 +25,7 @@ test('isolated accepted-request wizard reuses stored parties/assets, persists ed
   const login = async (p: Page, email: string) => {
     await p.goto('/login');await p.locator('#login-email').fill(email);await p.locator('#login-password').fill(password);
     const pending = p.waitForResponse(r => r.url().endsWith('/api/v1/auth/login') && r.request().method() === 'POST');await p.locator('button[type=submit]').click();
-    const result = await (await pending).json();await expect(p.getByRole('button', { name: 'Vai trò và tài khoản' })).toBeVisible();return { Authorization: `Bearer ${result.accessToken}` };
+    const result = await (await pending).json();await expect(p.getByRole('button', { name: 'Tài khoản' })).toBeVisible();return { Authorization: `Bearer ${result.accessToken}` };
   };
   try {
     ownerId = await register('OWNER', ownerEmail);persist();customerId = await register('CUSTOMER', customerEmail);persist();expect(fixture('prepare').prepared).toBe(true);

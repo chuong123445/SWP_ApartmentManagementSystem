@@ -7,7 +7,7 @@ for (const prefix of ['LOCAL_CUSTOMER', 'LOCAL_TENANT_1']) {
   test(`${prefix} uses the account dropdown and keeps Home visible`, async ({ page }) => {
     const errors: string[] = [];page.on('pageerror', e => errors.push(e.message));
     await page.goto('/login');await page.locator('#login-email').fill(env.get(`${prefix}_EMAIL`)!);await page.locator('#login-password').fill(env.get(`${prefix}_PASSWORD`)!);await page.locator('button[type=submit]').click();
-    const trigger = page.getByRole('button', { name: 'Vai trò và tài khoản' });
+    const trigger = page.getByRole('button', { name: 'Tài khoản' });
     await expect(trigger).toBeVisible();await expect(page.getByRole('link', { name: 'Trang chủ', exact: true })).toBeVisible();
     const menu = page.getByRole('navigation', { name: 'Điều hướng tài khoản' });
     await expect(menu).toHaveCount(0);await expect(page.locator('header').getByRole('link', { name: 'Hồ sơ cá nhân', exact: true })).toHaveCount(0);

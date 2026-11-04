@@ -1,6 +1,8 @@
 # An Cư PropTech React
 
-React 19/TypeScript/Vite. Trang quản lý Owner được giữ nguyên; đăng nhập qua Spring Boot và đăng xuất trong menu Role.
+React 19/TypeScript/Vite. Trang quản lý Owner được giữ nguyên; đăng nhập qua Spring Boot và đăng xuất trong menu Tài khoản.
+
+Menu Tài khoản dùng chung ở trang chủ, trang quản lý, trang tài khoản và Admin hiển thị tên người dùng ở dòng trên, trạng thái xác thực tài khoản ở dòng dưới. Trạng thái lấy từ contactVerificationStatus do backend trả về, không suy ra từ vai trò và không khẳng định đã xác minh pháp lý CCCD. Các liên kết không gian thuê/cho thuê/quản trị vẫn lấy theo membership thực tế.
 
 ## Cấu trúc src
 

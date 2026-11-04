@@ -14,14 +14,6 @@ export function managementRole(user: AuthUser): 'ADMIN' | 'OWNER' | undefined {
   return user.roles.includes('ADMIN') ? 'ADMIN' : user.roles.includes('OWNER') ? 'OWNER' : undefined;
 }
 
-export function accountRoleLabel(user: AuthUser, isTenant = false) {
-  if (user.roles.includes('ADMIN')) return 'Quản trị viên (Admin)';
-  const labels: string[] = [];
-  if (user.roles.includes('OWNER')) labels.push('Chủ nhà (Owner)');
-  if (hasRentalRole(user)) labels.push(isTenant ? 'Cư dân (Tenant)' : 'Khách thuê (Customer)');
-  return labels.join(' · ') || 'Tài khoản';
-}
-
 export function accountWorkspaces(user: AuthUser) {
   const links: { to: string; label: string }[] = [];
   if (hasRentalRole(user)) links.push({ to: '/', label: 'Tìm thuê căn hộ' });

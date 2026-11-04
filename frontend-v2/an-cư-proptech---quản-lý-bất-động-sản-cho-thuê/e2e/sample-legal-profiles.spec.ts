@@ -10,7 +10,7 @@ test('legacy sample identity is preserved privately and property evidence retain
   const headers = { Authorization: `Bearer ${(await (await response).json()).accessToken}` };
   await expect(page.locator('#nav-properties')).toBeVisible();
   const identity = await (await page.request.get('/api/v1/me/identity', { headers })).json();expect(identity.localFixture).toBe(true);expect(identity.verificationStatus).toBe('NOT_VERIFIED');
-  await page.getByRole('button', { name: 'Vai trò và tài khoản' }).click();await page.getByRole('link', { name: 'Cài đặt tài khoản', exact: true }).click();
+  await page.getByRole('button', { name: 'Tài khoản' }).click();await page.getByRole('link', { name: 'Cài đặt tài khoản', exact: true }).click();
   await page.locator('a[href="/account/settings/identity"]').click();
   await expect(page.getByRole('heading', { name: 'Xác thực danh tính', exact: true })).toBeVisible();
   await expect(page.locator('#identity-number')).toHaveCount(0);await expect(page.locator('input[type=file]')).toHaveCount(0);

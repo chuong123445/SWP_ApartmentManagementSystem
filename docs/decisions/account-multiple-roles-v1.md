@@ -24,7 +24,7 @@ Owner capability never replaces object ownership. Query predicates, access servi
 
 Existing roles arrays remain arrays: CUSTOMER; OWNER+CUSTOMER; or ADMIN. `GET /api/v1/me/owner-upgrade` adds roles while retaining role for compatibility. Profile OpenAPI describes memberships; no role mutation API is added. Registration rejects role/roles/requestedRole as before.
 
-Account menu exposes actual permitted workspace links: Tìm thuê căn hộ, Quản lý cho thuê, or Quản trị hệ thống. Switching is navigation, with no role/session mutation. Manager role is selected explicitly, never roles[0]. Tenant labels depend on ACTIVE contract data. Contract back navigation follows the actual party, including the private legacy tenancy fallback. Existing Owner shell/common tab state stays in its current structure.
+Account menu exposes actual permitted workspace links: Tìm thuê căn hộ, Quản lý cho thuê, or Quản trị hệ thống. Switching is navigation, with no role/session mutation. Manager role is selected explicitly, never roles[0]. Follow-up 04 November 2026: the shared account menu shows the account name above the server-provided account verification status, replacing role labels on every page. Tenant access still depends on actual contracts. Contract back navigation follows the actual party, including the private legacy tenancy fallback. Existing Owner shell/common tab state stays in its current structure.
 
 ## Validation
 

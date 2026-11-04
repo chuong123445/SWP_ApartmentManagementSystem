@@ -102,7 +102,7 @@ test('OAuth SDK callback registers using one backend command and keeps JWT out o
   const fixture = await oauthFixture(page, 'login');
   await page.goto('/register');await page.getByRole('button', { name: 'Đăng ký bằng VNeID mô phỏng' }).click();
   await expect(page).toHaveURL(new URL('/', test.info().project.use.baseURL as string).href);
-  await expect(page.getByRole('button', { name: 'Vai trò và tài khoản' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Tài khoản' })).toBeVisible();
   expect(fixture.commands()).toBe(1);
   expect(await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }))).not.toContain('internal-browser-fixture');
   expect(await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }))).not.toContain('external-browser-fixture');

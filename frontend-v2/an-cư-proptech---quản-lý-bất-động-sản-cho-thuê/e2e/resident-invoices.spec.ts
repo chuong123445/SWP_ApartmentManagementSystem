@@ -20,7 +20,7 @@ async function login(page: Page, prefix: string) {
 }
 
 async function openInvoices(page: Page) {
-  await page.getByRole('button', { name: 'Vai trò và tài khoản' }).click();
+  await page.getByRole('button', { name: 'Tài khoản' }).click();
   await page.getByRole('navigation', { name: 'Điều hướng tài khoản' })
     .getByRole('link', { name: 'Hóa đơn của tôi', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Hóa đơn của tôi', exact: true })).toBeVisible();
@@ -84,7 +84,7 @@ test('Invoice entry survives unavailable/empty tenancy data and supports empty h
   await page.route('**/api/v1/me/invoices?*', route => route.fulfill({ json: { items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 } }));
   await page.reload();
   await expect(page.getByText('Chưa có hóa đơn được gửi đến tài khoản của bạn.', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Vai trò và tài khoản' }).click();
+  await page.getByRole('button', { name: 'Tài khoản' }).click();
   await expect(page.getByRole('navigation', { name: 'Điều hướng tài khoản' }).getByRole('link', { name: 'Hóa đơn của tôi', exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
   await page.route('**/api/v1/me/invoices?*', route => route.fulfill({ status: 503, json: { message: 'Không tải được hóa đơn.' } }));
