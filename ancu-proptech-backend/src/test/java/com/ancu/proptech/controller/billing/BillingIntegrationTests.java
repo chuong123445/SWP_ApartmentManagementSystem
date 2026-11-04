@@ -127,7 +127,23 @@ class BillingIntegrationTests {
         create(ownerToken,body("2026-10",0,"999","208")).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_METER_READING"));
         for(String field:new String[]{"totalAmount","monthlyRent","electricityStartReading","electricityQuantity","customerId"})create(ownerToken,body("2026-10",0,"1120","208").replace("\"baselineVersion\":0","\""+field+"\":1,\"baselineVersion\":0")).andExpect(status().isBadRequest());
         contract.setElectricityBaseline(null);contracts.saveAndFlush(contract);
-        create(ownerToken,body("2026-10",0,"1120","208")).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("METER_BASELINE_MISSING"));
+        create(ownerToken,body("2026-10",0,"1120","208")).andExpect(status().isCreated()).andExpect(jsonPath("$.electricityStartReading").value("0"));
+    }
+    @Test void absentPastReadingsDefaultToZeroThenNextMonthUsesLastSentInvoice()throws Exception{
+        contract.setElectricityBaseline(null);contract.setWaterBaseline(null);contract.setBaselineDate(null);contracts.saveAndFlush(contract);
+        String first=create(ownerToken,body("2026-10",0,"120.25","8.50")).andExpect(status().isCreated())
+            .andExpect(jsonPath("$.electricityStartReading").value("0")).andExpect(jsonPath("$.waterStartReading").value("0"))
+            .andReturn().getResponse().getContentAsString();
+        String id=JsonPath.read(first,"$.id");send(ownerToken,id,0).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/owner/contracts/"+contract.getId()+"/billing-context").header("Authorization","Bearer "+ownerToken))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.period").value("2026-11"))
+            .andExpect(jsonPath("$.electricityStartReading").value("120.25")).andExpect(jsonPath("$.waterStartReading").value("8.50"));
+        create(ownerToken,body("2026-11",2,"119","9")).andExpect(status().isBadRequest());
+    }
+    @Test void initialPartialMonthChargesFullAgreedMonthlyRent()throws Exception{
+        contract.setStartDate(LocalDate.of(2026,10,14));contract.setBaselineDate(contract.getStartDate());contracts.saveAndFlush(contract);
+        String result=create(ownerToken,body("2026-10",0,"1120","208")).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        assertEquals(0,contract.getMonthlyRent().compareTo(new BigDecimal((String)JsonPath.read(result,"$.monthlyRent"))));
     }
     @Test void duplicateSkippedDraftAndStaleBillingPeriodsAreRejected()throws Exception{
         create(ownerToken,body("2026-10",9,"1120","208")).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("VERSION_CONFLICT"));

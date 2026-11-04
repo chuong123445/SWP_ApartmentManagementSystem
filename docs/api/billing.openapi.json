@@ -95,7 +95,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Next full-month period, source readings and agreed prices. Missing baseline/draft predecessor/ended contract return 409; this GET never changes readings.",
+            "description": "Next calendar-month period, source readings and agreed prices. Start readings come from the last SENT invoice, then the contract baseline, then zero when absent. Initial partial month charges full monthly rent. Draft predecessor/ended contract return 409; this GET never changes readings.",
             "content": {
               "application/json": {
                 "schema": {
