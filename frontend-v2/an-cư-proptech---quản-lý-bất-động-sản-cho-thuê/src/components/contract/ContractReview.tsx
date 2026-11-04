@@ -6,10 +6,10 @@ export function ReviewFields({ fields }: { fields: [string, string | number | nu
 }
 export function PartyReview({ party, title }: { party: ContractParty; title: string }) {
   return <section className="rounded-xl border border-slate-200 p-4 space-y-4"><h3 className="font-bold">{title}</h3><ReviewFields fields={[
-    ['Họ và tên', party.fullName], ['Email', party.email], ['Số điện thoại', party.phone], ['Ngày sinh', party.dateOfBirth], ['Địa chỉ sinh sống / liên hệ', party.address], ['Xác thực email', party.emailVerified ? 'Đã xác thực email' : 'Chưa xác thực email'],
+    ['Họ và tên', party.fullName], ['Email', party.email], ['Số điện thoại', party.phone], ['Ngày sinh', party.dateOfBirth], ['Địa chỉ sinh sống / liên hệ', party.address],
     ['Số căn cước công dân', party.documentNumber], ['Ngày cấp căn cước', party.documentIssueDate], ['Nơi cấp căn cước', party.documentIssuePlace], ['Địa chỉ trên căn cước', party.permanentAddress],
     ['Danh tính', party.identityVerificationStatus === 'VERIFIED' ? 'Đã xác thực qua VNeID' : party.identityVerificationStatus === 'NOT_VERIFIED' ? 'Chưa xác minh danh tính' : null],
-  ]} />{party.localFixture && <p className="text-sm text-amber-900 bg-amber-50 rounded-lg p-3">Thông tin căn cước mẫu — chỉ dùng minh họa, không có giá trị xác minh hoặc ký kết thực tế.</p>}<p className="text-xs text-slate-500">{party.identityVerificationStatus==='VERIFIED'?'Căn cước được ghi nhận từ luồng VNeID mô phỏng tại thời điểm tạo bản nháp. Trường nguồn chưa cung cấp được hiển thị chưa có dữ liệu.':'Thông tin lấy từ hồ sơ đã lưu tại thời điểm tạo bản nháp. Email xác nhận quyền sử dụng email; hồ sơ căn cước tự khai chưa được kiểm tra eKYC.'} Ảnh giấy tờ không được đưa vào hợp đồng.</p></section>;
+  ]} />{party.localFixture && <p className="text-sm text-amber-900 bg-amber-50 rounded-lg p-3">Thông tin căn cước mẫu — chỉ dùng minh họa, không có giá trị xác minh hoặc ký kết thực tế.</p>}<p className="text-xs text-slate-500">{party.identityVerificationStatus==='VERIFIED'?'Căn cước được ghi nhận từ luồng VNeID mô phỏng tại thời điểm tạo bản nháp.':'Thông tin lấy từ hồ sơ đã lưu tại thời điểm tạo bản nháp; hồ sơ căn cước tự khai chưa được kiểm tra eKYC.'} Ảnh giấy tờ không được đưa vào hợp đồng.</p></section>;
 }
 export function AssetReview({ snapshot }: { snapshot: ContractSnapshot }) {
   const a = snapshot.asset;

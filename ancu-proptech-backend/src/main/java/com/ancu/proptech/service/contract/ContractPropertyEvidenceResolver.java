@@ -15,8 +15,20 @@ public class ContractPropertyEvidenceResolver {
     private final PropertyExternalImportRepository imports;
     private final PropertyDossierRepository dossiers;
     private final ObjectMapper json;
+    private final PropertySourceUnitRepository sourceUnits;
+    private final PropertySourceImportBatchRepository batches;
     public record Resolved(String dossierId,String right,String certificate,LocalDate date,String place,String description,
             Boolean fixture,ContractSnapshot.ReceivingAccount bank,ContractSnapshot.Evidence evidence) {}
+    public Resolved resolve(com.ancu.proptech.model.apartment.Apartment apartment) {
+        var base=resolve(apartment.getProperty());
+        var link=sourceUnits.findById(apartment.getId()).orElse(null);
+        if(link==null||base.evidence()==null)return base;
+        var batch=batches.findById(link.getBatchId()).orElseThrow();
+        if(!link.getPropertyId().equals(apartment.getProperty().getId())||!batch.getPropertyId().equals(link.getPropertyId()))throw new IllegalStateException("Invalid source room scope");
+        var e=base.evidence();
+        return new Resolved(base.dossierId(),base.right(),base.certificate(),base.date(),base.place(),base.description(),base.fixture(),base.bank(),
+            new ContractSnapshot.Evidence(e.source(),e.reference(),batch.getSourceVersion(),batch.getImportedAt(),e.receivingAccountVersion()));
+    }
     public Resolved resolve(Property property) {
         var source=imports.findById(property.getId()).orElse(null);
         if(source!=null) {

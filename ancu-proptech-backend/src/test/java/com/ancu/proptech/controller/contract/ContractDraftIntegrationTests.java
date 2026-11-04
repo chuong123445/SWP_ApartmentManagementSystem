@@ -37,6 +37,10 @@ class ContractDraftIntegrationTests {
     @Autowired RentalRequestRepository requests;
     @Autowired RentalContractRepository contracts;
     @Autowired ContractDraftRepository drafts;
+    @Autowired ContractRenewalRequestRepository renewalRequests;
+    @Autowired com.ancu.proptech.service.contract.ContractExpiryService expiryNotices;
+    @Autowired com.ancu.proptech.service.contract.ContractRenewalActivationService renewalActivation;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired com.ancu.proptech.repository.contract.ContractHandoverRepository handovers;
     @Autowired com.ancu.proptech.repository.identity.IdentityProfileRepository identities;
     @Autowired AuthService auth;
@@ -47,6 +51,17 @@ class ContractDraftIntegrationTests {
     private String token,customerToken,otherToken;
     private static String hash;
     private static final String PASSWORD="Contract-test!12345";
+    @Test void customerRequestInboxExcludesConvertedSelectionsBeforePagingButKeepsTheirDocuments()throws Exception {
+        String saved=create();
+        for(var state:List.of(RentalRequest.Status.REJECTED,RentalRequest.Status.CANCELLED)){
+            var r=new RentalRequest();r.setApartment(request.getApartment());r.setCustomer(customer);r.setStatus(state);r.setMessage("Request history without a contract");r.setCreatedAt(Instant.now());requests.saveAndFlush(r);
+        }
+        for(int page=0;page<2;page++)mvc.perform(get("/api/v1/me/rental-requests").header("Authorization",customerToken).param("size","1").param("page",Integer.toString(page)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2)).andExpect(jsonPath("$.totalPages").value(2)).andExpect(jsonPath("$.items.length()").value(1)).andExpect(jsonPath("$.items[0].contractId").isEmpty());
+        mvc.perform(get("/api/v1/me/rental-requests").header("Authorization",otherToken)).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get("/api/v1/me/contract-drafts").header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(id(saved)));
+        assertTrue(requests.existsById(request.getId()));
+    }
     @BeforeEach void fixture() {
         if(hash==null) hash=passwords.encode(PASSWORD);
         owner=account(AuthAccount.Role.OWNER);customer=account(AuthAccount.Role.CUSTOMER);other=account(AuthAccount.Role.OWNER);
@@ -84,6 +99,21 @@ class ContractDraftIntegrationTests {
         assertNull(JsonPath.read(context,"$.snapshot.owner.documentIssueDate"));assertEquals(verified.getLegalName(),JsonPath.read(context,"$.snapshot.owner.fullName"));
     }
     @Autowired PropertyExternalImportRepository imports;
+    @Test void completeVerifiedPartyDetailsReachNewDraftButExistingSnapshotStaysFrozen()throws Exception {
+        var verified=com.ancu.proptech.support.VerifiedIdentityFixtures.bind(verifiedIdentities,customer);
+        customer.setPhone(null);accounts.saveAndFlush(customer);
+        verified.setPhoneNumber("+84999000002");verified.setDocumentIssueDate(LocalDate.of(2021,6,16));
+        verified.setDocumentIssuePlace("Cục Cảnh sát quản lý hành chính về trật tự xã hội");
+        verified.setPermanentAddress("54 Hoàng Diệu, phường Phước Ninh, quận Hải Châu, thành phố Đà Nẵng");verifiedIdentities.saveAndFlush(verified);
+        String saved=create();assertEquals("+84999000002",JsonPath.read(saved,"$.snapshot.customer.phone"));
+        assertEquals("2021-06-16",JsonPath.read(saved,"$.snapshot.customer.documentIssueDate"));
+        assertEquals(verified.getDocumentIssuePlace(),JsonPath.read(saved,"$.snapshot.customer.documentIssuePlace"));
+        assertEquals(verified.getPermanentAddress(),JsonPath.read(saved,"$.snapshot.customer.permanentAddress"));
+        verified.setPhoneNumber("+84999000999");verified.setDocumentIssuePlace("Một cơ quan khác");verifiedIdentities.saveAndFlush(verified);
+        mvc.perform(get("/api/v1/contracts/"+id(saved)).header("Authorization",customerToken)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.snapshot.customer.phone").value("+84999000002"))
+            .andExpect(jsonPath("$.snapshot.customer.documentIssuePlace").value("Cục Cảnh sát quản lý hành chính về trật tự xã hội"));
+    }
     @Autowired tools.jackson.databind.ObjectMapper json;
     private PropertyExternalImport sourceEvidence() {
         var identity=com.ancu.proptech.support.VerifiedIdentityFixtures.bind(verifiedIdentities,owner);
@@ -109,7 +139,7 @@ class ContractDraftIntegrationTests {
         create(token,body(context())).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONTRACT_EXCEEDS_PROPERTY_RIGHTS"));
     }
     @Test void contractEndingOnRightsEndIsAllowedButUpdateBeyondItIsRejected()throws Exception{
-        var p=request.getApartment().getProperty();p.setRightType(PropertyDossier.RightType.AUTHORIZATION);p.setRightsValidFrom(LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).minusDays(1));p.setRightsValidUntil(LocalDate.of(2027,11,1));properties.flush();
+        var p=request.getApartment().getProperty();p.setRightType(PropertyDossier.RightType.AUTHORIZATION);p.setRightsValidFrom(LocalDate.parse((String)JsonPath.read("{"+terms()+"}","$.startDate")).minusDays(1));p.setRightsValidUntil(LocalDate.of(2027,11,1));properties.flush();
         String saved=create(token,body(context())).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         update(id(saved),0,terms().replace("2027-11-01","2027-11-02")).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONTRACT_EXCEEDS_PROPERTY_RIGHTS"));
     }
@@ -134,6 +164,7 @@ class ContractDraftIntegrationTests {
         return readContract(c.getId().toString());
     }
     private String renewalInput(String previousId) throws Exception {
+        if(renewalRequests.findByContractId(Long.valueOf(previousId)).isEmpty())acceptRenewal(previousId);
         var ctx=mvc.perform(get("/api/v1/owner/contracts/"+previousId+"/renewal-context").header("Authorization",token)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         var month=java.time.YearMonth.now(ZoneId.of("Asia/Ho_Chi_Minh"));
         return "{\"requestVersion\":"+JsonPath.read(ctx,"$.requestVersion")+",\"sourceVersion\":\""+JsonPath.read(ctx,"$.sourceVersion")+"\","+
@@ -166,7 +197,8 @@ class ContractDraftIntegrationTests {
         mvc.perform(post("/api/v1/owner/contracts/"+id(next)+"/cancel-renewal").header("Authorization",token).contentType("application/json").content("{\"version\":"+JsonPath.read(next,"$.lifecycle.version")+",\"consent\":true}"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.lifecycle.endReason").value("RENEWAL_CANCELLED"));
         assertEquals("ACTIVE",JsonPath.read(readContract(oldId),"$.status"));
-        mvc.perform(post("/api/v1/owner/contracts/"+oldId+"/renewals").header("Authorization",token).contentType("application/json").content(renewalInput(oldId))).andExpect(status().isCreated());
+        mvc.perform(get("/api/v1/owner/contracts/"+oldId+"/renewal-context").header("Authorization",token)).andExpect(status().isConflict());
+        mvc.perform(post("/api/v1/owner/contracts/"+oldId+"/handover").header("Authorization",token).contentType("application/json").content(handoverInput(readContract(oldId)))).andExpect(status().isOk());
     }
     @Test void handoverRequiresCustomerConfirmationThenFreesRoomAndRetainsInvoicesAndOldSignatures() throws Exception {
         String old=expiredContract();String oldId=id(old);
@@ -201,9 +233,107 @@ class ContractDraftIntegrationTests {
     }
     @Test void unexpiredContractCannotRenewOrHandoverAndOtherOwnersCannotReadRenewalContext() throws Exception {
         String saved=create();var c=contracts.findById(Long.valueOf(id(saved))).orElseThrow();c.setStatus(RentalContract.Status.ACTIVE);contracts.saveAndFlush(c);
-        mvc.perform(get("/api/v1/owner/contracts/"+id(saved)+"/renewal-context").header("Authorization",token)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("NOT_EXPIRED"));
+        mvc.perform(get("/api/v1/owner/contracts/"+id(saved)+"/renewal-context").header("Authorization",token)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("RENEWAL_REQUEST_NOT_ACCEPTED"));
         mvc.perform(get("/api/v1/owner/contracts/"+id(saved)+"/renewal-context").header("Authorization",otherToken)).andExpect(status().isNotFound());
         mvc.perform(post("/api/v1/owner/contracts/"+id(saved)+"/handover").header("Authorization",token).contentType("application/json").content(handoverInput(readContract(id(saved))))).andExpect(status().isConflict());
+    }
+    private ResultActions askRenewal(String id,String account,String message)throws Exception {
+        return mvc.perform(post("/api/v1/contracts/"+id+"/renewal-request").header("Authorization",account).contentType("application/json").content("{\"version\":"+JsonPath.read(readContract(id),"$.lifecycle.version")+",\"consent\":true,\"message\":\""+message+"\"}"));
+    }
+    private void acceptRenewal(String id)throws Exception {
+        String requested=askRenewal(id,customerToken,"Muốn thuê tiếp").andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        mvc.perform(post("/api/v1/owner/contracts/"+id+"/renewal-request/decision").header("Authorization",token).contentType("application/json")
+            .content("{\"version\":"+JsonPath.read(requested,"$.lifecycle.renewalRequest.version")+",\"decision\":\"ACCEPT\"}")).andExpect(status().isOk());
+    }
+    @Test void renewalRequestIsExactTenantVersionedIdempotentAndBlocksHandover()throws Exception {
+        String old=expiredContract();String id=id(old);
+        askRenewal(id,otherToken,"forged").andExpect(status().isNotFound());
+        askRenewal(id,token,"forged").andExpect(status().isNotFound());
+        mvc.perform(post("/api/v1/contracts/"+id+"/renewal-request").header("Authorization",customerToken).contentType("application/json").content("{\"consent\":true}")).andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/contracts/"+id+"/renewal-request").header("Authorization",customerToken).contentType("application/json").content("{\"version\":99,\"consent\":true}")).andExpect(status().isConflict());
+        askRenewal(id,customerToken,"Muốn thuê tiếp").andExpect(status().isOk()).andExpect(jsonPath("$.lifecycle.renewalRequest.status").value("PENDING")).andExpect(jsonPath("$.lifecycle.handoverAvailable").value(false));
+        askRenewal(id,customerToken,"Muốn thuê tiếp").andExpect(status().isOk());
+        assertEquals(1,jdbc.queryForObject("select count(*) from contract_renewal_requests where contract_id=?",Integer.class,Long.valueOf(id)));
+        mvc.perform(get("/api/v1/owner/contracts/"+id+"/renewal-context").header("Authorization",token)).andExpect(status().isConflict());
+        mvc.perform(post("/api/v1/owner/contracts/"+id+"/handover").header("Authorization",token).contentType("application/json").content(handoverInput(old))).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("OPEN_RENEWAL_REQUEST"));
+        String url="/api/v1/owner/contracts/"+id+"/renewal-request/decision";
+        mvc.perform(post(url).header("Authorization",otherToken).contentType("application/json").content("{\"version\":0,\"decision\":\"REJECT\",\"reason\":\"Không cho thuê tiếp\"}")).andExpect(status().isNotFound());
+        mvc.perform(post(url).header("Authorization",token).contentType("application/json").content("{\"version\":0,\"decision\":\"REJECT\"}")).andExpect(status().isBadRequest());
+        mvc.perform(post(url).header("Authorization",token).contentType("application/json").content("{\"version\":0,\"decision\":\"REJECT\",\"reason\":\"Không cho thuê tiếp\"}")).andExpect(status().isOk()).andExpect(jsonPath("$.lifecycle.handoverAvailable").value(true));
+        mvc.perform(post(url).header("Authorization",token).contentType("application/json").content("{\"version\":0,\"decision\":\"ACCEPT\"}")).andExpect(status().isConflict());
+        mvc.perform(get("/api/v1/me/notifications").header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.items[?(@.title=='Yêu cầu thuê tiếp đã được xử lý')]").isNotEmpty());
+    }
+    @Test void futureRenewalSignaturesDoNotEndCurrentTermOrActivateEarly()throws Exception {
+        String old=expiredContract();String oldId=id(old);var c=contracts.findById(Long.valueOf(oldId)).orElseThrow();
+        var today=LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));c.setEndDate(today.plusDays(10));contracts.saveAndFlush(c);
+        acceptRenewal(oldId);
+        String input=renewalInput(oldId).replace(today.withDayOfMonth(1).toString(),today.plusDays(11).toString());
+        String next=mvc.perform(post("/api/v1/owner/contracts/"+oldId+"/renewals").header("Authorization",token).contentType("application/json").content(input)).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String hash=JsonPath.read(next,"$.signing.contentHash");sign(next,token,hash,signature(),true).andExpect(status().isOk());
+        sign(next,customerToken,hash,signature(),true).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DRAFT")).andExpect(jsonPath("$.signing.state").value("SIGNED"));
+        assertEquals("ACTIVE",JsonPath.read(readContract(oldId),"$.status"));
+        renewalActivation.activate(Long.valueOf(id(next)));assertEquals("DRAFT",JsonPath.read(readContract(id(next)),"$.status"));
+        mvc.perform(post("/api/v1/owner/contracts/"+id(next)+"/cancel-renewal").header("Authorization",token).contentType("application/json").content("{\"version\":0,\"consent\":true}")).andExpect(status().isConflict());
+    }
+    @Test void expiryRemindersArePersistentScopedAndDeduplicatedAtTwentyAndTenDays()throws Exception {
+        String old=expiredContract();long id=Long.parseLong(id(old));var end=contracts.findById(id).orElseThrow().getEndDate();
+        expiryNotices.generate(end.minusDays(21));assertEquals(0,jdbc.queryForObject("select count(*) from contract_expiry_notices where contract_id=?",Integer.class,id));
+        expiryNotices.generate(end.minusDays(20));expiryNotices.generate(end.minusDays(20));
+        assertEquals(2,jdbc.queryForObject("select count(*) from contract_expiry_notices where contract_id=?",Integer.class,id));
+        expiryNotices.generate(end.minusDays(10));expiryNotices.generate(end.minusDays(1));
+        assertEquals(4,jdbc.queryForObject("select count(*) from contract_expiry_notices where contract_id=?",Integer.class,id));
+        mvc.perform(get("/api/v1/me/notifications").header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.items[?(@.title=='Hợp đồng sắp hết hạn')]").isNotEmpty());
+        String customerFeed=mvc.perform(get("/api/v1/me/notifications").header("Authorization",customerToken)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue(customerFeed.contains("/my/rental-requests?tab=contracts&contractId="+id));
+        String ownerFeed=mvc.perform(get("/api/v1/me/notifications").header("Authorization",token)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertTrue(ownerFeed.contains("/app?tab=contracts&propertyId="+request.getApartment().getProperty().getId()+"&contractId="+id));
+        assertEquals(0,jdbc.queryForObject("select count(*) from contract_expiry_notices where contract_id=? and recipient_id=?",Integer.class,id,other.getId()));
+        assertEquals("ACTIVE",JsonPath.read(readContract(Long.toString(id)),"$.status"));
+    }
+    @Test void acceptedRequestCanBeCancelledBeforeDraftButNeverSilentlyDiscarded()throws Exception {
+        String old=expiredContract();String id=id(old);acceptRenewal(id);
+        mvc.perform(post("/api/v1/owner/contracts/"+id+"/handover").header("Authorization",token).contentType("application/json").content(handoverInput(old))).andExpect(status().isConflict());
+        String url="/api/v1/owner/contracts/"+id+"/renewal-request/cancel";
+        mvc.perform(post(url).header("Authorization",otherToken).contentType("application/json").content("{\"version\":1,\"consent\":true}")).andExpect(status().isNotFound());
+        mvc.perform(post(url).header("Authorization",token).contentType("application/json").content("{\"version\":0,\"consent\":true}")).andExpect(status().isConflict());
+        mvc.perform(post(url).header("Authorization",token).contentType("application/json").content("{\"version\":1,\"consent\":true}")).andExpect(status().isOk()).andExpect(jsonPath("$.lifecycle.renewalRequest.status").value("CANCELLED")).andExpect(jsonPath("$.lifecycle.handoverAvailable").value(true));
+        mvc.perform(get("/api/v1/me/notifications").header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.items[?(@.title=='Ký tiếp đã được hủy')]").isNotEmpty());
+    }
+    @Test void tenantRenewalRequestStillRequiresCurrentVerification()throws Exception {
+        String old=expiredContract();customer.setEmailVerified(false);customer.setContactVerified(false);accounts.saveAndFlush(customer);
+        askRenewal(id(old),customerToken,"Muốn thuê tiếp").andExpect(status().isForbidden());
+        assertTrue(renewalRequests.findByContractId(Long.valueOf(id(old))).isEmpty());
+    }
+    @Test void renewalInboxScopesOwnerPropertyStatusAndCountsBeforePagination()throws Exception {
+        String old=expiredContract();String id=id(old);askRenewal(id,customerToken,"Muốn thuê tiếp").andExpect(status().isOk());
+        String url="/api/v1/owner/renewal-requests";
+        mvc.perform(get("/api/v1/me/notifications").header("Authorization",token)).andExpect(status().isOk()).andExpect(jsonPath("$.items[?(@.title=='Khách yêu cầu thuê tiếp')].url").value(org.hamcrest.Matchers.hasItem("/app?tab=rental_requests&requestType=renewal&propertyId="+request.getApartment().getProperty().getId())));
+        mvc.perform(get(url).header("Authorization",token).param("status","PENDING").param("size","1")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1)).andExpect(jsonPath("$.items[0].contractId").value(id)).andExpect(jsonPath("$.items[0].customerEmail").value(customer.getEmail()));
+        mvc.perform(get(url).header("Authorization",otherToken)).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get(url).header("Authorization",customerToken)).andExpect(status().isForbidden());
+        mvc.perform(get(url)).andExpect(status().isUnauthorized());
+        mvc.perform(get(url).header("Authorization",token).param("propertyId","999999999")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get(url).header("Authorization",token).param("status","REJECTED")).andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(0));
+        mvc.perform(get(url).header("Authorization",token).param("status","INVALID")).andExpect(status().isBadRequest());
+        mvc.perform(get(url).header("Authorization",token).param("page","-1")).andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/owner/contracts/"+id+"/renewal-request/decision").header("Authorization",token).contentType("application/json").content("{\"version\":0,\"decision\":\"ACCEPT\"}")).andExpect(status().isOk());
+        mvc.perform(get(url).header("Authorization",token).param("status","PENDING")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        String next=mvc.perform(post("/api/v1/owner/contracts/"+id+"/renewals").header("Authorization",token).contentType("application/json").content(renewalInput(id))).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        mvc.perform(get(url).header("Authorization",token).param("status","ACCEPTED").param("propertyId",request.getApartment().getProperty().getId().toString())).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1)).andExpect(jsonPath("$.items[0].nextContractId").value(id(next)));
+        mvc.perform(get("/api/v1/owner/rental-requests").header("Authorization",token).param("status","ACCEPTED").param("contractCompleted","false")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get("/api/v1/owner/rental-requests").header("Authorization",token).param("status","ACCEPTED")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1));
+    }
+    @Test void ordinaryInboxSeparatesUnsignedAndSignedAcceptedRequestsWithoutChangingState()throws Exception {
+        String saved=create();String id=id(saved);
+        String url="/api/v1/owner/rental-requests";
+        mvc.perform(get(url).header("Authorization",token).param("status","ACCEPTED").param("contractCompleted","false").param("size","1")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1)).andExpect(jsonPath("$.items[0].contractCompleted").value(false));
+        var d=drafts.findByContractId(Long.valueOf(id)).orElseThrow();d.setOwnerSignedAt(Instant.now());drafts.saveAndFlush(d);
+        mvc.perform(get(url).header("Authorization",token).param("status","ACCEPTED").param("contractCompleted","true")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        d.setCustomerSignedAt(Instant.now());drafts.saveAndFlush(d);
+        mvc.perform(get(url).header("Authorization",token).param("status","ACCEPTED").param("contractCompleted","true").param("size","1")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1)).andExpect(jsonPath("$.items[0].contractCompleted").value(true));
+        mvc.perform(get(url).header("Authorization",token).param("status","ACCEPTED").param("contractCompleted","false")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get(url).header("Authorization",token).param("status","PENDING").param("contractCompleted","true")).andExpect(status().isBadRequest());
+        assertEquals(RentalRequest.Status.ACCEPTED,request.getStatus());
     }
     private String signature() throws Exception {
         var image=new java.awt.image.BufferedImage(900,280,java.awt.image.BufferedImage.TYPE_INT_ARGB);
