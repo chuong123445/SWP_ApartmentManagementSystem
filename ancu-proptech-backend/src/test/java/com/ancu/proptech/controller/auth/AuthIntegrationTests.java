@@ -47,6 +47,49 @@ class AuthIntegrationTests {
         assertEquals("Chủ cho thuê",jdbc.queryForObject("SELECT name FROM auth_roles WHERE code='OWNER'",String.class));
     }
 
+    @Test void accountRoleViewKeepsMissingIdentityAndUsesCanonicalMemberships() {
+        jdbc.update("UPDATE auth_accounts SET role='ADMIN' WHERE id=?", owner.getId());
+        var rows = jdbc.queryForList("SELECT * FROM dbo.vw_account_roles WHERE account_id=? ORDER BY role_id", owner.getId());
+        assertEquals(List.of("OWNER", "CUSTOMER"), rows.stream().map(row -> row.get("role_code")).toList());
+        assertEquals(List.of("Chủ cho thuê", "Người tìm thuê"), rows.stream().map(row -> row.get("role_name")).toList());
+        for (var row : rows) {
+            assertEquals(owner.getFullName(), row.get("full_name"));
+            assertNull(row.get("document_number"));
+            assertNull(row.get("identity_source"));
+            assertEquals("UNVERIFIED", row.get("identity_verification_status"));
+        }
+    }
+
+    @Test void accountRoleViewPreservesLeadingZeroAndDistinguishesIdentitySources() {
+        jdbc.update("""
+            INSERT dbo.account_identity_profiles(account_id,legal_name,document_number,date_of_birth,issue_date,issue_place,
+                permanent_address,current_address,verification_status,updated_at,version,local_fixture)
+            VALUES (?,N'Hồ sơ mẫu','001234567890','1990-01-01','2020-01-01',N'Nơi cấp mẫu',N'Địa chỉ mẫu',N'Địa chỉ mẫu',
+                'NOT_VERIFIED',SYSUTCDATETIME(),0,1)
+            """, owner.getId());
+        var profile = jdbc.queryForMap("SELECT * FROM dbo.vw_account_roles WHERE account_id=? AND role_code='OWNER'", owner.getId());
+        assertEquals("001234567890", profile.get("document_number"));
+        assertEquals("SELF_DECLARED", profile.get("identity_source"));
+        assertEquals("NOT_VERIFIED", profile.get("identity_verification_status"));
+        assertEquals(true, profile.get("identity_is_local_fixture"));
+
+        String externalNumber = String.format(Locale.ROOT, "0%011d", Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100_000_000_000L));
+        jdbc.update("""
+            INSERT dbo.auth_external_identities(account_id,issuer,subject,document_number,legal_name,date_of_birth,gender,
+                address,source,verification_status,verified_at,version)
+            VALUES (?,'https://view-test.example.invalid/',?,?,N'VNeID mẫu','1990-01-01',N'Không khai báo',N'Địa chỉ mẫu',
+                'AUTH0_VNEID_SIMULATION','VERIFIED',SYSUTCDATETIME(),0)
+            """, owner.getId(), UUID.randomUUID().toString(), externalNumber);
+        var rows = jdbc.queryForList("SELECT * FROM dbo.vw_account_roles WHERE account_id=?", owner.getId());
+        assertEquals(2, rows.size());
+        for (var row : rows) {
+            assertEquals(externalNumber, row.get("document_number"));
+            assertEquals("AUTH0_VNEID_SIMULATION", row.get("identity_source"));
+            assertEquals("VERIFIED", row.get("identity_verification_status"));
+            assertEquals(false, row.get("identity_is_local_fixture"));
+        }
+    }
+
     @Test void startupReplayDoesNotRegrantMembershipFromLegacyProjection() throws Exception {
         Login login=login(owner.getEmail(),password);Long id=owner.getId();
         owner.setRole(AuthAccount.Role.CUSTOMER);accounts.saveAndFlush(owner);
