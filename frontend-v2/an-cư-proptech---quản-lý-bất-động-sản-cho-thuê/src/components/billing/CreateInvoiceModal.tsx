@@ -26,7 +26,7 @@ export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice, initia
       .catch(e => { if (active) setError(e.message); });return () => { active = false; };
   }, [contractId, revision]);
   const save = async (send: boolean) => {
-    if (saving || !context?.savedReading || !form.current?.reportValidity()) return;
+    if (saving || !context?.savedReading || !context.estimate || !form.current?.reportValidity()) return;
     setSaving(true);setError('');
     try {
       const draft = created ?? await createInvoice(contractId, { period: context.period, useSavedReadings:true, dueDate: due, baselineVersion: context.baselineVersion });
@@ -45,14 +45,25 @@ export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice, initia
       <fieldset disabled={saving || !!created} className="space-y-4">
         <div><label htmlFor="invoice-contract" className="text-sm font-semibold">Căn hộ / Người thuê</label><select id="invoice-contract" required className={cls} value={contractId} onChange={e => setContractId(e.target.value)}><option value="">Chọn quan hệ thuê</option>{active.map(c => <option key={c.id} value={c.id}>{c.roomNumber} — {c.customerName}</option>)}</select></div>
         {contractId && !context && !error && <p role="status">Đang tải dữ liệu lập hóa đơn...</p>}
-        {context && <><div className="bg-slate-50 rounded-lg p-3 text-sm"><p>Kỳ: <strong>{context.period}</strong> · Tiền thuê: <strong>{billingMoney(context.monthlyRent)}</strong></p><p>Internet: {billingMoney(context.internetFee??'0')} · Vệ sinh/rác: {billingMoney(context.garbageFee??'0')} mỗi tháng</p></div>
+        {context && <><p className="text-sm text-slate-500">Kỳ hóa đơn: <strong className="text-slate-900">{context.period}</strong></p>
+          {context.estimate&&<div aria-label="Chi tiết tiền hóa đơn" className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
+            <dl className="space-y-3">
+              <div className="flex justify-between gap-4"><dt>Tiền thuê tháng</dt><dd className="font-semibold">{billingMoney(context.monthlyRent)}</dd></div>
+              <div className="flex justify-between gap-4"><dt>Tiền điện<span className="block text-xs text-slate-500">{context.estimate.electricityQuantity} kWh × {billingMoney(context.electricityUnitPrice)}</span></dt><dd className="font-semibold">{billingMoney(context.estimate.electricityAmount)}</dd></div>
+              <div className="flex justify-between gap-4"><dt>Tiền nước<span className="block text-xs text-slate-500">{context.estimate.waterQuantity} {context.waterBillingMode==='PER_PERSON'?'người/tháng':'m³'} × {billingMoney(context.waterUnitPrice)}</span></dt><dd className="font-semibold">{billingMoney(context.estimate.waterAmount)}</dd></div>
+              <div className="flex justify-between gap-4"><dt>Internet</dt><dd>{billingMoney(context.internetFee??'0')}</dd></div>
+              <div className="flex justify-between gap-4"><dt>Vệ sinh/rác</dt><dd>{billingMoney(context.garbageFee??'0')}</dd></div>
+              <div className="flex justify-between gap-4 border-t border-slate-200 pt-3 font-bold text-emerald-800"><dt>Tổng thanh toán</dt><dd className="text-lg">{billingMoney(context.estimate.totalAmount)}</dd></div>
+            </dl>
+          </div>}
+          {context.savedReading&&!context.estimate&&<p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Chưa tải được tổng tiền điện nước từ máy chủ. <button type="button" onClick={()=>setRevision(v=>v+1)} className="underline font-semibold">Tải lại</button></p>}
           {!context.savedReading&&<div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Chưa chốt chỉ số cho kỳ này. Hãy chốt tại mục Chỉ số Điện Nước trước khi lập hóa đơn.{onOpenUtilities&&<button type="button" onClick={onOpenUtilities} className="block mt-2 underline font-semibold">Đi chốt điện nước</button>}</div>}
           {context.savedReading&&<p className="text-sm text-emerald-700">Đã tự lấy chỉ số và đơn giá đã chốt. Không cần nhập lại.</p>}
           <div><label htmlFor="invoice-due-date" className="text-sm font-semibold">Hạn đóng</label><input id="invoice-due-date" required type="date" min={`${context.period}-01`} value={due} onChange={e => setDue(e.target.value)} className={cls} /></div></>}
       </fieldset>
       {created && <p className="text-sm text-amber-700">Đã lưu bản nháp. Bạn có thể thử gửi lại hóa đơn này.</p>}
       <div className="flex justify-end gap-3 pt-4 border-t"><button type="button" onClick={onClose} disabled={saving}>Hủy</button>
-        <button type="submit" id="btn-confirm-create-invoice" disabled={saving || !context?.savedReading} className="border rounded-lg px-4 py-2 disabled:opacity-50">Lưu bản nháp</button>
+        <button type="submit" id="btn-confirm-create-invoice" disabled={saving || !context?.savedReading || !context.estimate} className="border rounded-lg px-4 py-2 disabled:opacity-50">Lưu bản nháp</button>
         <button type="button" id="btn-create-send-invoice" disabled={saving || !context?.savedReading} onClick={() => void save(true)} className="bg-emerald-600 text-white rounded-lg px-4 py-2 disabled:opacity-50">{saving ? 'Đang xử lý...' : created ? 'Gửi lại' : 'Lập và gửi'}</button></div>
     </form>
   </section></div>;

@@ -6,6 +6,7 @@ export interface Tenancy {
 export interface BillingTariff { electricityUnitPrice:string;waterUnitPrice:string;waterBillingMode:'METERED'|'PER_PERSON';internetFee:string;garbageFee:string;version:number; }
 export interface MeterReadingInput {period:string;baselineVersion:number;electricityEndReading:string;waterEndReading:string;applyPropertyRates:boolean;keepSavedTariff?:boolean;settingsVersion?:number;}
 export interface BillingContext {
+  estimate?:{electricityQuantity:string;electricityAmount:string;waterQuantity:string;waterAmount:string;totalAmount:string}|null;
   savedReading?:{electricityEndReading:string;waterEndReading:string;propertyRates:boolean;savedAt:string}|null;
   propertyTariff?:BillingTariff|null;contractTariff?:BillingTariff;
   waterBillingMode?:'METERED'|'PER_PERSON';occupantCount?:number;internetFee?:string;garbageFee?:string;
