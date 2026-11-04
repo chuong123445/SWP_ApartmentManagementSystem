@@ -4,7 +4,7 @@ export interface VneidConfig { enabled: boolean; issuer: string; clientId: strin
 export interface VerifiedCitizen { documentNumber: string; legalName: string; dateOfBirth: string; gender: string; address: string; documentIssueDate?: string | null; documentIssuePlace?: string | null; permanentAddress?: string | null }
 export interface AccountVerification {
   emailVerified: boolean;
-  vneid: { status: 'VERIFIED' | 'UNVERIFIED'; verifiedAt: string | null; identity: VerifiedCitizen | null };
+  vneid: { status: 'VERIFIED' | 'UNVERIFIED'; verifiedAt: string | null; identity: VerifiedCitizen | null; source?: string | null };
 }
 export async function getAccountVerification(signal?: AbortSignal): Promise<AccountVerification> {
   const response = await apiFetch('/api/v1/me/verifications', { cache: 'no-store', signal });

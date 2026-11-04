@@ -17,7 +17,8 @@ SELECT
     CASE WHEN external_identity.account_id IS NOT NULL THEN external_identity.verification_status
          WHEN identity_profile.account_id IS NOT NULL THEN identity_profile.verification_status
          ELSE 'UNVERIFIED' END AS identity_verification_status,
-    CASE WHEN external_identity.account_id IS NOT NULL THEN CAST(0 AS bit)
+    CASE WHEN external_identity.source = 'LOCAL_DEMO' THEN CAST(1 AS bit)
+         WHEN external_identity.account_id IS NOT NULL THEN CAST(0 AS bit)
          ELSE identity_profile.local_fixture END AS identity_is_local_fixture
 FROM dbo.auth_account_roles AS membership
 JOIN dbo.auth_accounts AS account ON account.id = membership.account_id

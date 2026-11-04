@@ -26,18 +26,18 @@ public class VneidService {
     private final VneidProperties config;
     private final VneidLinkConfirmationStore confirmations;
     private final jakarta.persistence.EntityManager entityManager;
+    private final VerifiedIdentityPolicy identityPolicy;
     private final Map<String, Window> attempts = new ConcurrentHashMap<>();
     private record Window(long minute, int count) {}
 
     @Transactional(readOnly=true)
     public AccountVerificationResponse verificationStatus(Jwt internal) {
         var account = auth.authenticate(internal);
-        var vneid = identities.findById(account.getId())
-                .filter(identity -> "VERIFIED".equals(identity.getVerificationStatus()))
+        var vneid = identityPolicy.verified(account.getId())
                 .map(identity -> new AccountVerificationResponse.Vneid("VERIFIED", identity.getVerifiedAt(),
                         new AccountVerificationResponse.Citizen(identity.getDocumentNumber(), identity.getLegalName(),
                                 identity.getDateOfBirth(), identity.getGender(), identity.getAddress(),
-                                identity.getDocumentIssueDate(),identity.getDocumentIssuePlace(),identity.getPermanentAddress())))
+                                identity.getDocumentIssueDate(),identity.getDocumentIssuePlace(),identity.getPermanentAddress()),identity.getSource()))
                 .orElseGet(() -> new AccountVerificationResponse.Vneid("UNVERIFIED", null, null));
         return new AccountVerificationResponse(account.isEmailVerified(), vneid);
     }
