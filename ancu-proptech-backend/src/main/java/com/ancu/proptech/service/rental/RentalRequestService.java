@@ -95,9 +95,14 @@ public class RentalRequestService {
 
     @Transactional(readOnly = true)
     public PageResponse<RentalRequestResponse> ownerInbox(Jwt jwt, Long apartmentId, RentalRequest.Status status, int page, int size, Long propertyId) {
+        return ownerInbox(jwt,apartmentId,status,page,size,propertyId,null);
+    }
+    @Transactional(readOnly=true)
+    public PageResponse<RentalRequestResponse> ownerInbox(Jwt jwt, Long apartmentId, RentalRequest.Status status, int page, int size, Long propertyId, Boolean contractCompleted) {
+        if(contractCompleted!=null&&status!=RentalRequest.Status.ACCEPTED)throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_FILTER","Bộ lọc chữ ký chỉ dùng cho yêu cầu đã chuyển sang làm hợp đồng.");
         ApartmentService.validatePage(page, size);
         var owner = access.owner(jwt);
-        return PageResponse.from(requests.findOwnerInbox(owner.getId(), apartmentId, status, propertyId,
+        return PageResponse.from(requests.findOwnerInbox(owner.getId(), apartmentId, status, propertyId,contractCompleted,
                 PageRequest.of(page, size)).map(this::response));
     }
 

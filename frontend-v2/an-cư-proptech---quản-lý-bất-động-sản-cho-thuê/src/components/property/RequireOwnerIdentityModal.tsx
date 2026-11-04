@@ -35,17 +35,17 @@ export function RequireOwnerIdentityModal({ onClose }: { onClose: () => void }) 
         </div>
 
         <p className="text-sm text-slate-600 leading-relaxed">
-          Bạn chưa có thông tin căn cước để thêm tài sản. Hãy xác thực qua VNeID mô phỏng hoặc cung cấp hồ sơ căn cước trong Cài đặt tài khoản.
+          Hãy xác thực căn cước qua VNeID mô phỏng trong Cài đặt tài khoản trước khi thêm tài sản.
         </p>
 
         <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2 text-xs text-slate-700">
           <div className="flex items-start gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-            <span>Đã xác thực VNeID thì không cần nhập lại hoặc tải ảnh căn cước</span>
+            <span>Thông tin căn cước được ghi nhận từ luồng VNeID mô phỏng qua Auth0</span>
           </div>
           <div className="flex items-start gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-            <span>Hồ sơ tự khai chỉ được lưu, không đồng nghĩa đã xác thực danh tính</span>
+            <span>Thông tin đã xác thực chỉ để xem, không chỉnh sửa trực tiếp tại đây</span>
           </div>
           <div className="flex items-start gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />

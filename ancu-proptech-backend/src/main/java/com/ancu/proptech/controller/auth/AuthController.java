@@ -53,9 +53,24 @@ public class AuthController {
     }
 
     @PostMapping("/api/v1/me/verifications/vneid")
-    public ResponseEntity<AuthUserResponse> verifyVneid(@AuthenticationPrincipal Jwt jwt,
+    public ResponseEntity<?> verifyVneid(@AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody com.ancu.proptech.dto.auth.VneidVerificationRequest request) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(vneid.verifySelf(jwt,request.getAuth0AccessToken()));
+        var result=vneid.verifySelf(jwt,request.getAuth0AccessToken());
+        return ResponseEntity.status(result.confirmation()==null?HttpStatus.OK:HttpStatus.ACCEPTED)
+                .cacheControl(CacheControl.noStore()).body(result.confirmation()==null?result.user():result.confirmation());
+    }
+
+    @PostMapping("/api/v1/me/verifications/vneid/confirm")
+    public ResponseEntity<AuthUserResponse> confirmVneid(@AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody com.ancu.proptech.dto.auth.VneidLinkConfirmationRequest request) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(vneid.confirmSelf(jwt,request.getConfirmationId()));
+    }
+
+    @PostMapping("/api/v1/me/verifications/vneid/cancel")
+    public ResponseEntity<Void> cancelVneid(@AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody com.ancu.proptech.dto.auth.VneidLinkConfirmationRequest request) {
+        vneid.cancelSelf(jwt,request.getConfirmationId());
+        return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
     }
 
     @PostMapping("/api/v1/auth/register")

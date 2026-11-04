@@ -11,9 +11,12 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
 import java.io.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 public class GeminiDossierAiClient implements DossierAiClient {
+    private static final Logger log=LoggerFactory.getLogger(GeminiDossierAiClient.class);
     private final DossierAiSettings settings;private final ObjectMapper json;
     private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).followRedirects(HttpClient.Redirect.NEVER).build();
     private final String instruction;private final JsonNode schema;
@@ -29,21 +32,45 @@ public class GeminiDossierAiClient implements DossierAiClient {
         if(!"https".equals(uri.getScheme())&&!Set.of("127.0.0.1","localhost").contains(uri.getHost()))throw new Failure("CONFIGURATION_INVALID",false);
         String data=json.writeValueAsString(Map.of("declaredFields",declarations,"fileId",document.id(),"purpose",document.purpose(),"filename",document.filename()));
         var parts=List.of(Map.of("text",data),Map.of("inlineData",Map.of("mimeType",document.mimeType(),"data",Base64.getEncoder().encodeToString(document.content()))));
+        var generation=new LinkedHashMap<String,Object>();
+        generation.put("temperature",0);generation.put("maxOutputTokens",4096);
+        generation.put("responseMimeType","application/json");generation.put("responseJsonSchema",schema);
+        // Flash 2.5 defaults to dynamic thinking, which shares the output token limit.
+        // Keep reasoning bounded and leave room for the full structured per-file report.
+        // Other models may not accept thinkingBudget (or may forbid disabling thinking).
+        if(settings.getModel().equals("gemini-2.5-flash")||settings.getModel().startsWith("gemini-2.5-flash-preview-")){
+            generation.put("maxOutputTokens",16384);
+            generation.put("thinkingConfig",Map.of("thinkingBudget",1024));
+        }
         var payload=Map.of("systemInstruction",Map.of("parts",List.of(Map.of("text",instruction))),"contents",List.of(Map.of("role","user","parts",parts)),
-            "generationConfig",Map.of("temperature",0,"maxOutputTokens",4096,"responseMimeType","application/json","responseJsonSchema",schema));
+            "generationConfig",generation);
         var request=HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(60)).header("Content-Type","application/json").header("x-goog-api-key",settings.getApiKey()).POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(payload))).build();
         try{
             var response=http.send(request,HttpResponse.BodyHandlers.ofInputStream());
             try(var body=response.body()){
                 int code=response.statusCode();if(code!=200)throw new Failure(code==429?"RATE_LIMIT":code==401||code==403?"PROVIDER_AUTH":"PROVIDER_ERROR",code==429||code>=500);
                 byte[] bytes=body.readNBytes(1_000_001);if(bytes.length>1_000_000)throw new Failure("INVALID_RESPONSE",false);
-                var candidate=json.readTree(bytes).path("candidates").path(0);
-                if(!"STOP".equals(candidate.path("finishReason").asString()))throw new Failure("PROVIDER_INCOMPLETE",false);
+                var responseJson=json.readTree(bytes);var candidate=responseJson.path("candidates").path(0);
+                String finish=candidate.path("finishReason").asString("");
+                if(!"STOP".equals(finish)){
+                    var usage=responseJson.path("usageMetadata");
+                    // Never log provider bodies, extracted text, source data or credentials.
+                    log.warn("Dossier AI incomplete: finishReason={}, blockReason={}, outputTokens={}, thinkingTokens={}",
+                        safeReason(finish),safeReason(responseJson.path("promptFeedback").path("blockReason").asString("")),
+                        usage.path("candidatesTokenCount").asInt(0),usage.path("thoughtsTokenCount").asInt(0));
+                    throw new Failure("PROVIDER_INCOMPLETE",false);
+                }
                 var text=new StringBuilder();for(var part:candidate.path("content").path("parts")){if(!part.path("thought").asBoolean(false)&&part.path("text").isString())text.append(part.path("text").asString());}
                 if(text.isEmpty())throw new Failure("INVALID_RESPONSE",false);
                 return DossierAiReport.parse(json.readTree(text.toString()),document.id());
             }
         }catch(Failure e){throw e;}catch(InterruptedException e){Thread.currentThread().interrupt();throw new Failure("PROVIDER_TIMEOUT",true);}
         catch(IOException e){throw new Failure("PROVIDER_UNAVAILABLE",true);}catch(RuntimeException e){throw new Failure("INVALID_RESPONSE",false);}
+    }
+    private static String safeReason(String reason){
+        return Set.of("STOP","MAX_TOKENS","SAFETY","RECITATION","LANGUAGE","OTHER","BLOCKLIST","PROHIBITED_CONTENT","SPII",
+            "MALFORMED_FUNCTION_CALL","IMAGE_SAFETY","IMAGE_PROHIBITED_CONTENT","IMAGE_OTHER","NO_IMAGE","IMAGE_RECITATION",
+            "UNEXPECTED_TOOL_CALL","TOO_MANY_TOOL_CALLS","MISSING_THOUGHT_SIGNATURE","MALFORMED_RESPONSE","ESCALATION",
+            "PUP_LIMITED_DISABLED","CONTINUATION","FINISH_REASON_UNSPECIFIED","BLOCK_REASON_UNSPECIFIED").contains(reason)?reason:"UNKNOWN";
     }
 }

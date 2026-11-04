@@ -670,6 +670,109 @@
           }
         }
       }
+    },
+    "/api/v1/owner/invoices/additional": {
+      "get": {
+        "summary": "Paginated history of receipts sent to tenants by this Owner; includes old paid receipts",
+        "description": "Exact Owner and current contract/property/recipient scope. Filters run before pagination. Owner-only test receipts excluded. No-store; does not create QR, alter invoice debt or call provider. Existing test-history endpoint unchanged.",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "propertyId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            }
+          },
+          {
+            "name": "paymentStatus",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ALL",
+                "UNPAID",
+                "PAID"
+              ],
+              "default": "ALL"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Received receipts only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestReceiptPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "Not an eligible Owner"
+          }
+        }
+      }
+    },
+    "/api/v1/owner/invoices/additional/{id}": {
+      "get": {
+        "summary": "Read a tenant-received receipt owned by the current Owner",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "No-store exact-party snapshot with current paidAt, no writes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestReceipt"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Foreign, owner-only test or inconsistent receipt"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "Not an eligible Owner"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1031,6 +1134,37 @@
           },
           "roomNumber": {
             "type": "string"
+          }
+        }
+      },
+      "TestReceiptPage": {
+        "type": "object",
+        "required": [
+          "items",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TestReceipt"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer"
           }
         }
       }
