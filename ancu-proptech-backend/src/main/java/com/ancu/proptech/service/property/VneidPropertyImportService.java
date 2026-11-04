@@ -170,7 +170,7 @@ public class VneidPropertyImportService {
 
     private Binding binding(Jwt jwt){
         var owner=applicants.verified(jwt);
-        var identity=identities.findById(owner.getId()).filter(i->"VERIFIED".equals(i.getVerificationStatus()))
+        var identity=identities.findById(owner.getId()).filter(i->"VERIFIED".equals(i.getVerificationStatus()) && "AUTH0_VNEID_SIMULATION".equals(i.getSource()))
             .orElseThrow(()->error(HttpStatus.FORBIDDEN,"VNEID_REQUIRED","Cần căn cước VNeID đã xác thực để chọn tài sản."));
         consents.require(owner,identity);
         return new Binding(owner.getId(),identity.getIssuer(),identity.getSubject());

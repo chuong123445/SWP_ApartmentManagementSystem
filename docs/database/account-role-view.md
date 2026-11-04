@@ -9,7 +9,7 @@ FROM dbo.vw_account_roles
 ORDER BY account_id, role_id;
 ```
 
-`full_name` là tên hiển thị của tài khoản. `document_number` giữ kiểu chuỗi và số 0 đầu, ưu tiên bằng chứng VERIFIED trong `auth_external_identities`; nếu chưa có thì lấy `account_identity_profiles`. `identity_source` cho biết AUTH0_VNEID_SIMULATION hoặc SELF_DECLARED. Hồ sơ tự khai vẫn NOT_VERIFIED, cờ local fixture giúp phân biệt dữ liệu mẫu. Không có hồ sơ thì CCCD/nguồn là NULL và trạng thái UNVERIFIED.
+`full_name` là tên hiển thị của tài khoản. `document_number` giữ kiểu chuỗi và số 0 đầu, ưu tiên bằng chứng VERIFIED trong `auth_external_identities`; nếu chưa có thì lấy `account_identity_profiles`. `identity_source` cho biết AUTH0_VNEID_SIMULATION, LOCAL_DEMO hoặc SELF_DECLARED. LOCAL_DEMO luôn có `identity_is_local_fixture=1`; hồ sơ tự khai vẫn NOT_VERIFIED. Không có hồ sơ thì CCCD/nguồn là NULL và trạng thái UNVERIFIED. View phục vụ tra cứu nguồn dữ liệu, không thay thế `VerifiedIdentityPolicy`: ứng dụng chỉ chấp nhận LOCAL_DEMO khi bật local và không bật prod.
 
 Vai trò và bằng chứng căn cước được lưu riêng: CCCD NULL không tự chuyển tài khoản thành CUSTOMER. Tài khoản đăng ký thông thường có CUSTOMER; Admin hoặc Owner hiện có có thể chưa lưu CCCD. View phản ánh membership đã lưu, không cấp/thu hồi quyền hay xác thực tài khoản.
 

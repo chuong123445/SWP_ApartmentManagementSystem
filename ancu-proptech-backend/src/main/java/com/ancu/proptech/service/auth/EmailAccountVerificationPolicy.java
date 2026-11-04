@@ -3,18 +3,17 @@ package com.ancu.proptech.service.auth;
 import com.ancu.proptech.model.auth.AuthAccount;
 import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
-import com.ancu.proptech.repository.auth.ExternalIdentityRepository;
 
 @Component @RequiredArgsConstructor
 public class EmailAccountVerificationPolicy implements AccountVerificationPolicy {
-    private final ExternalIdentityRepository identities;
+    private final VerifiedIdentityPolicy identities;
     @Override public boolean isRentalVerified(AuthAccount account) {
-        return account.isEmailVerified() || identities.existsByAccountIdAndVerificationStatus(account.getId(), "VERIFIED");
+        return account.isEmailVerified() || identities.isVerified(account.getId());
     }
     @Override public boolean isVerified(AuthAccount account) {
         // Evidence do Backend ghi nhận; không tin contactVerified hoặc cờ của client.
         return account.isEmailVerified()
                 || ((account.hasRole(AuthAccount.Role.OWNER)||account.hasRole(AuthAccount.Role.ADMIN)) && account.isPhoneVerified())
-                || identities.existsByAccountIdAndVerificationStatus(account.getId(), "VERIFIED");
+                || identities.isVerified(account.getId());
     }
 }

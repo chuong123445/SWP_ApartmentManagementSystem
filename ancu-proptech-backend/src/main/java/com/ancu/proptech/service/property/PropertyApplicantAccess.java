@@ -2,7 +2,7 @@ package com.ancu.proptech.service.property;
 
 import com.ancu.proptech.model.auth.AuthAccount;
 import com.ancu.proptech.model.property.Property;
-import com.ancu.proptech.repository.auth.ExternalIdentityRepository;
+import com.ancu.proptech.service.auth.VerifiedIdentityPolicy;
 import com.ancu.proptech.repository.property.PropertyRepository;
 import com.ancu.proptech.service.auth.AccountAccessService;
 import com.ancu.proptech.exception.common.ApiException;
@@ -15,13 +15,13 @@ import org.springframework.stereotype.Service;
 @Service @RequiredArgsConstructor
 public class PropertyApplicantAccess {
     private final AccountAccessService access;
-    private final ExternalIdentityRepository identities;
+    private final VerifiedIdentityPolicy identities;
     private final PropertyRepository properties;
     public AuthAccount verified(Jwt jwt) {
         var a=access.account(jwt);
         if(a.getStatus()!=AuthAccount.Status.ACTIVE || (!a.hasRole(AuthAccount.Role.CUSTOMER) && !a.hasRole(AuthAccount.Role.OWNER)))
             throw new ApiException(HttpStatus.FORBIDDEN,"FORBIDDEN","Tài khoản không đủ điều kiện nộp hồ sơ.");
-        if(!identities.existsByAccountIdAndVerificationStatus(a.getId(),"VERIFIED"))
+        if(!identities.isVerified(a.getId()))
             throw new ApiException(HttpStatus.FORBIDDEN,"VNEID_REQUIRED","Cần xác thực CCCD qua VNeID trước khi gửi yêu cầu hoặc hồ sơ cho thuê.");
         return a;
     }

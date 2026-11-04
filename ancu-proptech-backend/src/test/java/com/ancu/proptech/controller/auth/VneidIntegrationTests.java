@@ -26,6 +26,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "app.auth.vneid.enabled=true","app.auth.vneid.issuer=https://test.invalid/","app.auth.vneid.client-id=test-client","app.auth.vneid.audience=test-api"})
 @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
 class VneidIntegrationTests {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    com.ancu.proptech.service.property.ai.DossierAiClient dossierAiClient;
     @Autowired MockMvc mvc;
     @Autowired AuthAccountRepository accounts;
     @Autowired ExternalIdentityRepository identities;

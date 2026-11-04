@@ -37,7 +37,7 @@ public class ContractDraftService {
     private final AccountAccessService access;
     private final AccountVerificationPolicy verification;
     private final IdentityProfileRepository identities;
-    private final com.ancu.proptech.repository.auth.ExternalIdentityRepository verifiedIdentities;
+    private final com.ancu.proptech.service.auth.VerifiedIdentityPolicy verifiedIdentities;
     private final ObjectMapper json;
     private final com.ancu.proptech.service.property.PropertyRightsPolicy rights;
     private final ContractHandoverRepository handovers;
@@ -226,9 +226,9 @@ public class ContractDraftService {
             qr==null?evidence.bank():new ContractSnapshot.ReceivingAccount(qr.getBank(),qr.getAccountNumber(),qr.getAccountHolderName()),provenance,qr==null?null:qr.getId().toString());
     }
     private ContractSnapshot.Party party(AuthAccount a) {
-        var verified=verifiedIdentities.findById(a.getId()).filter(i->"VERIFIED".equals(i.getVerificationStatus())).orElse(null);
+        var verified=verifiedIdentities.verified(a.getId()).orElse(null);
         if(verified!=null)return new ContractSnapshot.Party(a.getId().toString(),verified.getLegalName(),a.getEmail(),a.getPhone(),verified.getAddress(),verified.getDateOfBirth(),a.isEmailVerified(),
-            verified.getDocumentNumber(),verified.getDocumentIssueDate(),verified.getDocumentIssuePlace(),verified.getPermanentAddress(),"VERIFIED",false);
+            verified.getDocumentNumber(),verified.getDocumentIssueDate(),verified.getDocumentIssuePlace(),verified.getPermanentAddress(),"LOCAL_DEMO".equals(verified.getSource())?"VERIFIED_LOCAL_DEMO":"VERIFIED","LOCAL_DEMO".equals(verified.getSource()));
         var identity=identities.findById(a.getId()).orElse(null);
         return new ContractSnapshot.Party(a.getId().toString(),identity==null?a.getFullName():identity.getLegalName(),a.getEmail(),a.getPhone(),
             identity==null?a.getAddress():identity.getCurrentAddress(),identity==null?a.getDateOfBirth():identity.getDateOfBirth(),a.isEmailVerified(),

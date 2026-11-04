@@ -28,6 +28,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties={"app.seed.enabled=false","app.billing.local-fixtures=false","app.auth.secure-cookie=false"})
 @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
 class VneidPropertyImportIntegrationTests {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    com.ancu.proptech.service.property.ai.DossierAiClient dossierAiClient;
     @Autowired com.ancu.proptech.repository.property.PropertyImageRepository imageFiles;
     @Autowired MockMvc mvc;@Autowired AuthAccountRepository accounts;@Autowired ExternalIdentityRepository identities;
     @Autowired PropertyExternalImportRepository imports;@Autowired PropertyRepository properties;@Autowired ApartmentRepository apartments;
