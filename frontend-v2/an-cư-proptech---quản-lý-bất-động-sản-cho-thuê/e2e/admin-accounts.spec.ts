@@ -93,11 +93,11 @@ async function exercise(page: Page, base: string, width: number) {
     const nav = page.getByRole('navigation', { name: 'Điều hướng chính' });
     await nav.getByRole('link', { name: 'Quản trị hệ thống', exact: true }).waitFor();
     await nav.getByRole('link', { name: 'Quản trị hệ thống', exact: true }).click();
-    await page.getByRole('button', { name: 'Vai trò và tài khoản' }).click();
+    await page.getByRole('button', { name: 'Tài khoản' }).click();
     const menu = page.getByRole('navigation', { name: 'Điều hướng tài khoản' });
     await menu.getByRole('link', { name: 'Quản trị hệ thống', exact: true }).waitFor();
     check(await menu.getByRole('link', { name: /Cài đặt tài khoản|Hồ sơ & tài khoản/ }).count() === 0, 'Admin personal links remain');
-    await page.getByRole('button', { name: 'Vai trò và tài khoản' }).click();
+    await page.getByRole('button', { name: 'Tài khoản' }).click();
     await page.getByRole('link', { name: 'Tài khoản người dùng', exact: true }).click();
     await card('blank@example.invalid').waitFor();
     check(await card('admin@example.invalid').getByRole('button', { name: /^(Khóa|Mở khóa|Xóa)$/ }).count() === 0, 'Admin account has destructive actions');

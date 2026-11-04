@@ -155,11 +155,11 @@ async function exercise(page: Page, base: string, width: number) {
     const withdrawalsTab = adminTabs.getByRole('link', { name: 'Yêu cầu rút tiền', exact: true });
     await page.getByRole('heading', { name: 'Kiểm duyệt tài sản', exact: true }).waitFor();
     check(await dossiersTab.getAttribute('aria-current') === 'page', 'Dossiers tab was not selected');
-    await page.getByRole('button', { name: 'Vai trò và tài khoản' }).click();
+    await page.getByRole('button', { name: 'Tài khoản' }).click();
     const adminMenu = page.getByRole('navigation', { name: 'Điều hướng tài khoản' });
     check(await adminMenu.getByRole('link', { name: /Hồ sơ|Cài đặt tài khoản/ }).count() === 0, 'Admin account links are visible');
     await adminMenu.getByRole('button', { name: 'Đăng xuất' }).waitFor();
-    await page.getByRole('button', { name: 'Vai trò và tài khoản' }).click();
+    await page.getByRole('button', { name: 'Tài khoản' }).click();
     await withdrawalsTab.click();
     await page.getByRole('heading', { name: 'Xử lý yêu cầu rút tiền' }).waitFor();
     check(await withdrawalsTab.getAttribute('aria-current') === 'page', 'Withdrawals tab was not selected');

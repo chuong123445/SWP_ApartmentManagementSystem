@@ -5,8 +5,8 @@ export async function checkAccountWorkspaces(page: Page, width: number, scenario
   page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => { if(m.type()==='error') errors.push(m.text()); });
   page.on('response', r => { if(r.url().includes('/api/')&&r.status()>=400)network.push(r.status()+' '+new URL(r.url()).pathname); });
-  let roles = scenario==='customer' ? ['CUSTOMER'] : scenario==='admin' ? ['ADMIN'] : scenario==='reverse' ? ['CUSTOMER','OWNER'] : ['OWNER','CUSTOMER'];
-  const user = () => ({id:'2',email:'dual@example.invalid',fullName:'Người dùng hai vai trò',roles,accountStatus:'ACTIVE',contactVerificationStatus:'VERIFIED',version:0});
+  let roles = scenario==='customer'||scenario==='pending' ? ['CUSTOMER'] : scenario==='admin' ? ['ADMIN'] : scenario==='reverse' ? ['CUSTOMER','OWNER'] : ['OWNER','CUSTOMER'];
+  const user = () => ({id:'2',email:'dual@example.invalid',fullName:'Người dùng hai vai trò',roles,accountStatus:scenario==='pending'?'PENDING_VERIFICATION':'ACTIVE',contactVerificationStatus:scenario==='pending'?'UNVERIFIED':'VERIFIED',version:0});
   const empty = {items:[],content:[],page:0,size:20,totalElements:0,totalPages:0};
   const party = {id:'3',fullName:'Bên cho thuê khác',email:'landlord@example.invalid',phone:'0900000000',address:'Đà Nẵng'};
   // Valid empty PDF fixture; this test checks party/navigation, not PDF content.
@@ -25,8 +25,8 @@ export async function checkAccountWorkspaces(page: Page, width: number, scenario
     if(path.endsWith('/vneid-config'))return json({enabled:false});
     if(path.endsWith('/refresh'))return json({accessToken:'fixture',tokenType:'Bearer',expiresIn:900,user:user()});
     if(path==='/api/v1/me')return json(user());
-    if(path==='/api/v1/me/profile')return json({...user(),phone:null,dateOfBirth:null,address:null,bio:null,emailVerified:true,phoneVerified:false});
-    if(path==='/api/v1/me/verifications')return json({emailVerified:true,phoneVerified:false,vneid:{status:'NOT_VERIFIED'}});
+    if(path==='/api/v1/me/profile')return json({...user(),phone:null,dateOfBirth:null,address:null,bio:null,emailVerified:scenario!=='pending',phoneVerified:false});
+    if(path==='/api/v1/me/verifications')return json({emailVerified:scenario!=='pending',phoneVerified:false,vneid:{status:'NOT_VERIFIED'}});
     if(path.endsWith('/notifications'))return json({...empty,unreadCount:0});
     if(path==='/api/v1/me/tenancies')return json(scenario==='tenant'?[{id:'42',apartmentId:'5',roomNumber:'A.101',apartmentTitle:'Căn hộ kiểm thử',propertyName:'Tài sản bên cho thuê',customerId:'2',customerName:user().fullName,status:'ACTIVE',startDate:draft.startDate,endDate:draft.endDate,monthlyRent:draft.monthlyRent,version:0}]:[]);
     if(path==='/api/v1/contracts/42')return json(draft);
@@ -39,23 +39,38 @@ export async function checkAccountWorkspaces(page: Page, width: number, scenario
   const ensure=(condition:boolean,message:string)=>{if(!condition)throw Error(message);};
   const until=async(predicate:()=>Promise<boolean>,message:string)=>{const deadline=Date.now()+8000;while(!(await predicate())){if(Date.now()>deadline)throw Error(message);await page.waitForTimeout(80);}};
   const menu=()=>page.getByRole('navigation',{name:'Điều hướng tài khoản'});
-  const open=async()=>{await page.getByRole('button',{name:'Vai trò và tài khoản'}).click();await menu().waitFor({state:'visible'});};
-  await page.setViewportSize({width,height:950});await page.goto('/');await page.getByRole('button',{name:'Vai trò và tài khoản'}).waitFor({state:'visible'});await open();
+  const assertIdentity=async()=>{
+    const info=menu().getByRole('group',{name:'Thông tin tài khoản'});
+    const name=info.getByText(user().fullName,{exact:true});
+    const label=scenario==='pending'?'Chưa xác thực tài khoản':'Đã xác thực tài khoản';
+    await name.waitFor({state:'visible'});await info.getByText(label,{exact:true}).waitFor({state:'visible'});
+    ensure(!/\((Owner|Customer|Tenant|Admin)\)/.test(await info.innerText()),'Role labels remain in account identity');
+    if(width>=640){
+      const trigger=page.getByRole('button',{name:'Tài khoản',exact:true});
+      await trigger.getByText(user().fullName,{exact:true}).waitFor({state:'visible'});
+      await trigger.getByText(label,{exact:true}).waitFor({state:'visible'});
+    }
+  };
+  const open=async()=>{await page.getByRole('button',{name:'Tài khoản'}).click();await menu().waitFor({state:'visible'});await assertIdentity();};
+  await page.setViewportSize({width,height:950});await page.goto('/');await page.getByRole('button',{name:'Tài khoản'}).waitFor({state:'visible'});await open();
   const spaces=menu().getByLabel('Không gian làm việc');
-  ensure(await spaces.getByRole('link').count()===(scenario==='customer'||scenario==='admin'?1:2),'Wrong workspace membership');
+  ensure(await spaces.getByRole('link').count()===(scenario==='customer'||scenario==='pending'||scenario==='admin'?1:2),'Wrong workspace membership');
   ensure(await spaces.getByRole('link',{name:'Quản lý cho thuê',exact:true}).count()===(roles.includes('OWNER')?1:0),'Owner workspace mismatch');
   ensure(await spaces.getByRole('link',{name:'Tìm thuê căn hộ',exact:true}).count()===(roles.includes('CUSTOMER')?1:0),'Customer workspace mismatch');
   if(scenario==='admin'){
     await spaces.getByRole('link',{name:'Quản trị hệ thống',exact:true}).click();await until(async()=>new URL(page.url()).pathname==='/admin/property-dossiers','Admin destination');
+    await open();await page.keyboard.press('Escape');
+  }else if(scenario==='pending'){
+    await page.goto('/account/profile');await page.getByRole('heading',{name:'Hồ sơ cá nhân',exact:true}).waitFor({state:'visible'});
+    await open();await page.keyboard.press('Escape');
   }else if(scenario==='customer'){
     await page.goto('/app');await until(async()=>new URL(page.url()).pathname==='/','Customer entered Owner workspace');
   }else if(scenario==='tenant'){
-    ensure((await menu().innerText()).includes('Tenant'),'Tenant label must derive from ACTIVE contract');
     await page.goto('/contracts/42');await page.getByRole('heading',{name:'Chi tiết hợp đồng',exact:true}).waitFor({state:'visible'});
     await until(async()=>await page.getByRole('link',{name:'← Hợp đồng của tôi',exact:true}).count()===1,'Dual-role tenant was mistaken for this contract owner');
     ensure(await page.getByRole('link',{name:'← Về quản lý',exact:true}).count()===0,'Wrong contract-party navigation');
+    await open();await page.keyboard.press('Escape');
   }else{
-    ensure(!(await menu().innerText()).includes('Tenant'),'Tenant inferred from Owner role');
     await spaces.getByRole('link',{name:'Quản lý cho thuê',exact:true}).click();await until(async()=>new URL(page.url()).pathname==='/app','Owner destination');
     await open();await menu().getByRole('link',{name:'Tìm thuê căn hộ',exact:true}).click();await until(async()=>new URL(page.url()).pathname==='/','Rental destination');
     if(scenario==='revoked'){
@@ -68,10 +83,11 @@ export async function checkAccountWorkspaces(page: Page, width: number, scenario
     await page.getByRole('link',{name:'Số dư và rút tiền',exact:true}).waitFor({state:'visible'});
     ensure(await page.getByRole('link',{name:'Thiết lập thanh toán SePay',exact:true}).count()===0,'Owner still configures a separate SePay account');
     ensure(await page.getByRole('heading',{name:'Cho thuê căn hộ',exact:true}).count()===0,'Owner sees Customer-only acquisition prompt');
+    await open();await page.keyboard.press('Escape');
   }
   ensure(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Horizontal overflow');
   ensure(unexpected.length===0,'Unexpected API: '+unexpected.join(';'));ensure(network.length===0,'Network errors: '+network.join(';'));ensure(errors.length===0,'Browser errors: '+errors.join(';'));ensure(writes.length===0,'Workspace navigation changed server state: '+writes.join(';'));
   return {width,scenario,errors,network,unexpected,writes};
 }
 
-for(const width of [1440,390])for(const scenario of ['dual','reverse','tenant','customer','admin','revoked'])test(`Account workspaces ${scenario} ${width}`,async({page})=>{await checkAccountWorkspaces(page,width,scenario);});
+for(const width of [1440,390])for(const scenario of ['dual','reverse','tenant','customer','admin','revoked','pending'])test(`Account identity and workspaces ${scenario} ${width}`,async({page})=>{await checkAccountWorkspaces(page,width,scenario);});
