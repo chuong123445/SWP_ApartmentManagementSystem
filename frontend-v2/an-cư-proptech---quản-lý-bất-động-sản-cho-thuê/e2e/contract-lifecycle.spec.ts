@@ -9,7 +9,7 @@ function document() {
     snapshot: { owner: party('1', 'Chủ nhà kiểm thử'), customer: party('2', 'Khách thuê kiểm thử'), asset: { title: 'Phòng kiểm thử', roomNumber: 'P.101', address: 'Địa chỉ kiểm thử', amenities: [], areaM2: '40' }, receivingAccount: null },
     signing: { ownerAccountId: '1', customerAccountId: '2', contentHash: 'a'.repeat(64), state: 'SIGNED', ownerSignedAt: '2025-09-28T00:00:00Z', customerSignedAt: '2025-09-28T00:00:00Z', ownerSignature: null, customerSignature: null },
     lifecycle: { version: 3, expired: true, previousContractId: null as string | null, renewalContractId: null as string | null, endReason: null as string | null, handover: null as ReturnType<typeof handover> | null,
-      handoverAvailable: true, renewalRequest: null as { id: string; status: string; version: number; message: string } | null } };
+      renewalRequestAvailable: true, renewalRequestOpensOn: '2026-09-20', handoverAvailable: true, renewalRequest: null as { id: string; status: string; version: number; message: string } | null } };
 }
 function handover() { return { id: '8', version: 0, status: 'PENDING', returnDate: '2026-10-28', electricityReading: '215', waterReading: '55', electricityStartReading: '200', waterStartReading: '50', keysReturned: true, conditionNotes: 'Đã kiểm tra phòng và chìa khóa', depositAmount: '10000000', deductionAmount: '100000', utilityAmount: '127500', refundAmount: '9772500', extraAmountDue: '0', ownerConfirmedAt: '2026-10-28T10:00:00Z', customerConfirmedAt: null as string | null }; }
 

@@ -6,7 +6,7 @@ export function contractLifecycleActions(draft: ContractDraft, accountId?: strin
   const customer = !!accountId && accountId === (draft.signing?.customerAccountId ?? draft.snapshot.customer.id);
   const eligible = !!life && draft.status === 'ACTIVE' && life.handover?.status !== 'PENDING' && !life.renewalContractId;
   return { owner, customer,
-    canRequest: customer && eligible && !life?.renewalRequest,
+    canRequest: customer && eligible && life.renewalRequestAvailable === true && !life.renewalRequest,
     canCreate: owner && eligible && life?.renewalRequest?.status === 'ACCEPTED',
     canHandover: owner && draft.status === 'ACTIVE' && life?.handoverAvailable === true };
 }

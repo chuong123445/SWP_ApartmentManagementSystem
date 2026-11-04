@@ -2492,6 +2492,15 @@
           "handoverAvailable": {
             "type": "boolean",
             "description": "Server eligibility on/after end date with no pending request, open successor or pending handover."
+          },
+          "renewalRequestAvailable": {
+            "type": "boolean",
+            "description": "Server eligibility starting ten days before the end date. Requires ACTIVE, no request, open successor or pending handover. Existing post-expiry resolution remains supported."
+          },
+          "renewalRequestOpensOn": {
+            "type": "string",
+            "format": "date",
+            "description": "Contract end date minus ten days, evaluated in Asia/Ho_Chi_Minh. Earlier POST renewal-request returns 409 RENEWAL_REQUEST_TOO_EARLY."
           }
         }
       },

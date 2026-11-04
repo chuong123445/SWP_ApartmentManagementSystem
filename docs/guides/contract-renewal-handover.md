@@ -1,5 +1,7 @@
 # Thuê tiếp và bàn giao hợp đồng
 
+Cập nhật 04/11/2026: Tenant chỉ bắt đầu gửi yêu cầu thuê tiếp từ 10 ngày trước ngày kết thúc. Giao diện hiển thị ngày mở yêu cầu theo backend; gửi sớm qua API cũng bị chặn. Hai mốc nhắc 20 và 10 ngày vẫn được giữ. Các hợp đồng đã hết hạn tiếp tục theo quy trình xử lý hết hạn hiện có.
+
 Khởi động lại Backend để nạp code và migration V42, sau đó tải lại Frontend. Migration chỉ bổ sung dữ liệu hỗ trợ; không reset tài khoản, căn hộ, hợp đồng hoặc chữ ký mẫu. Không cần chạy lại script tạo HD-4.
 
 ## Thông báo trước hạn
