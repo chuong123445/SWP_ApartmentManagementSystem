@@ -18,11 +18,10 @@ import { HomePage } from '@/pages/customer/HomePage';
 
 export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWorkspace; navigation: WorkspaceNavigation }) {
   const { activeTab, selectTab: setActiveTab, setIsAddRoomOpen, setIsCreateInvoiceOpen } = navigation;
-  const { rooms, tenants, contracts, invoices, tickets, transactions, config,
+  const { rooms, tenants, contracts, invoices, tickets, config,
     buildings: initialBuildings, setSelectedRoom, setSelectedInvoice, currentResidentRoom, currentResidentTenant,
     currentResidentContract, residentInvoices, residentTickets, handleMarkPaid, handleAddTenant, handleAddContract,
-    handleReserveEscrow,
-    handleAddTransaction } = workspace;
+    handleReserveEscrow } = workspace;
   return <>
           {activeTab === 'home' && <HomePage embedded />}
           {activeTab === 'properties' && <PropertiesPage properties={initialBuildings} onReload={workspace.reloadInventory} onDossier={navigation.setPropertyForDossierId} onAdd={() => navigation.setIsAddPropertyOpen(true)} onSelect={id => { navigation.setSelectedBuildingId(id);setActiveTab('rooms'); }} />}
@@ -124,8 +123,12 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
 
           {activeTab === 'finance' && (
             <FinancePage
-              transactions={transactions}
-              onAddTransaction={handleAddTransaction}
+              key={navigation.selectedBuildingId}
+              cashbook={workspace.cashbook}
+              buildings={initialBuildings}
+              propertyId={navigation.selectedBuildingId}
+              inventoryError={workspace.inventoryError}
+              inventoryLoading={workspace.inventoryLoading}
             />
           )}
 
