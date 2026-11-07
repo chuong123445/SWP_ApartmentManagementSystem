@@ -5,6 +5,7 @@ import { managementRole } from '@/utils/auth';
 import type { AuthUser } from '@/types/auth';
 import type { Building } from '@/types';
 import type { WorkspaceNavigation } from '@/hooks/useWorkspaceNavigation';
+import type { OwnerWorkspaceCounters } from '@/types/owner';
 
 import { Sidebar } from '@/components/navigation/Sidebar';
 
@@ -15,7 +16,7 @@ interface ManagementLayoutProps {
   account: AuthUser;
   canManage: boolean;
   navigation: WorkspaceNavigation;
-  counters: { unpaidCount: number; maintenanceCount: number; expiringCount: number };
+  counters: OwnerWorkspaceCounters;
   onLogout: () => Promise<void>;
   isLoggingOut: boolean;
   authError: string;
@@ -42,9 +43,7 @@ export function ManagementLayout({ account, canManage, navigation, counters, onL
         onSelectTab={tab => { navigation.selectTab(tab); setMenuOpen(false); }}
         selectedBuildingId={navigation.selectedBuildingId}
         onSelectBuilding={id => { navigation.setSelectedBuildingId(id);setMenuOpen(false); }}
-        unpaidCount={counters.unpaidCount}
-        maintenanceCount={counters.maintenanceCount}
-        expiringCount={counters.expiringCount}
+        counters={counters}
         userRole={navigation.userRole}
       />
       </div>

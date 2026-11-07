@@ -12,6 +12,8 @@ public interface TestPaymentRepository extends JpaRepository<TestPayment,Long> {
   + "and (:paid is null or (:paid=true and p.paidAt is not null) or (:paid=false and p.paidAt is null))";
  @Query(value="select p"+RECEIVED_OWNER,countQuery="select count(p)"+RECEIVED_OWNER)
  Page<TestPayment> ownerReceived(@Param("ownerId") Long ownerId,@Param("propertyId") Long propertyId,@Param("paid") Boolean paid,Pageable page);
+ @Query("select count(p)"+RECEIVED_OWNER)
+ long countOwnerReceived(@Param("ownerId") Long ownerId,@Param("propertyId") Long propertyId,@Param("paid") Boolean paid);
  @Query("select p"+RECEIVED_OWNER+" and p.id=:id")
  Optional<TestPayment> ownerReceivedDetail(@Param("ownerId") Long ownerId,@Param("propertyId") Long propertyId,@Param("paid") Boolean paid,@Param("id") Long id);
  Optional<TestPayment> findByIdAndCustomerId(Long id,Long customerId);

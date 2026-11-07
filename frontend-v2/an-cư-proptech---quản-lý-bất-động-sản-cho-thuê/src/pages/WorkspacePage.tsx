@@ -47,8 +47,7 @@ export function WorkspacePage() {
       propertiesLoading={workspace.inventoryLoading}
       propertiesError={!!workspace.inventoryError}
       navigation={navigation}
-      counters={{ unpaidCount: scoped.invoices.filter(i => i.apiInvoice?.status === 'SENT').length,
-        maintenanceCount: workspace.maintenanceCount, expiringCount: scoped.contracts.filter(c => c.status === 'expiring').length }}
+      counters={{ ...workspace.ownerCounters, maintenanceCount: workspace.maintenanceCount }}
       onLogout={logout}
       isLoggingOut={isLoggingOut}
       authError={error}

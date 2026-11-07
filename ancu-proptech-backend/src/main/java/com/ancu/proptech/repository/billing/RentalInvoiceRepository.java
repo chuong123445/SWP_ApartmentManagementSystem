@@ -15,6 +15,11 @@ public interface RentalInvoiceRepository extends JpaRepository<RentalInvoice,Lon
         @org.springframework.data.repository.query.Param("propertyId") Long propertyId,
         @org.springframework.data.repository.query.Param("status") RentalInvoice.Status status,
         @org.springframework.data.repository.query.Param("paid") Boolean paid,Pageable page);
+    @Query("select count(i)"+OWNER_HISTORY)
+    long countOwnerHistory(@org.springframework.data.repository.query.Param("ownerId") Long ownerId,
+        @org.springframework.data.repository.query.Param("propertyId") Long propertyId,
+        @org.springframework.data.repository.query.Param("status") RentalInvoice.Status status,
+        @org.springframework.data.repository.query.Param("paid") Boolean paid);
     @Query("select i.contract.id from RentalInvoice i where i.id=:id")
     Optional<Long> findContractId(@org.springframework.data.repository.query.Param("id") Long id);
     boolean existsByContractIdAndPeriod(Long contractId,String period);

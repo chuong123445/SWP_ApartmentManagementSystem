@@ -11,6 +11,7 @@ import { createOwnerProperty } from '@/services/property/ownerPropertyService';
 import type { PropertyCreateInput } from '@/types/property';
 import { useOwnerInvoiceHistory } from '@/hooks/useOwnerInvoiceHistory';
 import { useCashbook } from '@/hooks/useCashbook';
+import { useOwnerWorkspaceSummary } from '@/hooks/useOwnerWorkspaceSummary';
 
 export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all', invoiceHistoryEnabled = false, cashbookEnabled = false) {
   // Global Data States
@@ -26,6 +27,7 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
   const [billingError, setBillingError] = useState('');
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingRevision, setBillingRevision] = useState(0);
+  const ownerCounters = useOwnerWorkspaceSummary(canManage, selectedPropertyId, `${inventoryRevision}:${billingRevision}`);
   const invoiceHistory = useOwnerInvoiceHistory(canManage && invoiceHistoryEnabled, selectedPropertyId, billingRevision);
   const cashbook = useCashbook(canManage && cashbookEnabled, selectedPropertyId);
   const [invoicePage, setInvoicePage] = useState(0);
@@ -162,9 +164,7 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
   const residentTickets = tickets.filter((t) => t.roomNumber === currentResidentRoom?.roomNumber);
 
   // Counters for sidebar badges
-  const unpaidCount = invoices.filter((i) => i.apiInvoice?.status === 'SENT').length;
   const maintenanceCount = tickets.filter((t) => t.status !== 'resolved').length;
-  const expiringCount = contracts.filter((c) => c.status === 'expiring').length;
 
 
   const handleCreateInvoice = (_invoice: Invoice) => setBillingRevision(value => value + 1);
@@ -186,7 +186,7 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
     handleReserveEscrow,
     handleCreateInvoice, handleSaveConfig: setConfig,
     currentResidentTenant, currentResidentRoom, currentResidentContract, residentInvoices, residentTickets,
-    unpaidCount, maintenanceCount, expiringCount,
+    ownerCounters, maintenanceCount,
   };
 }
 
