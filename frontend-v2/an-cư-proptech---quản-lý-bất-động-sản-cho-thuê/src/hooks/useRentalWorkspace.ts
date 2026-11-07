@@ -157,7 +157,7 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
   // Resident Portal specific data
   const currentResidentTenant = tenants.find((t) => t.roomNumber === 'P.101') || tenants[0];
   const currentResidentRoom = rooms.find((r) => r.id === currentResidentTenant?.roomId) || rooms[0];
-  const currentResidentContract = contracts.find((c) => c.tenantId === currentResidentTenant?.id) || contracts[0];
+  const currentResidentContract = contracts.find((c) => c.id === currentResidentTenant?.contractId) || contracts.find((c) => c.tenantId === currentResidentTenant?.id && c.roomId === currentResidentTenant?.roomId);
   const residentInvoices = invoices.filter((i) => i.roomId === currentResidentRoom?.id && i.apiInvoice?.status === 'SENT');
   const residentTickets = tickets.filter((t) => t.roomNumber === currentResidentRoom?.roomNumber);
 

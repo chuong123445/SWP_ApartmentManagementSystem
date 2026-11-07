@@ -51,7 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'properties' as ActiveTab, label: 'Tài sản cho thuê', icon: Building2 },
     { id: 'rooms' as ActiveTab, label: 'Quản lý căn hộ', icon: Home },
     { id: 'rental_requests' as ActiveTab, label: 'Yêu cầu thuê', icon: MessageSquare },
-    { id: 'tenants' as ActiveTab, label: 'Khách thuê & eKYC', icon: Users },
+    { id: 'tenants' as ActiveTab, label: 'Khách thuê', icon: Users },
     {
       id: 'contracts' as ActiveTab,
       label: 'Hợp đồng & Ký số',

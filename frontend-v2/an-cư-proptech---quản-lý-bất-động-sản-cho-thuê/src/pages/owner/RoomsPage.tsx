@@ -171,7 +171,7 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {filteredRooms.map((room) => {
           const badge = getStatusBadge(room.status);
-          const tenant = tenants.find((t) => t.id === room.currentTenantId);
+          const tenant = tenants.find((t) => t.roomId === room.id && t.id === room.currentTenantId);
 
           return (
             <div
