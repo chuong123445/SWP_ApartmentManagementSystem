@@ -20,7 +20,7 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
   const { activeTab, selectTab: setActiveTab, setIsAddRoomOpen, setIsCreateInvoiceOpen } = navigation;
   const { rooms, tenants, contracts, invoices, tickets, config,
     buildings: initialBuildings, setSelectedRoom, setSelectedInvoice, currentResidentRoom, currentResidentTenant,
-    currentResidentContract, residentInvoices, residentTickets, handleMarkPaid, handleAddTenant, handleAddContract,
+    currentResidentContract, residentInvoices, residentTickets, handleMarkPaid, handleAddContract,
     handleReserveEscrow } = workspace;
   return <>
           {activeTab === 'home' && <HomePage embedded />}
@@ -75,10 +75,10 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
 
           {activeTab === 'tenants' && (
             <TenantsPage
-              readOnly
               tenants={tenants}
-              rooms={rooms}
-              onAddTenant={handleAddTenant}
+              loading={workspace.inventoryLoading}
+              error={workspace.inventoryError}
+              onReload={workspace.reloadInventory}
             />
           )}
 

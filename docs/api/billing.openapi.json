@@ -675,6 +675,7 @@
       },
       "Tenancy": {
         "type": "object",
+        "description": "Owner-scoped or exact-Self contract relationship. Contract deposit is the saved agreement, not proof of receipt. Verification summaries are separate from in-app signing; no identity documents or signature images are returned. Responses are no-store.",
         "required": [
           "id",
           "apartmentId",
@@ -740,7 +741,16 @@
           },
           "version": {
             "type": "integer"
-          }
+          },
+          "contractDeposit": {
+            "type": ["string", "null"],
+            "description": "Exact decimal saved on this contract's authoring terms, including a genuine zero. Null when legacy terms are missing; never inferred from current apartment deposit or treated as actual money received."
+          },
+          "customerEmailVerified": { "type": "boolean" },
+          "customerIdentityStatus": { "type": "string", "enum": ["VERIFIED", "NOT_VERIFIED"], "description": "Accepted persisted evidence under VerifiedIdentityPolicy; independent of email or the account identityVerified summary flag." },
+          "customerIdentitySource": { "type": ["string", "null"], "description": "Accepted evidence source only. AUTH0_VNEID_SIMULATION remains simulation; LOCAL_DEMO is accepted only in local/non-prod. No provider subject, citizen data or documents included." },
+          "inAppSigningStatus": { "type": "string", "enum": ["NO_DATA", "UNSIGNED", "OWNER_SIGNED", "CUSTOMER_SIGNED", "BOTH_SIGNED"], "description": "Persisted signing timestamps on existing authoring terms, not a certified digital-signature provider result. Missing legacy terms are NO_DATA, not BOTH_SIGNED just because the contract is ACTIVE." },
+          "localFixture": { "type": "boolean", "description": "Marks illustrative contract data, not actual party consent." }
         }
       },
       "InvoiceCreate": {

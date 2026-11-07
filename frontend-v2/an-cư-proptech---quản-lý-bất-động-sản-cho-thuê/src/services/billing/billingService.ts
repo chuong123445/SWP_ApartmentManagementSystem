@@ -49,9 +49,12 @@ export function invoiceView(i: BillingInvoice): Invoice {
 }
 export function tenancyViews(items: Tenancy[]): { tenants: Tenant[]; contracts: Contract[] } {
   return {
-    tenants: items.filter(c => c.status === 'ACTIVE').map(c => ({ id: c.customerId, name: c.customerName, phone: '', email: c.customerEmail, idCard: '',
+    tenants: items.filter(c => c.status === 'ACTIVE').map(c => ({ id: c.customerId, contractId: c.id, name: c.customerName, phone: '', email: c.customerEmail, idCard: '',
       roomId: c.apartmentId, roomNumber: c.roomNumber, buildingName: c.propertyName, startDate: c.startDate,
-      deposit: 0, hometown: '', status: c.status === 'ACTIVE' ? 'active' : 'departed' })),
+      deposit: c.contractDeposit == null ? null : Number(c.contractDeposit), contractDeposit: c.contractDeposit ?? null,
+      emailVerified: c.customerEmailVerified, identityStatus: c.customerIdentityStatus, identitySource: c.customerIdentitySource,
+      inAppSigningStatus: c.inAppSigningStatus, localFixture: c.localFixture,
+      hometown: '', status: c.status === 'ACTIVE' ? 'active' : 'departed' })),
     contracts: items.map(c => ({ id: c.id, contractNumber: `HD-${c.id.slice(0, 8)}`, tenantId: c.customerId,
       tenantName: c.customerName, roomId: c.apartmentId, roomNumber: c.roomNumber, buildingName: c.propertyName,
       startDate: c.startDate, endDate: c.endDate, monthlyRent: Number(c.monthlyRent), deposit: 0, paymentCycle: 1,
