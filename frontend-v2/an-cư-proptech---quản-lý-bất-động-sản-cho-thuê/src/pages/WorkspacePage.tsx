@@ -14,7 +14,7 @@ export function WorkspacePage() {
   const [params] = useSearchParams();
   const canManage = hasManagementRole(user!);
   const navigation = useWorkspaceNavigation(canManage);
-  const workspace = useRentalWorkspace(canManage, navigation.selectedBuildingId, navigation.activeTab === 'invoices');
+  const workspace = useRentalWorkspace(canManage, navigation.selectedBuildingId, navigation.activeTab === 'invoices', navigation.activeTab === 'finance');
   const reloadInventory = workspace.reloadInventory;
   useEffect(() => {
     if (canManage && (navigation.activeTab === 'tenants' || navigation.activeTab === 'invoices' || navigation.isCreateInvoiceOpen))

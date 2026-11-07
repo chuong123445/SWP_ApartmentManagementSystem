@@ -1,8 +1,8 @@
 import { updateApartmentPrices } from '@/services/apartments/ownerApartmentService';
 import type { PriceInput } from '@/components/rooms/ApartmentPriceForm';
 import { useCallback, useEffect, useState } from 'react';
-import type { Building, Room, NewRoom, Tenant, Contract, Invoice, MaintenanceTicket, Transaction, SystemConfig, EscrowDeposit } from '@/types';
-import { initialTransactions, initialConfig, initialEscrows } from '@/data/mockData';
+import type { Building, Room, NewRoom, Tenant, Contract, Invoice, MaintenanceTicket, SystemConfig, EscrowDeposit } from '@/types';
+import { initialConfig, initialEscrows } from '@/data/mockData';
 import { ownerMaintenance } from '@/services/maintenance/maintenanceService';
 import { createOwnerApartment, getOwnerApartments, getOwnerProperties, setApartmentPublication } from '@/services/apartments/ownerApartmentService';
 import { ownerTenancies, ownerInvoices, tenancyViews, invoiceView, sendInvoice } from '@/services/billing/billingService';
@@ -10,8 +10,9 @@ import type { Tenancy } from '@/types/billing';
 import { createOwnerProperty } from '@/services/property/ownerPropertyService';
 import type { PropertyCreateInput } from '@/types/property';
 import { useOwnerInvoiceHistory } from '@/hooks/useOwnerInvoiceHistory';
+import { useCashbook } from '@/hooks/useCashbook';
 
-export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all', invoiceHistoryEnabled = false) {
+export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all', invoiceHistoryEnabled = false, cashbookEnabled = false) {
   // Global Data States
   const [rooms, setRooms] = useState<Room[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
@@ -26,6 +27,7 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingRevision, setBillingRevision] = useState(0);
   const invoiceHistory = useOwnerInvoiceHistory(canManage && invoiceHistoryEnabled, selectedPropertyId, billingRevision);
+  const cashbook = useCashbook(canManage && cashbookEnabled, selectedPropertyId);
   const [invoicePage, setInvoicePage] = useState(0);
   const [invoiceTotalPages, setInvoiceTotalPages] = useState(0);
   const [tickets, setTickets] = useState<MaintenanceTicket[]>([]);
@@ -46,7 +48,6 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
     void load();const timer=window.setInterval(()=>{if(document.visibilityState==='visible')void load();},10000);
     return () => { active = false;window.clearInterval(timer); };
   }, [canManage, selectedPropertyId, inventoryRevision]);
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [config, setConfig] = useState<SystemConfig>(initialConfig);
   const [escrows, setEscrows] = useState<EscrowDeposit[]>(initialEscrows);
 
@@ -175,18 +176,15 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
     setSelectedInvoice(prev => prev?.id === id ? sent : prev);
     setBillingRevision(value => value + 1);
   };
-  const handleAddTransaction = (tx: Omit<Transaction, 'id' | 'code'>) => setTransactions(prev => [{
-    ...tx, id: `tx-${Date.now()}`, code: `${tx.type === 'income' ? 'THU' : 'CHI'}-0926-${Math.floor(100 + Math.random() * 900)}`,
-  }, ...prev]);
   return {
-    rooms, tenants, contracts, invoices, tickets, transactions, config, escrows, maintenanceError, maintenanceLoading,
+    rooms, tenants, contracts, invoices, tickets, cashbook, config, escrows, maintenanceError, maintenanceLoading,
     tenancies, billingError, billingLoading, invoicePage, setInvoicePage, invoiceTotalPages, invoiceHistory,
     reloadBilling: () => setBillingRevision(value => value + 1), handleSendInvoice,
     buildings, inventoryError, inventoryLoading, reloadInventory,
     selectedRoom, setSelectedRoom, selectedInvoice, setSelectedInvoice,
     handleMarkPaid, handleAddTenant, handleAddContract, handleAddRoom, handleAddProperty, handlePrices, handlePublication, handleCheckOut,
     handleReserveEscrow,
-    handleCreateInvoice, handleAddTransaction, handleSaveConfig: setConfig,
+    handleCreateInvoice, handleSaveConfig: setConfig,
     currentResidentTenant, currentResidentRoom, currentResidentContract, residentInvoices, residentTickets,
     unpaidCount, maintenanceCount, expiringCount,
   };
