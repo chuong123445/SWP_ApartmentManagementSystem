@@ -11,7 +11,6 @@ export function useWorkspaceNavigation(canManage: boolean) {
   // Navigation & UI States
   const [activeTab, setActiveTab] = useState<ActiveTab>(canManage ? 'dashboard' : 'market');
   const [selectedBuildingId, setSelectedBuildingId] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(()=>{if(!canManage)return;const tab=params.get('tab');if(tab&&['home','dashboard','rental_requests','maintenance','contracts','properties','invoices','finance','settings'].includes(tab)){setActiveTab(tab as ActiveTab);const property=params.get('propertyId');setSelectedBuildingId(property&&/^[0-9]+$/.test(property)?property:'all');}},[params,canManage,location.key]);
   // Modals
@@ -48,7 +47,7 @@ export function useWorkspaceNavigation(canManage: boolean) {
 
   const selectTab = (tab: ActiveTab) => { if (canManage || tab === 'market') setActiveTab(tab); };
   const resetToDashboard = () => setActiveTab('dashboard');
-  return { userRole, activeTab, selectedBuildingId, setSelectedBuildingId, searchQuery, setSearchQuery,
+  return { userRole, activeTab, selectedBuildingId, setSelectedBuildingId,
     isAddRoomOpen, setIsAddRoomOpen, isAddPropertyOpen, setIsAddPropertyOpen, propertyForDossierId, setPropertyForDossierId, isCreateInvoiceOpen, setIsCreateInvoiceOpen,
     invoiceContractId,setInvoiceContractId,handleQuickAction, selectTab, resetToDashboard };
 }

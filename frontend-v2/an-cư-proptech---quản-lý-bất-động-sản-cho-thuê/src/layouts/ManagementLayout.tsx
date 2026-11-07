@@ -51,7 +51,6 @@ export function ManagementLayout({ account, canManage, navigation, counters, onL
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         <button type="button" aria-expanded={menuOpen} aria-controls="management-menu" onClick={() => setMenuOpen(value => !value)} className="md:hidden self-start inline-flex items-center gap-2 text-sm font-semibold m-3 mb-0 px-3 py-2 bg-white border border-slate-200 rounded-lg"><Menu className="w-4 h-4" />Menu quản lý</button>
 
-        <div className="px-4 md:px-6 pt-4 max-w-7xl w-full mx-auto"><label htmlFor="input-global-search" className="sr-only">Tìm phòng và khách thuê</label><input id="input-global-search" type="search" value={navigation.searchQuery} onChange={event => navigation.setSearchQuery(event.target.value)} placeholder="Tìm phòng, CCCD, tên khách thuê..." className="w-full max-w-md rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:outline-emerald-600" /></div>
         <main className="flex-1 p-4 md:p-6 max-w-7xl w-full mx-auto">{children}</main>
       </div>
       </div>
