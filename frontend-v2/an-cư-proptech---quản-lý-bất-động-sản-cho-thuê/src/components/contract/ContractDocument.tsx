@@ -1,3 +1,4 @@
+import { externalDepositNotice } from '@/utils/depositPolicy';
 import { ContractExitPanel } from '@/components/contract/ContractExitPanel';
 import { SelectionCancellationPanel } from '@/components/rental/SelectionCancellationPanel';
 import { useEffect, useRef, useState } from 'react';
@@ -95,7 +96,8 @@ export function ContractDocument({ draft, onUpdated }: { draft: ContractDraft; o
       <label className="flex gap-3 items-start text-sm"><input type="checkbox" checked={consent} disabled={busy} onChange={e => setConsent(e.target.checked)} className="mt-1" />Tôi đã đọc bản PDF và đồng ý toàn bộ nội dung hợp đồng; xác nhận sử dụng chữ ký vừa vẽ.</label>
       <button type="button" disabled={busy || !signature || !consent || !pdfUrl} onClick={() => void sign()} className="w-full rounded-xl py-3 px-4 bg-emerald-700 text-white font-semibold disabled:opacity-50">{busy ? 'Đang lưu chữ ký...' : 'Xác nhận ký hợp đồng'}</button>
     </section>}
-    <ContractLifecyclePanel draft={draft} onUpdated={onUpdated} hideHandover />
+    <p className="rounded-lg bg-slate-50 p-3 text-sm">{externalDepositNotice}</p>
+    <ContractLifecyclePanel draft={draft} onUpdated={onUpdated} />
     <ContractExitPanel draft={draft} onChanged={async()=>onUpdated(await getContract(draft.id))} />
     <p className="text-xs text-slate-500 break-all">Mã nội dung SHA-256: {signing?.contentHash ?? 'Chưa có'}<br />Chữ ký tay điện tử được lưu cùng tài khoản và thời gian ký; không phải chữ ký số có chứng thư.</p>
   </section>;

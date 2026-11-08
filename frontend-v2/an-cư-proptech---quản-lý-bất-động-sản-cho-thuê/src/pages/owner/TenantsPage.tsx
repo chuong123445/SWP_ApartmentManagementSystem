@@ -1,3 +1,4 @@
+import { externalDepositNotice } from '@/utils/depositPolicy';
 import { useState } from 'react';
 import { Search, Users } from 'lucide-react';
 import type { Tenant } from '@/types';
@@ -32,7 +33,7 @@ export function TenantsPage({ tenants, loading = false, error = '', onReload }: 
       </div>
       <button type="button" disabled={loading} onClick={onReload} className="px-3 py-2 text-sm border border-slate-300 rounded-lg disabled:opacity-50 shrink-0">Tải lại khách thuê</button>
     </div>
-    <p className="text-sm text-slate-600">Cọc theo hợp đồng là số tiền thỏa thuận, không xác nhận tiền đã thu. Xác thực email, định danh tài khoản và ký hợp đồng được hiển thị riêng.</p>
+    <p className="text-sm text-slate-600">Cọc theo hợp đồng là số tiền thỏa thuận. {externalDepositNotice} Xác thực email, định danh tài khoản và ký hợp đồng được hiển thị riêng.</p>
     <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
       <label htmlFor="input-search-tenants" className="sr-only">Tìm khách thuê</label>
       <div className="relative"><Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" /><input id="input-search-tenants" type="search" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Tìm theo tên, email, tài sản, số căn hộ…" className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm" /></div>
@@ -40,7 +41,7 @@ export function TenantsPage({ tenants, loading = false, error = '', onReload }: 
     {error && <p role="alert" className="text-red-700 text-sm">{error}</p>}
     {loading ? <p role="status" className="text-sm">Đang tải khách thuê…</p> : !error && <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
       <div className="overflow-x-auto"><table className="w-full text-left text-xs min-w-[1050px]">
-        <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[11px]"><tr>{['Người thuê', 'Căn hộ / Tài sản', 'Xác thực email', 'Định danh tài khoản', 'Ký trong ứng dụng', 'Cọc theo hợp đồng', 'Cọc thực thu', 'Trạng thái'].map(label => <th key={label} className="px-4 py-3">{label}</th>)}</tr></thead>
+        <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[11px]"><tr>{['Người thuê', 'Căn hộ / Tài sản', 'Xác thực email', 'Định danh tài khoản', 'Ký trong ứng dụng', 'Cọc theo hợp đồng', 'Quản lý cọc', 'Trạng thái'].map(label => <th key={label} className="px-4 py-3">{label}</th>)}</tr></thead>
         <tbody className="divide-y divide-slate-100">{filtered.map(tenant => <tr key={tenant.contractId ?? `${tenant.id}-${tenant.roomId}`} className="hover:bg-slate-50/80">
           <td className="px-4 py-3"><div className="font-semibold text-slate-900">{tenant.name}</div><div className="text-slate-500 break-all mt-1">{tenant.email || 'Chưa có email'}</div>{tenant.localFixture && <div className="text-amber-800 mt-1">Hợp đồng dữ liệu mẫu</div>}</td>
           <td className="px-4 py-3"><div className="font-bold text-emerald-700">{tenant.roomNumber}</div><div className="text-slate-500 mt-1">{tenant.buildingName}</div><div className="text-slate-500 mt-1">{tenant.contractId ? `HĐ #${tenant.contractId}` : 'Chưa có mã hợp đồng'}</div></td>
@@ -48,7 +49,7 @@ export function TenantsPage({ tenants, loading = false, error = '', onReload }: 
           <td className="px-4 py-3">{identityLabel(tenant)}</td>
           <td className="px-4 py-3">{signingLabels[tenant.inAppSigningStatus ?? 'NO_DATA'] ?? signingLabels.NO_DATA}</td>
           <td className="px-4 py-3 font-semibold text-slate-900 whitespace-nowrap">{tenant.contractDeposit == null ? 'Chưa có dữ liệu' : billingMoney(tenant.contractDeposit)}</td>
-          <td className="px-4 py-3 text-slate-500">Chưa có dữ liệu thực thu</td>
+          <td className="px-4 py-3 text-slate-500">Hai bên tự quản lý ngoài hệ thống</td>
           <td className="px-4 py-3"><span className="inline-block bg-emerald-100 text-emerald-800 rounded-full px-2 py-1 whitespace-nowrap">Đang thuê</span></td>
         </tr>)}{!filtered.length && <tr><td colSpan={8} className="p-6 text-slate-500">{active.length ? 'Không có khách thuê khớp tìm kiếm.' : 'Chưa có hợp đồng đang hiệu lực trong tài sản đã chọn.'}</td></tr>}</tbody>
       </table></div>

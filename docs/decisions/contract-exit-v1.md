@@ -1,5 +1,7 @@
 # FIX-09 — Kết thúc sớm và bàn giao cư trú
 
+Override tiếp theo08/11: người dùng chọn cọc do Owner/Customer tự quản lý ngoài hệ thống, không phải chỉ chờ tích hợp giữ cọc vào nền tảng. Xem external-deposit-v1.md. Số tiền hợp đồng/biên bản cũ được giữ, không xác nhận giao dịch thực thu/hoàn; bàn giao cư trú không phụ thuộc hoàn cọc.
+
 Quyết định người dùng 08/11/2026: chấp nhận hướng đề xuất FIX-09; tạm hoãn quản lý cọc thực thu/hoàn cọc FIX-10/11. Không triển khai cơ chế thu cọc trực tiếp cho Owner. Ý tưởng nhận cọc vào hệ thống bằng mã riêng và cộng dồn webhook chỉ là backlog.
 
 ## Quy tắc đã triển khai

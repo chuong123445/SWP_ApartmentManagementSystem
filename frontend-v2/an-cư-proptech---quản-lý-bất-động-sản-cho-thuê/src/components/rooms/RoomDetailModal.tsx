@@ -1,3 +1,4 @@
+import { externalDepositNotice } from '@/utils/depositPolicy';
 import { ApartmentPriceForm, type PriceInput } from '@/components/rooms/ApartmentPriceForm';
 import React, { useState } from 'react';
 import {
@@ -31,7 +32,6 @@ interface RoomDetailModalProps {
   onClose: () => void;
   onOpenInvoiceModal: (invoice: Invoice) => void;
   onCheckOut: (roomId: string) => void;
-  onReserveEscrow?: (roomId: string) => void;
 }
 
 export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
@@ -42,21 +42,12 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
   onClose,
   onOpenInvoiceModal,
   onCheckOut,
-  onReserveEscrow,
   onPublication,
   onPrices,
 }) => {
-  const [reserveSuccess, setReserveSuccess] = useState(false);
   const [publicationBusy, setPublicationBusy] = useState(false);const [publicationError, setPublicationError] = useState('');
 
   if (!room) return null;
-
-  const handleEscrowDeposit = () => {
-    if (onReserveEscrow) {
-      onReserveEscrow(room.id);
-    }
-    setReserveSuccess(true);
-  };
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
@@ -110,9 +101,9 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
               </div>
             </div>
             <div>
-              <span className="text-[11px] text-slate-500 font-medium">Ký quỹ Escrow</span>
+              <span className="text-[11px] text-slate-500 font-medium">Cọc niêm yết (tham khảo)</span>
               <div className="text-sm font-bold text-emerald-700 mt-0.5">
-                {(room.deposit || room.price).toLocaleString('vi-VN')} đ
+                {room.deposit == null || !Number.isFinite(room.deposit) ? 'Chưa có thông tin' : `${room.deposit.toLocaleString('vi-VN')} đ`}
               </div>
             </div>
             <div>
@@ -190,23 +181,9 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
           ) : (
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center space-y-3">
               <p className="text-xs text-slate-600">
-                Phòng hiện đang trống, sẵn sàng dọn vào ngay. Đã khử khuẩn và kiểm tra thiết bị.
+                Chưa có thông tin người thuê trong màn hình này. Hãy kiểm tra trạng thái phòng và hợp đồng trước khi xử lý.
               </p>
-              {reserveSuccess ? (
-                <div className="p-3 bg-emerald-100 text-emerald-900 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                  Đã khởi tạo lệnh Ký Quỹ Escrow giữ chỗ thành công cho Căn hộ {room.roomNumber}!
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleEscrowDeposit}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-colors inline-flex items-center gap-1.5"
-                >
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>Đặt Cọc Giữ Chỗ Qua An Cư Escrow MBBank</span>
-                </button>
-              )}
+              <p className="text-xs text-slate-600">{externalDepositNotice}</p>
             </div>
           )}
 

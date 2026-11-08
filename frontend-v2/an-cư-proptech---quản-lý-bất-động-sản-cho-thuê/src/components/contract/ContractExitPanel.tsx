@@ -1,3 +1,4 @@
+import { handoverDepositNotice } from '@/utils/depositPolicy';
 import {useEffect,useRef,useState} from 'react';
 import {useAuth} from '@/hooks/useAuth';
 import type {ContractDraft} from '@/types/contract';
@@ -32,7 +33,7 @@ export function ContractExitPanel({draft,onChanged,initialOpen=false}:{draft:Con
  const available:ExitAction[]=data?[...(data.canProposeTermination?['PROPOSE_TERMINATION' as const]:[]),...(data.canRespondTermination?['ACCEPT_TERMINATION' as const,'REJECT_TERMINATION' as const]:[]),...(data.canWithdrawTermination?['WITHDRAW_TERMINATION' as const]:[]),...(data.canProposeHandover?['PROPOSE_HANDOVER' as const]:[]),...(data.canConfirmHandover?['CONFIRM_HANDOVER' as const]:[]),...(data.canDisputeHandover?['DISPUTE_HANDOVER' as const]:[]),...(data.canCancelHandover?['CANCEL_HANDOVER' as const]:[])]:[];
  return <section className="border rounded-xl p-4 space-y-4 bg-white" aria-label="Kết thúc thuê và bàn giao">
   <button type="button" disabled={busy} className="font-bold text-emerald-800 underline" onClick={()=>setOpen(v=>!v)}>Kết thúc thuê / bàn giao cư trú</button>
-  {open&&<><p className="text-sm">Đề nghị kết thúc sớm cần bên còn lại đồng ý. Phòng chỉ mở lại sau khi người thuê xác nhận bàn giao. Không tự xử lý khi quá hạn phản hồi; không thu, khấu trừ hoặc hoàn cọc.</p>
+  {open&&<><p className="text-sm">Đề nghị kết thúc sớm cần bên còn lại đồng ý. Phòng chỉ mở lại sau khi người thuê xác nhận bàn giao. Không tự xử lý khi quá hạn phản hồi. {handoverDepositNotice}</p>
    <button type="button" disabled={busy} className={button} onClick={()=>setRevision(v=>v+1)}>Tải lại kết thúc thuê / bàn giao</button>
    {!data&&!error&&<p role="status">Đang tải trạng thái...</p>}{error&&<p role="alert" className="text-red-700 text-sm break-words">{error}</p>}{notice&&<p role="status" className="text-emerald-800 text-sm">{notice}</p>}{blocked&&<p className="text-sm">Hãy tải lại và xem trạng thái mới trước khi xác nhận lại. Hệ thống không tự gửi lại thao tác.</p>}
    {data&&<><p className="font-semibold">Kết thúc sớm: {termLabels[data.terminationState]}</p>

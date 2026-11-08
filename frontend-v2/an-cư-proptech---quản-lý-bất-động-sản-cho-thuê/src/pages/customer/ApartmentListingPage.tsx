@@ -1,3 +1,4 @@
+import { externalDepositNotice } from '@/utils/depositPolicy';
 import React, { useState } from 'react';
 import {
   Search,
@@ -23,7 +24,6 @@ interface ApartmentListingPageProps {
   buildings: BuildingType[];
   config: SystemConfig;
   onSelectRoom: (room: Room) => void;
-  onReserveRoom?: (roomId: string) => void;
 }
 
 export const ApartmentListingPage: React.FC<ApartmentListingPageProps> = ({
@@ -63,10 +63,10 @@ export const ApartmentListingPage: React.FC<ApartmentListingPageProps> = ({
             Sàn Căn Hộ Cao Cấp Minh Bạch Pháp Lý - An Cư TrustGuard™
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
-            Khám Phá Căn Hộ Đã Thẩm Định 100% Sổ Hồng & PCCC
+            Khám phá căn hộ cho thuê
           </h1>
           <p className="text-xs sm:text-sm text-slate-300">
-            Mọi căn hộ trên hệ thống đều có hồ sơ pháp lý đối soát, xác thực eKYC CCCD gắn chip chủ nhà và bảo chứng tiền cọc 100% qua tài khoản ký quỹ An Cư Escrow MBBank.
+            {externalDepositNotice}
           </p>
 
           <div className="pt-2 flex flex-wrap items-center gap-4 text-xs text-emerald-200">
@@ -77,7 +77,7 @@ export const ApartmentListingPage: React.FC<ApartmentListingPageProps> = ({
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Ký HĐ điện tử VNPT SmartCA
             </span>
             <span className="flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Cọc Escrow phong tỏa an toàn
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Cọc theo thỏa thuận hợp đồng
             </span>
           </div>
         </div>
@@ -251,7 +251,7 @@ export const ApartmentListingPage: React.FC<ApartmentListingPageProps> = ({
                       Pháp lý: <strong className="text-slate-700">{room.legalDocType}</strong>
                     </div>
                     <div className="flex items-center gap-1 text-emerald-700 font-semibold">
-                      <Lock className="w-3 h-3" /> Cọc Escrow: {room.deposit?.toLocaleString('vi-VN')} đ bảo chứng MBBank
+                      <Lock className="w-3 h-3" /> Cọc tham khảo: {room.deposit == null || !Number.isFinite(room.deposit) ? 'Chưa có thông tin' : `${room.deposit.toLocaleString('vi-VN')} đ`}
                     </div>
                   </div>
                 </div>
@@ -264,7 +264,7 @@ export const ApartmentListingPage: React.FC<ApartmentListingPageProps> = ({
                   className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
                 >
                   <Eye className="w-4 h-4" />
-                  <span>Xem Chi Tiết & Đặt Cọc Escrow</span>
+                  <span>Xem chi tiết căn hộ</span>
                 </button>
               </div>
             </div>

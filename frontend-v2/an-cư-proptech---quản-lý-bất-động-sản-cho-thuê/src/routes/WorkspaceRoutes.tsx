@@ -21,7 +21,7 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
   const { rooms, tenants, contracts, invoices, tickets, config,
     buildings: initialBuildings, setSelectedRoom, setSelectedInvoice, currentResidentRoom, currentResidentTenant,
     currentResidentContract, residentInvoices, residentTickets, handleMarkPaid, handleAddContract,
-    handleReserveEscrow } = workspace;
+    } = workspace;
   return <>
           {activeTab === 'home' && <HomePage embedded />}
           {activeTab === 'properties' && <PropertiesPage properties={initialBuildings} onReload={workspace.reloadInventory} onDossier={navigation.setPropertyForDossierId} onAdd={() => navigation.setIsAddPropertyOpen(true)} onSelect={id => { navigation.setSelectedBuildingId(id);setActiveTab('rooms'); }} />}
@@ -47,7 +47,6 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
               buildings={initialBuildings}
               config={config}
               onSelectRoom={(rm) => setSelectedRoom(rm)}
-              onReserveRoom={handleReserveEscrow}
             />
           )}
 

@@ -221,7 +221,7 @@ export function generateContractBody(contract: Contract): string {
     <strong>BÊN CHO THUÊ (BÊN A):</strong> BQL TÒA NHÀ AN CƯ PROPTECH - LÊ VĂN SỸ<br>
     • Địa chỉ: 284/12 Lê Văn Sỹ, Phường 14, Quận 3, TP. Hồ Chí Minh<br>
     • Đại diện: Ban Quản Lý Tòa Nhà<br>
-    • Tài khoản bảo chứng Escrow: <strong>MBBANK-ESCROW-88899977</strong> (Ngân hàng TMCP Quân Đội)
+    • Tiền cọc do bên cho thuê và bên thuê tự quản lý, thu và hoàn trả ngoài hệ thống.
   </div>
 
   <div class="party-box">
@@ -231,10 +231,10 @@ export function generateContractBody(contract: Contract): string {
     • Phương thức định danh: Xác thực CCCD gắn chip & eKYC đối soát số liệu
   </div>
 
-  <div class="section-title">III. ĐIỀU KHOẢN TÀI CHÍNH & KÝ QUỸ BẢO CHỨNG</div>
+  <div class="section-title">III. ĐIỀU KHOẢN TÀI CHÍNH</div>
   <ol class="terms-list">
     <li><strong>Giá thuê căn hộ:</strong> Cố định <strong>${rentFormatted} VNĐ/tháng</strong> (Chưa bao gồm tiền dịch vụ điện nước theo chỉ số công tơ niêm phong).</li>
-    <li><strong>Tiền ký quỹ cọc bảo đảm:</strong> <strong>${depositFormatted} VNĐ</strong>, được phong tỏa tài khoản Escrow tại Ngân hàng MBBank theo mã <strong>${escapeHtml(contract.escrowCode || 'MB-ESCROW')}</strong>. Tiền cọc được bảo chứng giải tỏa 100% khi hai bên nghiệm thu biên bản bàn giao.</li>
+    <li><strong>Tiền cọc theo thỏa thuận:</strong> <strong>${depositFormatted} VNĐ</strong>. Hai bên tự đối soát, thu và hoàn trả ngoài hệ thống; hoàn tất bàn giao không xác nhận đã hoàn cọc.</li>
     <li><strong>Chu kỳ thanh toán:</strong> Định kỳ hàng tháng từ ngày 01 đến 05 qua cổng thanh toán tự động VietQR Napas247.</li>
     <li><strong>Quy định an toàn & PCCC:</strong> Căn hộ đạt tiêu chuẩn Thẩm duyệt PCCC số 112/TD-PCCC-PC07. Bên B cam kết tuân thủ nghiêm ngặt nội quy an ninh trật tự.</li>
   </ol>

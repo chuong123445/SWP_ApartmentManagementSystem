@@ -1,8 +1,8 @@
 import { updateApartmentPrices } from '@/services/apartments/ownerApartmentService';
 import type { PriceInput } from '@/components/rooms/ApartmentPriceForm';
 import { useCallback, useEffect, useState } from 'react';
-import type { Building, Room, NewRoom, Tenant, Contract, Invoice, MaintenanceTicket, SystemConfig, EscrowDeposit } from '@/types';
-import { initialConfig, initialEscrows } from '@/data/mockData';
+import type { Building, Room, NewRoom, Tenant, Contract, Invoice, MaintenanceTicket, SystemConfig } from '@/types';
+import { initialConfig } from '@/data/mockData';
 import { ownerMaintenance } from '@/services/maintenance/maintenanceService';
 import { createOwnerApartment, getOwnerApartments, getOwnerProperties, setApartmentPublication } from '@/services/apartments/ownerApartmentService';
 import { ownerTenancies, ownerInvoices, tenancyViews, invoiceView, sendInvoice } from '@/services/billing/billingService';
@@ -53,7 +53,6 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
     return () => { active = false;window.clearInterval(timer); };
   }, [canManage, selectedPropertyId, inventoryRevision]);
   const [config, setConfig] = useState<SystemConfig>(initialConfig);
-  const [escrows, setEscrows] = useState<EscrowDeposit[]>(initialEscrows);
 
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -136,28 +135,6 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
 
 
 
-  // Reserve room with escrow deposit
-  const handleReserveEscrow = (roomId: string) => {
-    const room = rooms.find((r) => r.id === roomId);
-    if (!room) return;
-
-    const newEscrow: EscrowDeposit = {
-      id: `esc-${Date.now()}`,
-      code: `ESC-2026-${room.roomNumber.replace('.', '')}-HOLD`,
-      roomNumber: room.roomNumber,
-      tenantName: 'Khách Đặt Giữ Chỗ Online',
-      landlordName: 'Lê Văn Tuấn (Chủ sở hữu)',
-      amount: room.deposit || room.price,
-      createdAt: new Date().toLocaleDateString('vi-VN'),
-      releaseConditions: 'Bảo chứng giữ chỗ 48h. Tự động chuyển thành tiền cọc hợp đồng khi ký số.',
-      status: 'locked',
-      bankHoldReference: `MB-ESCROW-HOLD-${Math.floor(100000 + Math.random() * 900000)}`,
-    };
-
-    setEscrows((prev) => [newEscrow, ...prev]);
-    alert(`Đã tạo hồ sơ Ký Quỹ Giữ Chỗ Escrow cho căn hộ ${room.roomNumber} thành công!`);
-  };
-
   // Resident Portal specific data
   const currentResidentTenant = tenants.find((t) => t.roomNumber === 'P.101') || tenants[0];
   const currentResidentRoom = rooms.find((r) => r.id === currentResidentTenant?.roomId) || rooms[0];
@@ -179,13 +156,12 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
     setBillingRevision(value => value + 1);
   };
   return {
-    rooms, tenants, contracts, invoices, tickets, cashbook, config, escrows, maintenanceError, maintenanceLoading,
+    rooms, tenants, contracts, invoices, tickets, cashbook, config, maintenanceError, maintenanceLoading,
     tenancies, billingError, billingLoading, invoicePage, setInvoicePage, invoiceTotalPages, invoiceHistory,
     reloadBilling: () => setBillingRevision(value => value + 1), handleSendInvoice,
     buildings, inventoryError, inventoryLoading, reloadInventory,
     selectedRoom, setSelectedRoom, selectedInvoice, setSelectedInvoice,
     handleMarkPaid, handleAddTenant, handleAddContract, handleAddRoom, handleAddProperty, handlePrices, handlePublication, handleCheckOut,
-    handleReserveEscrow,
     handleCreateInvoice, handleSaveConfig: setConfig,
     currentResidentTenant, currentResidentRoom, currentResidentContract, residentInvoices, residentTickets,
     ownerCounters, financialReport, maintenanceCount,
