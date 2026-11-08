@@ -6,7 +6,7 @@ export interface Tenancy {
   inAppSigningStatus?: 'NO_DATA' | 'UNSIGNED' | 'OWNER_SIGNED' | 'CUSTOMER_SIGNED' | 'BOTH_SIGNED';
   localFixture?: boolean;
   id: string; apartmentId: string; roomNumber: string; apartmentTitle: string; propertyName: string;
-  customerId: string; customerName: string; customerEmail: string; status: 'DRAFT' | 'ACTIVE' | 'ENDED';
+  customerId: string; customerName: string; customerEmail: string; status: 'DRAFT' | 'ACTIVE' | 'ENDED' | 'CANCELLED';
   startDate: string; endDate: string; monthlyRent: string; version: number;
 }
 export interface BillingTariff { electricityUnitPrice:string;waterUnitPrice:string;waterBillingMode:'METERED'|'PER_PERSON';internetFee:string;garbageFee:string;version:number; }
