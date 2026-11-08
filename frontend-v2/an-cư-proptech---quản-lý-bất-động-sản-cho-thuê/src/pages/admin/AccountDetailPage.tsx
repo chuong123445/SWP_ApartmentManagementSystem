@@ -10,7 +10,7 @@ import {
 
 const statuses: Record<string, string> = {
   ACTIVE: 'Đang hoạt động', PENDING_VERIFICATION: 'Chờ xác thực', LOCKED: 'Đã khóa',
-  INACTIVE: 'Ngừng hoạt động', DRAFT: 'Bản nháp', ENDED: 'Đã kết thúc',
+  INACTIVE: 'Ngừng hoạt động', DRAFT: 'Bản nháp', ENDED: 'Đã kết thúc', CANCELLED: 'Đã hủy trước hiệu lực',
 };
 const roles: Record<string, string> = { OWNER: 'Chủ nhà', CUSTOMER: 'Khách thuê', ADMIN: 'Quản trị viên' };
 const message = (error: unknown) => error instanceof Error ? error.message : 'Không thể tải thông tin.';

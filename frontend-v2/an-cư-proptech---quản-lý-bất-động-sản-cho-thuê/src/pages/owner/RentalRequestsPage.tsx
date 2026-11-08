@@ -1,3 +1,4 @@
+import { SelectionCancellationModal } from '@/components/rental/SelectionCancellationModal';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { RequestList } from '@/components/rental/RequestList';
@@ -33,6 +34,7 @@ function NewRentalRequestsPage({ onDecision, propertyId }: { onDecision: () => v
   const { data, loading, error, reload } = useRentalRequests(true, page, query.status, propertyId, query.contractCompleted);
   const [rejecting, setRejecting] = useState<RentalRequest | null>(null);
   const [contractRequestId, setContractRequestId] = useState<string | null>(null);
+  const [cancelRequest,setCancelRequest] = useState<string|null>(null);
   const [reason, setReason] = useState('');
   const [decidingId, setDecidingId] = useState('');
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -88,6 +90,7 @@ function NewRentalRequestsPage({ onDecision, propertyId }: { onDecision: () => v
 
   return (
     <section className="space-y-6">
+      {cancelRequest && <SelectionCancellationModal requestId={cancelRequest} onClose={()=>setCancelRequest(null)} onChanged={()=>{reload();onDecision();}}/>}
       {contractRequestId && <ContractWizard key={contractRequestId} requestId={contractRequestId} onClose={() => { setContractRequestId(null);reload(); }} onSaved={() => { reload();onDecision(); }} />}
       <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-wrap justify-between items-center gap-4">
         <div>
@@ -155,7 +158,7 @@ function NewRentalRequestsPage({ onDecision, propertyId }: { onDecision: () => v
       ) : !error && (
         <>
           {data?.items.length ? (
-            <RequestList
+            <RequestList onOpenCancellation={request=>setCancelRequest(request.id)}
               items={data.items}
               owner
               onAccept={handleAccept}

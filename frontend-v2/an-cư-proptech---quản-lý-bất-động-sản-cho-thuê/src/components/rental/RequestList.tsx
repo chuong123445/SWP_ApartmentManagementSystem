@@ -19,6 +19,7 @@ export function RequestList({
   onReject,
   decidingId,
   onCreateContract,
+  onOpenCancellation,
 }: {
   items: RentalRequest[];
   owner?: boolean;
@@ -28,6 +29,7 @@ export function RequestList({
   onReject?: (request: RentalRequest) => void;
   decidingId?: string;
   onCreateContract?: (request: RentalRequest) => void;
+  onOpenCancellation?: (request: RentalRequest) => void;
 }) {
   return (
     <div className="space-y-4">
@@ -64,6 +66,7 @@ export function RequestList({
           </p>
 
           {request.decisionReason && <p className="mt-3 text-sm text-slate-700 whitespace-pre-wrap break-words"><span className="font-semibold">{request.status === 'REJECTED' ? 'Lý do từ chối: ' : 'Lý do xử lý: '}</span>{request.decisionReason}</p>}
+          {onOpenCancellation && (request.status==='ACCEPTED'&&!request.contractCompleted||request.status==='CANCELLED') && <button type="button" className="text-sm text-red-700 underline mt-3" onClick={()=>onOpenCancellation(request)}>Hủy / lịch sử làm hợp đồng</button>}
           {/* Owner actions */}
           {owner && request.status === 'PENDING' && (
             <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-3">

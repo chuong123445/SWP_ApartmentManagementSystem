@@ -16,7 +16,8 @@ export interface ContractTerms {
   paymentDay: number; paymentMethod: string; usagePurpose: string; clauses: ContractClause[];
 }
 export interface ContractDraft extends ContractTerms {
-  id: string; rentalRequestId: string; contractNumber: string; status: 'DRAFT' | 'ACTIVE' | 'ENDED'; version: number; snapshot: ContractSnapshot; createdAt: string;
+  id: string; rentalRequestId: string; contractNumber: string; status: 'DRAFT' | 'ACTIVE' | 'ENDED' | 'CANCELLED'; version: number; snapshot: ContractSnapshot; createdAt: string;
+  cancellationState?: 'NONE'|'PENDING'|'CANCELLED'|'REJECTED'|'WITHDRAWN';
   signing?: ContractSigning;
   lifecycle?: ContractLifecycle;
 }

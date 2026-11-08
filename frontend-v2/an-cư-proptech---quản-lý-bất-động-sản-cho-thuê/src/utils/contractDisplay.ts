@@ -12,6 +12,7 @@ export function contractLifecycleActions(draft: ContractDraft, accountId?: strin
 }
 
 export function contractStatusLabel(status: string, endDate: string, today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())) {
+  if (status === 'CANCELLED') return 'Đã hủy trước hiệu lực';
   if (status === 'ENDED' || status === 'terminated') return 'Đã kết thúc';
   if (status === 'DRAFT' || status === 'draft') return 'Bản nháp';
   if (endDate < today) return 'Hết hạn — chờ xử lý';
@@ -19,6 +20,7 @@ export function contractStatusLabel(status: string, endDate: string, today = new
 }
 
 export function contractActionLabel(draft: ContractDraft, accountId?: string) {
+  if (draft.cancellationState === 'PENDING') return 'Xem đề nghị hủy';
   const signedAt = accountId === draft.signing?.ownerAccountId ? draft.signing?.ownerSignedAt :
     accountId === draft.signing?.customerAccountId ? draft.signing?.customerSignedAt : null;
   return draft.status !== 'DRAFT' || draft.signing?.state === 'SIGNED' || signedAt ? 'Xem hợp đồng' : 'Xem / ký hợp đồng';
