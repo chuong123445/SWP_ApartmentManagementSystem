@@ -9,7 +9,6 @@ type Bubble = ChatMessage & { status?: string };
 export function AiSearchPanel({ onApply }: { onApply:(filters:ApartmentFilters)=>void }) {
   const [open,setOpen]=useState(false);
   const [text,setText]=useState('');
-  const [consent,setConsent]=useState(false);
   const [messages,setMessages]=useState<Bubble[]>([]);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
@@ -22,7 +21,7 @@ export function AiSearchPanel({ onApply }: { onApply:(filters:ApartmentFilters)=
   useEffect(()=>{ if(open&&log.current) log.current.scrollTop=log.current.scrollHeight; },[open,messages,busy,error]);
   const close=()=>{setOpen(false);launcher.current?.focus({preventScroll:true});};
   const send=async()=>{
-    if(controller.current||!consent||!text.trim())return;
+    if(controller.current||!text.trim())return;
     const submitted=text.trim();
     const history=messages.slice(-8).map(({role,text})=>({role,text}));
     const c=new AbortController();controller.current=c;
@@ -53,8 +52,7 @@ export function AiSearchPanel({ onApply }: { onApply:(filters:ApartmentFilters)=
       <form className="ai-chat-compose" onSubmit={e=>{e.preventDefault();void send();}}>
         {error&&<p role="alert" className="ai-chat-error">{error} Bạn vẫn có thể dùng bộ lọc trên trang.</p>}
         <p className="ai-chat-privacy">AI có thể nhầm. Không gửi thông tin cá nhân hoặc giấy tờ.</p>
-        <label className="ai-chat-consent"><input type="checkbox" checked={consent} disabled={busy} onChange={e=>setConsent(e.target.checked)}/><span>Đồng ý gửi hội thoại đến Gemini để được hỗ trợ.</span></label>
-        <div className="ai-chat-input"><textarea ref={input} aria-label="Tin nhắn cho AI" placeholder="Nhập tin nhắn…" rows={2} maxLength={1000} disabled={busy} value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void send();}}}/><button type="submit" aria-label="Gửi tin nhắn" disabled={busy||!consent||!text.trim()}><Send size={19}/></button></div>
+        <div className="ai-chat-input"><textarea ref={input} aria-label="Tin nhắn cho AI" placeholder="Nhập tin nhắn…" rows={2} maxLength={1000} disabled={busy} value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void send();}}}/><button type="submit" aria-label="Gửi tin nhắn" disabled={busy||!text.trim()}><Send size={19}/></button></div>
       </form>
     </section>}
     <button ref={launcher} type="button" className="ai-chat-launcher" aria-label={open?'Thu gọn chat AI':'Mở chat AI'} aria-expanded={open} aria-controls="ai-chat-panel" onClick={()=>open?close():setOpen(true)}>{open?<X size={25}/>:<MessageCircle size={27}/>}<span>AI</span></button>

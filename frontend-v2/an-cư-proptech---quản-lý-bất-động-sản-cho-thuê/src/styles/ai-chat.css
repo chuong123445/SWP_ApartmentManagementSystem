@@ -141,19 +141,6 @@
   color:#708178;
   margin:0 0 6px
 }
-.ai-chat-consent {
-  display:flex;
-  align-items:flex-start;
-  gap:7px;
-  font-size:11px;
-  margin-bottom:10px;
-  cursor:pointer
-}
-.ai-chat-consent input {
-  margin-top:3px;
-  accent-color:#176b4f;
-  flex-shrink:0
-}
 .ai-chat-input {
   display:flex;
   align-items:flex-end;

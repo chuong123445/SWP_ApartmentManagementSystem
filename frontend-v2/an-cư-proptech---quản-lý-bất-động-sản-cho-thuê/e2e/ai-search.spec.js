@@ -19,7 +19,7 @@ const scenario=async(page,baseURL)=>{
    if(await p.getByRole('dialog').count())throw Error('Chat open by default');
    if(await p.getByRole('button',{name:'Phân tích nhu cầu bằng AI'}).count())throw Error('Old CTA remains');
    await p.getByRole('button',{name:'Mở chat AI'}).click();const panel=p.getByRole('dialog',{name:'Trợ lý An Cư AI'});const input=panel.getByRole('textbox',{name:'Tin nhắn cho AI'});await input.fill('Xin chào');
-   if(!await panel.getByRole('button',{name:'Gửi tin nhắn'}).isDisabled())throw Error('Consent gate missing');await panel.getByRole('checkbox').check();await input.press('Enter');await panel.getByText('Chào bạn! Mình có thể giải đáp về thuê nhà.',{exact:true}).waitFor();if(applies)throw Error('Ordinary chat applied filters');
+   if(await panel.getByRole('checkbox').count())throw Error('AI consent checkbox remains');await input.press('Enter');await panel.getByText('Chào bạn! Mình có thể giải đáp về thuê nhà.',{exact:true}).waitFor();if(applies)throw Error('Ordinary chat applied filters');
    await input.fill('Tìm phòng dưới 5 triệu từ25m2 tại Thủ Đức cho2người');await panel.getByRole('button',{name:'Gửi tin nhắn'}).click();await panel.getByText(/Đã cập nhật bộ lọc/).waitFor();
    if(!queries.some(q=>q.includes('minArea=25')&&q.includes('occupants=2')&&q.includes('maxRent=4999999.99')))throw Error('No automatic query');
    if(await p.locator('#apartment-max-rent').inputValue()!=='4999999.99'||await p.locator('#apartment-occupants').inputValue()!=='2')throw Error('Main filters not synced');

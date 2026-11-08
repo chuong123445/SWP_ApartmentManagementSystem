@@ -4,10 +4,10 @@ import {precheckDossier,acknowledgePrecheck,precheckConflicts,type PrecheckView}
 import {ApiError} from '@/services/http/client';
 export function OwnerPrecheckPanel({propertyId,draft,selfService=false}:{propertyId:string;draft:DossierSubmit;selfService?:boolean}){
  const fingerprint=JSON.stringify(draft);const epoch=useRef(0);const controller=useRef<AbortController|null>(null);
- const [base,setBase]=useState<PrecheckView|null>(null);const [reviews,setReviews]=useState<PrecheckView[]>([]);const [errors,setErrors]=useState<string[]>([]);const [busy,setBusy]=useState(false);const [consent,setConsent]=useState(false);const [attempted,setAttempted]=useState(false);const [acknowledged,setAcknowledged]=useState(false);const [stale,setStale]=useState(false);
- useEffect(()=>{epoch.current++;controller.current?.abort();setBase(null);setReviews([]);setErrors([]);setBusy(false);setAttempted(false);setAcknowledged(false);setStale(false);setConsent(false);return()=>{epoch.current++;controller.current?.abort();};},[fingerprint,propertyId]);
+ const [base,setBase]=useState<PrecheckView|null>(null);const [reviews,setReviews]=useState<PrecheckView[]>([]);const [errors,setErrors]=useState<string[]>([]);const [busy,setBusy]=useState(false);const [attempted,setAttempted]=useState(false);const [acknowledged,setAcknowledged]=useState(false);const [stale,setStale]=useState(false);
+ useEffect(()=>{epoch.current++;controller.current?.abort();setBase(null);setReviews([]);setErrors([]);setBusy(false);setAttempted(false);setAcknowledged(false);setStale(false);return()=>{epoch.current++;controller.current?.abort();};},[fingerprint,propertyId]);
  const run=async(scan:boolean)=>{
-  if(busy||(scan&&!consent))return;const ticket=++epoch.current;const c=new AbortController();controller.current=c;const current=()=>epoch.current===ticket&&!c.signal.aborted;
+  if(busy)return;const ticket=++epoch.current;const c=new AbortController();controller.current=c;const current=()=>epoch.current===ticket&&!c.signal.aborted;
   setBusy(true);setErrors([]);setReviews([]);setAttempted(scan);setAcknowledged(false);setStale(false);
   try{const source=await precheckDossier(propertyId,draft,{},c.signal,selfService);if(!current())return;setBase(source);
    if(scan){for(const file of source.files){try{const result=await precheckDossier(propertyId,draft,{fileId:file.id,sourceHash:source.sourceHash,consent:true},c.signal,selfService);if(!current())return;if(result.sourceHash!==source.sourceHash)throw new Error('Nguồn hồ sơ đã thay đổi; cần quét lại.');setReviews(prev=>[...prev,result]);}
@@ -21,8 +21,7 @@ export function OwnerPrecheckPanel({propertyId,draft,selfService=false}:{propert
  return <section aria-label="AI kiểm tra trước khi nộp" className="border rounded-xl p-3 space-y-3 bg-slate-50">
   <h3 className="font-semibold">Kiểm tra hồ sơ trước khi nộp</h3><p className="text-sm">Kiểm tra thông tin không gửi tệp ra ngoài. Quét AI là tùy chọn; nhận xét chỉ dành cho bạn, không phải kết luận pháp lý hoặc phê duyệt của Admin.</p>
   <button type="button" className="border rounded-lg px-3 py-2 bg-white" disabled={busy} onClick={()=>void run(false)}>Kiểm tra thông tin bản nháp</button>
-  <label className="flex gap-2 items-start text-sm"><input type="checkbox" checked={consent} disabled={busy} onChange={e=>setConsent(e.target.checked)}/><span>Tôi đồng ý gửi các tệp đang chọn và thông tin cần đối chiếu đến Gemini để kiểm tra trước khi nộp.</span></label>
-  <button type="button" className="border rounded-lg px-3 py-2 bg-white" disabled={busy||!consent} onClick={()=>void run(true)}>{busy?'Đang kiểm tra...':'Quét chứng từ bằng AI'}</button>
+  <button type="button" className="border rounded-lg px-3 py-2 bg-white" disabled={busy} onClick={()=>void run(true)}>{busy?'Đang kiểm tra...':'Quét chứng từ bằng AI'}</button>
   {busy&&<p role="status" className="text-sm">Đã đọc {reviews.length}/{base?.files.length??0} tệp. Bạn có thể sửa form; kết quả quét cũ sẽ được bỏ.</p>}
   {base&&<div><h4 className="font-semibold text-sm">Thông tin cần bổ sung</h4>{base.checklist.length?<ul className="list-disc pl-5 text-sm">{base.checklist.map((x,i)=><li key={i}>{x}</li>)}</ul>:<p className="text-sm">Chưa phát hiện trường bắt buộc bị thiếu qua kiểm tra sơ bộ; vẫn cần đối chiếu nội dung chứng từ.</p>}</div>}
   {!busy&&attempted&&base&&<p role="status" className="text-sm font-semibold">{stale?'Nguồn đã thay đổi, cần tải lại/quét lại.':!base.files.length?'Chưa có tệp để quét.':complete?`Đã đọc đủ ${reviews.length} tệp; hãy xem từng nhận xét bên dưới.`:`Quét chưa đầy đủ: ${reviews.length}/${base.files.length} tệp thành công. Chưa có kết luận cho toàn bộ hồ sơ.`}</p>}
