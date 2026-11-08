@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {precheckDossier,acknowledgePrecheck,precheckConflicts,type PrecheckView} from '@/services/property/ownerPrecheckService';
 import type {DossierSubmit} from '@/types/dossier';
 const original=globalThis.fetch;afterEach(()=>{globalThis.fetch=original;});
-const draft:DossierSubmit={propertyVersion:3,rightType:'OWNERSHIP',receivingAccount:{bank:'Bank',accountNumber:'12345678',accountHolderName:'Owner'},documentFileIds:['7'],supportingFileIds:[],ownerEvidenceFileIds:[]};
+const draft:DossierSubmit={propertyVersion:3,rightType:'OWNERSHIP',documentFileIds:['7'],supportingFileIds:[],ownerEvidenceFileIds:[]};
 test('Owner precheck sends draft/source/consent only to its private route, with applicant route for onboarding',async()=>{
  const calls:any[]=[];globalThis.fetch=async(url,opts)=>{calls.push({url,body:JSON.parse(String(opts?.body))});return Response.json({sourceHash:'hash'});};
  await precheckDossier('property/1',draft);await precheckDossier('property/1',draft,{fileId:'7',sourceHash:'hash',consent:true},undefined,true);

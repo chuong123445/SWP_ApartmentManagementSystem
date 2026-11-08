@@ -14,9 +14,9 @@ public class PropertyDossier {
     @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="property_id",nullable=false) private Property property;
     @Enumerated(EnumType.STRING) @Column(nullable=false,length=24) private RightType rightType;
     @Nationalized @Column(nullable=false,length=100) private String applicantName;
-    @Nationalized @Column(nullable=false,length=100) private String bank;
-    @Column(nullable=false,length=40) private String accountNumber;
-    @Nationalized @Column(nullable=false,length=100) private String accountHolderName;
+    @Nationalized @Column(length=100) private String bank;
+    @Column(length=40) private String accountNumber;
+    @Nationalized @Column(length=100) private String accountHolderName;
     @Enumerated(EnumType.STRING) @Column(nullable=false,length=24) private Status status;
     @Column(nullable=false,columnDefinition="datetime2(6)") private Instant submittedAt;
     @Column(columnDefinition="datetime2(6)") private Instant reviewedAt;

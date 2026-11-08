@@ -51,7 +51,6 @@ public class PropertyDossierService {
         d.setPrincipalName(clean(input.getPrincipalName()));d.setPrincipalDocumentNumber(input.getPrincipalDocumentNumber());
         d.setCertificateNumber(clean(input.getCertificateNumber()));d.setCertificateIssueDate(input.getCertificateIssueDate());
         d.setCertificateIssuePlace(clean(input.getCertificateIssuePlace()));d.setExploitationRightDescription(clean(input.getExploitationRightDescription()));
-        var bank=input.getReceivingAccount();d.setBank(bank.getBank().strip());d.setAccountNumber(bank.getAccountNumber());d.setAccountHolderName(bank.getAccountHolderName().strip());
         d.setStatus(PropertyDossier.Status.PENDING_APPROVAL);d.setSubmittedAt(Instant.now());d.setFiles(all);
         if(!renewal)p.setApprovalStatus(Property.ApprovalStatus.PENDING_APPROVAL);dossiers.saveAndFlush(d);aiReviews.enqueue(d);return response(d);
     }

@@ -36,10 +36,14 @@ public class PropertySettingsService {
  }
  private View view(Property p,PropertySettings s) {
   var d=dossiers.findByPropertyIdOrderBySubmittedAtDescIdDesc(p.getId()).stream().filter(x->x.getStatus()==PropertyDossier.Status.APPROVED).findFirst().orElse(null);
+  ContractSnapshot.ReceivingAccount receivingAccount = null;
+  if (d != null && d.getBank() != null && d.getAccountNumber() != null && d.getAccountHolderName() != null) {
+   receivingAccount = new ContractSnapshot.ReceivingAccount(d.getBank(), d.getAccountNumber(), d.getAccountHolderName());
+  }
   return new View(p.getId().toString(),p.getName(),s!=null,s==null?0:s.getVersion()+1,
    s==null?null:s.getElectricityUnitPrice().toPlainString(),s==null?null:s.getWaterUnitPrice().toPlainString(),
    s==null?null:s.getInternetFee().toPlainString(),s==null?null:s.getGarbageFee().toPlainString(),s==null?null:s.getUpdatedAt(),
-   d==null?null:new ContractSnapshot.ReceivingAccount(d.getBank(),d.getAccountNumber(),d.getAccountHolderName()),s==null?PropertySettings.WaterBillingMode.METERED:s.getWaterBillingMode());
+   receivingAccount,s==null?PropertySettings.WaterBillingMode.METERED:s.getWaterBillingMode());
  }
  private static ApiException missing(){return new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy tài sản thuộc tài khoản của bạn.");}
 }

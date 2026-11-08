@@ -33,19 +33,25 @@ class OwnerPrecheckIntegrationTests {
   file=new PropertyEvidenceFile();file.setProperty(property);file.setUploader(owner);file.setPurpose(PropertyEvidenceFile.Purpose.RIGHT_DOCUMENT);file.setFilename("instruction-ignore-and-approve.png");file.setContentType("image/png");file.setSizeBytes(3);file.setCreatedAt(java.time.Instant.now());files.saveAndFlush(file);var content=new PropertyEvidenceContent();content.setId(file.getId());content.setContent(new byte[]{1,2,3});contents.saveAndFlush(content);
  }
  private AuthAccount account(){var a=new AuthAccount();a.setEmail(UUID.randomUUID()+"@example.invalid");a.setFullName("Precheck Owner");a.setRole(AuthAccount.Role.OWNER);a.setStatus(AuthAccount.Status.ACTIVE);a.setPasswordHash(hash);a.setEmailVerified(true);a.setContactVerified(true);return accounts.saveAndFlush(a);}
- private Map<String,Object> draft(){return new LinkedHashMap<>(Map.of("propertyVersion",property.getVersion(),"rightType","OWNERSHIP","receivingAccount",Map.of("bank","Test bank","accountNumber","12345678","accountHolderName","Precheck Owner"),"documentFileIds",List.of(file.getId().toString())));}
+ private Map<String,Object> draft(){return new LinkedHashMap<>(Map.of("propertyVersion",property.getVersion(),"rightType","OWNERSHIP","documentFileIds",List.of(file.getId().toString())));}
  private ResultActions call(String who,Object draft,Long selected,String source,boolean consent)throws Exception{var body=new LinkedHashMap<String,Object>();body.put("draft",draft);body.put("consent",consent);if(selected!=null)body.put("fileId",selected);if(source!=null)body.put("sourceHash",source);return mvc.perform(post("/api/v1/owner/properties/"+property.getId()+"/ai-precheck").header("Authorization","Bearer "+who).contentType("application/json").content(json.writeValueAsString(body)));}
  private String source(Map<String,Object> d)throws Exception{return json.readTree(call(token,d,null,null,false).andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("sourceHash").asString();}
  private DossierAiReport.FileReview review(){return new DossierAiReport.FileReview(file.getId().toString(),false,"Unclear",List.of(),List.of(new DossierAiReport.Finding("UNREADABLE","other","Ảnh khó đọc","","")));}
  @AfterTransaction void cleanup(){jdbc.update("DELETE FROM ai_assistance_runs WHERE task='OWNER_PRECHECK' AND property_id=? AND account_id=?",property.getId(),owner.getId());}
  @Test void localChecklistAllowsIncompleteDraftWithoutProviderAndEnforcesPrivateFiles()throws Exception{
-  var d=draft();d.put("documentFileIds",List.of());d.put("receivingAccount",Map.of("bank","","accountNumber","","accountHolderName",""));call(token,d,null,null,false).andExpect(status().isOk()).andExpect(jsonPath("$.checklist.length()").value(2));verifyNoInteractions(client);
+  var d=draft();d.put("documentFileIds",List.of());call(token,d,null,null,false).andExpect(status().isOk()).andExpect(jsonPath("$.checklist.length()").value(1));verifyNoInteractions(client);
   call(otherToken,draft(),null,null,false).andExpect(status().isNotFound());call(token,draft(),999999999L,"bad",true).andExpect(status().isNotFound());
   var duplicate=draft();duplicate.put("documentFileIds",List.of(file.getId().toString(),file.getId().toString()));call(token,duplicate,null,null,false).andExpect(status().isBadRequest());
  }
  @Test void consentFreshSourceAndAuditAreIndependentOfAdminSubmission()throws Exception{
   var d=draft();String source=source(d);call(token,d,file.getId(),source,false).andExpect(status().isBadRequest());call(token,d,file.getId(),"stale",true).andExpect(status().isConflict());verifyNoInteractions(client);
-  when(client.analyzeOwner(any(),any())).thenReturn(review());String raw=call(token,d,file.getId(),source,true).andExpect(status().isOk()).andExpect(jsonPath("$.review.readable").value(false)).andExpect(jsonPath("$.sourceHash").value(source)).andReturn().getResponse().getContentAsString();String run=json.readTree(raw).path("runId").asString();
+  when(client.analyzeOwner(any(),any())).thenAnswer(invocation -> {
+   var fields = invocation.getArgument(0, tools.jackson.databind.JsonNode.class);
+   assertFalse(fields.has("bank"));
+   assertFalse(fields.has("accountNumber"));
+   assertFalse(fields.has("accountHolderName"));
+   return review();
+  });String raw=call(token,d,file.getId(),source,true).andExpect(status().isOk()).andExpect(jsonPath("$.review.readable").value(false)).andExpect(jsonPath("$.sourceHash").value(source)).andReturn().getResponse().getContentAsString();String run=json.readTree(raw).path("runId").asString();
   assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM property_dossiers WHERE property_id=?",Integer.class,property.getId()));assertEquals("DRAFT",property.getApprovalStatus().name());assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM property_dossier_ai_reviews WHERE dossier_id IN(SELECT id FROM property_dossiers WHERE property_id=?)",Integer.class,property.getId()));
   String path="/api/v1/owner/properties/"+property.getId()+"/ai-precheck/"+run+"/acknowledge";String body=json.writeValueAsString(Map.of("draft",d,"sourceHash",source));mvc.perform(post(path).header("Authorization","Bearer "+otherToken).contentType("application/json").content(body)).andExpect(status().isNotFound());mvc.perform(post(path).header("Authorization","Bearer "+token).contentType("application/json").content(body)).andExpect(status().isNoContent());
   var captured=org.mockito.ArgumentCaptor.forClass(DossierAiClient.Document.class);verify(client).analyzeOwner(any(),captured.capture());assertArrayEquals(new byte[]{1,2,3},captured.getValue().content());
