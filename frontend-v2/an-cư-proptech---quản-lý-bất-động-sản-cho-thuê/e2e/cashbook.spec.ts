@@ -6,6 +6,7 @@ for(const mobile of [false,true])test('Sổ quỹ lưu thật qua API, chỉ c�
  if(path.endsWith('/csrf'))return json({headerName:'X-XSRF-TOKEN',token:'test'});if(path.endsWith('/vneid-config'))return json({enabled:false});
  if(path.endsWith('/owner/properties'))return json([{id:'11',name:'Tòa A',address:'Địa chỉ thử',rentalMode:'MULTI_UNIT',approvalStatus:'APPROVED'}]);
  if(path.endsWith('/owner/apartments'))return json([{id:'21',propertyId:'11',propertyName:'Tòa A',ownerId:'1',roomNumber:'A.101',title:'Phòng thử',areaM2:'20',advertisedMonthlyRent:'5000000',electricityIndex:0,waterIndex:0,amenities:[],publicationStatus:'PUBLISHED',availability:'VACANT',version:0}]);
+ if(path.endsWith('/cash-entries/sources'))return json({items:[],totalElements:0,totalPages:0,page:0,size:10});
  if(path.endsWith('/cash-entries/summary')){const posted=rows.filter(e=>e.status==='POSTED');return json({income:posted.length?'125000.50':'0',expense:'0',netCashflow:posted.length?'125000.50':'0',postedCount:posted.length});}
  if(path.endsWith('/cash-entries')){if(req.method()==='POST'){const body=req.postDataJSON();requests.push(body);rows.push({...body,id:1,code:'THU-1',propertyName:'Tòa A',status:'DRAFT',version:0,createdAt:new Date().toISOString()});return route.fulfill({status:201,json:rows[0]});}return json({items:rows,totalElements:rows.length,totalPages:rows.length?1:0,page:0,size:20});}
  if(path.endsWith('/cash-entries/1/post')){expect(req.postDataJSON().version).toBe(0);rows[0]={...rows[0],status:'POSTED',version:1,postedAt:new Date().toISOString()};return json(rows[0]);}
