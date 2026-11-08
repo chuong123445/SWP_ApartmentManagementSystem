@@ -1,3 +1,4 @@
+import {exitFixture} from './fixtures/contractExit';
 import { test, expect } from '@playwright/test';
 
 for (const width of [1440, 390]) {
@@ -13,6 +14,7 @@ for (const width of [1440, 390]) {
         signing: { state: 'SIGNED', contentHash: 'fixture', ownerAccountId: '3', customerAccountId: '2', ownerSignedAt: '2026-10-30T00:00:00Z', customerSignedAt: '2026-10-30T00:00:00Z' },
         lifecycle: { version: 3, expired: scenario !== 'owner-before-end', previousContractId: scenario === 'scheduled' ? '2' : null, renewalContractId: null, handover: null, renewalRequestAvailable: true, renewalRequestOpensOn: '2026-10-21', handoverAvailable: scenario === 'owner-expired', renewalRequest: scenario === 'owner-accept' || scenario === 'owner-reject' ? renewal : null } };
       page.on('pageerror', error => errors.push(error.message));
+      await page.route('https://accounts.google.com/**',r=>r.fulfill({contentType:'application/javascript',body:'window.google={accounts:{id:{initialize(){},renderButton(){},disableAutoSelect(){},cancel(){}}}}'}));
       await page.route('**/api/**', async route => {
         const path = new URL(route.request().url()).pathname;
         const json = (body: unknown) => route.fulfill({ json: body });
@@ -21,6 +23,7 @@ for (const width of [1440, 390]) {
         if (path.endsWith('/refresh')) return json({ accessToken: 'fixture', user: { id: tenant ? '2' : '3', fullName: 'Người dùng mẫu', roles: [tenant ? 'CUSTOMER' : 'OWNER'], accountStatus: 'ACTIVE', contactVerificationStatus: 'VERIFIED', version: 0 } });
         if (path.endsWith('/me/tenancies')) return json([]);
         if (path.endsWith('/me/notifications')) return json({ items: [], page: 0, totalPages: 0, totalElements: 0, unreadCount: 0 });
+        if(path==='/api/v1/contracts/4/exit')return json(exitFixture('4','3','2'));
         if (path === '/api/v1/contracts/4') return json(doc);
         if (path.endsWith('/contracts/4/pdf')) return route.fulfill({ contentType: 'application/pdf', body: '%PDF-1.4\n%%EOF' });
         if (path.endsWith('/4/renewal-request')) {
@@ -52,11 +55,12 @@ for (const width of [1440, 390]) {
         await expect(page.getByRole('button', { name: 'Từ chối thuê tiếp', exact: true })).toBeDisabled();
         if (scenario === 'owner-reject') await page.getByLabel('Phản hồi (bắt buộc khi từ chối)', { exact: true }).fill('Không tiếp tục cho thuê');
         await page.getByRole('button', { name: scenario === 'owner-accept' ? 'Chấp nhận thuê tiếp' : 'Từ chối thuê tiếp', exact: true }).click();
-        await expect(page.getByRole('button', { name: scenario === 'owner-accept' ? 'Tạo hợp đồng ký tiếp' : 'Lập biên bản bàn giao', exact: true })).toBeVisible();
+        await expect(page.getByRole('button', { name: scenario === 'owner-accept' ? 'Tạo hợp đồng ký tiếp' : 'Kết thúc thuê / bàn giao cư trú', exact: true })).toBeVisible();
         await expect(page.getByRole('button', { name: scenario === 'owner-accept' ? 'Lập biên bản bàn giao' : 'Tạo hợp đồng ký tiếp', exact: true })).toHaveCount(0);
       } else if (scenario === 'owner-expired') {
-        await page.getByRole('button', { name: 'Lập biên bản bàn giao', exact: true }).click();
-        await expect(page.getByRole('form', { name: 'Thông tin bàn giao' })).toBeVisible();
+        await page.getByRole('button',{name:'Kết thúc thuê / bàn giao cư trú',exact:true}).click();
+        await page.getByRole('button',{name:'Lập biên bản bàn giao cư trú',exact:true}).click();
+        await expect(page.getByRole('form',{name:'Thông tin bàn giao cư trú'})).toBeVisible();
         await expect(page.getByRole('button', { name: 'Tạo hợp đồng ký tiếp', exact: true })).toHaveCount(0);
       } else {
         await expect(page.getByRole('button', { name: 'Lập biên bản bàn giao', exact: true })).toHaveCount(0);

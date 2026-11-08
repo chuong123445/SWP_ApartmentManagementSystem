@@ -1,3 +1,4 @@
+import { ContractExitPanel } from '@/components/contract/ContractExitPanel';
 import { useEffect, useId, useRef, useState } from 'react';
 import { ContractLifecyclePanel } from '@/components/contract/ContractLifecyclePanel';
 import { getContract } from '@/services/contract/contractService';
@@ -27,7 +28,7 @@ export function ContractListActionModal({ contractId, action, onClose, onUpdated
       {error && <div role="alert" className="text-rose-700"><p>{error}</p><button className="underline mt-2" onClick={() => setRevision(value => value + 1)}>Tải lại hợp đồng</button></div>}
       {completed && <p role="status" className="text-sm text-emerald-800">{action === 'renewal' ? 'Đã gửi yêu cầu thuê tiếp. Chủ nhà sẽ xem xét yêu cầu.' : draft?.lifecycle?.handover?.status === 'CANCELLED' ? 'Đã hủy đề nghị bàn giao.' : 'Đã cập nhật biên bản bàn giao. Người thuê cần kiểm tra và xác nhận trước khi trả phòng.'}</p>}
       {draft && !completed && !allowed && <div className="space-y-3"><p role="status" className="text-sm text-amber-800">Trạng thái hợp đồng đã thay đổi hoặc thao tác này hiện chưa đủ điều kiện.</p><Link className="text-sm text-emerald-700 underline" to={`/contracts/${contractId}`}>Xem trạng thái hợp đồng</Link></div>}
-      {draft && (allowed || completed) && <ContractLifecyclePanel key={draft.id} draft={draft} initialAction={action} onUpdated={value => { setDraft(value); setCompleted(true); onUpdated(value); }} />}
+      {draft && (allowed || completed) && (action==='handover'?<ContractExitPanel key={draft.id} draft={draft} initialOpen onChanged={async()=>{const value=await getContract(draft.id);setDraft(value);setCompleted(true);onUpdated(value);}}/>:<ContractLifecyclePanel key={draft.id} draft={draft} initialAction={action} onUpdated={value => { setDraft(value); setCompleted(true); onUpdated(value); }} />)}
     </div>
   </dialog>;
 }
