@@ -1,24 +1,62 @@
 import { useEffect, useRef, useState } from 'react';
-import { suggestSearch, applyAiSearch, toApartmentFilters, hasAiFilters, type AiSearchResult, type AiFilters } from '@/services/apartments/aiSearchService';
+import { createPortal } from 'react-dom';
+import { MessageCircle, Send, Sparkles, X } from 'lucide-react';
+import { chatWithAi, applyAiSearch, toApartmentFilters, hasAiFilters, type ChatMessage } from '@/services/apartments/aiSearchService';
 import type { ApartmentFilters } from '@/types/apartment';
-const labels:Record<keyof AiFilters,string>={q:'Tên/địa chỉ',city:'Tỉnh/thành phố',district:'Quận/huyện',ward:'Phường/xã',minRent:'Giá tối thiểu (đ/tháng)',maxRent:'Giá tối đa (đ/tháng)',minArea:'Diện tích tối thiểu (m²)',maxArea:'Diện tích tối đa (m²)',bedrooms:'Số phòng ngủ',occupants:'Số người cần ở'};
-export function AiSearchPanel({onApply}:{onApply:(filters:ApartmentFilters)=>void}){
- const [text,setText]=useState('');const [consent,setConsent]=useState(false);const [result,setResult]=useState<AiSearchResult|null>(null);const [filters,setFilters]=useState<AiFilters|null>(null);const [busy,setBusy]=useState(false);const [error,setError]=useState('');
- const controller=useRef<AbortController|null>(null);const form=useRef<HTMLFormElement>(null);
- useEffect(()=>()=>controller.current?.abort(),[]);
- const suggest=async()=>{if(busy||!consent||!text.trim())return;setBusy(true);setResult(null);setFilters(null);setError('');const c=new AbortController();controller.current=c;
-  try{const data=await suggestSearch(text.trim(),c.signal);if(!c.signal.aborted){setResult(data);setFilters(data.filters);}}catch(e){if(!c.signal.aborted)setError(e instanceof Error?e.message:'Không phân tích được yêu cầu.');}finally{if(!c.signal.aborted)setBusy(false);}
- };
- const apply=async()=>{if(!result||!filters||!hasAiFilters(filters)||busy||!form.current?.reportValidity())return;setBusy(true);setError('');try{const accepted=await applyAiSearch(result.runId,filters);onApply(toApartmentFilters(accepted));setResult(null);setFilters(null);}catch(e){setError(e instanceof Error?e.message:'Không áp dụng được bộ lọc.');}finally{setBusy(false);}};
- return <section aria-label="AI hỗ trợ tìm căn hộ" className="home-hero mt-4"><h2 className="font-bold text-xl">Tìm phòng bằng lời nói tự nhiên</h2><p className="text-sm">Ví dụ: Phòng dưới 5 triệu, từ 25 m², tại Thủ Đức, cho 2 người. AI chỉ đề xuất bộ lọc; danh sách phòng và giá lấy từ hệ thống.</p>
-  <label className="block mt-3">Nhu cầu tìm phòng<textarea aria-label="Nhu cầu tìm phòng" disabled={busy} maxLength={1000} value={text} onChange={e=>{setText(e.target.value);setResult(null);setFilters(null);setError('');}} rows={3} className="w-full min-w-0 border rounded-lg p-3"/></label>
-  <label className="flex gap-2 items-start text-sm my-3"><input type="checkbox" disabled={busy} checked={consent} onChange={e=>setConsent(e.target.checked)}/><span>Tôi đồng ý gửi mô tả này đến Gemini để phân tích. Không nhập thông tin cá nhân hoặc giấy tờ.</span></label>
-  <button type="button" className="home-primary" disabled={busy||!consent||!text.trim()} onClick={()=>void suggest()}>{busy?'Đang xử lý AI...':'Phân tích nhu cầu bằng AI'}</button>
-  {error&&<p role="alert" className="text-red-700 mt-3">{error} Bạn vẫn có thể dùng bộ lọc thông thường phía trên.</p>}
-  {result&&filters&&<form ref={form} className="mt-4 space-y-3" onSubmit={e=>{e.preventDefault();void apply();}}><h3 className="font-semibold">Kiểm tra bộ lọc AI đề xuất</h3><p className="text-sm">Kiểm tra và sửa trước khi áp dụng. Ô trống nghĩa là không giới hạn; chưa thực hiện tìm kiếm theo gợi ý này.</p>
-   {result.notes.length>0&&<ul className="list-disc pl-5 text-amber-900">{result.notes.map((n,i)=><li key={i}>{n}</li>)}</ul>}
-   <fieldset disabled={busy} className="grid sm:grid-cols-2 gap-3">{(Object.keys(labels) as (keyof AiFilters)[]).map(key=><label key={key} className="grid gap-1 min-w-0 text-sm">{labels[key]}<input className="border rounded-lg p-2 min-w-0" maxLength={key==='q'?120:80} type={['q','city','district','ward'].includes(key)?'text':'number'} min={key==='occupants'?1:0} step={['occupants','bedrooms'].includes(key)?'1':'0.01'} value={filters[key]??''} onChange={e=>setFilters({...filters,[key]:e.target.value===''?null:['occupants','bedrooms'].includes(key)?Number(e.target.value):e.target.value})}/></label>)}</fieldset>
-   <p className="text-xs text-slate-500">Model: {result.model} · {result.promptVersion}</p><button disabled={busy||!hasAiFilters(filters)} type="submit" className="home-primary">Áp dụng bộ lọc và tìm phòng</button>{!hasAiFilters(filters)&&<p className="text-sm">Hãy nhập ít nhất một bộ lọc ở trên, hoặc bổ sung mô tả rồi phân tích lại.</p>}
-  </form>}
- </section>;
+import '@/styles/ai-chat.css';
+
+type Bubble = ChatMessage & { status?: string };
+export function AiSearchPanel({ onApply }: { onApply:(filters:ApartmentFilters)=>void }) {
+  const [open,setOpen]=useState(false);
+  const [text,setText]=useState('');
+  const [consent,setConsent]=useState(false);
+  const [messages,setMessages]=useState<Bubble[]>([]);
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState('');
+  const controller=useRef<AbortController|null>(null);
+  const input=useRef<HTMLTextAreaElement>(null);
+  const log=useRef<HTMLDivElement>(null);
+  const launcher=useRef<HTMLButtonElement>(null);
+  useEffect(()=>()=>controller.current?.abort(),[]);
+  useEffect(()=>{ if(open&&!busy) input.current?.focus({preventScroll:true}); },[open,busy]);
+  useEffect(()=>{ if(open&&log.current) log.current.scrollTop=log.current.scrollHeight; },[open,messages,busy,error]);
+  const close=()=>{setOpen(false);launcher.current?.focus({preventScroll:true});};
+  const send=async()=>{
+    if(controller.current||!consent||!text.trim())return;
+    const submitted=text.trim();
+    const history=messages.slice(-8).map(({role,text})=>({role,text}));
+    const c=new AbortController();controller.current=c;
+    setBusy(true);setError('');setText('');setMessages(previous=>[...previous,{role:'user',text:submitted}]);
+    try {
+      const result=await chatWithAi(submitted,history,c.signal);
+      if(c.signal.aborted)return;
+      const answer:Bubble={role:'assistant',text:[result.reply,...result.search.notes].join('\n\n').slice(0,2000)};
+      setMessages(previous=>[...previous,answer]);
+      if(result.search.canApply&&hasAiFilters(result.search.filters)){
+        const accepted=await applyAiSearch(result.search.runId,result.search.filters,c.signal);
+        if(c.signal.aborted)return;
+        onApply(toApartmentFilters(accepted));
+        setMessages(previous=>previous.map((message,index)=>index===previous.length-1?{...message,status:'Đã cập nhật bộ lọc và tìm căn hộ. Xem kết quả trên trang; bạn có thể sửa bộ lọc bất cứ lúc nào.'}:message));
+      }
+    } catch(e) {
+      if(!c.signal.aborted){setError(e instanceof Error?e.message:'Chưa gửi được tin nhắn. Hãy thử lại.');setText(submitted);}
+    } finally { if(!c.signal.aborted){controller.current=null;setBusy(false);} }
+  };
+  return createPortal(<div className="ai-chat-widget">
+    {open&&<section id="ai-chat-panel" role="dialog" aria-modal="false" aria-labelledby="ai-chat-title" className="ai-chat-panel" onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();close();}}}>
+      <header className="ai-chat-header"><span className="ai-chat-avatar"><Sparkles size={22} aria-hidden="true"/></span><div><h2 id="ai-chat-title">Trợ lý An Cư AI</h2><p>Hỏi đáp & tìm căn hộ</p></div><button type="button" aria-label="Đóng chat AI" onClick={close}><X size={20}/></button></header>
+      <div className="ai-chat-messages" role="log" aria-label="Hội thoại với AI" aria-live="polite" ref={log}>
+        <div className="ai-chat-bubble ai-chat-assistant"><strong>Xin chào! Mình có thể giúp gì cho bạn?</strong><p>Bạn có thể hỏi về việc thuê nhà, cách sử dụng An Cư hoặc nhờ mình tìm căn hộ phù hợp.</p><p>Ví dụ: “Tìm phòng dưới 5 triệu, từ 25 m², cho 2 người”. Mình sẽ tự cập nhật bộ lọc và tìm trên trang này.</p></div>
+        {messages.map((message,index)=><div key={index} className={`ai-chat-bubble ai-chat-${message.role}`}><span className="ai-chat-sender">{message.role==='user'?'Bạn':'An Cư AI'}</span><p>{message.text}</p>{message.status&&<p className="ai-chat-applied">{message.status}</p>}</div>)}
+        {busy&&<p role="status" className="ai-chat-thinking">An Cư AI đang trả lời…</p>}
+      </div>
+      <form className="ai-chat-compose" onSubmit={e=>{e.preventDefault();void send();}}>
+        {error&&<p role="alert" className="ai-chat-error">{error} Bạn vẫn có thể dùng bộ lọc trên trang.</p>}
+        <p className="ai-chat-privacy">AI có thể nhầm. Không gửi thông tin cá nhân hoặc giấy tờ.</p>
+        <label className="ai-chat-consent"><input type="checkbox" checked={consent} disabled={busy} onChange={e=>setConsent(e.target.checked)}/><span>Đồng ý gửi hội thoại đến Gemini để được hỗ trợ.</span></label>
+        <div className="ai-chat-input"><textarea ref={input} aria-label="Tin nhắn cho AI" placeholder="Nhập tin nhắn…" rows={2} maxLength={1000} disabled={busy} value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void send();}}}/><button type="submit" aria-label="Gửi tin nhắn" disabled={busy||!consent||!text.trim()}><Send size={19}/></button></div>
+      </form>
+    </section>}
+    <button ref={launcher} type="button" className="ai-chat-launcher" aria-label={open?'Thu gọn chat AI':'Mở chat AI'} aria-expanded={open} aria-controls="ai-chat-panel" onClick={()=>open?close():setOpen(true)}>{open?<X size={25}/>:<MessageCircle size={27}/>}<span>AI</span></button>
+  </div>,document.body);
 }
