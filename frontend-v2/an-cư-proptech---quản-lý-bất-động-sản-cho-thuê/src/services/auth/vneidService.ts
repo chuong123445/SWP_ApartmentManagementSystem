@@ -1,10 +1,10 @@
 import { apiFetch, readApiError } from '@/services/http/client';
 import type { AuthSession, AuthUser } from '@/types/auth';
 export interface VneidConfig { enabled: boolean; issuer: string; clientId: string; audience: string; connection: string }
-export interface VerifiedCitizen { documentNumber: string; legalName: string; dateOfBirth: string; gender: string; address: string; phoneNumber?: string | null; documentIssueDate?: string | null; documentIssuePlace?: string | null; permanentAddress?: string | null }
+export interface VerifiedCitizen { documentNumber: string; legalName: string; dateOfBirth: string; gender: string; address: string; documentIssueDate?: string | null; documentIssuePlace?: string | null; permanentAddress?: string | null }
 export interface AccountVerification {
   emailVerified: boolean;
-  vneid: { status: 'VERIFIED' | 'UNVERIFIED'; verifiedAt: string | null; identity: VerifiedCitizen | null };
+  vneid: { status: 'VERIFIED' | 'UNVERIFIED'; verifiedAt: string | null; identity: VerifiedCitizen | null; source?: string | null };
 }
 export async function getAccountVerification(signal?: AbortSignal): Promise<AccountVerification> {
   const response = await apiFetch('/api/v1/me/verifications', { cache: 'no-store', signal });

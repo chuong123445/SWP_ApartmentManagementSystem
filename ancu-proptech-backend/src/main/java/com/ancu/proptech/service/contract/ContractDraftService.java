@@ -26,6 +26,7 @@ import java.util.*;
 
 @Service @RequiredArgsConstructor
 public class ContractDraftService {
+    static final int RENEWAL_REQUEST_DAYS = 10;
     private final ContractDraftRepository drafts;
     private final RentalContractRepository contracts;
     private final RentalRequestRepository requests;
@@ -36,7 +37,7 @@ public class ContractDraftService {
     private final AccountAccessService access;
     private final AccountVerificationPolicy verification;
     private final IdentityProfileRepository identities;
-    private final com.ancu.proptech.repository.auth.ExternalIdentityRepository verifiedIdentities;
+    private final com.ancu.proptech.service.auth.VerifiedIdentityPolicy verifiedIdentities;
     private final ObjectMapper json;
     private final com.ancu.proptech.service.property.PropertyRightsPolicy rights;
     private final ContractHandoverRepository handovers;
@@ -70,7 +71,7 @@ public class ContractDraftService {
         if(a.getAvailability()!=Apartment.Availability.CONTRACT_IN_PROGRESS || contracts.findByApartmentId(a.getId()).stream().anyMatch(c->c.getStatus()!=RentalContract.Status.ENDED))
             throw conflict("APARTMENT_NOT_SELECTED","Căn hộ không còn ở bước làm hợp đồng hoặc đã có hợp đồng hiện hành.");
         var customer=r.getCustomer();
-        if((customer.getRole()!=AuthAccount.Role.CUSTOMER&&customer.getRole()!=AuthAccount.Role.OWNER) || customer.getStatus()!=AuthAccount.Status.ACTIVE || !verification.isRentalVerified(customer))
+        if(!customer.hasRole(AuthAccount.Role.CUSTOMER) || customer.getStatus()!=AuthAccount.Status.ACTIVE || !verification.isRentalVerified(customer))
             throw conflict("CUSTOMER_NOT_ELIGIBLE","Tài khoản khách thuê không còn đủ điều kiện.");
         rights.requireCurrent(a.getProperty());
         var snapshot=snapshot(r);
@@ -149,7 +150,7 @@ public class ContractDraftService {
             throw conflict("ALREADY_SIGNED","Bạn đã ký hợp đồng này.");
         var apartment=apartments.findForRequest(c.getApartment().getId()).orElseThrow(ContractDraftService::notFound);
         var landlord=apartment.getProperty().getOwner();
-        if(landlord.getStatus()!=AuthAccount.Status.ACTIVE || landlord.getRole()!=AuthAccount.Role.OWNER || !verification.isVerified(landlord))
+        if(landlord.getStatus()!=AuthAccount.Status.ACTIVE || !landlord.hasRole(AuthAccount.Role.OWNER) || !verification.isVerified(landlord))
             throw conflict("OWNER_NOT_ELIGIBLE","Chủ nhà không còn đủ điều kiện ký hợp đồng.");
         rights.requireCurrent(apartment.getProperty());
         rights.contract(apartment.getProperty(),c.getStartDate(),c.getEndDate());
@@ -225,9 +226,9 @@ public class ContractDraftService {
             qr==null?evidence.bank():new ContractSnapshot.ReceivingAccount(qr.getBank(),qr.getAccountNumber(),qr.getAccountHolderName()),provenance,qr==null?null:qr.getId().toString());
     }
     private ContractSnapshot.Party party(AuthAccount a) {
-        var verified=verifiedIdentities.findById(a.getId()).filter(i->"VERIFIED".equals(i.getVerificationStatus())).orElse(null);
-        if(verified!=null)return new ContractSnapshot.Party(a.getId().toString(),verified.getLegalName(),a.getEmail(),a.getPhone()==null?verified.getPhoneNumber():a.getPhone(),verified.getAddress(),verified.getDateOfBirth(),a.isEmailVerified(),
-            verified.getDocumentNumber(),verified.getDocumentIssueDate(),verified.getDocumentIssuePlace(),verified.getPermanentAddress(),"VERIFIED",false);
+        var verified=verifiedIdentities.verified(a.getId()).orElse(null);
+        if(verified!=null)return new ContractSnapshot.Party(a.getId().toString(),verified.getLegalName(),a.getEmail(),a.getPhone(),verified.getAddress(),verified.getDateOfBirth(),a.isEmailVerified(),
+            verified.getDocumentNumber(),verified.getDocumentIssueDate(),verified.getDocumentIssuePlace(),verified.getPermanentAddress(),"LOCAL_DEMO".equals(verified.getSource())?"VERIFIED_LOCAL_DEMO":"VERIFIED","LOCAL_DEMO".equals(verified.getSource()));
         var identity=identities.findById(a.getId()).orElse(null);
         return new ContractSnapshot.Party(a.getId().toString(),identity==null?a.getFullName():identity.getLegalName(),a.getEmail(),a.getPhone(),
             identity==null?a.getAddress():identity.getCurrentAddress(),identity==null?a.getDateOfBirth():identity.getDateOfBirth(),a.isEmailVerified(),
@@ -252,6 +253,8 @@ public class ContractDraftService {
                 d.getOwnerSignedAt(),d.getCustomerSignedAt(),image(d.getOwnerSignature()),image(d.getCustomerSignature())),lifecycle(c),c.getWaterBillingMode().name(),c.getOccupantCount(),c.getInternetFee().toPlainString(),c.getGarbageFee().toPlainString());
     }
     private ContractDraftResponse.Lifecycle lifecycle(RentalContract c) {
+        var today = rights.today();
+        var renewalRequestOpensOn = c.getEndDate().minusDays(RENEWAL_REQUEST_DAYS);
         var next=contracts.findByRenewalOfContractIdAndStatusNot(c.getId(),RentalContract.Status.ENDED).stream().findFirst().orElse(null);
         var h=handovers.findFirstByContractIdOrderByIdDesc(c.getId()).orElse(null);
         var r=renewalRequests.findByContractId(c.getId()).orElse(null);
@@ -262,7 +265,9 @@ public class ContractDraftService {
             h==null?null:new ContractDraftResponse.Handover(h.getId().toString(),h.getVersion(),h.getStatus().name(),h.getReturnDate(),
                 h.getElectricityReading().toPlainString(),h.getWaterReading().toPlainString(),h.getElectricityStartReading()==null?null:h.getElectricityStartReading().toPlainString(),h.getWaterStartReading()==null?null:h.getWaterStartReading().toPlainString(),h.isKeysReturned(),h.getConditionNotes(),h.getDepositAmount().toPlainString(),
                 h.getDeductionAmount().toPlainString(),h.getUtilityAmount().toPlainString(),h.getRefundAmount().toPlainString(),h.getExtraAmountDue().toPlainString(),h.getOwnerConfirmedAt(),h.getCustomerConfirmedAt()),renewal,
-            c.getStatus()==RentalContract.Status.ACTIVE&&!c.getEndDate().isAfter(rights.today())&&next==null&&!requestOpen&&(h==null||h.getStatus()==ContractHandover.Status.CANCELLED));
+            c.getStatus()==RentalContract.Status.ACTIVE&&!c.getEndDate().isAfter(today)&&next==null&&!requestOpen&&(h==null||h.getStatus()==ContractHandover.Status.CANCELLED),
+            c.getStatus()==RentalContract.Status.ACTIVE&&!renewalRequestOpensOn.isAfter(today)&&next==null&&r==null
+                &&!handovers.existsByContractIdAndStatus(c.getId(),ContractHandover.Status.PENDING),renewalRequestOpensOn);
     }
     private String image(byte[] bytes){return bytes==null?null:"data:image/png;base64,"+Base64.getEncoder().encodeToString(bytes);}
     private String contentHash(ContractDraft d) {

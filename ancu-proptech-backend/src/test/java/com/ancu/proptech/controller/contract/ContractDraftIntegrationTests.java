@@ -28,6 +28,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
 class ContractDraftIntegrationTests {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    com.ancu.proptech.service.property.ai.DossierAiClient dossierAiClient;
     @Autowired MockMvc mvc;
     @Autowired AuthAccountRepository accounts;
     @Autowired PropertyRepository properties;
@@ -51,6 +53,16 @@ class ContractDraftIntegrationTests {
     private String token,customerToken,otherToken;
     private static String hash;
     private static final String PASSWORD="Contract-test!12345";
+    @Test void dualRoleTenantSignsTheirOwnSlotWithoutManagingOtherOwnersContract()throws Exception {
+        customer.setRole(AuthAccount.Role.OWNER);accounts.saveAndFlush(customer);
+        String saved=create();String hash=JsonPath.read(saved,"$.signing.contentHash");
+        sign(saved,token,hash,signature(),true).andExpect(status().isOk());
+        sign(saved,customerToken,hash,signature(),true).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"));
+        mvc.perform(get("/api/v1/me/contract-drafts").header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
+        mvc.perform(get("/api/v1/owner/contract-drafts").header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get("/api/v1/owner/contracts/"+id(saved)+"/billing-context").header("Authorization",customerToken)).andExpect(status().isNotFound());
+        assertEquals(Set.of(AuthAccount.Role.OWNER,AuthAccount.Role.CUSTOMER),customer.getRoles());
+    }
     @Test void customerRequestInboxExcludesConvertedSelectionsBeforePagingButKeepsTheirDocuments()throws Exception {
         String saved=create();
         for(var state:List.of(RentalRequest.Status.REJECTED,RentalRequest.Status.CANCELLED)){
@@ -101,15 +113,15 @@ class ContractDraftIntegrationTests {
     @Autowired PropertyExternalImportRepository imports;
     @Test void completeVerifiedPartyDetailsReachNewDraftButExistingSnapshotStaysFrozen()throws Exception {
         var verified=com.ancu.proptech.support.VerifiedIdentityFixtures.bind(verifiedIdentities,customer);
-        customer.setPhone(null);accounts.saveAndFlush(customer);
-        verified.setPhoneNumber("+84999000002");verified.setDocumentIssueDate(LocalDate.of(2021,6,16));
+        customer.setPhone("+84999000002");accounts.saveAndFlush(customer);
+        verified.setDocumentIssueDate(LocalDate.of(2021,6,16));
         verified.setDocumentIssuePlace("Cục Cảnh sát quản lý hành chính về trật tự xã hội");
         verified.setPermanentAddress("54 Hoàng Diệu, phường Phước Ninh, quận Hải Châu, thành phố Đà Nẵng");verifiedIdentities.saveAndFlush(verified);
         String saved=create();assertEquals("+84999000002",JsonPath.read(saved,"$.snapshot.customer.phone"));
         assertEquals("2021-06-16",JsonPath.read(saved,"$.snapshot.customer.documentIssueDate"));
         assertEquals(verified.getDocumentIssuePlace(),JsonPath.read(saved,"$.snapshot.customer.documentIssuePlace"));
         assertEquals(verified.getPermanentAddress(),JsonPath.read(saved,"$.snapshot.customer.permanentAddress"));
-        verified.setPhoneNumber("+84999000999");verified.setDocumentIssuePlace("Một cơ quan khác");verifiedIdentities.saveAndFlush(verified);
+        customer.setPhone("+84999000999");accounts.saveAndFlush(customer);verified.setDocumentIssuePlace("Một cơ quan khác");verifiedIdentities.saveAndFlush(verified);
         mvc.perform(get("/api/v1/contracts/"+id(saved)).header("Authorization",customerToken)).andExpect(status().isOk())
             .andExpect(jsonPath("$.snapshot.customer.phone").value("+84999000002"))
             .andExpect(jsonPath("$.snapshot.customer.documentIssuePlace").value("Cục Cảnh sát quản lý hành chính về trật tự xã hội"));
@@ -240,6 +252,23 @@ class ContractDraftIntegrationTests {
     private ResultActions askRenewal(String id,String account,String message)throws Exception {
         return mvc.perform(post("/api/v1/contracts/"+id+"/renewal-request").header("Authorization",account).contentType("application/json").content("{\"version\":"+JsonPath.read(readContract(id),"$.lifecycle.version")+",\"consent\":true,\"message\":\""+message+"\"}"));
     }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints={11,10,1,0,-1})
+    void renewalRequestStartsTenDaysBeforeExpiryUsingServerDate(int daysUntilEnd) throws Exception {
+        String saved=create();String contractId=id(saved);
+        var contract=contracts.findById(Long.valueOf(contractId)).orElseThrow();
+        var today=java.time.LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+        contract.setStatus(RentalContract.Status.ACTIVE);contract.setStartDate(today.minusMonths(1));
+        contract.setEndDate(today.plusDays(daysUntilEnd));contracts.saveAndFlush(contract);
+        String current=readContract(contractId);
+        assertEquals(contract.getEndDate().minusDays(10).toString(),JsonPath.read(current,"$.lifecycle.renewalRequestOpensOn"));
+        assertEquals(Boolean.valueOf(daysUntilEnd<=10),JsonPath.<Boolean>read(current,"$.lifecycle.renewalRequestAvailable"));
+        var response=askRenewal(contractId,customerToken,"Muốn thuê tiếp");
+        if(daysUntilEnd>10){
+            response.andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("RENEWAL_REQUEST_TOO_EARLY"));
+            assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM contract_renewal_requests WHERE contract_id=?",Integer.class,Long.valueOf(contractId)));
+        }else response.andExpect(status().isOk()).andExpect(jsonPath("$.lifecycle.renewalRequest.status").value("PENDING"));
+    }
     private void acceptRenewal(String id)throws Exception {
         String requested=askRenewal(id,customerToken,"Muốn thuê tiếp").andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         mvc.perform(post("/api/v1/owner/contracts/"+id+"/renewal-request/decision").header("Authorization",token).contentType("application/json")
@@ -356,7 +385,9 @@ class ContractDraftIntegrationTests {
             String text=new org.apache.pdfbox.text.PDFTextStripper().getText(pdf);
             assertTrue(text.contains("HỢP ĐỒNG THUÊ CĂN HỘ"));assertTrue(text.contains("Điều khoản riêng"));
             assertTrue(text.contains("BÊN CHO THUÊ (BÊN A)"));assertTrue(text.contains("BÊN THUÊ (BÊN B)"));
-            assertTrue(text.contains("Ký, ghi rõ họ tên"));assertTrue(text.contains("SHA-256:"));assertTrue(pdf.getNumberOfPages()>=2);
+            assertTrue(text.contains("Ký, ghi rõ họ tên"));assertTrue(text.contains("SHA-256:"));assertTrue(pdf.getNumberOfPages()<=2);
+            assertFalse(text.contains("Phòng ngủ"));assertFalse(text.contains("phòng tắm"));assertFalse(text.contains("Trang bị:"));
+            assertFalse(text.contains("Email:"));assertFalse(text.contains("Giấy chứng nhận:"));
             java.nio.file.Files.write(java.nio.file.Path.of("target/contract-preview-unsigned.pdf"),bytes);
             var renderer=new org.apache.pdfbox.rendering.PDFRenderer(pdf);
             javax.imageio.ImageIO.write(renderer.renderImageWithDPI(0,100),"png",new java.io.File("target/contract-preview-first.png"));

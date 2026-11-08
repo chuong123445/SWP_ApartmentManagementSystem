@@ -20,7 +20,7 @@ public class LocalAdminService {
             throw new IllegalStateException("Configure valid LOCAL_ADMIN_EMAIL/LOCAL_ADMIN_PASSWORD/LOCAL_ADMIN_NAME for local Admin provisioning.");
         var existing=accounts.findByEmail(normalized);
         if(existing.isPresent()){
-            if(existing.get().getRole()!=AuthAccount.Role.ADMIN)throw new IllegalStateException("Configured local Admin email belongs to a non-Admin account; no account was promoted.");
+            if(!existing.get().hasRole(AuthAccount.Role.ADMIN))throw new IllegalStateException("Configured local Admin email belongs to a non-Admin account; no account was promoted.");
             return;
         }
         var admin=new AuthAccount();admin.setEmail(normalized);admin.setPasswordHash(passwords.encode(password));admin.setFullName(name.strip());

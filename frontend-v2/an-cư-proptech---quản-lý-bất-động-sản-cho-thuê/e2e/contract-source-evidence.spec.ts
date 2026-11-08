@@ -17,7 +17,7 @@ test('Auth0 certificate and private receiving account enter contract review with
     if(route.request().method()!=='GET')writes++;network.push(`Unexpected API ${path}`);return route.fulfill({status:400});
   });
   await page.goto('/app');await page.locator('#nav-rental_requests').click();await page.getByRole('button',{name:'Tạo hợp đồng',exact:true}).click();const modal=page.getByRole('dialog',{name:'Tạo hợp đồng thuê căn hộ',exact:true});
-  await modal.getByRole('button',{name:'Tiếp theo →',exact:true}).click();await expect(modal.getByText('Đã xác thực qua VNeID',{exact:true})).toBeVisible();await modal.getByRole('button',{name:'Tiếp theo →',exact:true}).click();await modal.getByRole('button',{name:'Tiếp theo →',exact:true}).click();
+  await modal.getByRole('button',{name:'Tiếp theo →',exact:true}).click();await expect(modal.getByText('Đã xác thực thông tin',{exact:true})).toBeVisible();await modal.getByRole('button',{name:'Tiếp theo →',exact:true}).click();await modal.getByRole('button',{name:'Tiếp theo →',exact:true}).click();
   await expect(modal.getByText('CT 482716',{exact:true})).toBeVisible();await expect(modal.getByText('Đã xác thực nguồn VNeID',{exact:true})).toBeVisible();
   await modal.getByLabel('Ngân hàng',{exact:true}).fill('Ngân hàng thử');await modal.getByLabel('Số tài khoản',{exact:true}).fill('12345678');
   await modal.getByRole('button',{name:'Lưu tài khoản nhận tiền',exact:true}).click();await expect(modal.getByText('12345678',{exact:true})).toBeVisible();

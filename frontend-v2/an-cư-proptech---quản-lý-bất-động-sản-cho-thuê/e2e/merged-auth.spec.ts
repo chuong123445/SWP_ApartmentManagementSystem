@@ -61,14 +61,14 @@ for (const width of [1440, 390]) {
     await google.click();
     await expect(page).toHaveURL(/\/$/);
     await page.reload();
-    await page.getByRole('button', { name: 'Vai trò và tài khoản' }).click();
+    await page.getByRole('button', { name: 'Tài khoản' }).click();
     await expect(page.getByRole('navigation', { name: 'Điều hướng tài khoản' })).toContainText('google-merge@example.invalid');
     const storage = await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }));
     expect(storage).not.toContain('merge-internal-token');
     expect(storage).not.toContain('controlled-google-credential');
     await page.getByRole('button', { name: 'Đăng xuất', exact: true }).click();
     await expect(page.getByRole('link', { name: 'Đăng nhập', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Vai trò và tài khoản' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Tài khoản' })).toHaveCount(0);
     expect(fixture.commands()).toBe(1);
     expect(fixture.errors).toEqual([]);
   });

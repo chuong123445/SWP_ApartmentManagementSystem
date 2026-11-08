@@ -28,6 +28,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties={"app.seed.enabled=false","app.billing.local-fixtures=false","app.auth.secure-cookie=false"})
 @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
 class VneidPropertyImportIntegrationTests {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    com.ancu.proptech.service.property.ai.DossierAiClient dossierAiClient;
     @Autowired com.ancu.proptech.repository.property.PropertyImageRepository imageFiles;
     @Autowired MockMvc mvc;@Autowired AuthAccountRepository accounts;@Autowired ExternalIdentityRepository identities;
     @Autowired PropertyExternalImportRepository imports;@Autowired PropertyRepository properties;@Autowired ApartmentRepository apartments;
@@ -46,7 +48,7 @@ class VneidPropertyImportIntegrationTests {
         i.setDocumentNumber(String.format("%012d",Math.abs(com.ancu.proptech.support.TestIds.next().longValue()%1000000000000L)));i.setLegalName(owner.getFullName());i.setDateOfBirth(LocalDate.of(1990,1,1));i.setGender("Nam");i.setAddress("Đà Nẵng");i.setSource(VneidTokenVerifier.SOURCE);i.setVerificationStatus("VERIFIED");i.setVerifiedAt(Instant.now());identities.saveAndFlush(i);
         var consent=new com.ancu.proptech.model.property.PropertySourceConsent();consent.setAccountId(owner.getId());consent.setIssuer(issuer);consent.setSubject(subject);consent.setConsentedAt(Instant.now());consent.setConsentVersion("property-selection-v2");consents.saveAndFlush(consent);
         token=auth.createSession(owner).tokens().accessToken();accounts.flush();
-        source=new VneidAsset(assetId,"Tài sản nguồn kiểm thử","12 Đường nguồn","SINGLE_UNIT","CERT-TEST",null,null,List.of(new VneidAsset.Unit("unit-1","A.01",new BigDecimal("50.25"),2,1)));
+        source=new VneidAsset(assetId,"Tài sản nguồn kiểm thử "+assetId,"12 Đường nguồn","SINGLE_UNIT","CERT-TEST",null,null,List.of(new VneidAsset.Unit("unit-1","A.01",new BigDecimal("50.25"),2,1)));
         when(assets.assetDetails(issuer,subject)).thenReturn(List.of(source));
     }
     ResultActions list()throws Exception{return mvc.perform(get("/api/v1/owner/properties/vneid-assets").header("Authorization","Bearer "+token));}

@@ -125,6 +125,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/owner/payment-qr/**", "/api/v1/invoices/*/payment-qr").authenticated()
                         .requestMatchers("/api/v1/owner/properties/*/payment-qr").authenticated()
                         .requestMatchers("/api/v1/me/notifications", "/api/v1/me/notifications/**").authenticated()
+                        .requestMatchers("/api/v1/owner/settlements", "/api/v1/owner/settlements/**", "/api/v1/admin/settlements/**").authenticated()
+                        .requestMatchers("/api/v1/admin/accounts", "/api/v1/admin/accounts/**").authenticated()
                         .anyRequest().denyAll())
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((request, response, error) -> writeError(response, 401, "UNAUTHENTICATED", "Vui lòng đăng nhập lại."))
@@ -134,9 +136,11 @@ public class SecurityConfig {
                         .jwt(j -> j.jwtAuthenticationConverter(jwt -> {
                             try {
                                 AuthAccount account = auth.authenticate(jwt);
-                                String role = account.getStatus() == AuthAccount.Status.ACTIVE && verification.isVerified(account)
-                                        ? account.getRole().name() : "ONBOARDING";
-                                return new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
+                                // Live DB memberships are authoritative; never trust stale role claims.
+                                java.util.List<SimpleGrantedAuthority> authorities = account.getStatus() == AuthAccount.Status.ACTIVE && verification.isVerified(account)
+                                        ? account.roleNames().stream().map(role->new SimpleGrantedAuthority("ROLE_"+role)).toList()
+                                        : List.of(new SimpleGrantedAuthority("ROLE_ONBOARDING"));
+                                return new JwtAuthenticationToken(jwt, authorities);
                             } catch (AuthException error) {
                                 throw new OAuth2AuthenticationException(new OAuth2Error("invalid_token"));
                             }

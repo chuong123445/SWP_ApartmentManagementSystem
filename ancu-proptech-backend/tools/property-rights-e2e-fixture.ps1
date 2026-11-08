@@ -43,6 +43,7 @@ INSERT INTO auth_external_identities(account_id,issuer,subject,document_number,l
  VALUES(@applicant,'https://rights-e2e.invalid/',@subject,@document,@name,'1990-01-01',N'Nam',N'Địa chỉ kiểm thử','AUTH0_VNEID_SIMULATION','VERIFIED',SYSUTCDATETIME(),0);
 INSERT INTO auth_accounts(id,email,full_name,password_hash,role,status,contact_verified,email_verified,phone_verified,version)
  SELECT @admin,@adminEmail,@name,password_hash,'ADMIN','ACTIVE',0,0,0,0 FROM auth_accounts WHERE id=@applicant;
+INSERT auth_account_roles(account_id,role_id) SELECT @admin,id FROM auth_roles WHERE code='ADMIN';
 COMMIT;
 '@
         [void]$taskCommand.ExecuteNonQuery();Write-Output '{"prepared":true}'
@@ -68,7 +69,9 @@ DELETE FROM email_change_challenges WHERE account_id IN(@applicant,@admin);
 DELETE FROM auth_refresh_tokens WHERE session_id IN(SELECT id FROM auth_sessions WHERE account_id IN(@applicant,@admin));
 DELETE FROM auth_sessions WHERE account_id IN(@applicant,@admin);
 DELETE FROM auth_external_identities WHERE account_id=@applicant AND subject=@subject;
+DELETE FROM auth_account_roles WHERE account_id=@applicant;
 DELETE FROM auth_accounts WHERE id=@applicant AND email=@email AND full_name=@name;
+DELETE FROM auth_account_roles WHERE account_id=@admin;
 DELETE FROM auth_accounts WHERE id=@admin AND email=@adminEmail AND full_name=@name;
 SELECT(SELECT COUNT(*) FROM auth_accounts WHERE id IN(@applicant,@admin)) AS accountsRemaining,(SELECT COUNT(*) FROM rental_properties WHERE owner_id=@applicant) AS propertiesRemaining;
 COMMIT;

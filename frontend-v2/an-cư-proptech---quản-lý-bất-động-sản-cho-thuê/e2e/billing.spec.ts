@@ -12,8 +12,8 @@ test('Owner sends persisted invoices to two real tenants, with private drafts an
     const owner = await ownerContext.newPage();const one = await firstContext.newPage();const two = await secondContext.newPage();
     const ownerToken = await login(owner, 'LOCAL_OWNER');await expect(owner.locator('#nav-tenants')).toBeVisible();
     await owner.locator('#nav-tenants').click();await expect(owner.getByText('Khách thuê Một', { exact: true }).first()).toBeVisible();await expect(owner.getByText('T.101', { exact: true }).first()).toBeVisible();
-    const tenantToken = await login(one, 'LOCAL_TENANT_1');await one.getByRole('button', { name: 'Vai trò và tài khoản' }).click();await expect(one.getByRole('link', { name: 'Hóa đơn của tôi', exact: true })).toBeVisible();
-    const secondToken = await login(two, 'LOCAL_TENANT_2');await two.getByRole('button', { name: 'Vai trò và tài khoản' }).click();await expect(two.getByRole('link', { name: 'Hóa đơn của tôi', exact: true })).toBeVisible();
+    const tenantToken = await login(one, 'LOCAL_TENANT_1');await one.getByRole('button', { name: 'Tài khoản' }).click();await expect(one.getByRole('link', { name: 'Hóa đơn của tôi', exact: true })).toBeVisible();
+    const secondToken = await login(two, 'LOCAL_TENANT_2');await two.getByRole('button', { name: 'Tài khoản' }).click();await expect(two.getByRole('link', { name: 'Hóa đơn của tôi', exact: true })).toBeVisible();
     const tenanciesResponse = await ownerContext.request.get('/api/v1/owner/tenancies', { headers: { Authorization: `Bearer ${ownerToken}` } });const tenancies = await tenanciesResponse.json();
     await owner.locator('#nav-invoices').click();
     for (const [number, target, token, context, sendImmediately] of [
@@ -36,7 +36,7 @@ test('Owner sends persisted invoices to two real tenants, with private drafts an
   } finally { await ownerContext.close();await firstContext.close();await secondContext.close(); }
 });
 test('Home filters address hierarchically and Customer can open invoice navigation', async ({ page }) => {
-  await login(page, 'LOCAL_CUSTOMER');await page.waitForURL('/');await page.getByRole('button', { name: 'Vai trò và tài khoản' }).click();await expect(page.getByRole('link', { name: 'Hóa đơn của tôi', exact: true })).toBeVisible();await page.keyboard.press('Escape');
+  await login(page, 'LOCAL_CUSTOMER');await page.waitForURL('/');await page.getByRole('button', { name: 'Tài khoản' }).click();await expect(page.getByRole('link', { name: 'Hóa đơn của tôi', exact: true })).toBeVisible();await page.keyboard.press('Escape');
   await expect(page.locator('#address-city option', { hasText: 'TP. Đà Nẵng' })).toHaveCount(1);await page.locator('#address-city').selectOption('TP. Đà Nẵng');await page.locator('#address-district').selectOption('Khu vực Hải Châu');await page.locator('#address-ward').selectOption('Phường Hải Châu');
   await page.getByRole('button', { name: 'Tìm kiếm', exact: true }).click();await expect(page.getByRole('heading', { name: 'Căn hộ thuê local — T.102', exact: true })).toBeVisible();
   await page.locator('#address-city').selectOption('TP. Hồ Chí Minh');await expect(page.locator('#address-district')).toHaveValue('');await expect(page.locator('#address-ward')).toHaveValue('');

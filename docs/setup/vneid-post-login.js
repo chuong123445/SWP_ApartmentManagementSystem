@@ -14,7 +14,6 @@ exports.onExecutePostLogin = async (event, api) => {
     dob: citizen.dob,
     gender: citizen.gender,
     address: citizen.address,
-    phone_number: citizen.phone_number,
     document_issue_date: citizen.document_issue_date,
     document_issue_place: citizen.document_issue_place,
     permanent_address: citizen.permanent_address,

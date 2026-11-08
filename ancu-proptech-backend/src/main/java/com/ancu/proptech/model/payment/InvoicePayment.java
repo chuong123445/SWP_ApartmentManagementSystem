@@ -8,6 +8,7 @@ public class InvoicePayment {
  @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
  @Column(nullable=false,unique=true) private Long invoiceId;
  @Column(nullable=false) private Long ownerId;
+ private Long collectionOwnerId;
  @Column(nullable=false,unique=true,length=28) private String paymentCode;
  @Column(nullable=false,length=50) private String bank;
  @Column(nullable=false,length=30) private String accountNumber;

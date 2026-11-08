@@ -24,7 +24,7 @@ export function IdentityPage() {
   return <AccountLayout>
     <Link to={returnTo} className="text-emerald-700 underline text-sm">{returnLabel}</Link>
     <h1 className="text-2xl font-bold mt-4 mb-3">Xác thực danh tính</h1>
-    <p className="text-slate-600 mb-5">Xác thực căn cước bằng VNeID mô phỏng qua Auth0. Đây là luồng mô phỏng, chưa kết nối VNeID thực tế.</p>
+    <p className="text-slate-600 mb-5">{verification.data?.vneid.source === 'LOCAL_DEMO' ? 'Thông tin căn cước đã xác thực của tài khoản.' : 'Xác thực căn cước bằng VNeID mô phỏng qua Auth0. Đây là luồng mô phỏng, chưa kết nối VNeID thực tế.'}</p>
     <VerifiedCitizenPanel state={verification} />
     {!verification.loading && !verification.error && verification.data && !verified && <section className="bg-white border border-slate-200 rounded-xl p-4 sm:p-6">
       <h2 className="font-semibold text-slate-900">Căn cước · Chưa xác thực</h2>

@@ -106,7 +106,7 @@ public class VneidPropertyImportService {
             recordSelection(property.getId(),source,terms.keySet());
             // Mọi dữ liệu/ảnh/giá đã hợp lệ và lưu trong cùng transaction mới cấp quyền.
             var account=accounts.findById(binding.accountId()).orElseThrow();
-            if(account.getRole()==com.ancu.proptech.model.auth.AuthAccount.Role.CUSTOMER){account.setRole(com.ancu.proptech.model.auth.AuthAccount.Role.OWNER);accounts.flush();}
+            if(account.hasRole(com.ancu.proptech.model.auth.AuthAccount.Role.CUSTOMER)){account.grantRole(com.ancu.proptech.model.auth.AuthAccount.Role.OWNER);accounts.flush();}
             return new OwnerPropertyCreated(propertyService.list(jwt).stream().filter(p->p.id().equals(property.getId())).findFirst().orElseThrow(),
                 apartmentService.list(jwt).stream().filter(a->a.propertyId().equals(property.getId())).toList());
         });
@@ -170,7 +170,7 @@ public class VneidPropertyImportService {
 
     private Binding binding(Jwt jwt){
         var owner=applicants.verified(jwt);
-        var identity=identities.findById(owner.getId()).filter(i->"VERIFIED".equals(i.getVerificationStatus()))
+        var identity=identities.findById(owner.getId()).filter(i->"VERIFIED".equals(i.getVerificationStatus()) && "AUTH0_VNEID_SIMULATION".equals(i.getSource()))
             .orElseThrow(()->error(HttpStatus.FORBIDDEN,"VNEID_REQUIRED","Cần căn cước VNeID đã xác thực để chọn tài sản."));
         consents.require(owner,identity);
         return new Binding(owner.getId(),identity.getIssuer(),identity.getSubject());

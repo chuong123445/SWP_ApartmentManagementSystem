@@ -21,7 +21,7 @@ export function AccountVerificationPage() {
           {!data.emailVerified && <Link to="/account/settings/email" className="inline-block mt-3 text-sm text-emerald-700 underline">Xác thực email</Link>}
         </section>
         <section id="vneid" aria-label="Xác thực VNeID" className="border border-slate-200 rounded-xl p-4">
-          <div className="flex flex-wrap justify-between gap-2"><h2 className="font-semibold">VNeID</h2><span className={data.vneid.status === 'VERIFIED' ? 'text-sm font-semibold text-emerald-700' : 'text-sm text-slate-500'}>{data.vneid.status === 'VERIFIED' ? 'Đã xác thực' : 'Chưa xác thực'}</span></div>
+          <div className="flex flex-wrap justify-between gap-2"><h2 className="font-semibold">{data.vneid.source === 'LOCAL_DEMO' ? 'Căn cước công dân' : 'VNeID'}</h2><span className={data.vneid.status === 'VERIFIED' ? 'text-sm font-semibold text-emerald-700' : 'text-sm text-slate-500'}>{data.vneid.status === 'VERIFIED' ? 'Đã xác thực' : 'Chưa xác thực'}</span></div>
           {data.vneid.status === 'VERIFIED' ? <VerifiedCitizenDetails verification={data.vneid} /> : <VneidButton intent="verify" label="Xác thực bằng VNeID mô phỏng" />}
         </section>
       </div>}

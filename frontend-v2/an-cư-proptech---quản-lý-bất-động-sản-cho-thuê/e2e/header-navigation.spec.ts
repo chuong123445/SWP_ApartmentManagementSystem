@@ -30,7 +30,7 @@ test('Trang chủ dùng một URL và liên kết cũ chuyển về đúng trang
       await page.goto(path);
       await expect(page.locator('.site-header .customer-logo')).toBeVisible();
       await expect(page.getByRole('navigation', { name: 'Điều hướng chính' })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Vai trò và tài khoản' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Tài khoản' })).toBeVisible();
       const height = await page.locator('.site-header').evaluate(el => el.getBoundingClientRect().height);
       if (headerHeight === undefined) headerHeight = height;
       expect(height).toBe(headerHeight);
