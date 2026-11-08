@@ -12,7 +12,7 @@ export function PropertyDossierModal({ propertyId, onClose, onSaved, selfService
   const verification = useAccountVerification();
   const [property, setProperty] = useState<OwnerProperty | null>(null);const [history, setHistory] = useState<Dossier[]>([]);
   const [files, setFiles] = useState<EvidenceFile[]>([]);const [loading, setLoading] = useState(true);const [busy, setBusy] = useState(false);const [error, setError] = useState('');
-  const [rightType, setRightType] = useState<Dossier['rightType']>('OWNERSHIP');const [bank, setBank] = useState('');const [accountNumber, setAccountNumber] = useState('');const [holder, setHolder] = useState('');
+  const [rightType, setRightType] = useState<Dossier['rightType']>('OWNERSHIP');
   const [certificateNumber, setCertificateNumber] = useState('');const [certificateDate, setCertificateDate] = useState('');const [certificatePlace, setCertificatePlace] = useState('');const [rightDescription, setRightDescription] = useState('');
   const [revision, setRevision] = useState(0);
   const [validFrom,setValidFrom]=useState('');const [validUntil,setValidUntil]=useState('');const [leaseFrom,setLeaseFrom]=useState('');const [leaseUntil,setLeaseUntil]=useState('');const [principalName,setPrincipalName]=useState('');const [principalNumber,setPrincipalNumber]=useState('');
@@ -21,7 +21,7 @@ export function PropertyDossierModal({ propertyId, onClose, onSaved, selfService
     Promise.all([selfService ? getPropertyApplications() : getOwnerProperties(), propertyDossiers(propertyId,selfService)]).then(([properties, dossiers]) => {
       if (!active) return;const found = properties.find(p => p.id === propertyId);if (!found) throw new Error('Không tìm thấy tài sản.');
       setProperty(found);setHistory(dossiers);const latest = dossiers[0];
-      if (latest) { setFiles(latest.files);setRightType(latest.rightType);setBank(latest.bank);setAccountNumber(latest.accountNumber);setHolder(latest.accountHolderName); }
+      if (latest) { setFiles(latest.files);setRightType(latest.rightType); }
       else {setRightType(found.rightType ?? 'OWNERSHIP');setFiles([]);}
       setValidFrom(latest?.rightsValidFrom ?? '');setValidUntil(latest?.rightsValidUntil ?? '');setLeaseFrom(latest?.originalLeaseFrom ?? '');setLeaseUntil(latest?.originalLeaseUntil ?? '');setPrincipalName(latest?.principalName ?? '');setPrincipalNumber(latest?.principalDocumentNumber ?? '');
       setCertificateNumber(latest?.certificateNumber ?? '');setCertificateDate(latest?.certificateIssueDate ?? '');setCertificatePlace(latest?.certificateIssuePlace ?? '');setRightDescription(latest?.exploitationRightDescription ?? '');
@@ -31,7 +31,7 @@ export function PropertyDossierModal({ propertyId, onClose, onSaved, selfService
   const verified = verification.data?.vneid.status === 'VERIFIED';
   const editable = verified && property && history[0]?.status !== 'PENDING_APPROVAL' && (['DRAFT', 'NEEDS_INFORMATION', 'REJECTED'].includes(property.approvalStatus) || (property.approvalStatus === 'PENDING_APPROVAL' && history.length === 0) || (property.approvalStatus === 'APPROVED' && property.rightType && property.rightType !== 'OWNERSHIP'));
   const requiredPurposes: EvidencePurpose[] = rightType === 'AUTHORIZATION' ? ['RIGHT_DOCUMENT','AUTHORIZATION_DOCUMENT'] : rightType === 'SUBLEASE' ? ['RIGHT_DOCUMENT','ORIGINAL_LEASE','SUBLEASE_CONSENT'] : ['RIGHT_DOCUMENT'];
-  const draft: DossierSubmit = { propertyVersion: property?.version ?? 0, rightType, receivingAccount: { bank: bank.trim(), accountNumber, accountHolderName: holder.trim() },
+  const draft: DossierSubmit = { propertyVersion: property?.version ?? 0, rightType,
       certificateNumber: certificateNumber.trim() || null, certificateIssueDate: certificateDate || null, certificateIssuePlace: certificatePlace.trim() || null, exploitationRightDescription: rightDescription.trim() || null,
       rightsValidFrom: limited ? validFrom : null, rightsValidUntil: limited ? validUntil : null, originalLeaseFrom: rightType==='SUBLEASE'?leaseFrom:null, originalLeaseUntil: rightType==='SUBLEASE'?leaseUntil:null,
       principalName: limited?principalName.trim():null, principalDocumentNumber: limited?principalNumber:null,
@@ -53,7 +53,7 @@ export function PropertyDossierModal({ propertyId, onClose, onSaved, selfService
     <div className="p-5 space-y-5">
       {loading ? <p role="status">Đang tải hồ sơ...</p> : <>
         <div><h3 className="font-bold break-words">{property?.name}</h3><p className="text-sm text-slate-500 break-words">{property?.address}</p></div>
-        <p className="text-sm bg-slate-50 p-3 rounded-lg">Chứng từ và tài khoản nhận tiền không công khai. Khi bạn nộp hồ sơ, thông tin khai báo và ảnh/PDF gửi kèm có thể được gửi đến dịch vụ AI đã cấu hình để hỗ trợ đối chiếu. Nhận xét AI sau khi nộp dành cho Admin. Kiểm tra trước khi nộp bên dưới dành riêng cho bạn; việc duyệt hoặc từ chối luôn do Admin thực hiện.</p>
+        <p className="text-sm bg-slate-50 p-3 rounded-lg">Chứng từ được lưu riêng tư. Khi bạn nộp hồ sơ, thông tin khai báo và ảnh/PDF gửi kèm có thể được gửi đến dịch vụ AI đã cấu hình để hỗ trợ đối chiếu. Nhận xét AI sau khi nộp dành cho Admin. Kiểm tra trước khi nộp bên dưới dành riêng cho bạn; việc duyệt hoặc từ chối luôn do Admin thực hiện.</p>
         {history[0] && <DossierDetails dossier={history[0]} />}
         {property?.approvalStatus === 'PENDING_APPROVAL' && history.length === 0 && <p className="text-sm text-amber-900 bg-amber-50 p-3 rounded-lg">Tài sản đang ở trạng thái chờ duyệt cũ nhưng chưa có hồ sơ. Hãy gửi chứng từ để Admin kiểm duyệt; dữ liệu căn hộ hiện có được giữ nguyên.</p>}
         {editable && <form onSubmit={submit} className="space-y-4"><fieldset disabled={busy} className="space-y-4 disabled:opacity-60">
@@ -72,7 +72,6 @@ export function PropertyDossierModal({ propertyId, onClose, onSaved, selfService
             <label className="block text-sm">Ngày cấp giấy chứng nhận<input type="date" required={!!(certificateNumber || certificatePlace)} max={new Date().toLocaleDateString('en-CA')} value={certificateDate} onChange={e => setCertificateDate(e.target.value)} className={field} /></label>
             <label className="block text-sm">Nơi cấp giấy chứng nhận<input required={!!(certificateNumber || certificateDate)} maxLength={200} value={certificatePlace} onChange={e => setCertificatePlace(e.target.value)} className={field} /></label>
           </div>
-          <div className="grid sm:grid-cols-2 gap-3"><label className="text-sm">Ngân hàng *<input required maxLength={100} value={bank} onChange={e => setBank(e.target.value)} className={field} /></label><label className="text-sm">Số tài khoản *<input required inputMode="numeric" pattern="[0-9]{4,40}" maxLength={40} value={accountNumber} onChange={e => setAccountNumber(e.target.value)} className={field} /></label><label className="text-sm sm:col-span-2">Tên chủ tài khoản *<input required maxLength={100} value={holder} onChange={e => setHolder(e.target.value)} className={field} /></label></div>
           <p className="text-sm text-slate-600">{rightType === 'OWNERSHIP' ? 'Đính kèm Sổ đỏ/Sổ hồng hoặc giấy tờ sở hữu tương đương.' : rightType==='AUTHORIZATION'?'Đính kèm giấy tờ sở hữu của chủ gốc và giấy ủy quyền.':'Đính kèm giấy tờ sở hữu của chủ gốc, hợp đồng thuê gốc và văn bản cho phép cho thuê lại riêng. Không dùng điều khoản trong hợp đồng để thay văn bản riêng.'}</p>
           <p className="text-xs text-slate-500">Nhận PDF/JPEG/PNG, tối đa 10 MB/file, 20 file/hồ sơ. PDF tối đa 100 trang, không mã hóa hoặc nội dung chủ động. Giấy tờ lưu riêng tư trong hệ thống.</p>
           {([...requiredPurposes,'SUPPORTING'] as EvidencePurpose[]).map(purpose => <label key={purpose} className="block border rounded-lg p-3 text-sm">{evidenceLabels[purpose]}{requiredPurposes.includes(purpose) ? ' *' : ' (không bắt buộc)'}<input type="file" accept="application/pdf,image/png,image/jpeg" multiple className="block mt-2 w-full text-xs" onChange={async event => {

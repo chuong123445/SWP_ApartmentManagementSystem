@@ -5,14 +5,14 @@ export type DossierStatus = 'PENDING_APPROVAL' | 'NEEDS_INFORMATION' | 'APPROVED
 export type ReviewDecision = 'APPROVE' | 'REQUEST_ADDITIONAL_INFORMATION' | 'REJECT';
 export interface Dossier {
   id: string; propertyId: string; propertyName: string; propertyAddress: string; applicantName: string;
-  rightType: 'OWNERSHIP' | 'AUTHORIZATION' | 'SUBLEASE'; bank: string; accountNumber: string; accountHolderName: string;
+  rightType: 'OWNERSHIP' | 'AUTHORIZATION' | 'SUBLEASE'; bank: string | null; accountNumber: string | null; accountHolderName: string | null;
   status: DossierStatus; files: EvidenceFile[]; submittedAt: string; reviewedAt: string | null; reviewReason: string | null; version: number;
   certificateNumber?: string | null; certificateIssueDate?: string | null; certificateIssuePlace?: string | null; exploitationRightDescription?: string | null; localFixture?: boolean;
   rightsValidFrom?: string | null; rightsValidUntil?: string | null; originalLeaseFrom?: string | null; originalLeaseUntil?: string | null;
   principalName?: string | null; principalDocumentNumber?: string | null; applicantDocumentNumber?: string | null; renewal?: boolean;
 }
 export interface DossierSubmit {
-  propertyVersion: number; rightType: Dossier['rightType']; receivingAccount: { bank: string; accountNumber: string; accountHolderName: string };
+  propertyVersion: number; rightType: Dossier['rightType'];
   documentFileIds: string[]; supportingFileIds: string[]; ownerEvidenceFileIds: string[];
   authorizationFileIds?: string[]; originalLeaseFileIds?: string[]; subleaseConsentFileIds?: string[];
   rightsValidFrom?: string | null; rightsValidUntil?: string | null; originalLeaseFrom?: string | null; originalLeaseUntil?: string | null;

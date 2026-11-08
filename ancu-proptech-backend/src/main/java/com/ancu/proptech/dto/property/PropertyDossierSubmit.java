@@ -10,7 +10,8 @@ import java.time.LocalDate;
 public class PropertyDossierSubmit {
     @NotNull @Min(0) private Long propertyVersion;
     @NotNull private PropertyDossier.RightType rightType;
-    @NotNull @Valid private ReceivingAccount receivingAccount;
+    // Compatibility for older clients only. Payment setup is independent of dossier review.
+    @Deprecated @Valid private ReceivingAccount receivingAccount;
     @NotNull @Size(min=1,max=20) private List<@NotNull Long> documentFileIds;
     @NotNull @Size(max=20) private List<@NotNull Long> supportingFileIds=new ArrayList<>();
     @NotNull @Size(max=20) private List<@NotNull Long> ownerEvidenceFileIds=new ArrayList<>();

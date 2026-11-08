@@ -42,7 +42,10 @@ public class ContractPropertyEvidenceResolver {
             .filter(d->d.getStatus()==PropertyDossier.Status.APPROVED)
             .filter(d->property.getApprovedRightsDossierId()==null||property.getApprovedRightsDossierId().equals(d.getId())).findFirst().orElse(null);
         if(approved==null)return new Resolved(null,null,null,null,null,null,null,null,null);
-        var bank=new ContractSnapshot.ReceivingAccount(approved.getBank(),approved.getAccountNumber(),approved.getAccountHolderName());
+        ContractSnapshot.ReceivingAccount bank = null;
+        if (approved.getBank() != null && approved.getAccountNumber() != null && approved.getAccountHolderName() != null) {
+            bank = new ContractSnapshot.ReceivingAccount(approved.getBank(), approved.getAccountNumber(), approved.getAccountHolderName());
+        }
         var hash=hash(json.writeValueAsString(java.util.Arrays.asList(approved.getId(),approved.getVersion(),approved.getRightType(),approved.getCertificateNumber(),approved.getCertificateIssueDate(),approved.getCertificateIssuePlace(),approved.getExploitationRightDescription(),bank)));
         return new Resolved(approved.getId().toString(),approved.getRightType().name(),approved.getCertificateNumber(),approved.getCertificateIssueDate(),approved.getCertificateIssuePlace(),approved.getExploitationRightDescription(),approved.isLocalFixture(),bank,
             new ContractSnapshot.Evidence("ADMIN_APPROVED_DOSSIER",approved.getId().toString(),hash,approved.getReviewedAt()==null?approved.getSubmittedAt():approved.getReviewedAt(),null));

@@ -69,7 +69,6 @@ public class OwnerPrecheckService {
   if(draft.getDocumentFileIds().isEmpty())checklist.add("Thiếu giấy tờ sở hữu hoặc quyền khai thác.");
   if(draft.getRightType()==PropertyDossier.RightType.AUTHORIZATION&&draft.getAuthorizationFileIds().isEmpty())checklist.add("Thiếu giấy ủy quyền riêng.");
   if(draft.getRightType()==PropertyDossier.RightType.SUBLEASE){if(draft.getOriginalLeaseFileIds().isEmpty())checklist.add("Thiếu hợp đồng thuê gốc.");if(draft.getSubleaseConsentFileIds().isEmpty())checklist.add("Thiếu văn bản riêng cho phép cho thuê lại.");}
-  var bank=draft.getReceivingAccount();if(bank==null||blank(bank.getBank())||blank(bank.getAccountHolderName())||bank.getAccountNumber()==null||!bank.getAccountNumber().matches("[0-9]{4,40}"))checklist.add("Thông tin tài khoản nhận tiền chưa đầy đủ hoặc chưa đúng định dạng.");
   if(!draft.isCertificateComplete())checklist.add("Thông tin giấy chứng nhận phải đủ số, ngày cấp và nơi cấp.");
   if(draft.getRightType()!=PropertyDossier.RightType.OWNERSHIP){
    if(blank(draft.getPrincipalName())||draft.getPrincipalDocumentNumber()==null||!draft.getPrincipalDocumentNumber().matches("[0-9]{12}"))checklist.add("Thiếu thông tin hợp lệ của chủ sở hữu gốc.");
@@ -79,7 +78,6 @@ public class OwnerPrecheckService {
   var fields=new LinkedHashMap<String,Object>();fields.put("propertyName",p.getName());fields.put("propertyAddress",p.getAddress());fields.put("city",p.getCity());fields.put("district",p.getDistrict());fields.put("ward",p.getWard());fields.put("rightType",draft.getRightType());
   fields.put("applicantName",identities.verified(p.getOwner().getId()).map(x->x.getLegalName()).orElse(p.getOwner().getFullName()));fields.put("principalName",draft.getPrincipalName());fields.put("certificateNumber",draft.getCertificateNumber());fields.put("certificateIssueDate",draft.getCertificateIssueDate());fields.put("certificateIssuePlace",draft.getCertificateIssuePlace());fields.put("exploitationRightDescription",draft.getExploitationRightDescription());fields.put("rightsValidFrom",draft.getRightsValidFrom());fields.put("rightsValidUntil",draft.getRightsValidUntil());fields.put("originalLeaseFrom",draft.getOriginalLeaseFrom());fields.put("originalLeaseUntil",draft.getOriginalLeaseUntil());
   String hash=AssistanceAudit.hash(json.writeValueAsString(List.of(p.getVersion(),draft,manifest,fields)));
-  if(document!=null&&document.purpose().equals("SUPPORTING")&&bank!=null){fields.put("bank",bank.getBank());fields.put("accountNumber",bank.getAccountNumber());fields.put("accountHolderName",bank.getAccountHolderName());}
   return new Snapshot(p.getOwner().getId(),p.getVersion(),hash,List.copyOf(checklist),List.copyOf(manifest),json.valueToTree(fields),document);
  }
  public void acknowledge(Jwt jwt,Long propertyId,String id,Acknowledge input){

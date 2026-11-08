@@ -39,7 +39,6 @@ public class DossierAiReviewService {
         fields.put("certificateNumber",dossier.getCertificateNumber());fields.put("certificateIssueDate",dossier.getCertificateIssueDate());fields.put("certificateIssuePlace",dossier.getCertificateIssuePlace());
         fields.put("exploitationRightDescription",dossier.getExploitationRightDescription());fields.put("rightsValidFrom",dossier.getRightsValidFrom());fields.put("rightsValidUntil",dossier.getRightsValidUntil());
         fields.put("originalLeaseFrom",dossier.getOriginalLeaseFrom());fields.put("originalLeaseUntil",dossier.getOriginalLeaseUntil());
-        fields.put("bank",dossier.getBank());fields.put("accountNumber",dossier.getAccountNumber());fields.put("accountHolderName",dossier.getAccountHolderName());
         var manifest=new ArrayList<Map<String,Object>>();
         for(var file:dossier.getFiles()){
             var bytes=contents.findById(file.getId()).orElseThrow(()->new IllegalStateException("Missing submitted evidence content")).getContent();

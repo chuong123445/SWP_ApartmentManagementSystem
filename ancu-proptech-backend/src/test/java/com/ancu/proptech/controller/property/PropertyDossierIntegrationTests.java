@@ -51,12 +51,28 @@ class PropertyDossierIntegrationTests {
     private ResultActions upload(String token,Property p,String purpose,byte[] bytes)throws Exception{return mvc.perform(multipart("/api/v1/owner/properties/"+p.getId()+"/evidence-files").file(new MockMultipartFile("file","../../giay-to.png","image/png",bytes)).param("purpose",purpose).header("Authorization","Bearer "+token));}
     private String uploadRight()throws Exception{return JsonPath.read(upload(ownerToken,property,"RIGHT_DOCUMENT",png).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(),"$.id");}
     private String body(String file,long version){return """
-        {"propertyVersion":%d,"rightType":"OWNERSHIP","receivingAccount":{"bank":"Ngân hàng kiểm thử","accountNumber":"1234567890","accountHolderName":"Nguyễn Kiểm Thử"},"documentFileIds":["%s"]}
+        {"propertyVersion":%d,"rightType":"OWNERSHIP","documentFileIds":["%s"]}
         """.formatted(version,file);}
     private ResultActions submit(String token,Property p,String input)throws Exception{return mvc.perform(post("/api/v1/owner/properties/"+p.getId()+"/verification-dossiers").header("Authorization","Bearer "+token).contentType("application/json").content(input));}
     private String send(String file)throws Exception{return JsonPath.read(submit(ownerToken,property,body(file,property.getVersion())).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(),"$.id");}
     private ResultActions decision(String token,String id,String choice,String reason,long version)throws Exception{return mvc.perform(post("/api/v1/admin/property-dossiers/"+id+"/decisions").header("Authorization","Bearer "+token).contentType("application/json").content("{\"decision\":\""+choice+"\",\"reason\":\""+reason+"\",\"version\":"+version+"}"));}
     private String createApartment()throws Exception{var result=mvc.perform(post("/api/v1/owner/apartments").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"propertyId\":\""+property.getId()+"\",\"roomNumber\":\"A.1\",\"title\":\"Căn kiểm thử\",\"floor\":1,\"areaM2\":\"30\",\"advertisedMonthlyRent\":\"5000000\"}")).andExpect(status().isCreated()).andReturn();return JsonPath.read(result.getResponse().getContentAsString(),"$.id");}
+    @Test void submitsAndApprovesWithoutBankAndIgnoresLegacyPaymentInput() throws Exception {
+        var legacy = body(uploadRight(), property.getVersion()).replace("\"rightType\":\"OWNERSHIP\"",
+            "\"rightType\":\"OWNERSHIP\",\"receivingAccount\":{\"bank\":\"Legacy bank\",\"accountNumber\":\"12345678\",\"accountHolderName\":\"Legacy owner\"}");
+        String id = JsonPath.read(submit(ownerToken, property, legacy).andExpect(status().isCreated())
+            .andExpect(jsonPath("$.bank").isEmpty()).andExpect(jsonPath("$.accountNumber").isEmpty())
+            .andReturn().getResponse().getContentAsString(), "$.id");
+        var saved = dossiers.findById(Long.valueOf(id)).orElseThrow();
+        assertNull(saved.getBank());
+        assertNull(saved.getAccountNumber());
+        assertNull(saved.getAccountHolderName());
+        var source = aiReviews.findByDossierId(saved.getId()).orElseThrow().getSourceJson();
+        assertFalse(source.contains("Legacy bank"));
+        assertFalse(source.contains("accountNumber"));
+        decision(adminToken, id, "APPROVE", "Đã đối chiếu quyền sở hữu", 0)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("APPROVED"));
+    }
     @Test void manualSubmissionQueuesPrivateAiReviewWithoutChangingApproval()throws Exception{
         String id=send(uploadRight()),path="/api/v1/admin/property-dossiers/"+id+"/ai-review";
         mvc.perform(get(path)).andExpect(status().isUnauthorized());

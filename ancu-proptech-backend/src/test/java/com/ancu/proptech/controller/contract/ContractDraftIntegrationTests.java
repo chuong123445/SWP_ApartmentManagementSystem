@@ -525,6 +525,26 @@ class ContractDraftIntegrationTests {
         String result=create();update(id(result),0,terms().replace("6200000.50","6500000")).andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));update(id(result),0,terms()).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("STALE_VERSION"));
         var c=contracts.findById(Long.valueOf(id(result))).orElseThrow();c.setStatus(RentalContract.Status.ENDED);contracts.saveAndFlush(c);update(id(result),1,terms()).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONTRACT_NOT_DRAFT"));
     }
+    @Test void approvedDossierWithoutBankSupportsSettingsAndFrozenContractDraft() throws Exception {
+        var d = new PropertyDossier();
+        d.setProperty(request.getApartment().getProperty());
+        d.setApplicantName(owner.getFullName());
+        d.setRightType(PropertyDossier.RightType.OWNERSHIP);
+        d.setStatus(PropertyDossier.Status.APPROVED);
+        d.setSubmittedAt(Instant.now());
+        dossiers.saveAndFlush(d);
+        mvc.perform(get("/api/v1/owner/properties/" + d.getProperty().getId() + "/settings")
+            .header("Authorization", token)).andExpect(status().isOk()).andExpect(jsonPath("$.receivingAccount").isEmpty());
+        String saved = create();
+        assertNull(JsonPath.read(saved, "$.snapshot.receivingAccount"));
+        assertEquals(d.getId().toString(), JsonPath.read(saved, "$.snapshot.asset.approvedDossierId"));
+        d.setBank("Later bank");
+        d.setAccountNumber("12345678");
+        d.setAccountHolderName(owner.getFullName());
+        dossiers.saveAndFlush(d);
+        update(id(saved), 0, terms()).andExpect(status().isOk())
+            .andExpect(jsonPath("$.snapshot.receivingAccount").isEmpty());
+    }
     @Test void approvedDossierReceivingAccountIsReusedWithoutPrivateEvidence() throws Exception {
         var d=new PropertyDossier();d.setProperty(request.getApartment().getProperty());d.setApplicantName(owner.getFullName());d.setRightType(PropertyDossier.RightType.AUTHORIZATION);d.setBank("Ngân hàng đã lưu");d.setAccountNumber("123456789");d.setAccountHolderName(owner.getFullName());d.setStatus(PropertyDossier.Status.APPROVED);d.setSubmittedAt(Instant.now());dossiers.saveAndFlush(d);
         mvc.perform(get("/api/v1/owner/rental-requests/"+request.getId()+"/contract-context").header("Authorization",token)).andExpect(status().isOk()).andExpect(jsonPath("$.snapshot.receivingAccount.accountNumber").value("123456789")).andExpect(jsonPath("$.snapshot.asset.exploitationRight").value("AUTHORIZATION"));
