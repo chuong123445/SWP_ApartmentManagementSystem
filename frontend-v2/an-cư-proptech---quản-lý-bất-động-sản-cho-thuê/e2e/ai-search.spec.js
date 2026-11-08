@@ -24,6 +24,14 @@ const scenario=async(page,baseURL)=>{
    if(!queries.some(q=>q.includes('minArea=25')&&q.includes('occupants=2')&&q.includes('maxRent=4999999.99')))throw Error('No automatic query');
    if(await p.locator('#apartment-max-rent').inputValue()!=='4999999.99'||await p.locator('#apartment-occupants').inputValue()!=='2')throw Error('Main filters not synced');
    if(await p.getByRole('heading',{name:'Kiểm tra bộ lọc AI đề xuất'}).count())throw Error('Old review form remains');
+   if(await p.locator('#apartment-search, #apartment-min-area, #apartment-max-area').count())throw Error('Removed manual fields remain');
+   await panel.getByRole('button',{name:'Đóng chat AI'}).click();
+   await p.locator('#apartment-occupants').fill('4');await p.getByRole('button',{name:'Tìm kiếm',exact:true}).click();await p.waitForTimeout(100);
+   const manual=new URLSearchParams(queries.at(-1));if(manual.get('occupants')!=='4'||manual.has('q')||manual.has('minArea')||manual.has('maxArea'))throw Error('Manual search retained removed filters');
+   await p.getByRole('button',{name:'Xóa bộ lọc',exact:true}).first().click();await p.waitForTimeout(100);if(await p.locator('#apartment-occupants').inputValue()!=='')throw Error('Occupants not cleared');
+   await p.locator('#apartment-occupants').fill('2');await p.getByRole('button',{name:'Tìm kiếm',exact:true}).click();await p.waitForTimeout(100);
+   await p.screenshot({path:`F:/2026/Fa26/DTD/tmp/simple-home-${width}.png`});
+   await p.getByRole('button',{name:'Mở chat AI'}).click();
    const box=await panel.boundingBox();if(!box||box.x+box.width>width||box.x<0)throw Error('Chat outside viewport');
    await panel.getByRole('button',{name:'Đóng chat AI'}).click();await p.getByRole('button',{name:'Mở chat AI'}).click();if(!await panel.getByText('Chào bạn! Mình có thể giải đáp về thuê nhà.',{exact:true}).count())throw Error('History lost');
    await input.press('Escape');await p.getByRole('button',{name:'Mở chat AI'}).click();
