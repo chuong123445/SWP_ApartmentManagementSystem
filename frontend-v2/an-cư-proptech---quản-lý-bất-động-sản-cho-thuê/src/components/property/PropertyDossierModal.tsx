@@ -1,3 +1,4 @@
+import { OwnerPrecheckPanel } from '@/components/property/OwnerPrecheckPanel';
 import { useEffect, useState, type FormEvent } from 'react';
 import { X } from 'lucide-react';
 import { Link } from 'react-router';
@@ -6,7 +7,7 @@ import { getPropertyApplications } from '@/services/property/propertyApplication
 import { getOwnerProperties } from '@/services/apartments/ownerApartmentService';
 import { propertyDossiers, submitDossier, uploadEvidence } from '@/services/property/dossierService';
 import { DossierDetails } from '@/components/property/DossierDetails';
-import { evidenceLabels, type Dossier, type EvidenceFile, type EvidencePurpose, type OwnerProperty } from '@/types/dossier';
+import { evidenceLabels, type Dossier, type DossierSubmit, type EvidenceFile, type EvidencePurpose, type OwnerProperty } from '@/types/dossier';
 export function PropertyDossierModal({ propertyId, onClose, onSaved, selfService = false }: { propertyId: string; onClose: () => void; onSaved: () => void; selfService?: boolean }) {
   const verification = useAccountVerification();
   const [property, setProperty] = useState<OwnerProperty | null>(null);const [history, setHistory] = useState<Dossier[]>([]);
@@ -30,18 +31,19 @@ export function PropertyDossierModal({ propertyId, onClose, onSaved, selfService
   const verified = verification.data?.vneid.status === 'VERIFIED';
   const editable = verified && property && history[0]?.status !== 'PENDING_APPROVAL' && (['DRAFT', 'NEEDS_INFORMATION', 'REJECTED'].includes(property.approvalStatus) || (property.approvalStatus === 'PENDING_APPROVAL' && history.length === 0) || (property.approvalStatus === 'APPROVED' && property.rightType && property.rightType !== 'OWNERSHIP'));
   const requiredPurposes: EvidencePurpose[] = rightType === 'AUTHORIZATION' ? ['RIGHT_DOCUMENT','AUTHORIZATION_DOCUMENT'] : rightType === 'SUBLEASE' ? ['RIGHT_DOCUMENT','ORIGINAL_LEASE','SUBLEASE_CONSENT'] : ['RIGHT_DOCUMENT'];
+  const draft: DossierSubmit = { propertyVersion: property?.version ?? 0, rightType, receivingAccount: { bank: bank.trim(), accountNumber, accountHolderName: holder.trim() },
+      certificateNumber: certificateNumber.trim() || null, certificateIssueDate: certificateDate || null, certificateIssuePlace: certificatePlace.trim() || null, exploitationRightDescription: rightDescription.trim() || null,
+      rightsValidFrom: limited ? validFrom : null, rightsValidUntil: limited ? validUntil : null, originalLeaseFrom: rightType==='SUBLEASE'?leaseFrom:null, originalLeaseUntil: rightType==='SUBLEASE'?leaseUntil:null,
+      principalName: limited?principalName.trim():null, principalDocumentNumber: limited?principalNumber:null,
+      authorizationFileIds: files.filter(f=>f.purpose==='AUTHORIZATION_DOCUMENT').map(f=>f.id),originalLeaseFileIds: files.filter(f=>f.purpose==='ORIGINAL_LEASE').map(f=>f.id),subleaseConsentFileIds: files.filter(f=>f.purpose==='SUBLEASE_CONSENT').map(f=>f.id),
+      documentFileIds: files.filter(f => f.purpose === 'RIGHT_DOCUMENT').map(f => f.id), supportingFileIds: files.filter(f => f.purpose === 'SUPPORTING').map(f => f.id), ownerEvidenceFileIds: files.filter(f => f.purpose === 'OWNER_IDENTITY').map(f => f.id) };
   const submit = async (event: FormEvent) => {
     event.preventDefault();if (!property || busy) return;setError('');
     if (!files.some(f => f.purpose === 'RIGHT_DOCUMENT')) { setError('Cần ít nhất một giấy tờ chứng minh sở hữu hoặc quyền khai thác.');return; }
     if(requiredPurposes.some(p=>!files.some(f=>f.purpose===p))){setError('Cần đủ giấy tờ sở hữu gốc và các giấy tờ bắt buộc theo loại quyền đã chọn.');return;}
     if(limited && (!validFrom || !validUntil || validUntil<validFrom || (rightType==='SUBLEASE'&&(!leaseFrom||!leaseUntil||validFrom<leaseFrom||validUntil>leaseUntil)))){setError('Thời hạn quyền cho thuê phải hợp lệ và nằm trong hợp đồng thuê gốc khi cho thuê lại.');return;}
     setBusy(true);
-    try { await submitDossier(property.id, { propertyVersion: property.version, rightType, receivingAccount: { bank: bank.trim(), accountNumber, accountHolderName: holder.trim() },
-      certificateNumber: certificateNumber.trim() || null, certificateIssueDate: certificateDate || null, certificateIssuePlace: certificatePlace.trim() || null, exploitationRightDescription: rightDescription.trim() || null,
-      rightsValidFrom: limited ? validFrom : null, rightsValidUntil: limited ? validUntil : null, originalLeaseFrom: rightType==='SUBLEASE'?leaseFrom:null, originalLeaseUntil: rightType==='SUBLEASE'?leaseUntil:null,
-      principalName: limited?principalName.trim():null, principalDocumentNumber: limited?principalNumber:null,
-      authorizationFileIds: files.filter(f=>f.purpose==='AUTHORIZATION_DOCUMENT').map(f=>f.id),originalLeaseFileIds: files.filter(f=>f.purpose==='ORIGINAL_LEASE').map(f=>f.id),subleaseConsentFileIds: files.filter(f=>f.purpose==='SUBLEASE_CONSENT').map(f=>f.id),
-      documentFileIds: files.filter(f => f.purpose === 'RIGHT_DOCUMENT').map(f => f.id), supportingFileIds: files.filter(f => f.purpose === 'SUPPORTING').map(f => f.id), ownerEvidenceFileIds: files.filter(f => f.purpose === 'OWNER_IDENTITY').map(f => f.id) },selfService);
+    try { await submitDossier(property.id,draft,selfService);
       onSaved();setRevision(n => n + 1);
     } catch (e) { setError(e instanceof Error ? e.message : 'Không gửi được hồ sơ.'); } finally { setBusy(false); }
   };
@@ -51,7 +53,7 @@ export function PropertyDossierModal({ propertyId, onClose, onSaved, selfService
     <div className="p-5 space-y-5">
       {loading ? <p role="status">Đang tải hồ sơ...</p> : <>
         <div><h3 className="font-bold break-words">{property?.name}</h3><p className="text-sm text-slate-500 break-words">{property?.address}</p></div>
-        <p className="text-sm bg-slate-50 p-3 rounded-lg">Chứng từ và tài khoản nhận tiền không công khai. Khi bạn nộp hồ sơ, thông tin khai báo và ảnh/PDF gửi kèm có thể được gửi đến dịch vụ AI đã cấu hình để hỗ trợ đối chiếu. Nhận xét AI chỉ dành cho Admin; việc duyệt hoặc từ chối luôn do Admin thực hiện.</p>
+        <p className="text-sm bg-slate-50 p-3 rounded-lg">Chứng từ và tài khoản nhận tiền không công khai. Khi bạn nộp hồ sơ, thông tin khai báo và ảnh/PDF gửi kèm có thể được gửi đến dịch vụ AI đã cấu hình để hỗ trợ đối chiếu. Nhận xét AI sau khi nộp dành cho Admin. Kiểm tra trước khi nộp bên dưới dành riêng cho bạn; việc duyệt hoặc từ chối luôn do Admin thực hiện.</p>
         {history[0] && <DossierDetails dossier={history[0]} />}
         {property?.approvalStatus === 'PENDING_APPROVAL' && history.length === 0 && <p className="text-sm text-amber-900 bg-amber-50 p-3 rounded-lg">Tài sản đang ở trạng thái chờ duyệt cũ nhưng chưa có hồ sơ. Hãy gửi chứng từ để Admin kiểm duyệt; dữ liệu căn hộ hiện có được giữ nguyên.</p>}
         {editable && <form onSubmit={submit} className="space-y-4"><fieldset disabled={busy} className="space-y-4 disabled:opacity-60">
@@ -79,6 +81,7 @@ export function PropertyDossierModal({ propertyId, onClose, onSaved, selfService
             setBusy(true);setError('');try { for (const file of chosen) { const saved = await uploadEvidence(property.id, purpose, file,selfService);setFiles(prev => [...prev, saved]); } } catch (e) { setError(e instanceof Error ? e.message : 'Không tải được chứng từ.'); } finally { setBusy(false); }
           }} /></label>)}
           <ul className="space-y-2">{files.map(file => <li key={file.id} className="text-sm flex justify-between gap-2 min-w-0"><span className="break-all">{file.filename} · {evidenceLabels[file.purpose]}</span><button type="button" onClick={() => setFiles(prev => prev.filter(f => f.id !== file.id))} className="shrink-0 text-rose-700 underline">Bỏ khỏi hồ sơ</button></li>)}</ul>
+          <OwnerPrecheckPanel propertyId={propertyId} draft={draft} selfService={selfService}/>
           <button type="submit" className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold text-sm">{busy ? 'Đang xử lý...' : history.length ? 'Gửi lại hồ sơ' : 'Gửi hồ sơ kiểm duyệt'}</button>
         </fieldset></form>}
         {!editable && property?.approvalStatus === 'APPROVED' && <p className="text-sm text-emerald-700">Tài sản đã được duyệt. Bạn có thể công khai từng căn trong Quản lý căn hộ.</p>}

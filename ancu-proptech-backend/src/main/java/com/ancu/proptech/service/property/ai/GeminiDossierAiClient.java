@@ -19,13 +19,20 @@ public class GeminiDossierAiClient implements DossierAiClient {
     private static final Logger log=LoggerFactory.getLogger(GeminiDossierAiClient.class);
     private final DossierAiSettings settings;private final ObjectMapper json;
     private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).followRedirects(HttpClient.Redirect.NEVER).build();
-    private final String instruction;private final JsonNode schema;
+    private final String instruction;private final String ownerInstruction;private final JsonNode schema;
     public GeminiDossierAiClient(DossierAiSettings settings,ObjectMapper json)throws IOException{
         this.settings=settings;this.json=json;
         instruction=new ClassPathResource("ai/dossier-review-v1.txt").getContentAsString(StandardCharsets.UTF_8);
+        ownerInstruction=new ClassPathResource("ai/owner-precheck-v1.txt").getContentAsString(StandardCharsets.UTF_8);
         schema=json.readTree(new ClassPathResource("ai/dossier-file-review.schema.json").getContentAsString(StandardCharsets.UTF_8));
     }
     @Override public DossierAiReport.FileReview analyze(JsonNode declarations,Document document){
+        return analyzeWithInstruction(declarations,document,instruction);
+    }
+    @Override public DossierAiReport.FileReview analyzeOwner(JsonNode declarations,Document document){
+        return analyzeWithInstruction(declarations,document,ownerInstruction);
+    }
+    private DossierAiReport.FileReview analyzeWithInstruction(JsonNode declarations,Document document,String instruction){
         if(!settings.configured())throw new Failure("CONFIGURATION_MISSING",false);
         if(document.content().length>10*1024*1024 || !Set.of("image/png","image/jpeg","application/pdf").contains(document.mimeType()))throw new Failure("INVALID_SOURCE",false);
         var uri=URI.create(settings.getBaseUrl()+"/models/"+settings.getModel()+":generateContent");
