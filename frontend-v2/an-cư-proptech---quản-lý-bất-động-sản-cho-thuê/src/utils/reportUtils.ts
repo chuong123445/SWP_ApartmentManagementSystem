@@ -12,7 +12,7 @@ import type { Room, Building, Contract, Invoice } from '@/types';
 // ---------------------------------------------------------------------------
 
 /** Backend invoice statuses excluded from accrual revenue recognition. */
-const EXCLUDE_FROM_REVENUE = new Set(['DRAFT']);
+const EXCLUDE_FROM_REVENUE = new Set(['DRAFT', 'CANCELLED']);
 
 export interface MonthlyChartItem {
   month: string;

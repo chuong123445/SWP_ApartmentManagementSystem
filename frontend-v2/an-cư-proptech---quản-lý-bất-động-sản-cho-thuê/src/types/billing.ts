@@ -26,8 +26,12 @@ export interface BillingInvoice {
   electricityStartReading: string; electricityEndReading: string; electricityQuantity: string; electricityUnitPrice: string; electricityAmount: string;
   waterStartReading: string; waterEndReading: string; waterQuantity: string; waterUnitPrice: string; waterAmount: string;
   paymentStatus?: 'UNPAID'|'PAID'; paidAt?: string|null;
-  totalAmount: string; status: 'DRAFT' | 'SENT'; createdAt: string; sentAt: string | null; version: number;
+  totalAmount: string; status: 'DRAFT' | 'SENT' | 'CANCELLED'; billingVersion?: number; createdAt: string; sentAt: string | null; version: number;
 }
 export interface InvoiceCreate {
   period: string; dueDate: string; electricityEndReading?: string; waterEndReading?: string; baselineVersion: number; useSavedReadings?:boolean;
 }
+
+export interface InvoiceDraftCommand { version: number; billingVersion: number; reason: string; }
+export interface InvoiceDraftUpdate extends InvoiceDraftCommand { electricityEndReading: string; waterEndReading?: string; dueDate: string; }
+export interface InvoiceHistoryEntry { id: string; actorId: string; action: 'CREATED' | 'UPDATED' | 'CANCELLED' | 'SENT'; occurredAt: string; reason: string | null; before: BillingInvoice | null; after: BillingInvoice; }

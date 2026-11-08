@@ -1,8 +1,32 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 import { createInvoice, sendInvoice, myInvoices, getInvoice, tenancyViews, billingMoney, ownerInvoices, ownerReceivedInvoices, getOwnerReceivedInvoice } from '@/services/billing/billingService';
+import { updateInvoiceDraft, cancelInvoiceDraft, invoiceHistory, invoiceView } from '@/services/billing/billingService';
+import { isRevenueInvoice } from '@/utils/reportUtils';
+import type { BillingInvoice } from '@/types/billing';
 import { getApartments, getAddressOptions } from '@/services/apartments/apartmentService';
 const originalFetch = globalThis.fetch;
+test('Draft commands carry invoice and chain versions, exact decimal strings and cancellation reason', async () => {
+  const calls: { url: string; method: string; body?: unknown }[] = [];
+  globalThis.fetch = async (url, options) => { calls.push({url:String(url),method:options?.method ?? 'GET',body:options?.body ? JSON.parse(String(options.body)) : undefined});return Response.json({status:'CANCELLED'}); };
+  const command = {version:3,billingVersion:7,reason:'Correct meter'};
+  const update = {...command,electricityEndReading:'9999999999999.99',waterEndReading:'200.25',dueDate:'2026-11-10'};
+  await updateInvoiceDraft('invoice/21',update);await cancelInvoiceDraft('invoice/21',command);await invoiceHistory('invoice/21');await ownerInvoices(0,20,'property-2','CANCELLED');
+  assert.deepEqual(calls.slice(0,3),[
+    {url:'/api/v1/owner/invoices/invoice%2F21/draft',method:'PATCH',body:update},
+    {url:'/api/v1/owner/invoices/invoice%2F21/cancel',method:'POST',body:command},
+    {url:'/api/v1/owner/invoices/invoice%2F21/history',method:'GET',body:undefined},
+  ]);
+  assert.equal(calls[3].url,'/api/v1/owner/invoices?page=0&size=20&propertyId=property-2&filter=CANCELLED');
+});
+test('Stale invoice commands surface the server conflict without an automatic mutation retry', async () => {
+  let calls=0;globalThis.fetch=async()=>{calls++;return Response.json({message:'Hóa đơn đã thay đổi',code:'VERSION_CONFLICT'},{status:409});};
+  await assert.rejects(cancelInvoiceDraft('21',{version:0,billingVersion:1,reason:'Duplicate'}),/Hóa đơn đã thay đổi/);assert.equal(calls,1);
+});
+test('Cancelled monthly invoice remains available for display and is excluded from accrual revenue', () => {
+  const invoice={id:'21',period:'2026-10',status:'CANCELLED',totalAmount:'5000000',electricityQuantity:'0',electricityUnitPrice:'0',electricityAmount:'0',waterQuantity:'0',waterUnitPrice:'0',waterAmount:'0',monthlyRent:'5000000'} as BillingInvoice;
+  const view=invoiceView(invoice);assert.equal(view.apiInvoice?.status,'CANCELLED');assert.equal(isRevenueInvoice(view),false);
+});
 test('Money rendering preserves decimal precision beyond JavaScript safe integers', () => {
   assert.equal(billingMoney('12345678901234567890.1250'), '12.345.678.901.234.567.890,125 đ');
   assert.equal(billingMoney('5540000.0000'), '5.540.000 đ');

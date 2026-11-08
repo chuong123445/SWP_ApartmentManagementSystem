@@ -1,12 +1,12 @@
 import { apiFetch, readApiError } from '@/services/http/client';
-import type { BillingContext, MeterReadingInput, BillingInvoice, InvoiceCreate, Tenancy } from '@/types/billing';
+import type { BillingContext, MeterReadingInput, BillingInvoice, InvoiceCreate, Tenancy, InvoiceDraftCommand, InvoiceDraftUpdate, InvoiceHistoryEntry } from '@/types/billing';
 import type { PageResult } from '@/types/apartment';
 import type { Invoice, Tenant, Contract } from '@/types';
 import type { TestReceipt } from '@/services/payment/sepayService';
-export type OwnerInvoiceFilter = 'ALL' | 'DRAFT' | 'UNPAID' | 'PAID';
-async function request<T>(url: string, body?: unknown): Promise<T> {
+export type OwnerInvoiceFilter = 'ALL' | 'DRAFT' | 'CANCELLED' | 'UNPAID' | 'PAID';
+async function request<T>(url: string, body?: unknown, method = 'POST'): Promise<T> {
   const response = await apiFetch(url, body === undefined ? undefined : {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   });
   if (!response.ok) throw await readApiError(response);
   return response.json();
@@ -66,3 +66,7 @@ export function billingMoney(value: string) {
   const decimal = fraction.replace(/0+$/, '');
   return `${integer.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}${decimal ? `,${decimal}` : ''} đ`;
 }
+
+export function updateInvoiceDraft(id: string, input: InvoiceDraftUpdate) { return request<BillingInvoice>(`/api/v1/owner/invoices/${encodeURIComponent(id)}/draft`, input, 'PATCH'); }
+export function cancelInvoiceDraft(id: string, input: InvoiceDraftCommand) { return request<BillingInvoice>(`/api/v1/owner/invoices/${encodeURIComponent(id)}/cancel`, input); }
+export function invoiceHistory(id: string) { return request<InvoiceHistoryEntry[]>(`/api/v1/owner/invoices/${encodeURIComponent(id)}/history`); }
