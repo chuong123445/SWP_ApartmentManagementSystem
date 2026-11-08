@@ -1,8 +1,16 @@
 import { test,afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { suggestSearch,applyAiSearch,toApartmentFilters,type AiFilters } from '@/services/apartments/aiSearchService';
+import { suggestSearch,applyAiSearch,toApartmentFilters,hasAiFilters,type AiFilters } from '@/services/apartments/aiSearchService';
 const original=globalThis.fetch;afterEach(()=>{globalThis.fetch=original;});
 const filters:AiFilters={q:null,city:'TP. Hồ Chí Minh',district:null,ward:null,minRent:'0',maxRent:'4999999.99',minArea:'25.50',maxArea:null,bedrooms:0,occupants:2};
+test('Reviewed filters allow manual completion of an empty AI suggestion and preserve zero values',()=>{
+ const empty=Object.fromEntries(Object.keys(filters).map(key=>[key,null])) as AiFilters;
+ assert.equal(hasAiFilters(null),false);assert.equal(hasAiFilters(empty),false);
+ assert.equal(hasAiFilters({...empty,q:'   '}),false);
+ assert.equal(hasAiFilters({...empty,minArea:'28'}),true);
+ assert.equal(hasAiFilters({...empty,bedrooms:0}),true);
+ assert.equal(hasAiFilters({...empty,minRent:'0'}),true);
+});
 test('AI conversion preserves exact decimals, zero-bedroom studio and same-room capacity',()=>{assert.deepEqual(toApartmentFilters(filters),{city:'TP. Hồ Chí Minh',minRent:'0',maxRent:'4999999.99',minArea:'25.50',bedrooms:'0',occupants:'2'});});
 test('Search suggestion requires explicit consent payload; applying carries only reviewed filters',async()=>{
  const calls:any[]=[];globalThis.fetch=async(url,opts)=>{calls.push({url,method:opts?.method,body:JSON.parse(String(opts?.body))});return Response.json({filters});};

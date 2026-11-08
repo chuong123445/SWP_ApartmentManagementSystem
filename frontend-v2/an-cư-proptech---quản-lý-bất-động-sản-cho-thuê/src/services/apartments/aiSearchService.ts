@@ -8,6 +8,9 @@ async function post<T>(path:string,body:unknown,signal?:AbortSignal):Promise<T>{
 }
 export const suggestSearch=(text:string,signal?:AbortSignal)=>post<AiSearchResult>('/api/v1/apartments/ai-search',{text,consent:true},signal);
 export const applyAiSearch=(id:string,filters:AiFilters)=>post<AiFilters>(`/api/v1/apartments/ai-search/${encodeURIComponent(id)}/apply`,{filters});
+export function hasAiFilters(filters:AiFilters|null):boolean{
+  return filters!==null&&Object.values(filters).some(value=>value!==null&&String(value).trim()!=='');
+}
 export function toApartmentFilters(filters:AiFilters):ApartmentFilters{
  return Object.fromEntries(Object.entries(filters).filter(([,v])=>v!==null&&v!=='').map(([key,value])=>[key,String(value)]));
 }
