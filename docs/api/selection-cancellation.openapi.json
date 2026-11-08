@@ -1,0 +1,264 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "An Cu Initial Rental Selection Cancellation",
+    "version": "1.0.0",
+    "description": "Exact-party pre-activation cancellation only. No refunds or automatic tenant selection. See initial-selection-cancellation-v1 ADR."
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/rental-requests/{id}/cancellation": {
+      "get": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Private current view, Cache-Control no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/View"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid command/reason"
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "403": {
+            "description": "Wrong proposal party"
+          },
+          "404": {
+            "description": "Foreign/missing selection"
+          },
+          "409": {
+            "description": "Stale/state/other claim; explicit reload required"
+          }
+        }
+      }
+    },
+    "/api/v1/rental-requests/{id}/cancellation/actions": {
+      "post": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Private current view, Cache-Control no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/View"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid command/reason"
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "403": {
+            "description": "Wrong proposal party"
+          },
+          "404": {
+            "description": "Foreign/missing selection"
+          },
+          "409": {
+            "description": "Stale/state/other claim; explicit reload required"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Command"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Command": {
+        "type": "object",
+        "required": [
+          "action",
+          "sourceVersion"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "START",
+              "ACCEPT",
+              "REJECT",
+              "WITHDRAW"
+            ]
+          },
+          "sourceVersion": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000,
+            "description": "Required nonblank for START/REJECT; optional for ACCEPT/WITHDRAW."
+          }
+        }
+      },
+      "Event": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "actorId": {
+            "type": "string"
+          },
+          "actorName": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "before": {
+            "type": "object"
+          },
+          "after": {
+            "type": "object"
+          }
+        }
+      },
+      "View": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "apartmentTitle": {
+            "type": "string"
+          },
+          "requestStatus": {
+            "type": "string"
+          },
+          "signingState": {
+            "type": "string"
+          },
+          "sourceVersion": {
+            "type": "string"
+          },
+          "contractId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contractStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "proposerId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "responderId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "responseReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "PENDING",
+              "CANCELLED",
+              "REJECTED",
+              "WITHDRAWN"
+            ]
+          },
+          "canStart": {
+            "type": "boolean"
+          },
+          "canRespond": {
+            "type": "boolean"
+          },
+          "canWithdraw": {
+            "type": "boolean"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Event"
+            }
+          }
+        }
+      }
+    }
+  }
+}

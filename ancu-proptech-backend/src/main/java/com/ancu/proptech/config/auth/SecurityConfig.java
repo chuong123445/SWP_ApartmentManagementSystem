@@ -102,6 +102,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/me/rental-properties", "/api/v1/me/rental-properties/*/evidence-files", "/api/v1/me/rental-properties/*/verification-dossiers", "/api/v1/me/property-notices").authenticated()
                          .requestMatchers("/api/v1/me/security", "/api/v1/me/reauthentications", "/api/v1/me/reauthentications/*/confirm").authenticated()
                         .requestMatchers("/api/v1/me/profile", "/api/v1/me/password", "/api/v1/me/phone", "/api/v1/me/email-change", "/api/v1/me/email-changes", "/api/v1/me/email-changes/*/confirm").authenticated()
+                        .requestMatchers(HttpMethod.GET,"/api/v1/rental-requests/*/cancellation").authenticated()
+                        .requestMatchers(HttpMethod.POST,"/api/v1/rental-requests/*/cancellation/actions").authenticated()
                         .requestMatchers(HttpMethod.POST,"/api/v1/owner/properties/*/ai-precheck","/api/v1/owner/properties/*/ai-precheck/*/acknowledge","/api/v1/me/rental-properties/*/ai-precheck","/api/v1/me/rental-properties/*/ai-precheck/*/acknowledge").authenticated()
                         .requestMatchers(HttpMethod.POST,"/api/v1/apartments/ai-search","/api/v1/apartments/ai-search/*/apply").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/apartments", "/api/v1/apartments/*").permitAll()

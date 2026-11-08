@@ -64,7 +64,7 @@ public class RentalRequestService {
         return requests.findByCustomerIdAndApartmentIdAndStatusInOrderByCreatedAtDescIdDesc(customerId, apartmentId,
                 java.util.List.of(RentalRequest.Status.PENDING, RentalRequest.Status.ACCEPTED)).stream()
             .filter(r->r.getStatus()!=RentalRequest.Status.ACCEPTED || drafts.findByRentalRequestId(r.getId())
-                .map(d->d.getContract().getStatus()!=com.ancu.proptech.model.contract.RentalContract.Status.ENDED).orElse(true)).toList();
+                .map(d->d.getContract().isOpen()).orElse(true)).toList();
     }
 
     @Transactional

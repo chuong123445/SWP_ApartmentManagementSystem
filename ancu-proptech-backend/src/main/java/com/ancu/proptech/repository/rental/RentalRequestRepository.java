@@ -9,6 +9,8 @@ import org.springframework.data.repository.query.Param;
 public interface RentalRequestRepository extends JpaRepository<RentalRequest, Long> {
     String COMPLETION_FILTER=" and not exists (select rd.id from ContractDraft rd where rd.rentalRequest.id=r.id and rd.contract.renewalOfContractId is not null) and (:contractCompleted is null or (:contractCompleted=true and exists (select d.id from ContractDraft d where d.rentalRequest.id=r.id and d.ownerSignedAt is not null and d.customerSignedAt is not null)) or (:contractCompleted=false and not exists (select d.id from ContractDraft d where d.rentalRequest.id=r.id and d.ownerSignedAt is not null and d.customerSignedAt is not null))) ";
     boolean existsByApartmentIdAndStatus(Long apartmentId, RentalRequest.Status status);
+    @Query("select count(r) from RentalRequest r where r.apartment.id=:apartmentId and r.id<>:id and r.status=com.ancu.proptech.model.rental.RentalRequest.Status.ACCEPTED and not exists (select d.id from ContractDraft d where d.rentalRequest.id=r.id and d.contract.status in (com.ancu.proptech.model.contract.RentalContract.Status.ENDED,com.ancu.proptech.model.contract.RentalContract.Status.CANCELLED))")
+    long countOtherLiveAccepted(@Param("apartmentId") Long apartmentId,@Param("id") Long id);
     java.util.List<RentalRequest> findByCustomerIdAndApartmentIdAndStatusInOrderByCreatedAtDescIdDesc(
             Long customerId, Long apartmentId, java.util.Collection<RentalRequest.Status> statuses);
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)

@@ -49,7 +49,16 @@ public class NotificationService {
  UNION ALL
  SELECT CONCAT('request-cancelled:',r.id),N'Khách đã hủy yêu cầu thuê',a.title,CONCAT('/app?tab=rental_requests&propertyId=',p.id),r.decided_at
  FROM rental_requests r JOIN rental_apartments a ON a.id=r.apartment_id JOIN rental_properties p ON p.id=a.property_id
- WHERE p.owner_id=:account AND r.customer_id<>:account AND r.status='CANCELLED' AND r.decided_at IS NOT NULL
+ WHERE p.owner_id=:account AND r.customer_id<>:account AND r.status='CANCELLED' AND r.decided_at IS NOT NULL AND NOT EXISTS(SELECT 1 FROM selection_cancellations sc WHERE sc.request_id=r.id)
+ UNION ALL
+ SELECT CONCAT('selection-cancel:',e.id),
+ CASE e.action WHEN 'PROPOSED' THEN N'Có đề nghị hủy quá trình làm hợp đồng' WHEN 'REJECTED' THEN N'Đề nghị hủy đã bị từ chối' WHEN 'WITHDRAWN' THEN N'Đề nghị hủy đã được rút' ELSE N'Quá trình làm hợp đồng đã hủy' END,
+ CONCAT(a.title,N' — ',COALESCE(e.reason,N'Đã ghi nhận phản hồi')),
+ CASE WHEN JSON_VALUE(e.after_json,'$.contractId') IS NOT NULL THEN CONCAT('/contracts/',JSON_VALUE(e.after_json,'$.contractId'))
+      WHEN p.owner_id=:account THEN CONCAT('/app?tab=rental_requests&propertyId=',p.id)
+      ELSE '/my/rental-requests' END,e.created_at
+ FROM selection_cancellation_events e JOIN rental_requests r ON r.id=e.request_id JOIN rental_apartments a ON a.id=r.apartment_id JOIN rental_properties p ON p.id=a.property_id
+ WHERE e.actor_id<>:account AND (p.owner_id=:account OR r.customer_id=:account)
  UNION ALL
  SELECT CONCAT('invoice:',n.id),N'Bạn có hóa đơn mới',CONCAT(N'Hóa đơn kỳ ',i.period,N' — ',COALESCE(a.room_number,a.title)),CONCAT('/my/invoices/',i.id),n.created_at
  FROM invoice_notifications n JOIN rental_invoices i ON i.id=n.invoice_id JOIN rental_contracts c ON c.id=i.contract_id JOIN rental_apartments a ON a.id=c.apartment_id

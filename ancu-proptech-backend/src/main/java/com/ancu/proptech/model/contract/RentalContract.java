@@ -8,7 +8,8 @@ import java.time.LocalDate;
 
 @Entity @Table(name="rental_contracts") @Getter @Setter @NoArgsConstructor
 public class RentalContract {
-    public enum Status { DRAFT, ACTIVE, ENDED }
+    public enum Status { DRAFT, ACTIVE, ENDED, CANCELLED }
+    @Transient public boolean isOpen(){return status==Status.DRAFT||status==Status.ACTIVE;}
 
     @Enumerated(EnumType.STRING) @Column(nullable=false,length=16) private com.ancu.proptech.model.property.PropertySettings.WaterBillingMode waterBillingMode=com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.METERED;
     @Column(nullable=false) private int occupantCount=1;
