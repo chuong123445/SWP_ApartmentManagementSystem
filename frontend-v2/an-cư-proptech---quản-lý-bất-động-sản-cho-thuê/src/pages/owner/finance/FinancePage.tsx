@@ -1,281 +1,33 @@
-import React, { useState } from 'react';
-import { Wallet, Plus, ArrowDownRight, ArrowUpRight, Filter, Search } from 'lucide-react';
-import { Transaction } from '@/types';
-
-interface FinancePageProps {
-  transactions: Transaction[];
-  onAddTransaction: (tx: Omit<Transaction, 'id' | 'code'>) => void;
+import {useEffect,useRef,useState} from 'react';
+import {Plus,RefreshCw,Wallet,ArrowDownLeft,ArrowUpRight,X} from 'lucide-react';
+import type {Building} from '@/types';
+import {cashEntries,cashSummary,createCash,postCash,cancelCash,vnToday,type CashEntry,type CashSummary,type CashInput,type CashStatus} from '@/services/finance/cashService';
+import {billingMoney} from '@/services/billing/billingService';
+import '@/styles/operations.css';
+const statuses:Record<CashStatus,string>={DRAFT:'Nháp',POSTED:'Đã ghi sổ',CANCELLED:'Đã hủy'};
+const inputClass='mt-1 w-full border border-slate-200 rounded-lg p-2.5 bg-white text-sm';
+function NewEntry({properties,propertyId,onClose,onSaved}:{properties:Building[];propertyId:string;onClose:()=>void;onSaved:()=>void}){
+ const [form,setForm]=useState<CashInput>({propertyId:propertyId==='all'?'':propertyId,requestKey:crypto.randomUUID(),direction:'INCOME',paymentMethod:'BANK_TRANSFER',amount:'',transactionDate:vnToday(),category:'',counterparty:'',description:'',reference:''});
+ const [saving,setSaving]=useState(false);const [error,setError]=useState('');const retry=useRef<{signature:string;key:string}|null>(null);
+ const field=(key:keyof CashInput,value:string)=>setForm(p=>({...p,[key]:value}));
+ const save=async(e:React.FormEvent)=>{e.preventDefault();if(saving)return;setSaving(true);setError('');const signature=JSON.stringify({...form,requestKey:''});if(retry.current?.signature!==signature)retry.current={signature,key:crypto.randomUUID()};try{await createCash({...form,requestKey:retry.current.key});onSaved();}catch(e){setError(e instanceof Error?e.message:'Không thể lưu phiếu.');}finally{setSaving(false);}};
+ return <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4"><section role="dialog" aria-modal="true" aria-label="Tạo phiếu thu chi" className="w-full max-w-xl bg-white rounded-2xl p-6 max-h-[90vh] overflow-auto"><div className="flex justify-between gap-4"><h2 className="text-lg font-bold">Tạo phiếu thu / chi</h2><button aria-label="Đóng" disabled={saving} onClick={onClose}><X size={20}/></button></div><p className="text-sm text-slate-500 mt-2">Phiếu được lưu nháp. Chỉ xác nhận ghi sổ sau khi thực nhận hoặc trả tiền.</p>{error&&<p role="alert" className="text-rose-700 bg-rose-50 p-3 rounded-lg mt-3">{error}</p>}<form onSubmit={save} className="mt-4 space-y-4"><fieldset disabled={saving} className="grid sm:grid-cols-2 gap-4"><label className="text-sm">Tài sản<select aria-label="Tài sản" required value={form.propertyId} onChange={e=>field('propertyId',e.target.value)} className={inputClass}><option value="">Chọn tài sản</option>{properties.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><label className="text-sm">Loại phiếu<select value={form.direction} onChange={e=>field('direction',e.target.value)} className={inputClass}><option value="INCOME">Phiếu thu</option><option value="EXPENSE">Phiếu chi</option></select></label><label className="text-sm">Số tiền (đ)<input required type="number" min="0.01" max="9999999999999.99" step="0.01" value={form.amount} onChange={e=>field('amount',e.target.value)} className={inputClass}/></label><label className="text-sm">Ngày giao dịch<input required type="date" min="1900-01-01" max={vnToday()} value={form.transactionDate} onChange={e=>field('transactionDate',e.target.value)} className={inputClass}/></label><label className="text-sm">Danh mục<input required maxLength={100} value={form.category} onChange={e=>field('category',e.target.value)} className={inputClass}/></label><label className="text-sm">Người trả / nhận<input required maxLength={200} value={form.counterparty} onChange={e=>field('counterparty',e.target.value)} className={inputClass}/></label><label className="text-sm">Phương thức<select value={form.paymentMethod} onChange={e=>field('paymentMethod',e.target.value)} className={inputClass}><option value="BANK_TRANSFER">Chuyển khoản</option><option value="CASH">Tiền mặt</option></select></label><label className="text-sm">Mã tham chiếu<input maxLength={200} value={form.reference} onChange={e=>field('reference',e.target.value)} className={inputClass}/></label><label className="text-sm sm:col-span-2">Nội dung<textarea required maxLength={2000} value={form.description} onChange={e=>field('description',e.target.value)} className={inputClass}/></label></fieldset><div className="flex justify-end gap-3"><button type="button" onClick={onClose} disabled={saving} className="op-button">Hủy</button><button disabled={saving} className="op-button op-button-primary">{saving?'Đang lưu...':'Lưu bản nháp'}</button></div></form></section></div>;
 }
-
-export const FinancePage: React.FC<FinancePageProps> = ({
-  transactions,
-  onAddTransaction,
-}) => {
-  const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
-  const [isAddOpen, setIsAddOpen] = useState(false);
-
-  // Form state
-  const [type, setType] = useState<'income' | 'expense'>('expense');
-  const [category, setCategory] = useState('Sửa chữa & Bảo trì');
-  const [amount, setAmount] = useState('500000');
-  const [description, setDescription] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('Chuyển khoản');
-
-  const filtered = transactions.filter((t) => (filter === 'all' ? true : t.type === filter));
-
-  const totalIncome = transactions
-    .filter((t) => t.type === 'income')
-    .reduce((s, t) => s + t.amount, 0);
-  const totalExpense = transactions
-    .filter((t) => t.type === 'expense')
-    .reduce((s, t) => s + t.amount, 0);
-  const netProfit = totalIncome - totalExpense;
-
-  const handleCreate = (e: React.FormEvent) => {
-    e.preventDefault();
-    onAddTransaction({
-      date: new Date().toLocaleDateString('vi-VN'),
-      type,
-      category,
-      amount: Number(amount) || 0,
-      description,
-      paymentMethod,
-    });
-    setIsAddOpen(false);
-    setDescription('');
-    setAmount('500000');
-  };
-
-  return (
-    <div className="space-y-6 pb-12">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <span>Sổ Quỹ Thu - Chi & Dòng Tiền Thực Tế</span>
-            <span className="text-xs bg-emerald-100 text-emerald-800 font-semibold px-2.5 py-0.5 rounded-full">
-              Tháng 09/2026
-            </span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Ghi nhận thực tế các dòng tiền mặt và chuyển khoản ngân hàng ra vào tòa nhà.
-          </p>
-        </div>
-
-        <button
-          onClick={() => setIsAddOpen(true)}
-          id="btn-add-transaction"
-          className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Tạo Phiếu Thu / Chi</span>
-        </button>
-      </div>
-
-      {/* Summary 3 Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Total Income */}
-        <div className="bg-white p-4 rounded-xl border border-emerald-200 bg-emerald-50/20 shadow-xs">
-          <div className="flex items-center justify-between text-xs font-semibold text-emerald-700">
-            <span>Tổng Thực Thu (Vào)</span>
-            <ArrowUpRight className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-xl font-bold text-emerald-700 mt-2">
-            +{totalIncome.toLocaleString('vi-VN')} đ
-          </div>
-          <span className="text-[11px] text-emerald-600 mt-1 block">Tiền phòng, cọc và phụ phí</span>
-        </div>
-
-        {/* Total Expense */}
-        <div className="bg-white p-4 rounded-xl border border-rose-200 bg-rose-50/20 shadow-xs">
-          <div className="flex items-center justify-between text-xs font-semibold text-rose-700">
-            <span>Tổng Thực Chi (Ra)</span>
-            <ArrowDownRight className="w-4 h-4 text-rose-600" />
-          </div>
-          <div className="text-xl font-bold text-rose-700 mt-2">
-            -{totalExpense.toLocaleString('vi-VN')} đ
-          </div>
-          <span className="text-[11px] text-rose-600 mt-1 block">Điện EVN, nước Sawaco, thợ sửa</span>
-        </div>
-
-        {/* Net Cashflow */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-            <span>Dòng Tiền Ròng (Lãi)</span>
-            <Wallet className="w-4 h-4 text-slate-400" />
-          </div>
-          <div className="text-xl font-bold text-slate-900 mt-2">
-            {netProfit.toLocaleString('vi-VN')} đ
-          </div>
-          <span className="text-[11px] text-slate-400 mt-1 block">Tỷ suất lợi nhuận ròng ~72%</span>
-        </div>
-      </div>
-
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-1.5 bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
-        {[
-          { id: 'all', label: `Tất cả giao dịch (${transactions.length})` },
-          {
-            id: 'income',
-            label: `Khoản thu (${transactions.filter((t) => t.type === 'income').length})`,
-          },
-          {
-            id: 'expense',
-            label: `Khoản chi (${transactions.filter((t) => t.type === 'expense').length})`,
-          },
-        ].map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setFilter(t.id as any)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              filter === t.id
-                ? 'bg-slate-900 text-white font-semibold'
-                : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Transactions Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[11px]">
-              <tr>
-                <th className="px-4 py-3">Mã Phiếu</th>
-                <th className="px-4 py-3">Ngày</th>
-                <th className="px-4 py-3">Danh Mục</th>
-                <th className="px-4 py-3">Mô Tả Chi Tiết</th>
-                <th className="px-4 py-3">Phương Thức</th>
-                <th className="px-4 py-3 text-right">Số Tiền (VNĐ)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.map((t) => (
-                <tr key={t.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="px-4 py-3 font-mono font-bold text-slate-800">{t.code}</td>
-                  <td className="px-4 py-3 text-slate-600">{t.date}</td>
-                  <td className="px-4 py-3 font-medium text-slate-900">{t.category}</td>
-                  <td className="px-4 py-3 text-slate-600">{t.description}</td>
-                  <td className="px-4 py-3 text-slate-600">{t.paymentMethod}</td>
-                  <td
-                    className={`px-4 py-3 text-right font-bold text-sm ${
-                      t.type === 'income' ? 'text-emerald-700' : 'text-rose-600'
-                    }`}
-                  >
-                    {t.type === 'income' ? '+' : '-'}
-                    {t.amount.toLocaleString('vi-VN')} đ
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Add Modal */}
-      {isAddOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl animate-in fade-in zoom-in-95">
-            <h3 className="text-base font-bold text-slate-900 mb-4 pb-2 border-b border-slate-200">
-              Lập Phiếu Thu / Chi Thực Tế
-            </h3>
-            <form onSubmit={handleCreate} className="space-y-3.5 text-xs">
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Loại phiếu *</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setType('income')}
-                    className={`py-2 rounded-lg font-bold border transition-colors ${
-                      type === 'income'
-                        ? 'bg-emerald-600 text-white border-emerald-600'
-                        : 'bg-slate-50 text-slate-700 border-slate-300'
-                    }`}
-                  >
-                    Phiếu Thu (Tiền vào)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setType('expense')}
-                    className={`py-2 rounded-lg font-bold border transition-colors ${
-                      type === 'expense'
-                        ? 'bg-rose-600 text-white border-rose-600'
-                        : 'bg-slate-50 text-slate-700 border-slate-300'
-                    }`}
-                  >
-                    Phiếu Chi (Tiền ra)
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Danh mục thu/chi *</label>
-                <input
-                  type="text"
-                  required
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  placeholder="VD: Điện EVN, Bảo dưỡng máy giặt..."
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Số tiền (VNĐ) *</label>
-                <input
-                  type="number"
-                  required
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Hình thức thanh toán</label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-2 text-slate-900"
-                >
-                  <option value="Chuyển khoản">Chuyển khoản / VietQR</option>
-                  <option value="Tiền mặt">Tiền mặt</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Mô tả / Ghi chú</label>
-                <input
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Ghi chú chi tiết hóa đơn, người nhận..."
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900"
-                />
-              </div>
-
-              <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddOpen(false)}
-                  className="px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold"
-                >
-                  Lưu Phiếu
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+export function FinancePage({propertyId,properties}:{propertyId:string;properties:Building[]}){
+ const [month,setMonth]=useState(()=>vnToday().slice(0,7));const [direction,setDirection]=useState('');const [status,setStatus]=useState('');const [page,setPage]=useState(0);const [revision,setRevision]=useState(0);
+ const [rows,setRows]=useState<CashEntry[]>([]);const [summary,setSummary]=useState<CashSummary|null>(null);const [pages,setPages]=useState(0);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [creating,setCreating]=useState(false);
+ const [action,setAction]=useState<{entry:CashEntry;type:'post'|'cancel'|'detail'}|null>(null);const [reason,setReason]=useState('');const [busy,setBusy]=useState(false);const [actionError,setActionError]=useState('');
+ useEffect(()=>{let active=true;setLoading(true);setError('');setRows([]);setSummary(null);const q={propertyId,month,direction,status,page};Promise.all([cashEntries(q),cashSummary(q)]).then(([list,sum])=>{if(active){setRows(list.items);setPages(list.totalPages);setSummary(sum);}}).catch(e=>{if(active)setError(e.message);}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[propertyId,month,direction,status,page,revision]);
+ const refresh=()=>setRevision(v=>v+1);
+ const open=(entry:CashEntry,type:'post'|'cancel'|'detail')=>{setAction({entry,type});setReason('');setActionError('');};
+ const commit=async(e:React.FormEvent)=>{e.preventDefault();if(!action||busy)return;setBusy(true);setActionError('');try{if(action.type==='post')await postCash(action.entry);else await cancelCash(action.entry,reason);setAction(null);refresh();}catch(e){setActionError(e instanceof Error?e.message:'Không thể cập nhật phiếu.');refresh();}finally{setBusy(false);}};
+ return <section className="operations-page space-y-5" aria-label="Sổ quỹ thu chi"><header className="op-heading"><div className="op-title-group"><span className="op-heading-icon"><Wallet size={23}/></span><div><h1>Sổ quỹ Thu–Chi</h1><p>Theo dõi tiền thực thu, thực chi theo tài sản và tháng.</p></div></div><div className="op-buttons"><button onClick={refresh} disabled={loading} className="op-button"><RefreshCw size={15}/>Làm mới</button><button onClick={()=>setCreating(true)} disabled={!properties.length} className="op-button op-button-primary"><Plus size={15}/>Tạo phiếu thu / chi</button></div></header>
+ <div className="grid sm:grid-cols-3 gap-4">{[['Tổng thực thu',summary?.income,ArrowDownLeft,'text-emerald-700'],['Tổng thực chi',summary?.expense,ArrowUpRight,'text-rose-700'],['Dòng tiền ròng',summary?.netCashflow,Wallet,'text-slate-900']].map(([label,value,Icon,color])=>{const Glyph=Icon as typeof Wallet;return <div key={String(label)} aria-label={String(label)} className="bg-white border border-slate-200 rounded-2xl p-5"><div className={'flex justify-between text-sm '+color}><span>{String(label)}</span><Glyph size={18}/></div><p className={'mt-3 text-2xl font-bold '+color}>{typeof value==='string'?billingMoney(value):'—'}</p><p className="text-xs text-slate-500 mt-2">Chỉ tính phiếu đã ghi sổ</p></div>;})}</div>
+ <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-wrap gap-4"><label className="text-sm">Tháng<input aria-label="Tháng sổ quỹ" type="month" required value={month} onChange={e=>{setMonth(e.target.value);setPage(0);}} className={inputClass}/></label><label className="text-sm">Loại<select aria-label="Lọc thu chi" value={direction} onChange={e=>{setDirection(e.target.value);setPage(0);}} className={inputClass}><option value="">Tất cả</option><option value="INCOME">Khoản thu</option><option value="EXPENSE">Khoản chi</option></select></label><label className="text-sm">Trạng thái<select aria-label="Lọc trạng thái phiếu" value={status} onChange={e=>{setStatus(e.target.value);setPage(0);}} className={inputClass}><option value="">Tất cả</option>{Object.entries(statuses).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label><p className="self-end text-xs text-slate-500 pb-3">Dòng tiền ròng = thực thu − thực chi, không phải lợi nhuận.</p></div>
+ {loading&&<p role="status">Đang tải sổ quỹ...</p>}{error&&<p role="alert" className="bg-rose-50 text-rose-700 p-4 rounded-xl">{error}</p>}
+ {!loading&&!error&&<div className="max-w-full overflow-x-auto bg-white border border-slate-200 rounded-xl"><table className="w-full min-w-[850px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{['Mã phiếu / Tài sản','Ngày','Danh mục / Nội dung','Người trả / nhận','Số tiền','Trạng thái','Thao tác'].map(h=><th key={h} className="p-4">{h}</th>)}</tr></thead><tbody>{rows.map(e=><tr key={e.id} data-cash-id={e.id} className="border-t border-slate-100"><td className="p-4 font-semibold">{e.code}<span className="block text-xs font-normal text-slate-500">{e.propertyName}</span></td><td className="p-4 whitespace-nowrap">{e.transactionDate}</td><td className="p-4"><strong>{e.category}</strong><p className="text-xs text-slate-500 max-w-xs break-words">{e.description}</p></td><td className="p-4">{e.counterparty}<small className="block text-slate-500">{e.paymentMethod==='CASH'?'Tiền mặt':'Chuyển khoản'}</small></td><td className={'p-4 font-bold whitespace-nowrap '+(e.direction==='INCOME'?'text-emerald-700':'text-rose-700')}>{e.direction==='INCOME'?'+':'−'}{billingMoney(e.amount)}</td><td className="p-4 whitespace-nowrap">{statuses[e.status]}</td><td className="p-4"><div className="flex flex-wrap gap-2"><button className="text-emerald-700 underline" onClick={()=>open(e,'detail')}>Chi tiết</button>{e.status==='DRAFT'&&<button className="text-emerald-700 underline" onClick={()=>open(e,'post')}>Ghi sổ</button>}{e.status!=='CANCELLED'&&<button className="text-rose-700 underline" onClick={()=>open(e,'cancel')}>Hủy phiếu</button>}</div></td></tr>)}{!rows.length&&<tr><td colSpan={7} className="p-8 text-center text-slate-500">Chưa có phiếu trong phạm vi đang chọn.</td></tr>}</tbody></table></div>}
+ {!loading&&pages>1&&<div className="flex justify-end items-center gap-4"><button disabled={!page} onClick={()=>setPage(v=>v-1)} className="op-button">Trước</button><span className="text-sm">Trang {page+1}/{pages}</span><button disabled={page+1>=pages} onClick={()=>setPage(v=>v+1)} className="op-button">Sau</button></div>}
+ {creating&&<NewEntry propertyId={propertyId} properties={properties} onClose={()=>setCreating(false)} onSaved={()=>{setCreating(false);setPage(0);refresh();}}/>}
+ {action&&<div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4"><section role="dialog" aria-modal="true" aria-label={action.type==='detail'?'Chi tiết phiếu':action.type==='post'?'Xác nhận ghi sổ':'Hủy phiếu'} className="w-full max-w-lg bg-white rounded-2xl p-6 max-h-[90vh] overflow-auto"><h2 className="font-bold text-lg">{action.entry.code} · {statuses[action.entry.status]}</h2><p className="my-3">{action.entry.description}</p><p className="font-bold">{billingMoney(action.entry.amount)}</p>{actionError&&<p role="alert" className="text-rose-700 my-3">{actionError}</p>}{action.type==='detail'?<div className="space-y-2 mt-4 text-sm"><p>Tài sản: {action.entry.propertyName}</p><p>Ngày giao dịch: {action.entry.transactionDate}</p><p>Người trả/nhận: {action.entry.counterparty}</p><p>Tham chiếu: {action.entry.reference||'—'}</p><p>Tạo lúc: {new Date(action.entry.createdAt).toLocaleString('vi-VN')}</p>{action.entry.postedAt&&<p>Ghi sổ lúc: {new Date(action.entry.postedAt).toLocaleString('vi-VN')}</p>}{action.entry.cancelledAt&&<p>Hủy lúc: {new Date(action.entry.cancelledAt).toLocaleString('vi-VN')} · {action.entry.cancellationReason}</p>}<button className="op-button" onClick={()=>setAction(null)}>Đóng</button></div>:<form onSubmit={commit} className="space-y-4 mt-4">{action.type==='post'?<p className="text-sm text-slate-600">Xác nhận khoản tiền này đã thực nhận hoặc đã thanh toán. Phiếu sẽ được tính vào dòng tiền.</p>:<label className="block text-sm">Lý do hủy<textarea required maxLength={1000} value={reason} onChange={e=>setReason(e.target.value)} disabled={busy} className={inputClass}/></label>}<div className="flex justify-end gap-3"><button type="button" className="op-button" disabled={busy} onClick={()=>setAction(null)}>Quay lại</button><button disabled={busy} className="op-button op-button-primary">{busy?'Đang xử lý...':action.type==='post'?'Xác nhận đã thu / chi':'Xác nhận hủy phiếu'}</button></div></form>}</section></div>}
+ </section>;
+}
