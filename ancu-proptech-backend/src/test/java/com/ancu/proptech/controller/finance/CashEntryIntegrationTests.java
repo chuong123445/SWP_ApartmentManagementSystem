@@ -108,4 +108,16 @@ class CashEntryIntegrationTests {
         mvc.perform(post(URL+"/"+id+"/post").header("Authorization",t).contentType("application/json").content("{}")) .andExpect(status().isBadRequest());
         mvc.perform(post(URL+"/"+id+"/cancel").header("Authorization",t).contentType("application/json").content("{\"version\":0,\"reason\":\" \"}")) .andExpect(status().isBadRequest());
     }
+    @Autowired com.ancu.proptech.repository.maintenance.MaintenanceTicketRepository maintenance;
+    @Test void repairSourceUsesOwnerShareAndRequiresExplicitPosting()throws Exception{
+        var owner=account(AuthAccount.Role.OWNER);var p=property(owner);String t=token(owner);
+        var ticket=new com.ancu.proptech.model.maintenance.MaintenanceTicket();ticket.setProperty(p);ticket.setReporter(owner);ticket.setTitle("Sửa điều hòa");ticket.setDescription("Kiểm thử");ticket.setCategory(com.ancu.proptech.model.maintenance.MaintenanceTicket.Category.AIRCON);ticket.setPriority(com.ancu.proptech.model.maintenance.MaintenanceTicket.Priority.NORMAL);ticket.setStatus(com.ancu.proptech.model.maintenance.MaintenanceTicket.Status.RESOLVED);ticket.setActualCost(new java.math.BigDecimal("500000"));ticket.setCustomerCost(new java.math.BigDecimal("200000"));ticket.setCreatedAt(java.time.Instant.now());maintenance.saveAndFlush(ticket);
+        String b="{\"type\":\"MAINTENANCE\",\"id\":"+ticket.getId()+",\"transactionDate\":\"2020-01-05\",\"paymentMethod\":\"CASH\"}";
+        String json=mvc.perform(post(URL+"/from-source").header("Authorization",t).contentType("application/json").content(b)).andExpect(status().isCreated()).andExpect(jsonPath("$.direction").value("EXPENSE")).andExpect(jsonPath("$.amount").value("300000.00")).andExpect(jsonPath("$.sourceType").value("MAINTENANCE")).andReturn().getResponse().getContentAsString();
+        long id=((Number)com.jayway.jsonpath.JsonPath.read(json,"$.id")).longValue();int v=((Number)com.jayway.jsonpath.JsonPath.read(json,"$.version")).intValue();
+        mvc.perform(get(URL+"/summary?month=2020-01").header("Authorization",t)).andExpect(status().isOk()).andExpect(jsonPath("$.expense").value("0"));
+        mvc.perform(post(URL+"/"+id+"/post").header("Authorization",t).contentType("application/json").content("{\"version\":"+v+"}")).andExpect(status().isOk());
+        mvc.perform(get(URL+"/summary?month=2020-01").header("Authorization",t)).andExpect(status().isOk()).andExpect(jsonPath("$.expense").value("300000.00"));
+        mvc.perform(post(URL+"/from-source").header("Authorization",t).contentType("application/json").content(b)).andExpect(status().isCreated()).andExpect(jsonPath("$.id").value((int)id));
+    }
 }
