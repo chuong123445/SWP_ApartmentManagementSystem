@@ -21,6 +21,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties={"app.seed.enabled=false","app.billing.local-fixtures=false","app.auth.secure-cookie=false"})
 @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
 class OwnerUpgradeIntegrationTests {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    com.ancu.proptech.service.property.ai.DossierAiClient dossierAiClient;
     @Autowired MockMvc mvc;@Autowired AuthAccountRepository accounts;@Autowired ExternalIdentityRepository identities;
     @Autowired OwnerUpgradeRepository upgrades;@Autowired AuthService auth;
     @MockitoBean Auth0AssetReader assets;

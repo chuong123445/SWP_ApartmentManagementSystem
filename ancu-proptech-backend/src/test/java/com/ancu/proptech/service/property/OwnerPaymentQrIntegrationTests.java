@@ -20,6 +20,7 @@ import static org.hamcrest.Matchers.*;
 
 @SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
 class OwnerPaymentQrIntegrationTests {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean com.ancu.proptech.service.property.ai.DossierAiClient dossierAiClient;
     private static final String URL="/api/v1/owner/cash-entries";
     @Autowired MockMvc mvc;
     @Autowired com.ancu.proptech.repository.property.OwnerPaymentQrRepository paymentQrs;

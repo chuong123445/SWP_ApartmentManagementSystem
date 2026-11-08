@@ -1,5 +1,5 @@
 import {SepayTestPaymentsPage} from '@/pages/account/SepayTestPaymentsPage';
-import {SepaySettingsPage} from '@/pages/account/SepaySettingsPage';
+import { SettlementPage } from '@/pages/account/SettlementPage';
 import {AssetManagementPage} from '@/pages/customer/AssetManagementPage';
 import type { ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router';
@@ -25,7 +25,8 @@ import { OwnerUpgradePage } from '@/pages/account/OwnerUpgradePage';
 import { PropertyCreatePage } from '@/pages/account/PropertyCreatePage';
 import { PropertyApplicationsPage } from '@/pages/account/PropertyApplicationsPage';
 import { PropertyNoticesPage } from '@/pages/account/PropertyNoticesPage';
-import { PropertyDossiersPage } from '@/pages/admin/PropertyDossiersPage';
+import { AdminPage } from '@/pages/admin/AdminPage';
+import { AccountDetailPage } from '@/pages/admin/AccountDetailPage';
 import { MyContractsPage } from '@/pages/customer/MyContractsPage';
 import { MyMaintenancePage } from '@/pages/customer/MyMaintenancePage';
 import { ResidentHomePage } from '@/pages/customer/ResidentHomePage';
@@ -39,7 +40,7 @@ function RequireAccount({ children, role, verified = true }: { children: ReactNo
   if (role === 'ADMIN' && !user.roles.includes('ADMIN')) return <Navigate to="/" replace />;
   if (role === 'MANAGER' && user.roles.includes('ADMIN')) return <Navigate to="/admin/property-dossiers" replace />;
   if (role === 'MANAGER' && !hasManagementRole(user)) return <Navigate to="/" replace />;
-  if (role === 'CUSTOMER' && !user.roles.some(role => role === 'CUSTOMER' || role === 'OWNER')) return <Navigate to="/app" replace />;
+  if (role === 'CUSTOMER' && !user.roles.includes('CUSTOMER')) return <Navigate to="/app" replace />;
   if (verified && (user.accountStatus !== 'ACTIVE' || user.contactVerificationStatus !== 'VERIFIED')) return <AccountVerificationPage />;
   return <div key={user.id} className="contents">{children}</div>;
 }
@@ -57,7 +58,9 @@ export function AppRoutes() {
     <Route path="/register" element={<RegisterPage />} />
     <Route path="/auth/vneid/callback" element={<VneidCallbackPage />} />
     <Route path="/app" element={<RequireAccount role="MANAGER"><WorkspacePage /></RequireAccount>} />
-    <Route path="/admin/property-dossiers" element={<RequireAccount role="ADMIN" verified={false}><PropertyDossiersPage /></RequireAccount>} />
+    <Route path="/admin/settlements" element={<RequireAccount role="ADMIN" verified={false}><Navigate to="/admin/property-dossiers?tab=withdrawals" replace /></RequireAccount>} />
+    <Route path="/admin/property-dossiers" element={<RequireAccount role="ADMIN" verified={false}><AdminPage /></RequireAccount>} />
+    <Route path="/admin/accounts/:id" element={<RequireAccount role="ADMIN" verified={false}><AccountDetailPage /></RequireAccount>} />
     <Route path="/my/rental-requests" element={<RequireAccount role="CUSTOMER"><MyRentalRequestsPage /></RequireAccount>} />
     <Route path="/my/test-payments" element={<RequireAccount role="CUSTOMER"><SepayTestPaymentsPage tenant /></RequireAccount>} />
     <Route path="/my/invoices" element={<RequireAccount role="CUSTOMER"><MyInvoicesPage /></RequireAccount>} />
@@ -71,7 +74,7 @@ export function AppRoutes() {
     <Route path="/account/verification" element={<RequireAccount verified={false}><AccountVerificationPage /></RequireAccount>} />
     <Route path="/account/profile" element={<RequireAccount verified={false}><ProfilePage /></RequireAccount>} />
     <Route path="/account/settings/payments/test" element={<RequireAccount role="MANAGER"><SepayTestPaymentsPage /></RequireAccount>} />
-    <Route path="/account/settings/payments" element={<RequireAccount role="MANAGER"><SepaySettingsPage /></RequireAccount>} />
+    <Route path="/account/settings/payments" element={<RequireAccount role="MANAGER"><SettlementPage /></RequireAccount>} />
     <Route path="/account/settings" element={<RequireAccount verified={false}><AccountSettingsPage /></RequireAccount>} />
     <Route path="/account/properties" element={<RequireAccount role="CUSTOMER" verified={false}><AssetManagementPage /></RequireAccount>} />
     <Route path="/account/owner-upgrade" element={<RequireAccount verified={false}><OwnerUpgradePage /></RequireAccount>} />

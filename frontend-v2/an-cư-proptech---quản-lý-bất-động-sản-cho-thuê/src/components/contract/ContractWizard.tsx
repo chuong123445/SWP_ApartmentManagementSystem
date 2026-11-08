@@ -1,14 +1,14 @@
 import { SourceReceivingAccountForm } from '@/components/contract/SourceReceivingAccountForm';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Check, FileText, Plus, Trash2, X } from 'lucide-react';
-import { AssetReview, ContractReview, PartyReview, ReceivingAccountReview } from '@/components/contract/ContractReview';
+import { AssetReview, PartyReview } from '@/components/contract/ContractReview';
 import { getContractContext, getRenewalContext, saveContract, saveRenewal } from '@/services/contract/contractService';
 import { ApiError } from '@/services/http/client';
 import { validateContractTerms } from '@/utils/contract';
 import type { ContractContext, ContractDraft, ContractTerms } from '@/types/contract';
 import { ContractDocument } from '@/components/contract/ContractDocument';
 
-const steps = ['Chọn mẫu', 'Bên cho thuê', 'Bên thuê', 'Tài sản & điều kiện thuê', 'Điều khoản', 'Xem lại'];
+const steps = ['Chọn mẫu', 'Bên cho thuê', 'Bên thuê', 'Tài sản & điều kiện thuê', 'Điều khoản', 'Bản PDF'];
 const button = 'rounded-lg px-4 py-2 text-sm font-semibold border border-slate-300 disabled:opacity-50';
 const primary = `${button} bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700`;
 const input = 'w-full rounded-lg border border-slate-300 p-3 text-sm bg-white focus:outline-emerald-600';
@@ -29,6 +29,7 @@ export function ContractWizard({ requestId, renewalOf, onClose, onSaved }: { req
   const [step, setStep] = useState(0);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const saveInFlight = useRef(false);
   const [dirty, setDirty] = useState(false);
   const [savedNotice, setSavedNotice] = useState(false);
   const [conflict, setConflict] = useState(false);
@@ -65,14 +66,15 @@ export function ContractWizard({ requestId, renewalOf, onClose, onSaved }: { req
       if (problem && !(step === 3 && problem.startsWith('Mỗi điều khoản'))) { setError(problem);return; }
     }
     setError('');setStep(s => Math.min(s + 1, 5));
+    if (step === 4 && (!existing || dirty)) void save();
   };
   const save = async () => {
-    if (!context || !terms || saving) return;
+    if (!context || !terms || saveInFlight.current) return;
     const problem = validateContractTerms(terms);if (problem) { setError(problem);return; }
-    setSaving(true);setError('');
+    saveInFlight.current = true;setSaving(true);setError('');
     try { const result = renewalOf && !existing ? await saveRenewal(renewalOf.id, context, terms) : await saveContract(context, terms, existing);setExisting(result);setTerms(extractTerms(result));setDirty(false);setSavedNotice(true);onSaved(); }
     catch (e) { setError(e instanceof Error ? e.message : 'Không thể lưu hợp đồng.');if (e instanceof ApiError && e.status === 409) setConflict(true); }
-    finally { setSaving(false); }
+    finally { saveInFlight.current = false;setSaving(false); }
   };
   const moveClause = (from: number, to: number) => {
     if (!terms || to < 0 || to >= terms.clauses.length) return;
@@ -91,7 +93,7 @@ export function ContractWizard({ requestId, renewalOf, onClose, onSaved }: { req
           {step === 0 && <section className="space-y-5"><h3 className="text-lg font-bold">Chọn mẫu hợp đồng</h3><p className="text-sm text-slate-500">Chọn loại tài sản, sau đó rà soát hai bên và điều khoản phù hợp.</p><div className="grid sm:grid-cols-2 gap-3">{templates.map(template => <button key={template.id} type="button" aria-pressed={(terms.templateType ?? 'APARTMENT') === template.id} onClick={() => change('templateType', template.id)} className={`text-left border-2 rounded-xl p-4 flex gap-3 ${(terms.templateType ?? 'APARTMENT') === template.id ? 'border-emerald-600 bg-emerald-50' : 'border-slate-200 bg-white hover:border-emerald-300'}`}><FileText className="text-emerald-700 shrink-0" /><div><h4 className="font-bold text-sm">{template.title}</h4><p className="mt-1 text-xs text-slate-600">{template.description}</p></div></button>)}</div><p className="text-sm text-slate-500">Có {context.templateClauses.length} điều khoản gợi ý để sửa ở bước 5. Hợp đồng gắn với tài sản và khách thuê của yêu cầu đã chấp nhận; số hợp đồng được tạo khi lưu.</p></section>}
           {step === 1 && <PartyReview party={snapshot.owner} title="Thông tin bên cho thuê (Bên A)" />}
           {step === 2 && <PartyReview party={snapshot.customer} title="Thông tin bên thuê (Bên B)" />}
-          {step === 3 && <div className="space-y-6"><AssetReview snapshot={snapshot} /><ReceivingAccountReview snapshot={snapshot} />
+          {step === 3 && <div className="space-y-6"><AssetReview snapshot={snapshot} />
             {!existing && snapshot.evidence?.source === 'AUTH0_VNEID_SIMULATION' && <SourceReceivingAccountForm snapshot={snapshot} onSaved={async () => { const latest=await getContractContext(context.rentalRequestId);setContext(latest);setError(''); }} />}
             <section className="rounded-xl border border-slate-200 p-4 space-y-5"><h3 className="font-bold text-lg">Điều kiện thuê</h3><p className="text-xs text-slate-500">Owner xác định các điều kiện cho hợp đồng này. Giá niêm yết chỉ là gợi ý; nhập rõ đơn giá điện, nước và tiền cọc, kể cả khi bằng 0.</p><div className="grid sm:grid-cols-2 gap-4">
               <label className="block text-sm font-medium">Cách tính nước<select className={input} value={terms.waterBillingMode??'METERED'} onChange={e=>change('waterBillingMode',e.target.value as 'METERED'|'PER_PERSON')}><option value="METERED">Theo m³</option><option value="PER_PERSON">Theo người / tháng</option></select></label>{terms.waterBillingMode==='PER_PERSON'&&<label className="block text-sm font-medium">Số người tính tiền nước<input className={input} type="number" min="1" max="100" step="1" required value={terms.occupantCount??1} onChange={e=>change('occupantCount',Number(e.target.value))}/></label>}{([['startDate', 'Ngày bắt đầu', 'date'], ['endDate', 'Ngày kết thúc', 'date'], ['monthlyRent', 'Tiền thuê mỗi tháng (VND)', 'number'], ['deposit', 'Tiền đặt cọc (VND)', 'number'], ['electricityUnitPrice', 'Đơn giá điện (VND/kWh)', 'number'], ['waterUnitPrice', terms.waterBillingMode==='PER_PERSON'?'Giá nước (VND/người/tháng)':'Đơn giá nước (VND/m³)', 'number'], ['internetFee','Internet (VND/phòng/tháng)','number'],['garbageFee','Vệ sinh và rác (VND/phòng/tháng)','number']] as const).map(([key, label, type]) => <label key={key} className="block text-sm font-medium space-y-2">{label}<input type={type} required value={terms[key]??'0'} min={type === 'number' ? (key === 'monthlyRent' ? '0.01' : '0') : key==='startDate' ? context.rightsValidFrom||undefined : terms.startDate||context.rightsValidFrom||undefined} max={type==='date'?context.rightsValidUntil||undefined:undefined} step={type === 'number' ? '0.01' : undefined} onChange={event => change(key, event.target.value)} className={input} /></label>)}
@@ -106,13 +108,13 @@ export function ContractWizard({ requestId, renewalOf, onClose, onSaved }: { req
             </section>)}<button type="button" className={button} disabled={terms.clauses.length >= 30} onClick={() => change('clauses', [...terms.clauses, { title: '', body: '' }])}><Plus className="inline w-4 h-4 mr-2" />Thêm điều khoản</button>
             <p className="text-xs text-slate-500">Mẫu tham khảo: <a href="https://homedy.com/news/6-luu-y-khi-lap-hop-dong-thue-can-ho-ne4363" target="_blank" rel="noreferrer" className="underline">Homedy</a>, <a href="https://thuecanho123.com/hop-dong-cho-thue-can-ho-chung-cu-day-du-don-gian-post6.html" target="_blank" rel="noreferrer" className="underline">Thuecanho123</a>.</p>
           </section>}
-          {step === 5 && <>{existing && !dirty ? <ContractDocument draft={existing} onUpdated={updated => { setExisting(updated); setTerms(extractTerms(updated)); onSaved(); }} /> : <><ContractReview snapshot={snapshot} terms={terms} number={existing?.contractNumber} status={existing?.status} /><p className="text-sm bg-amber-50 text-amber-900 rounded-xl p-4">Đây là bản rà soát nội dung. Bấm “{existing ? 'Lưu thay đổi' : 'Tạo hợp đồng PDF'}” để xem PDF A4 và ký xác nhận.</p></>}{locked && <p className="text-xs text-slate-500">Nội dung đã được khóa vì hợp đồng có chữ ký. Bạn chỉ có thể xem, tải PDF hoặc ký cho bên của mình.</p>}</>}
+          {step === 5 && <>{existing && !dirty ? <ContractDocument draft={existing} onUpdated={updated => { setExisting(updated); setTerms(extractTerms(updated)); onSaved(); }} /> : saving ? <p role="status">Đang lưu bản nháp và tạo PDF...</p> : <p className="text-sm text-slate-600">Chưa tạo được bản PDF. Thử lại hoặc quay lại chỉnh sửa thông tin.</p>}{locked && <p className="text-xs text-slate-500">Nội dung đã được khóa vì hợp đồng có chữ ký. Bạn chỉ có thể xem, tải PDF hoặc ký cho bên của mình.</p>}</>}
         </>}
         {savedNotice && <p role="status" className="bg-emerald-50 text-emerald-800 rounded-lg p-4">Đã tạo và lưu hợp đồng. Bạn có thể xem PDF, tải xuống và ký trong khung bên trên; khách thuê mở “Hợp đồng của tôi” để ký phần của mình.</p>}
         {error && <div role="alert" className="bg-rose-50 text-rose-700 p-4 rounded-xl space-y-3"><p>{error}</p>{(!context || conflict) && <button type="button" className={button} onClick={() => { if (!dirty || window.confirm('Tải lại sẽ bỏ thay đổi chưa lưu. Tiếp tục?')) setReloadKey(n => n + 1); }}>Tải lại thông tin</button>}</div>}
       </div>
       <footer className="border-t border-slate-200 p-4 sm:px-6 flex flex-wrap justify-between gap-3 shrink-0"><button type="button" className={button} disabled={saving} onClick={() => { if (step === 0 || locked) close();else { setError('');setStep(s => s - 1); } }}>{step === 0 || locked ? 'Đóng' : 'Quay lại'}</button>
-        {context && terms && !locked && <div className="flex flex-wrap gap-2">{step === 5 ? <><button type="button" className={button} disabled={saving} onClick={() => setStep(3)}>Chỉnh sửa</button><button type="button" className={primary} disabled={saving || conflict || !!existing && !dirty} onClick={() => void save()}>{saving ? 'Đang lưu...' : existing ? 'Lưu thay đổi' : 'Tạo hợp đồng PDF'}</button></> : <button type="button" className={primary} disabled={saving} onClick={next}>Tiếp theo →</button>}</div>}
+        {context && terms && !locked && <div className="flex flex-wrap gap-2">{step === 5 ? <><button type="button" className={button} disabled={saving} onClick={() => setStep(3)}>Chỉnh sửa</button>{(!existing || dirty) && <button type="button" className={primary} disabled={saving || conflict} onClick={() => void save()}>{saving ? 'Đang tạo PDF...' : 'Thử tạo lại PDF'}</button>}</> : <button type="button" className={primary} disabled={saving} onClick={next}>{step === 4 ? 'Tạo và xem PDF →' : 'Tiếp theo →'}</button>}</div>}
       </footer>
     </div>
   </dialog>;

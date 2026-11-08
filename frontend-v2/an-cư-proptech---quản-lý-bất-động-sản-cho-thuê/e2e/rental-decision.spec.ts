@@ -27,7 +27,7 @@ test('isolated decisions persist reasons, refresh Owner inventory and update ope
   const login=async(p:Page,email:string)=>{
     await p.goto('/login');await p.locator('#login-email').fill(email);await p.locator('#login-password').fill(password);
     const response=p.waitForResponse(r=>r.url().endsWith('/api/v1/auth/login')&&r.request().method()==='POST');await p.locator('button[type=submit]').click();
-    const body=await(await response).json();await expect(p.getByRole('button',{name:'Vai trò và tài khoản'})).toBeVisible();return {Authorization:`Bearer ${body.accessToken}`};
+    const body=await(await response).json();await expect(p.getByRole('button',{name:'Tài khoản'})).toBeVisible();return {Authorization:`Bearer ${body.accessToken}`};
   };
   try {
     ownerId=await register('OWNER',ownerEmail);saveManifest();customerId=await register('CUSTOMER',customerEmail);saveManifest();expect(localFixture('prepare').prepared).toBe(true);

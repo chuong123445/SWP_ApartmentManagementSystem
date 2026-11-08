@@ -1,7 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
-import { useAuth } from '@/hooks/useAuth';
-import { AccountMenu } from '@/components/navigation/AccountMenu';
 import { Pagination } from '@/components/common/Pagination';
 import { DossierDetails } from '@/components/property/DossierDetails';
 import { DossierAiReviewPanel } from '@/components/property/DossierAiReviewPanel';
@@ -10,7 +7,6 @@ import { dossierStatusLabels, type Dossier, type DossierStatus, type ReviewDecis
 import type { PageResult } from '@/types/apartment';
 
 export function PropertyDossiersPage() {
-  const { user, logout, isLoggingOut, error: authError } = useAuth();
   const [data, setData] = useState<PageResult<Dossier> | null>(null);const [status, setStatus] = useState<DossierStatus | ''>('PENDING_APPROVAL');
   const [page, setPage] = useState(0);const [loading, setLoading] = useState(true);const [error, setError] = useState('');const [revision, setRevision] = useState(0);
   const [selected, setSelected] = useState<Dossier | null>(null);const [reason, setReason] = useState('');const [busy, setBusy] = useState(false);const [confirmed, setConfirmed] = useState(false);
@@ -29,9 +25,7 @@ export function PropertyDossiersPage() {
     catch (e) { setError(e instanceof Error ? e.message : 'Không cập nhật được hồ sơ.');try { setSelected(await adminDossier(selected.id)); } catch { /* original action error is shown */ } }
     finally { setBusy(false); }
   };
-  return <div className="min-h-screen bg-slate-50 text-slate-800">
-    <header className="bg-white border-b px-4 md:px-8 py-4 flex items-center justify-between gap-3"><Link to="/" className="font-bold text-emerald-700">An Cư PropTech</Link><AccountMenu account={user!} onLogout={logout} isLoggingOut={isLoggingOut} authError={authError} /></header>
-    <main className="max-w-7xl mx-auto p-4 md:p-8 space-y-5">
+  return <section className="space-y-5">
       <h1 className="text-2xl font-bold">Kiểm duyệt tài sản</h1><p className="text-sm text-slate-600">Đối chiếu quyền sở hữu/khai thác, người nộp, tài khoản nhận tiền và chứng từ theo từng tài sản. Phê duyệt không tự công khai căn hộ.</p>
       <div className="flex flex-wrap gap-3 items-center"><label className="text-sm font-semibold">Trạng thái hồ sơ<select className="ml-2 border rounded-lg px-3 py-2 bg-white" value={status} onChange={e => { setStatus(e.target.value as DossierStatus | '');setPage(0);setSelected(null); }}><option value="">Tất cả</option>{(Object.keys(dossierStatusLabels) as DossierStatus[]).map(value => <option key={value} value={value}>{dossierStatusLabels[value]}</option>)}</select></label><button onClick={() => setRevision(n => n + 1)} className="text-sm text-emerald-700 underline">Tải lại hồ sơ</button><span className="text-sm text-slate-500">{data?.totalElements ?? 0} hồ sơ</span></div>
       {error && <p role="alert" className="bg-rose-50 p-3 rounded-lg text-rose-700 text-sm">{error}</p>}{notice && <p role="status" className="bg-emerald-50 p-3 rounded-lg text-emerald-700 text-sm">{notice}</p>}
@@ -45,6 +39,5 @@ export function PropertyDossiersPage() {
           {selected.status === 'PENDING_APPROVAL' && <fieldset disabled={busy} className="space-y-4 disabled:opacity-60"><label className="block text-sm font-semibold">Ý kiến kiểm duyệt<textarea value={reason} maxLength={2000} rows={3} onChange={e => setReason(e.target.value)} className="w-full mt-1 border rounded-lg p-3 text-sm" /></label><label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-1" />Đã đối chiếu người nộp, chủ tài khoản nhận tiền, quyền cho thuê và chứng từ của tài sản này.</label><div className="flex flex-wrap gap-2"><button onClick={() => void decide('APPROVE')} disabled={!confirmed} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold text-sm disabled:opacity-50">Phê duyệt tài sản</button><button onClick={() => void decide('REQUEST_ADDITIONAL_INFORMATION')} className="bg-amber-100 text-amber-900 px-4 py-2 rounded-lg text-sm">Yêu cầu bổ sung</button><button onClick={() => void decide('REJECT')} className="bg-rose-100 text-rose-800 px-4 py-2 rounded-lg text-sm">Từ chối hồ sơ</button></div></fieldset>}
         </section>}
       </div>
-    </main>
-  </div>;
+  </section>;
 }

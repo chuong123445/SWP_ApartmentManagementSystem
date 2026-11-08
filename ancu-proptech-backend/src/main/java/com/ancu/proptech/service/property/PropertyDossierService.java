@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.util.*;
 @Service @RequiredArgsConstructor
 public class PropertyDossierService {
+    private final com.ancu.proptech.service.auth.VerifiedIdentityPolicy identityPolicy;
     private final PropertyRepository properties;
     private final PropertyDossierRepository dossiers;
     private final PropertyEvidenceFileRepository files;
@@ -23,7 +24,6 @@ public class PropertyDossierService {
     private final PropertyApplicantAccess applicants;
     private final PropertyRightsPolicy rights;
     private final com.ancu.proptech.repository.auth.AuthAccountRepository accounts;
-    private final com.ancu.proptech.repository.auth.ExternalIdentityRepository identities;
     private final com.ancu.proptech.service.property.ai.DossierAiReviewService aiReviews;
     @Transactional public PropertyDossierResponse submit(Jwt jwt,Long propertyId,PropertyDossierSubmit input){
         var p=applicants.write(jwt,propertyId);var owner=p.getOwner();
@@ -45,7 +45,7 @@ public class PropertyDossierService {
         collect(p,input.getOriginalLeaseFileIds(),PropertyEvidenceFile.Purpose.ORIGINAL_LEASE,seen,all);
         collect(p,input.getSubleaseConsentFileIds(),PropertyEvidenceFile.Purpose.SUBLEASE_CONSENT,seen,all);
         if(all.size()>20)throw bad("Hồ sơ tối đa 20 chứng từ.");
-        var identity=identities.findById(owner.getId()).orElseThrow();
+        var identity=identityPolicy.verified(owner.getId()).orElseThrow();
         var d=new PropertyDossier();d.setProperty(p);d.setRightType(input.getRightType());d.setApplicantName(identity.getLegalName());d.setApplicantDocumentNumber(identity.getDocumentNumber());d.setRenewal(renewal);
         d.setRightsValidFrom(input.getRightsValidFrom());d.setRightsValidUntil(input.getRightsValidUntil());d.setOriginalLeaseFrom(input.getOriginalLeaseFrom());d.setOriginalLeaseUntil(input.getOriginalLeaseUntil());
         d.setPrincipalName(clean(input.getPrincipalName()));d.setPrincipalDocumentNumber(input.getPrincipalDocumentNumber());
@@ -80,12 +80,12 @@ public class PropertyDossierService {
         if(input.getDecision()!=PropertyDossierDecision.Decision.APPROVE&&(reason==null||reason.isBlank()))throw bad("Vui lòng nhập lý do từ chối hoặc yêu cầu bổ sung.");
         switch(input.getDecision()){
             case APPROVE->{
-                if(applicant.getStatus()!=com.ancu.proptech.model.auth.AuthAccount.Status.ACTIVE||!identities.existsByAccountIdAndVerificationStatus(applicantId,"VERIFIED"))throw conflict("APPLICANT_NOT_ELIGIBLE","Người nộp cần tài khoản hoạt động và căn cước VNeID đã xác thực.");
+                if(applicant.getStatus()!=com.ancu.proptech.model.auth.AuthAccount.Status.ACTIVE||!identityPolicy.isVerified(applicantId))throw conflict("APPLICANT_NOT_ELIGIBLE","Người nộp cần tài khoản hoạt động và căn cước VNeID đã xác thực.");
                 validateRights(d.getRightType(),d.getRightsValidFrom(),d.getRightsValidUntil(),d.getOriginalLeaseFrom(),d.getOriginalLeaseUntil());
                 if(d.getRightType()!=PropertyDossier.RightType.OWNERSHIP&&!input.isRightsConfirmed())throw bad("Admin cần xác nhận đã đối chiếu quyền và thời hạn trên giấy tờ.");
                 if(p.isOnboardingApplication()){
-                    if(applicant.getRole()==com.ancu.proptech.model.auth.AuthAccount.Role.CUSTOMER)applicant.setRole(com.ancu.proptech.model.auth.AuthAccount.Role.OWNER);
-                    else if(applicant.getRole()!=com.ancu.proptech.model.auth.AuthAccount.Role.OWNER)throw conflict("APPLICANT_NOT_ELIGIBLE","Tài khoản không phù hợp để nâng cấp.");
+                    if(applicant.hasRole(com.ancu.proptech.model.auth.AuthAccount.Role.CUSTOMER))applicant.grantRole(com.ancu.proptech.model.auth.AuthAccount.Role.OWNER);
+                    else if(!applicant.hasRole(com.ancu.proptech.model.auth.AuthAccount.Role.OWNER))throw conflict("APPLICANT_NOT_ELIGIBLE","Tài khoản không phù hợp để nâng cấp.");
                 }
                 d.setStatus(PropertyDossier.Status.APPROVED);p.setApprovalStatus(Property.ApprovalStatus.APPROVED);
                 p.setRightType(d.getRightType());p.setRightsValidFrom(d.getRightsValidFrom());p.setRightsValidUntil(d.getRightsValidUntil());p.setApprovedRightsDossierId(d.getId());

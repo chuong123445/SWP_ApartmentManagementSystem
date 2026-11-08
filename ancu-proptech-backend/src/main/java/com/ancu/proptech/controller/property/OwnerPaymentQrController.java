@@ -17,6 +17,7 @@ import tools.jackson.databind.ObjectMapper;
 @RestController @RequiredArgsConstructor
 public class OwnerPaymentQrController {
  private final OwnerPaymentQrService service;private final PaymentQrDecoder decoder;private final PaymentQrNameReader names;private final AccountAccessService access;
+ private final com.ancu.proptech.service.payment.SepayService sepay;
  private final InvoiceService invoices;private final ContractDraftRepository drafts;private final OwnerPaymentQrRepository qrs;private final ObjectMapper json;
  public record Confirm(@NotBlank @Size(max=200) String accountHolderName,@NotNull @PositiveOrZero Long version,@AssertTrue boolean consent,Long selectionVersion){}
  public record Select(@NotNull OwnerPaymentQrService.Mode mode,@NotNull @PositiveOrZero Long version){}
@@ -32,7 +33,9 @@ public class OwnerPaymentQrController {
  @GetMapping("/api/v1/owner/payment-qr/{id}/image") public ResponseEntity<byte[]> image(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id){var q=service.image(jwt,id);return imageResponse(q.getContentType(),q.getContent());}
  @GetMapping("/api/v1/invoices/{id}/payment-qr") @org.springframework.transaction.annotation.Transactional(readOnly=true)
  public ResponseEntity<byte[]> invoice(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id){
-  var i=invoices.detail(jwt,id);var d=drafts.findByContractId(i.contractId()).orElseThrow(OwnerPaymentQrService::missing);
+  var i=invoices.detail(jwt,id);
+  if(sepay.platformEnabled() || !i.customerId().equals(access.account(jwt).getId())) throw OwnerPaymentQrService.missing();
+  var d=drafts.findByContractId(i.contractId()).orElseThrow(OwnerPaymentQrService::missing);
   var snapshot=json.readValue(d.getSnapshotJson(),ContractSnapshot.class);if(snapshot.ownerPaymentQrId()==null)throw OwnerPaymentQrService.missing();
   var q=qrs.findById(Long.valueOf(snapshot.ownerPaymentQrId())).filter(x->x.getConfirmedAt()!=null&&(x.getPropertyId()==null||x.getPropertyId().equals(d.getContract().getApartment().getProperty().getId()))&&x.getOwnerId().equals(d.getContract().getApartment().getProperty().getOwner().getId())).orElseThrow(OwnerPaymentQrService::missing);
   return imageResponse(q.getContentType(),q.getContent());

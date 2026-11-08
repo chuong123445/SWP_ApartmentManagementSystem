@@ -47,6 +47,8 @@ public class ContractLifecycleService {
         requireConsent(input.consent());
         if(c.getVersion()!=input.version())throw stale();
         eligibleForRenewal(c);
+        if(rights.today().isBefore(c.getEndDate().minusDays(ContractDraftService.RENEWAL_REQUEST_DAYS)))
+            throw conflict("RENEWAL_REQUEST_TOO_EARLY","Chỉ gửi yêu cầu thuê tiếp từ 10 ngày trước ngày hết hạn hợp đồng.");
         if(openRenewal(id)!=null)throw conflict("OPEN_RENEWAL","Đã có hợp đồng ký tiếp.");
         if(renewalRequests.findByContractId(id).isPresent())return authoring.response(d);
         var r=new ContractRenewalRequest();r.setContractId(id);r.setStatus(ContractRenewalRequest.Status.PENDING);

@@ -8,6 +8,9 @@ export function VerifiedCitizenDetails({ verification }: { verification: Account
     ['Số căn cước công dân', identity.documentNumber], ['Họ và tên', identity.legalName],
     ['Ngày sinh', new Date(`${identity.dateOfBirth}T00:00:00`).toLocaleDateString('vi-VN')],
     ['Giới tính', identity.gender], ['Địa chỉ', identity.address],
+    ...(identity.documentIssueDate ? [['Ngày cấp căn cước', new Date(`${identity.documentIssueDate}T00:00:00`).toLocaleDateString('vi-VN')]] : []),
+    ...(identity.documentIssuePlace ? [['Nơi cấp căn cước', identity.documentIssuePlace]] : []),
+    ...(identity.permanentAddress ? [['Địa chỉ trên căn cước', identity.permanentAddress]] : []),
     ['Thời điểm xác thực', verification.verifiedAt ? new Date(verification.verifiedAt).toLocaleString('vi-VN') : 'Chưa có thông tin'],
   ];
   return <div className="mt-4">
@@ -15,7 +18,7 @@ export function VerifiedCitizenDetails({ verification }: { verification: Account
     <dl className="mt-3 grid gap-3 sm:grid-cols-2">{rows.map(([label, value]) => <div key={label} className="min-w-0">
       <dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 text-sm font-medium text-slate-900 break-words">{value}</dd>
     </div>)}</dl>
-    <p className="text-xs text-slate-500 mt-4">Thông tin được ghi nhận từ VNeID và chỉ hiển thị cho chính bạn. Các trường này không chỉnh sửa trực tiếp tại đây.</p>
+    <p className="text-xs text-slate-500 mt-4">{verification.source === 'LOCAL_DEMO' ? 'Thông tin căn cước đã lưu cho tài khoản của bạn.' : 'Thông tin được ghi nhận từ VNeID và chỉ hiển thị cho chính bạn.'} Các trường này không chỉnh sửa trực tiếp tại đây.</p>
   </div>;
 }
 
@@ -25,7 +28,7 @@ export function VerifiedCitizenPanel({ state }: { state: ReturnType<typeof useAc
   if (error) return <p role="alert" className="mb-4 text-rose-700">{error}<button type="button" onClick={reload} className="ml-2 underline">Tải lại trạng thái xác thực</button></p>;
   if (data?.vneid.status !== 'VERIFIED') return null;
   return <section className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 sm:p-6 mb-5">
-    <h2 className="font-bold text-emerald-900">Căn cước VNeID · Đã xác thực</h2>
+    <h2 className="font-bold text-emerald-900">{data.vneid.source === 'LOCAL_DEMO' ? 'Căn cước · Đã xác thực' : 'Căn cước VNeID · Đã xác thực'}</h2>
     <VerifiedCitizenDetails verification={data.vneid} />
   </section>;
 }

@@ -56,7 +56,7 @@
             "description": "AuthUserResponse CUSTOMER/PENDING_VERIFICATION; no session or password returned"
           },
           "400": {
-            "description": "Invalid/unknown fields including requestedRole and role"
+            "description": "Invalid/unknown fields including requestedRole, role and roles"
           },
           "403": {
             "description": "Missing CSRF"
@@ -77,7 +77,7 @@
         ],
         "responses": {
           "200": {
-            "description": "{role, identityVerified, assetServiceAvailable, version}; no-store; no M2M credentials/asset list"
+            "description": "{role (legacy projection), roles (canonical memberships), identityVerified, assetServiceAvailable, version}; no-store; no M2M credentials/asset list"
           },
           "401": {
             "description": "Missing or invalid session"

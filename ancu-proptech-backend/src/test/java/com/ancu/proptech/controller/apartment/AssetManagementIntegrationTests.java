@@ -28,6 +28,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties={"app.seed.enabled=false","app.billing.local-fixtures=false"}) @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
 class AssetManagementIntegrationTests {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    com.ancu.proptech.service.property.ai.DossierAiClient dossierAiClient;
  @Autowired MockMvc mvc;@Autowired AuthAccountRepository accounts;@Autowired ExternalIdentityRepository identities;
  @Autowired PropertyRepository properties;@Autowired ApartmentRepository apartments;@Autowired PropertyImageRepository images;
  @Autowired RentalRequestRepository requests;@Autowired AuthService auth;@Autowired ObjectMapper json;

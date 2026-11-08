@@ -1,74 +1,205 @@
-import {test,expect,type Page} from '@playwright/test';
-import {mkdirSync} from 'node:fs';
-async function setup(page:Page,options:{tenant?:boolean;multiple?:boolean;noUrl?:boolean;outage?:boolean}={}){
- const user={id:'41',fullName:'NGUYEN VAN A',email:'payment@example.invalid',roles:[options.tenant?'CUSTOMER':'OWNER'],accountStatus:'ACTIVE',contactVerificationStatus:'VERIFIED',version:0};
- const connection:any={configured:!!options.tenant,bank:'Vietcombank',accountNumber:'1234567890',accountHolderName:'NGUYEN VAN A',virtualAccount:null,enabled:true,version:0,webhookUrl:options.noUrl?null:'https://payments.example.invalid/api/v1/payments/sepay/webhooks/41',lastWebhookAt:null,webhookSecret:null};
- const banks=[{id:'b1',bank:'Vietcombank',accountNumber:'1234567890',accountHolderName:'NGUYEN VAN A'},...(options.multiple?[{id:'b2',bank:'BIDV',accountNumber:'9876543210',accountHolderName:'NGUYEN VAN A'}]:[])];
- let paid=false,created=false,outage=!!options.outage;let sent=false;let writes=0;const unexpected:string[]=[],errors:string[]=[],logs:string[]=[];
- page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')logs.push(m.text());});page.on('requestfailed',r=>{if(r.failure()?.errorText!=='net::ERR_ABORTED')unexpected.push(r.url());});
- await page.route('https://vietqr.app/img?**',r=>r.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="280" height="280"><rect width="280" height="280" fill="#dcfce7"/><text x="40" y="140">QR TEST</text></svg>'}));
- await page.route('**/api/**',r=>{const req=r.request(),path=new URL(req.url()).pathname;const body=()=>req.postDataJSON();
-  if(path==='/api/v1/auth/vneid-config')return r.fulfill({json:{enabled:false}});
-  if(path==='/api/v1/auth/csrf')return r.fulfill({json:{token:'csrf',headerName:'X-XSRF-TOKEN'}});
-  if(path==='/api/v1/auth/refresh')return r.fulfill({json:{accessToken:'sepay-internal-test',tokenType:'Bearer',expiresIn:900,user}});
-  if(path==='/api/v1/me')return r.fulfill({json:user});
-  if(path==='/api/v1/me/tenancies')return r.fulfill({json:[]});
-  if(path==='/api/v1/owner/payments/sepay/test-recipients')return r.fulfill({json:[{contractId:'8',tenantName:'TRAN THI B',roomNumber:'A101'}]});
-  if(path==='/api/v1/me/invoices')return r.fulfill({json:{items:[],page:0,totalPages:0,totalElements:0}});
-  if(path==='/api/v1/owner/payments/sepay/test-payments'||path==='/api/v1/me/payments/sepay/test-payments'||path.startsWith('/api/v1/me/payments/sepay/test-payments/')){
-   if(req.method()==='POST'){expect(body()).toEqual(body().contractId?{amount:'1000',contractId:'8'}:{amount:'1000'});sent=!!body().contractId;created=true;writes++;}
-   const receipt={id:'51',contractId:sent?'8':null,tenantName:sent?'TRAN THI B':null,roomNumber:sent?'A101':null,ownerName:sent?'NGUYEN VAN A':null,createdAt:'2026-10-29T00:00:00Z',payment:{status:paid?'PAID':'UNPAID',amount:'1000',bank:'Vietcombank',accountNumber:'1234567890',accountHolderName:'NGUYEN VAN A',paymentCode:'ANCUTEST1234567890ABCDEF12345678',qrUrl:paid?null:'https://vietqr.app/img?bank=Vietcombank&acc=1234567890&amount=1000&des=ANCUTEST1234567890ABCDEF12345678',paidAt:paid?'2026-10-29T01:00:00Z':null}};
-   return r.fulfill({status:req.method()==='POST'?201:200,json:req.method()==='POST'||path.startsWith('/api/v1/me/payments/sepay/test-payments/')?receipt:created&&(path.includes('/owner/')||sent)?[receipt]:[]});
+import { test, type ConsoleMessage, type Page, type Request, type Route } from '@playwright/test';
+
+async function exercise(page: Page, base: string, width: number) {
+  const errors: string[] = [];
+  const unexpected: string[] = [];
+  const writes: string[] = [];
+  let role = 'OWNER';
+  let collected = false;
+  let hasDestination = false;
+  let invoiceIssued = false;
+  let withdrawalStatus = '';
+  let withdrawalVersion = 0;
+  const pageError = (error: Error) => errors.push(error.message);
+  const consoleError = (message: ConsoleMessage) => { if (message.type() === 'error') errors.push(message.text()); };
+  const requestFailed = (request: Request) => { if (request.failure()?.errorText !== 'net::ERR_ABORTED') errors.push(request.url()); };
+  page.on('pageerror', pageError);
+  page.on('console', consoleError);
+  page.on('requestfailed', requestFailed);
+  const emptyPage = { items: [], page: 0, size: 20, totalElements: 0, totalPages: 0 };
+  const withdrawal = () => ({
+    id: '12', ownerId: '3', amount: '3000', bank: 'Vietcombank', accountNumber: '0123456789', accountHolder: 'CHU NHA MAU',
+    status: withdrawalStatus, version: withdrawalVersion, canComplete: role === 'ADMIN' && withdrawalStatus === 'PROCESSING',
+    transferReference: withdrawalStatus === 'PAID' ? 'FT-MAU-12' : null,
+    note: null, createdAt: '2026-11-03T08:00:00Z', updatedAt: '2026-11-03T08:00:00Z',
+  });
+  const invoice = {
+    id: '9', contractId: '8', apartmentId: '7', customerId: '41', roomNumber: 'A101', apartmentTitle: 'Căn hộ mẫu',
+    tenantName: 'Người thuê mẫu', period: '2026-10', dueDate: '2026-11-05', monthlyRent: '5000', totalAmount: '5000',
+    electricityStartReading: '0', electricityEndReading: '0', electricityQuantity: '0', electricityUnitPrice: '3500', electricityAmount: '0',
+    waterStartReading: '0', waterEndReading: '0', waterQuantity: '0', waterUnitPrice: '15000', waterAmount: '0',
+    status: 'SENT', version: 0, createdAt: '2026-11-01T00:00:00Z', sentAt: '2026-11-01T00:00:00Z', paymentStatus: 'UNPAID',
+  };
+  const qr = 'https://vietqr.app/img?bank=BIDV&acc=0123456789&amount=5000&des=ANCU1234567890ABCDEF12345678';
+  const api = async (route: Route) => {
+    const req = route.request();
+    const url = new URL(req.url());
+    const path = url.pathname.replace('/api/v1', '');
+    const post = req.method() === 'POST';
+    const json = (body: unknown) => route.fulfill({ json: body });
+    if (path === '/auth/csrf') return json({ token: 'fixture', headerName: 'X-XSRF-TOKEN' });
+    if (path === '/auth/vneid-config') return json({ enabled: false });
+    const user = { id: role === 'OWNER' ? '3' : role === 'ADMIN' ? '1' : '41', fullName: 'Tài khoản mẫu',
+      email: 'demo@example.invalid', roles: role === 'OWNER' ? ['OWNER', 'CUSTOMER'] : [role], accountStatus: 'ACTIVE', contactVerificationStatus: 'VERIFIED', version: 0 };
+    if (path === '/auth/refresh') return json({ accessToken: 'fixture', user });
+    if (path === '/me') return json(user);
+    if (path === '/me/tenancies' || path === '/owner/tenancies' || path === '/owner/maintenance-tickets') return json([]);
+    if (path === '/me/notifications') return json({ ...emptyPage, unreadCount: 0 });
+    if (path === '/owner/properties') return json([{ id: '2', name: 'Tài sản mẫu', approvalStatus: 'APPROVED' }]);
+    if (path === '/owner/apartments') return json([{ id: '7', propertyId: '2', propertyName: 'Tài sản mẫu',
+      roomNumber: 'A101', title: 'Căn hộ mẫu', availability: 'OCCUPIED', areaM2: '45',
+      advertisedMonthlyRent: '5000', amenities: [], version: 0 }]);
+    if (path === '/owner/invoices') return json({ ...emptyPage, items: [invoice], totalElements: 1, totalPages: 1 });
+    if (path === '/owner/invoices/additional') return json(emptyPage);
+    if (path === '/invoices/9') return json(invoice);
+    if (path === '/invoices/9/payment') {
+      if (post) {
+        writes.push('issue-qr');
+        invoiceIssued = true;
+      }
+      // Return a QR even for the owner to verify the owner UI guards independently of API redaction.
+      return json({ status: collected ? 'PAID' : 'UNPAID', amount: '5000', bank: 'BIDV',
+        accountNumber: '0123456789', accountHolderName: 'TAI KHOAN THU CHUNG',
+        paymentCode: invoiceIssued ? 'ANCU1234567890ABCDEF12345678' : null,
+        qrUrl: invoiceIssued && !collected ? qr : null, paidAt: collected ? '2026-11-03T08:00:00Z' : null });
+    }
+    if (path === '/owner/settlements') return json({ received: collected ? '5000' : '0',
+      available: collected ? (withdrawalStatus ? '2000' : '5000') : '0',
+      reserved: ['PENDING', 'PROCESSING'].includes(withdrawalStatus) ? '3000' : '0',
+      paid: withdrawalStatus === 'PAID' ? '3000' : '0', entries: [],
+      destination: hasDestination ? { qrId: '17', bank: 'Vietcombank', accountNumber: '0123456789', accountHolder: 'CHU NHA MAU' } : null });
+    if (path === '/admin/property-dossiers') return json(emptyPage);
+    if (path === '/admin/settlements/connection') return json({ configured: true, enabled: true,
+      bank: 'BIDV', accountNumber: '0123456789', accountHolderName: 'TAI KHOAN THU CHUNG',
+      virtualAccount: null, webhookUrl: 'https://example.invalid/webhook', lastWebhookAt: '2026-11-03T08:00:00Z' });
+    if (path === '/owner/payment-qr/current') return route.fulfill({ status: 204 });
+    if (path === '/owner/settlements/withdrawals' && post) {
+      const input = req.postDataJSON();
+      if (input.amount !== '3000' || !input.requestKey || input.qrId !== '17' || Object.keys(input).length !== 3) throw Error('Invalid withdrawal input');
+      withdrawalStatus = 'PENDING';
+      writes.push('request');
+      return json(withdrawal());
+    }
+    if (path === '/owner/settlements/withdrawals' || path === '/admin/settlements/withdrawals') {
+      const filter = url.searchParams.get('status');
+      if (!withdrawalStatus || (filter && filter !== withdrawalStatus)) return json(emptyPage);
+      return json({ ...emptyPage, items: [withdrawal()], totalElements: 1, totalPages: 1 });
+    }
+    if (path === '/admin/settlements/withdrawals/12/qr') {
+      if (role !== 'ADMIN' || withdrawalStatus !== 'PROCESSING' || req.headers().authorization !== 'Bearer fixture') {
+        throw Error('Payout QR requested outside authorized processing');
+      }
+      return route.fulfill({ contentType: 'image/svg+xml', body:
+        '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100"/></svg>' });
+    }
+    if (path === '/admin/settlements/withdrawals/12/actions' && post) {
+      const input = req.postDataJSON();
+      if (input.version !== withdrawalVersion) throw Error('Wrong withdrawal version');
+      if (input.action === 'START') withdrawalStatus = 'PROCESSING';
+      else if (input.action === 'PAID' && input.transferReference === 'FT-MAU-12') withdrawalStatus = 'PAID';
+      else throw Error('Unexpected decision');
+      withdrawalVersion++;
+      writes.push(input.action);
+      return json(withdrawal());
+    }
+    unexpected.push(req.method() + ' ' + path);
+    return route.fulfill({ status: 404, json: { message: 'Unexpected API' } });
+  };
+  const qrResponse = (route: Route) => route.fulfill({ contentType: 'image/svg+xml', body:
+    '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="black"/></svg>' });
+  const check = (condition: boolean, message: string) => { if (!condition) throw Error(message); };
+  const fits = async () => check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Horizontal overflow');
+  const go = (path: string) => page.goto(base + path, { waitUntil: 'domcontentloaded' });
+  await page.route('**/api/**', api);
+  await page.route('https://vietqr.app/img?**', qrResponse);
+  try {
+    await page.setViewportSize({ width, height: 900 });
+    await go('/account/settings/payments');
+    await page.getByText('Chưa có số dư có thể rút.', { exact: true }).waitFor();
+    check(await page.getByRole('button', { name: 'Gửi yêu cầu rút' }).count() === 0, 'No QR allowed a withdrawal');
+    await page.getByRole('link', { name: 'Mở Cài đặt đơn giá' }).click();
+    await page.getByRole('heading', { name: 'Cài đặt đơn giá & tài khoản nhận tiền' }).waitFor();
+    await page.getByLabel('Tải ảnh QR cá nhân').waitFor();
+    await fits();
+
+    role = 'CUSTOMER';
+    await go('/my/invoices/9');
+    await page.getByRole('button', { name: 'Hiển thị QR thanh toán SePay' }).click();
+    await page.getByRole('img', { name: 'QR chuyển khoản hóa đơn SePay' }).waitFor();
+    await fits();
+
+    role = 'OWNER';
+    await go('/app?tab=invoices&propertyId=2');
+    await page.locator('[data-invoice-id="9"]').getByRole('button', { name: /Chi tiết|Xem/ }).click();
+    const detail = page.getByRole('dialog', { name: 'Chi tiết hóa đơn' });
+    await detail.getByText('ANCU1234567890ABCDEF12345678', { exact: true }).waitFor();
+    check(await detail.getByRole('img').count() === 0, 'Owner saw QR');
+    check(await detail.getByRole('button', { name: 'Hiển thị QR thanh toán SePay' }).count() === 0, 'Owner can request QR');
+    await fits();
+
+    collected = true;
+    hasDestination = true;
+    await go('/account/settings/payments');
+    await page.getByLabel('Số tiền (đồng)', { exact: true }).fill('3000');
+    await page.getByText('Vietcombank · 0123456789 · CHU NHA MAU', { exact: true }).waitFor();
+    check(await page.locator('input[type=file]').count() === 0, 'Wallet still allows QR upload');
+    check(await page.getByLabel('Số tài khoản', { exact: true }).count() === 0, 'Wallet still allows manual bank entry');
+    await page.getByRole('button', { name: 'Gửi yêu cầu rút' }).click();
+    await page.getByRole('button', { name: /#12 · Chờ xử lý/ }).waitFor();
+    await fits();
+
+    role = 'ADMIN';
+    await go('/admin/property-dossiers');
+    const adminTabs = page.getByRole('navigation', { name: 'Quản trị', exact: true });
+    const dossiersTab = adminTabs.getByRole('link', { name: 'Kiểm duyệt tài sản', exact: true });
+    const withdrawalsTab = adminTabs.getByRole('link', { name: 'Yêu cầu rút tiền', exact: true });
+    await page.getByRole('heading', { name: 'Kiểm duyệt tài sản', exact: true }).waitFor();
+    check(await dossiersTab.getAttribute('aria-current') === 'page', 'Dossiers tab was not selected');
+    await page.getByRole('button', { name: 'Tài khoản' }).click();
+    const adminMenu = page.getByRole('navigation', { name: 'Điều hướng tài khoản' });
+    check(await adminMenu.getByRole('link', { name: /Hồ sơ|Cài đặt tài khoản/ }).count() === 0, 'Admin account links are visible');
+    await adminMenu.getByRole('button', { name: 'Đăng xuất' }).waitFor();
+    await page.getByRole('button', { name: 'Tài khoản' }).click();
+    await withdrawalsTab.click();
+    await page.getByRole('heading', { name: 'Xử lý yêu cầu rút tiền' }).waitFor();
+    check(await withdrawalsTab.getAttribute('aria-current') === 'page', 'Withdrawals tab was not selected');
+    check(await page.getByRole('link', { name: /Hồ sơ cá nhân|Cài đặt tài khoản/ }).count() === 0, 'Owner account layout is visible');
+    check(new URL(page.url()).pathname === '/admin/property-dossiers', 'Admin tabs use separate pages');
+    await page.goBack();
+    await page.getByRole('heading', { name: 'Kiểm duyệt tài sản', exact: true }).waitFor();
+    await go('/admin/settlements');
+    await page.getByRole('button', { name: /#12 · Chờ xử lý/ }).click();
+    const payoutQr = page.getByRole('img', { name: 'QR chuyển khoản cho chủ nhà' });
+    check(await payoutQr.count() === 0, 'QR shown before accepting the withdrawal');
+    await page.getByRole('button', { name: 'Nhận xử lý' }).click();
+    await payoutQr.waitFor();
+    await page.getByLabel('Mã giao dịch ngân hàng').fill('FT-MAU-12');
+    check(await page.getByRole('button', { name: 'Ghi nhận đã chuyển' }).isDisabled(), 'Transfer can be confirmed without review');
+    await page.getByRole('checkbox', { name: /Tôi đã chuyển khoản thành công/ }).check();
+    await page.getByRole('button', { name: 'Ghi nhận đã chuyển' }).click();
+    await page.getByRole('heading', { name: /Yêu cầu #12 · Đã chuyển/ }).waitFor();
+    check(await payoutQr.count() === 0, 'QR still shown after payout completion');
+    await fits();
+
+    role = 'OWNER';
+    await go('/account/settings/payments');
+    await page.getByRole('button', { name: /#12 · Đã chuyển/ }).click();
+    await page.getByText('Mã giao dịch: FT-MAU-12').waitFor();
+    check(await payoutQr.count() === 0, 'Payout QR is visible to owner');
+    check(writes.join(',') === 'issue-qr,request,START,PAID', 'Unexpected write: ' + writes);
+    check(!errors.length && !unexpected.length, JSON.stringify({ errors, unexpected }));
+    return { width, writes, errors, unexpected };
+  } finally {
+    await page.unroute('**/api/**', api);
+    await page.unroute('https://vietqr.app/img?**', qrResponse);
+    page.off('pageerror', pageError);
+    page.off('console', consoleError);
+    page.off('requestfailed', requestFailed);
   }
-  if(path==='/api/v1/owner/payments/sepay/bank-accounts'){
-   expect(body().apiToken).toBe('test-sepay-api-token');if(outage)return r.fulfill({status:503,json:{message:'Chưa đọc được tài khoản từ SePay.'}});return r.fulfill({json:{items:banks,page:1,hasMore:false}});
-  }
-  if(path==='/api/v1/owner/payments/sepay/virtual-accounts'){expect(body().bankAccountId).toBe('b2');return r.fulfill({json:{items:[{id:'v1',number:'96247123456789',holder:user.fullName}],page:1,hasMore:false}});}
-  if(path==='/api/v1/owner/payments/sepay'){
-   if(req.method()==='PUT'){expect(body().apiToken).toBe('test-sepay-api-token');expect(body().bank).toBeUndefined();expect(body().accountNumber).toBeUndefined();connection.configured=true;connection.version++;connection.bank=body().bankAccountId==='b2'?'BIDV':'Vietcombank';connection.virtualAccount=body().virtualAccountId?'96247123456789':null;writes++;return r.fulfill({json:{...connection,webhookSecret:'test-webhook-key-once'}});}
-   return r.fulfill({json:connection});
-  }
-  if(path==='/api/v1/owner/payments/sepay/status'){expect(body().apiToken).toBeUndefined();connection.enabled=body().enabled;connection.version++;return r.fulfill({json:connection});}
-  if(path==='/api/v1/owner/payments/sepay/rotate-key'){connection.version++;return r.fulfill({json:{...connection,webhookSecret:'test-webhook-key-rotated'}});}
-  if(path==='/api/v1/owner/payments/sepay/events')return r.fulfill({json:connection.configured?[{transactionId:'901',invoiceId:'9',result:'AMOUNT_MISMATCH',amount:'1000',receivedAt:'2026-10-28T00:00:00Z'}]:[]});
-  if(path==='/api/v1/invoices/9')return r.fulfill({json:{id:'9',contractId:'8',apartmentId:'7',customerId:'41',roomNumber:'A101',apartmentTitle:'Căn hộ thử',tenantName:'NGUYEN VAN A',period:'2026-10',dueDate:'2026-11-05',monthlyRent:'5000000',electricityStartReading:'1000',electricityEndReading:'1120',electricityQuantity:'120',electricityUnitPrice:'3500',electricityAmount:'420000',waterStartReading:'200',waterEndReading:'208',waterQuantity:'8',waterUnitPrice:'15000',waterAmount:'120000',totalAmount:'5540000',status:'SENT',version:0,createdAt:'2026-10-28T00:00:00Z',sentAt:'2026-10-28T00:00:00Z',paymentStatus:paid?'PAID':'UNPAID'}});
-  if(path==='/api/v1/invoices/9/payment'){
-   expect(req.headers().authorization).toBe('Bearer sepay-internal-test');if(req.method()==='POST')created=true;
-   return r.fulfill({json:{status:paid?'PAID':'UNPAID',paymentCode:created?'ANCU1234567890ABCDEF12345678':null,amount:created?'5540000':null,bank:'Vietcombank',accountNumber:'1234567890',accountHolderName:'NGUYEN VAN A',qrUrl:created&&!paid?'https://vietqr.app/img?bank=Vietcombank&acc=1234567890&amount=5540000&des=ANCU1234567890ABCDEF12345678':null,paidAt:paid?'2026-10-28T01:00:00Z':null}});
-  }
-  unexpected.push(`${req.method()} ${path}`);return r.fulfill({status:404});
- });
- return {asTenant:()=>{user.id='42';user.roles=['CUSTOMER'];},setPaid:()=>{paid=true;},online:()=>{outage=false;},writes:()=>writes,check:()=>{expect(errors).toEqual([]);expect(unexpected).toEqual([]);expect(logs.filter(s=>!(options.outage&&s.includes('503')))).toEqual([]);}};
 }
-for(const width of [1440,390])test(`Owner imports single linked bank automatically, saves and rotates one-time key at ${width}px`,async({page})=>{
- const f=await setup(page);await page.setViewportSize({width,height:1000});await page.goto('/account/settings/payments');await page.getByLabel('API Token SePay',{exact:true}).fill('test-sepay-api-token');await page.getByRole('button',{name:'Lấy tài khoản từ SePay',exact:true}).click();await expect(page.getByLabel('Tài khoản ngân hàng nhận tiền',{exact:true})).toHaveValue('b1');await expect(page.getByText('Đã tự chọn tài khoản ngân hàng duy nhất.',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Lưu cấu hình SePay',exact:true}).click();await expect(page.getByLabel('Khóa webhook — chỉ hiển thị trong phiên này',{exact:true})).toHaveValue('test-webhook-key-once');await expect(page.getByLabel('API Token SePay',{exact:true})).toHaveValue('');await expect(page.getByLabel('URL nhận thông báo thanh toán',{exact:true})).toHaveValue(/https:\/\/payments.example.invalid/);
- expect(await page.evaluate(()=>JSON.stringify({...localStorage,...sessionStorage}))).not.toContain('test-sepay-api-token');await page.reload();await expect(page.getByLabel('Khóa webhook — chỉ hiển thị trong phiên này',{exact:true})).toHaveCount(0);await page.getByRole('button',{name:'Đổi khóa webhook',exact:true}).click();await page.getByRole('button',{name:'Xác nhận đổi khóa',exact:true}).click();await expect(page.getByLabel('Khóa webhook — chỉ hiển thị trong phiên này',{exact:true})).toHaveValue('test-webhook-key-rotated');await expect(page.getByText('Sai số tiền — cần đối soát',{exact:true})).toBeVisible();expect(f.writes()).toBe(1);await page.getByRole('button',{name:'Tạm dừng nhận thanh toán',exact:true}).click();await expect(page.getByRole('button',{name:'Bật lại nhận thanh toán',exact:true})).toBeVisible();await page.getByRole('button',{name:'Bật lại nhận thanh toán',exact:true}).click();await expect(page.getByRole('button',{name:'Tạm dừng nhận thanh toán',exact:true})).toBeVisible();
- expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);mkdirSync('test-results/visual',{recursive:true});await page.screenshot({path:`test-results/visual/sepay-settings-${width}.png`,fullPage:true});f.check();
-});
-for(const width of [1440,390])test(`Tenant gets exact invoice QR and only server webhook result changes to paid at ${width}px`,async({page})=>{
- const f=await setup(page,{tenant:true});await page.setViewportSize({width,height:1000});await page.goto('/my/invoices/9');await page.getByRole('button',{name:'Hiển thị QR thanh toán SePay',exact:true}).click();await expect(page.getByRole('img',{name:'QR chuyển khoản hóa đơn SePay',exact:true})).toBeVisible();await expect(page.getByText('Số tiền: 5.540.000 đ',{exact:false})).toBeVisible();
- expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);mkdirSync('test-results/visual',{recursive:true});await page.screenshot({path:`test-results/visual/sepay-invoice-${width}.png`,fullPage:true});await expect(page.getByText('Đã thanh toán qua SePay',{exact:false})).toHaveCount(0);f.setPaid();await page.getByRole('button',{name:'Kiểm tra trạng thái thanh toán',exact:true}).click();await expect(page.getByText('Đã thanh toán qua SePay',{exact:false})).toBeVisible();await expect(page.getByRole('img',{name:'QR chuyển khoản hóa đơn SePay'})).toHaveCount(0);f.check();
-});
-test('Multiple banks require selection; VA is read from SePay for BIDV',async({page})=>{
- const f=await setup(page,{multiple:true});await page.goto('/account/settings/payments');await page.getByLabel('API Token SePay',{exact:true}).fill('test-sepay-api-token');await page.getByRole('button',{name:'Lấy tài khoản từ SePay',exact:true}).click();await expect(page.getByLabel('Tài khoản ngân hàng nhận tiền',{exact:true})).toHaveValue('');await page.getByLabel('Tài khoản ngân hàng nhận tiền',{exact:true}).selectOption('b2');await page.getByRole('button',{name:'Lấy VA đã tạo trên SePay',exact:true}).click();await expect(page.getByLabel('VA nhận tiền',{exact:true})).toHaveValue('v1');await page.getByRole('button',{name:'Lưu cấu hình SePay',exact:true}).click();await expect(page.getByText('Đang nhận qua BIDV',{exact:false})).toBeVisible();f.check();
-});
-test('Provider outage can retry; missing public HTTPS is explicitly shown',async({page})=>{
- const f=await setup(page,{outage:true,noUrl:true});await page.goto('/account/settings/payments');await page.getByLabel('API Token SePay',{exact:true}).fill('test-sepay-api-token');await page.getByRole('button',{name:'Lấy tài khoản từ SePay',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Chưa đọc được');f.online();await page.getByRole('button',{name:'Lấy tài khoản từ SePay',exact:true}).click();await page.getByRole('button',{name:'Lưu cấu hình SePay',exact:true}).click();await expect(page.getByText('Chưa có URL HTTPS công khai.',{exact:false})).toBeVisible();f.check();
-});
 
-for(const width of [1440,390])test(`Owner creates 1000 VND test receipt, retains QR on reload and receives server settlement at ${width}px`,async({page})=>{
- const f=await setup(page);await page.setViewportSize({width,height:1000});await page.goto('/account/settings/payments');await page.getByRole('link',{name:'Tạo phiếu thanh toán thử',exact:true}).click();
- await expect(page.getByRole('heading',{name:'Tạo phiếu thanh toán thử'})).toBeVisible();await expect(page.getByText('Chuyển khoản bằng tiền thật.',{exact:false})).toBeVisible();await expect(page.getByLabel('Số tiền thử (đồng)',{exact:true})).toHaveValue('1000');
- await page.getByRole('button',{name:'Tạo phiếu và QR thử',exact:true}).click();await expect(page.getByRole('img',{name:'QR chuyển khoản phiếu thử SePay'})).toBeVisible();await expect(page.getByRole('region',{name:'Chi tiết phiếu thử'})).toContainText('1.000');expect(f.writes()).toBe(1);
- await page.reload();await expect(page.getByRole('img',{name:'QR chuyển khoản phiếu thử SePay'})).toBeVisible();await expect(page.getByText('Đã thanh toán qua SePay',{exact:true})).toHaveCount(0);
- expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);mkdirSync('test-results/visual',{recursive:true});await page.screenshot({path:`test-results/visual/sepay-test-payment-${width}.png`,fullPage:true});
- f.setPaid();await page.getByRole('button',{name:'Tải lại trạng thái phiếu thử',exact:true}).click();await expect(page.getByText('Đã thanh toán qua SePay',{exact:true})).toBeVisible();await expect(page.getByRole('img',{name:'QR chuyển khoản phiếu thử SePay'})).toHaveCount(0);expect(f.writes()).toBe(1);f.check();
-});
-
-for(const width of [1440,390])test(`Owner sends small receipt and tenant opens QR from My invoices at ${width}px`,async({page})=>{
- const f=await setup(page);await page.setViewportSize({width,height:1000});await page.goto('/account/settings/payments/test');await page.getByLabel('Gửi đến người thuê',{exact:true}).selectOption('8');await page.getByRole('button',{name:'Tạo và gửi phiếu thử',exact:true}).click();await expect(page.getByText('Đã gửi cho: TRAN THI B',{exact:false})).toBeVisible();expect(f.writes()).toBe(1);
- f.asTenant();await page.goto('/my/invoices');await expect(page.getByRole('heading',{name:'A101 · Hóa đơn #51',exact:true})).toBeVisible();await expect(page.getByText('Chưa có hóa đơn được gửi đến tài khoản của bạn.',{exact:true})).toHaveCount(0);mkdirSync('test-results/visual',{recursive:true});await page.screenshot({path:`test-results/visual/tenant-unified-invoices-${width}.png`,fullPage:true});await page.getByRole('link').filter({has:page.getByRole('heading',{name:'A101 · Hóa đơn #51',exact:true})}).click();await expect(page.getByRole('heading',{name:'Chi tiết hóa đơn',exact:true})).toBeVisible();await expect(page.getByRole('img',{name:'QR chuyển khoản hóa đơn SePay'})).toBeVisible();await expect(page.locator('main')).toContainText('1.000');await expect(page.getByText('Chủ nhà: NGUYEN VAN A',{exact:false})).toBeVisible();await expect(page.getByLabel('Số tiền thử (đồng)',{exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Tạo và gửi phiếu thử',exact:true})).toHaveCount(0);
- await page.reload();await expect(page.getByRole('img',{name:'QR chuyển khoản hóa đơn SePay'})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);mkdirSync('test-results/visual',{recursive:true});await page.screenshot({path:`test-results/visual/sepay-tenant-test-payment-${width}.png`,fullPage:true});
- f.setPaid();await page.getByRole('button',{name:'Kiểm tra trạng thái thanh toán',exact:true}).click();await expect(page.getByText('Đã thanh toán qua SePay',{exact:false})).toBeVisible();await expect(page.getByRole('img',{name:'QR chuyển khoản hóa đơn SePay'})).toHaveCount(0);expect(f.writes()).toBe(1);f.check();
-});
+for (const width of [1440, 390]) {
+  test(`SePay collection, tenant QR and manual withdrawal at ${width}px`, async ({ page, baseURL }) => {
+    await exercise(page, baseURL ?? 'http://localhost:3000', width);
+  });
+}

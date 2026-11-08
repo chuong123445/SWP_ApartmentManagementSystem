@@ -27,14 +27,111 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = "app.auth.secure-cookie=false")
 @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
 class AuthIntegrationTests {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean com.ancu.proptech.service.property.ai.DossierAiClient dossierAiClient;
     @Autowired MockMvc mvc;
     @Autowired AuthAccountRepository accounts;
     @Autowired PasswordEncoder passwords;
     @Autowired JwtEncoder jwtEncoder;
     @Autowired JwtDecoder jwtDecoder;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @Autowired jakarta.persistence.EntityManager entities;
     private AuthAccount owner;
     private final String password = "Auth-test-only!123";
     private record Login(String accessToken, Cookie refresh) {}
+
+    @Test void roleCatalogIsSharedAndMembershipHasTwoForeignKeys() {
+        assertEquals(List.of("ADMIN","OWNER","CUSTOMER"),jdbc.queryForList("SELECT code FROM auth_roles ORDER BY id",String.class));
+        assertEquals(2,jdbc.queryForObject("SELECT COUNT(*) FROM sys.foreign_keys WHERE parent_object_id=OBJECT_ID('dbo.auth_account_roles') AND referenced_object_id IN(OBJECT_ID('dbo.auth_accounts'),OBJECT_ID('dbo.auth_roles')) AND is_disabled=0 AND is_not_trusted=0",Integer.class));
+        owner.setRole(AuthAccount.Role.CUSTOMER);accounts.saveAndFlush(owner);
+        assertEquals(3,jdbc.queryForObject("SELECT COUNT(*) FROM auth_roles",Integer.class));
+        assertEquals("Chủ cho thuê",jdbc.queryForObject("SELECT name FROM auth_roles WHERE code='OWNER'",String.class));
+    }
+
+    @Test void accountRoleViewKeepsMissingIdentityAndUsesCanonicalMemberships() {
+        jdbc.update("UPDATE auth_accounts SET role='ADMIN' WHERE id=?", owner.getId());
+        var rows = jdbc.queryForList("SELECT * FROM dbo.vw_account_roles WHERE account_id=? ORDER BY role_id", owner.getId());
+        assertEquals(List.of("OWNER", "CUSTOMER"), rows.stream().map(row -> row.get("role_code")).toList());
+        assertEquals(List.of("Chủ cho thuê", "Người tìm thuê"), rows.stream().map(row -> row.get("role_name")).toList());
+        for (var row : rows) {
+            assertEquals(owner.getFullName(), row.get("full_name"));
+            assertNull(row.get("document_number"));
+            assertNull(row.get("identity_source"));
+            assertEquals("UNVERIFIED", row.get("identity_verification_status"));
+        }
+    }
+
+    @Test void accountRoleViewPreservesLeadingZeroAndDistinguishesIdentitySources() {
+        jdbc.update("""
+            INSERT dbo.account_identity_profiles(account_id,legal_name,document_number,date_of_birth,issue_date,issue_place,
+                permanent_address,current_address,verification_status,updated_at,version,local_fixture)
+            VALUES (?,N'Hồ sơ mẫu','001234567890','1990-01-01','2020-01-01',N'Nơi cấp mẫu',N'Địa chỉ mẫu',N'Địa chỉ mẫu',
+                'NOT_VERIFIED',SYSUTCDATETIME(),0,1)
+            """, owner.getId());
+        var profile = jdbc.queryForMap("SELECT * FROM dbo.vw_account_roles WHERE account_id=? AND role_code='OWNER'", owner.getId());
+        assertEquals("001234567890", profile.get("document_number"));
+        assertEquals("SELF_DECLARED", profile.get("identity_source"));
+        assertEquals("NOT_VERIFIED", profile.get("identity_verification_status"));
+        assertEquals(true, profile.get("identity_is_local_fixture"));
+
+        String externalNumber = String.format(Locale.ROOT, "0%011d", Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100_000_000_000L));
+        jdbc.update("""
+            INSERT dbo.auth_external_identities(account_id,issuer,subject,document_number,legal_name,date_of_birth,gender,
+                address,source,verification_status,verified_at,version)
+            VALUES (?,'https://view-test.example.invalid/',?,?,N'VNeID mẫu','1990-01-01',N'Không khai báo',N'Địa chỉ mẫu',
+                'AUTH0_VNEID_SIMULATION','VERIFIED',SYSUTCDATETIME(),0)
+            """, owner.getId(), UUID.randomUUID().toString(), externalNumber);
+        var rows = jdbc.queryForList("SELECT * FROM dbo.vw_account_roles WHERE account_id=?", owner.getId());
+        assertEquals(2, rows.size());
+        for (var row : rows) {
+            assertEquals(externalNumber, row.get("document_number"));
+            assertEquals("AUTH0_VNEID_SIMULATION", row.get("identity_source"));
+            assertEquals("VERIFIED", row.get("identity_verification_status"));
+            assertEquals(false, row.get("identity_is_local_fixture"));
+        }
+    }
+
+    @Test void startupReplayDoesNotRegrantMembershipFromLegacyProjection() throws Exception {
+        Login login=login(owner.getEmail(),password);Long id=owner.getId();
+        owner.setRole(AuthAccount.Role.CUSTOMER);accounts.saveAndFlush(owner);
+        jdbc.update("UPDATE auth_accounts SET role='OWNER' WHERE id=?",id);entities.clear();
+        for(String migration:List.of("V50__account_roles.sql","V52__role_catalog.sql")){
+            var resource=new org.springframework.core.io.ClassPathResource("db/migration/"+migration);
+            String sql;try(var input=resource.getInputStream()){sql=new String(input.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);}
+            for(String batch:sql.split("(?im)^GO\\s*$"))if(!batch.isBlank())jdbc.execute(batch);
+        }
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM auth_account_roles a JOIN auth_roles r ON r.id=a.role_id WHERE a.account_id=? AND r.code='OWNER'",Integer.class,id));
+        mvc.perform(get("/api/v1/owner/apartments").header("Authorization","Bearer "+login.accessToken())).andExpect(status().isForbidden());
+    }
+
+    @Test void ownerMembershipsAppearInLoginJwtMeAndRefresh() throws Exception {
+        Login login=login(owner.getEmail(),password);
+        assertEquals(List.of("OWNER","CUSTOMER"),jwtDecoder.decode(login.accessToken()).getClaimAsStringList("roles"));
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+login.accessToken()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.roles.length()").value(2)).andExpect(jsonPath("$.roles[0]").value("OWNER")).andExpect(jsonPath("$.roles[1]").value("CUSTOMER"));
+        mvc.perform(post("/api/v1/auth/refresh").with(csrf().asHeader()).cookie(login.refresh()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.user.roles.length()").value(2)).andExpect(jsonPath("$.user.roles[0]").value("OWNER")).andExpect(jsonPath("$.user.roles[1]").value("CUSTOMER"));
+        assertEquals(2,jdbc.queryForObject("SELECT COUNT(*) FROM auth_account_roles WHERE account_id=?",Integer.class,owner.getId()));
+    }
+
+    @Test void legacyProjectionAndOldJwtCannotGrantRemovedOwnerMembership() throws Exception {
+        Login login=login(owner.getEmail(),password);Long id=owner.getId();
+        owner.setRole(AuthAccount.Role.CUSTOMER);accounts.saveAndFlush(owner);
+        jdbc.update("UPDATE auth_accounts SET role='OWNER' WHERE id=?",id);entities.clear();
+        mvc.perform(get("/api/v1/owner/apartments").header("Authorization","Bearer "+login.accessToken())).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+login.accessToken())).andExpect(status().isOk()).andExpect(jsonPath("$.roles.length()").value(1)).andExpect(jsonPath("$.roles[0]").value("CUSTOMER"));
+    }
+
+    @Test void forgedAdminClaimDoesNotOverrideDatabaseMembershipAndAdminIsNotCustomer() throws Exception {
+        Login login=login(owner.getEmail(),password);var original=jwtDecoder.decode(login.accessToken());
+        var claims=JwtClaimsSet.builder().issuer(AuthService.ISSUER).audience(List.of(AuthService.AUDIENCE)).subject(original.getSubject())
+            .issuedAt(Instant.now()).expiresAt(Instant.now().plusSeconds(60)).claim("sid",original.getClaimAsString("sid")).claim("roles",List.of("ADMIN")).build();
+        String forged=jwtEncoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(),claims)).getTokenValue();
+        mvc.perform(get("/api/v1/admin/property-dossiers").header("Authorization","Bearer "+forged)).andExpect(status().isForbidden());
+        owner.setRole(AuthAccount.Role.ADMIN);accounts.saveAndFlush(owner);
+        assertEquals(Set.of(AuthAccount.Role.ADMIN),owner.getRoles());
+        mvc.perform(get("/api/v1/me/invoices").header("Authorization","Bearer "+login.accessToken())).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/owner/apartments").header("Authorization","Bearer "+login.accessToken())).andExpect(status().isForbidden());
+    }
 
     @BeforeEach void fixture() {
         owner = new AuthAccount();

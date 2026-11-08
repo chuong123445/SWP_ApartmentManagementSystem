@@ -11,7 +11,7 @@ for (const width of [1440, 390]) {
       const doc = { id: '4', rentalRequestId: '39', contractNumber: 'HD-4', status: scenario === 'scheduled' ? 'DRAFT' : 'ACTIVE', version: 0, startDate: '2026-05-01', endDate: '2026-10-31', monthlyRent: '8500000', deposit: '2000000', clauses: [],
         snapshot: { owner: { id: '3', fullName: 'Chủ nhà mẫu' }, customer: { id: '2', fullName: 'Hữu Hà' }, asset: { title: 'HH205.TEST', amenities: [] } },
         signing: { state: 'SIGNED', contentHash: 'fixture', ownerAccountId: '3', customerAccountId: '2', ownerSignedAt: '2026-10-30T00:00:00Z', customerSignedAt: '2026-10-30T00:00:00Z' },
-        lifecycle: { version: 3, expired: scenario !== 'owner-before-end', previousContractId: scenario === 'scheduled' ? '2' : null, renewalContractId: null, handover: null, handoverAvailable: scenario === 'owner-expired', renewalRequest: scenario === 'owner-accept' || scenario === 'owner-reject' ? renewal : null } };
+        lifecycle: { version: 3, expired: scenario !== 'owner-before-end', previousContractId: scenario === 'scheduled' ? '2' : null, renewalContractId: null, handover: null, renewalRequestAvailable: true, renewalRequestOpensOn: '2026-10-21', handoverAvailable: scenario === 'owner-expired', renewalRequest: scenario === 'owner-accept' || scenario === 'owner-reject' ? renewal : null } };
       page.on('pageerror', error => errors.push(error.message));
       await page.route('**/api/**', async route => {
         const path = new URL(route.request().url()).pathname;
