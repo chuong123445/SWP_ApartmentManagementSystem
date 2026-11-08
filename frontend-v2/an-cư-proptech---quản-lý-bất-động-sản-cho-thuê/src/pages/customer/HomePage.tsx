@@ -13,12 +13,11 @@ import { TenantHomePanel } from '@/components/billing/TenantHomePanel';
 import { catalogCity, homeCities } from '@/data/homeCities';
 
 export function HomePage({ embedded = false }: { embedded?: boolean }) {
-  const [q, setQ] = useState('');
   const [address, setAddress] = useState({ city: '', district: '', ward: '' });
   const [minRent, setMinRent] = useState('');
   const [maxRent, setMaxRent] = useState('');
   const [bedrooms, setBedrooms] = useState('');
-  const [minArea,setMinArea]=useState('');const [maxArea,setMaxArea]=useState('');const [occupants,setOccupants]=useState('');
+  const [occupants, setOccupants] = useState('');
   const [validation, setValidation] = useState('');
   const [filters, setFilters] = useState<ApartmentFilters>({ page: 0, size: 6 });
   const { data, loading, error, reload } = useApartments(filters);
@@ -32,11 +31,11 @@ export function HomePage({ embedded = false }: { embedded?: boolean }) {
   };
   const search = (location = address) => {
     if (!validRent()) return;
-    setFilters({ q, ...location, minRent, maxRent, bedrooms,minArea,maxArea,occupants, page: 0, size: 6 });
+    setFilters({ ...location, minRent, maxRent, bedrooms, occupants, page: 0, size: 6 });
     results.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   const clear = () => {
-    setQ(''); setAddress({ city: '', district: '', ward: '' }); setMinRent(''); setMaxRent(''); setBedrooms('');setMinArea('');setMaxArea('');setOccupants(''); setValidation('');
+    setAddress({ city: '', district: '', ward: '' }); setMinRent(''); setMaxRent(''); setBedrooms('');setOccupants(''); setValidation('');
     setFilters({ page: 0, size: 6 });
   };
   const content = <div className="home-wrap">
@@ -57,19 +56,16 @@ export function HomePage({ embedded = false }: { embedded?: boolean }) {
         <h1>Tìm căn hộ cho thuê{filters.city ? ` tại ${filters.city}` : ' phù hợp với bạn'}</h1>
         <p>Chọn khu vực, ngân sách và không gian sống bạn cần.</p>
         <form className="home-filters" aria-label="Bộ lọc căn hộ" onSubmit={event => { event.preventDefault(); search(); }}>
-          <div><label htmlFor="apartment-search" className="home-filter-label"><Search aria-hidden="true" size={18} />Tên hoặc địa chỉ</label><input id="apartment-search" value={q} onChange={e => setQ(e.target.value)} maxLength={120} placeholder="Tìm căn hộ, khu vực..." /></div>
           <AddressFilter {...address} onChange={setAddress} {...addresses} />
           <div><label htmlFor="apartment-min-rent" className="home-filter-label"><HomeIcon name="money" />Giá tối thiểu / tháng</label><input id="apartment-min-rent" type="number" min="0" step="0.01" value={minRent} onChange={e => setMinRent(e.target.value)} placeholder="Không giới hạn" /></div>
           <div><label htmlFor="apartment-max-rent" className="home-filter-label"><HomeIcon name="money" />Giá tối đa / tháng</label><input id="apartment-max-rent" type="number" min="0" step="0.01" value={maxRent} onChange={e => setMaxRent(e.target.value)} placeholder="Không giới hạn" /></div>
           <div><label htmlFor="apartment-bedrooms" className="home-filter-label"><HomeIcon name="bed" />Số phòng ngủ</label><select id="apartment-bedrooms" value={bedrooms} onChange={e => setBedrooms(e.target.value)}><option value="">Không giới hạn</option><option value="0">Studio (0 phòng ngủ)</option>{[1,2,3,4,5].map(n => <option key={n} value={n}>{n} phòng ngủ</option>)}</select></div>
-          <div><label htmlFor="apartment-min-area" className="home-filter-label">Diện tích tối thiểu (m²)</label><input id="apartment-min-area" type="number" min="0" step="0.01" value={minArea} onChange={e=>setMinArea(e.target.value)}/></div>
-          <div><label htmlFor="apartment-max-area" className="home-filter-label">Diện tích tối đa (m²)</label><input id="apartment-max-area" type="number" min="0" step="0.01" value={maxArea} onChange={e=>setMaxArea(e.target.value)}/></div>
           <div><label htmlFor="apartment-occupants" className="home-filter-label">Số người cần ở</label><input id="apartment-occupants" type="number" min="1" max="100" step="1" value={occupants} onChange={e=>setOccupants(e.target.value)}/></div>
           <button type="submit" className="home-primary home-search"><Search aria-hidden="true" size={18} />Tìm kiếm</button>
           {validation && <p role="alert" className="home-filter-error">{validation}</p>}
         </form>
       </section>
-      <AiSearchPanel onApply={next=>{setQ(next.q??'');setAddress({city:next.city??'',district:next.district??'',ward:next.ward??''});setMinRent(next.minRent??'');setMaxRent(next.maxRent??'');setBedrooms(next.bedrooms??'');setMinArea(next.minArea??'');setMaxArea(next.maxArea??'');setOccupants(next.occupants??'');setValidation('');setFilters({...next,page:0,size:6});results.current?.scrollIntoView({behavior:'smooth',block:'start'});}}/>
+      <AiSearchPanel onApply={next=>{setAddress({city:next.city??'',district:next.district??'',ward:next.ward??''});setMinRent(next.minRent??'');setMaxRent(next.maxRent??'');setBedrooms(next.bedrooms??'');setOccupants(next.occupants??'');setValidation('');setFilters({...next,page:0,size:6});results.current?.scrollIntoView({behavior:'smooth',block:'start'});}}/>
       <section ref={results} className="home-section home-results" aria-labelledby="home-results-title" aria-busy={loading}>
         <div className="home-heading"><div><h2 id="home-results-title">Căn hộ cho thuê</h2><p role="status">{loading ? 'Đang tải căn hộ...' : `${data?.totalElements ?? 0} căn hộ phù hợp`}</p></div><button type="button" className="home-text-link" onClick={clear}>Xóa bộ lọc</button></div>
         {error && <div role="alert" className="home-error">{error}<button type="button" onClick={reload}>Thử lại</button></div>}
