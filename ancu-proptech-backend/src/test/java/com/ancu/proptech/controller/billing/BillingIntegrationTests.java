@@ -204,6 +204,22 @@ class BillingIntegrationTests {
         var invoice=create(ownerToken,"{\"period\":\"2026-10\",\"baselineVersion\":1,\"useSavedReadings\":true,\"dueDate\":\"2026-11-05\"}").andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         for(String field:List.of("electricityQuantity","electricityAmount","waterQuantity","waterAmount","totalAmount"))assertEquals(0,new BigDecimal(JsonPath.<String>read(preview,"$.estimate."+field)).compareTo(new BigDecimal(JsonPath.<String>read(invoice,"$."+field))));
     }
+    @Autowired com.ancu.proptech.repository.payment.InvoicePaymentRepository invoicePayments;
+    @Test void cashSourceOnlyAcceptsPaidInvoicesAndCannotDuplicateOrCrossOwner()throws Exception{
+        String id=createDraft();send(ownerToken,id,0).andExpect(status().isOk());
+        String command="{\"type\":\"INVOICE\",\"id\":"+id+",\"transactionDate\":\"2026-11-04\",\"paymentMethod\":\"CASH\"}";
+        mvc.perform(post("/api/v1/owner/cash-entries/from-source").header("Authorization","Bearer "+ownerToken).contentType("application/json").content(command)).andExpect(status().isConflict());
+        var p=new com.ancu.proptech.model.payment.InvoicePayment();p.setInvoiceId(Long.valueOf(id));p.setOwnerId(owner.getId());p.setPaymentCode("CASH"+UUID.randomUUID().toString().replace("-","").substring(0,20));p.setBank("MB");p.setAccountNumber("12345678");p.setAccountHolderName("Test owner");p.setAmount(new BigDecimal("5540000"));p.setPaidAt(java.time.Instant.parse("2026-10-31T18:00:00Z"));invoicePayments.saveAndFlush(p);
+        mvc.perform(get("/api/v1/owner/cash-entries/sources").param("month","2026-10").header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get("/api/v1/owner/cash-entries/sources").param("month","2026-11").header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.items[0].suggestedDate").value("2026-11-01"));
+        mvc.perform(post("/api/v1/owner/cash-entries/from-source").header("Authorization","Bearer "+token(otherOwner)).contentType("application/json").content(command)).andExpect(status().isNotFound());
+        mvc.perform(post("/api/v1/owner/cash-entries/from-source").header("Authorization","Bearer "+tenantToken).contentType("application/json").content(command)).andExpect(status().isForbidden());
+        String result=mvc.perform(post("/api/v1/owner/cash-entries/from-source").header("Authorization","Bearer "+ownerToken).contentType("application/json").content(command)).andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("DRAFT")).andExpect(jsonPath("$.paymentMethod").value("BANK_TRANSFER")).andExpect(jsonPath("$.transactionDate").value("2026-11-01")).andExpect(jsonPath("$.sourceType").value("INVOICE")).andReturn().getResponse().getContentAsString();
+        Number cashId=JsonPath.read(result,"$.id");
+        mvc.perform(post("/api/v1/owner/cash-entries/from-source").header("Authorization","Bearer "+ownerToken).contentType("application/json").content(command)).andExpect(status().isCreated()).andExpect(jsonPath("$.id").value(cashId.intValue()));
+        mvc.perform(get("/api/v1/owner/cash-entries/sources").param("month","2026-11").header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM cash_entries WHERE source_invoice_id=?",Integer.class,id));
+    }
     private void cleanupCommitted(){
         String cid=contract.getId().toString(),aid=apartment.getId().toString();
         jdbc.update("DELETE FROM invoice_notifications WHERE invoice_id IN(SELECT id FROM rental_invoices WHERE contract_id=?)",cid);jdbc.update("DELETE FROM rental_invoices WHERE contract_id=?",cid);jdbc.update("DELETE FROM rental_contracts WHERE id=?",cid);jdbc.update("DELETE FROM rental_apartment_amenities WHERE apartment_id=?",aid);jdbc.update("DELETE FROM rental_apartments WHERE id=?",aid);jdbc.update("DELETE FROM rental_properties WHERE id=?",property.getId().toString());
