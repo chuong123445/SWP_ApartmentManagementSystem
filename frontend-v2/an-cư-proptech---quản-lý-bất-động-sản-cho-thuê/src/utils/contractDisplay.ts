@@ -12,7 +12,7 @@ export function contractLifecycleActions(draft: ContractDraft, accountId?: strin
 }
 
 export function contractStatusLabel(status: string, endDate: string, today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())) {
-  if (status === 'CANCELLED') return 'Đã hủy trước hiệu lực';
+  if (status === 'CANCELLED' || status === 'cancelled') return 'Đã hủy trước hiệu lực';
   if (status === 'ENDED' || status === 'terminated') return 'Đã kết thúc';
   if (status === 'DRAFT' || status === 'draft') return 'Bản nháp';
   if (endDate < today) return 'Hết hạn — chờ xử lý';

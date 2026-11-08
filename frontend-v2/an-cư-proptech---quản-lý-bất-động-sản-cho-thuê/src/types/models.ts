@@ -83,7 +83,7 @@ export interface Contract {
   monthlyRent: number;
   deposit: number;
   paymentCycle: number; // months
-  status: 'draft' | 'active' | 'expiring' | 'terminated';
+  status: 'draft' | 'active' | 'expiring' | 'terminated' | 'cancelled';
   note?: string;
   signingMethod?: 'VNPT SmartCA' | 'Ký OTP SMS' | 'Chữ ký số Viettel-CA';
   signedDate?: string;
