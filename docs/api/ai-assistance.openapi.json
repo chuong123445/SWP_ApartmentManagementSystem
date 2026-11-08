@@ -1,0 +1,183 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "An Cu AI assistance",
+    "version": "1.0.0",
+    "description": "Customer search intent only; inventory remains GET /api/v1/apartments. See customer-ai-search-v1 ADR."
+  },
+  "paths": {
+    "/api/v1/apartments/ai-search": {
+      "post": {
+        "description": "Return runId/sourceHash/model/promptVersion/createdAt/filters/notes/canApply. No generated inventory. 10 requests/minute/process per remote hash.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "text",
+                  "consent"
+                ],
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000
+                  },
+                  "consent": {
+                    "const": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Validated result"
+          },
+          "400": {
+            "description": "Invalid input/consent"
+          },
+          "404": {
+            "description": "Expired or unknown run"
+          },
+          "409": {
+            "description": "Already applied with different filters"
+          },
+          "429": {
+            "description": "Rate/capacity limit"
+          },
+          "503": {
+            "description": "AI unavailable/invalid result; normal search still available"
+          }
+        }
+      }
+    },
+    "/api/v1/apartments/ai-search/{id}/apply": {
+      "post": {
+        "description": "Return reviewed filters and record user acceptance. UUID capability expires in15min; later changes use ordinary filters or a new run.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "filters"
+                ],
+                "properties": {
+                  "filters": {
+                    "$ref": "#/components/schemas/Filters"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Validated result"
+          },
+          "400": {
+            "description": "Invalid input/consent"
+          },
+          "404": {
+            "description": "Expired or unknown run"
+          },
+          "409": {
+            "description": "Already applied with different filters"
+          },
+          "429": {
+            "description": "Rate/capacity limit"
+          },
+          "503": {
+            "description": "AI unavailable/invalid result; normal search still available"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Filters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "q": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "district": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ward": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "minRent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "maxRent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "minArea": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "maxArea": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bedrooms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "occupants": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

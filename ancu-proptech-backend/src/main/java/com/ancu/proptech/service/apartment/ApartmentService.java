@@ -48,6 +48,11 @@ public class ApartmentService {
 
     @Transactional(readOnly = true)
     public PageResponse<ApartmentSummary> search(String q, String city, String district, String ward, BigDecimal minRent, BigDecimal maxRent, Integer bedrooms, int page, int size) {
+        return search(q,city,district,ward,minRent,maxRent,bedrooms,page,size,null,null,null);
+    }
+    @Transactional(readOnly=true)
+    public PageResponse<ApartmentSummary> search(String q,String city,String district,String ward,BigDecimal minRent,BigDecimal maxRent,Integer bedrooms,int page,int size,BigDecimal minArea,BigDecimal maxArea,Integer occupants){
+        if((minArea!=null&&minArea.signum()<0)||(maxArea!=null&&maxArea.signum()<0)||(minArea!=null&&maxArea!=null&&minArea.compareTo(maxArea)>0)||(occupants!=null&&(occupants<1||occupants>100)))throw new ApiException(HttpStatus.BAD_REQUEST,"VALIDATION_ERROR","Bộ lọc diện tích/số người không hợp lệ.");
         validatePage(page, size);
         if ((q != null && q.length() > 120) || (city != null && city.length() > 80) || (district != null && district.length() > 80) || (ward != null && ward.length() > 80)
                 || (minRent != null && minRent.signum() < 0) || (maxRent != null && maxRent.signum() < 0)
@@ -66,6 +71,9 @@ public class ApartmentService {
             if (minRent != null) predicates.add(cb.greaterThanOrEqualTo(root.get("advertisedMonthlyRent"), minRent));
             if (maxRent != null) predicates.add(cb.lessThanOrEqualTo(root.get("advertisedMonthlyRent"), maxRent));
             if (bedrooms != null) predicates.add(cb.equal(root.get("bedrooms"), bedrooms));
+            if(minArea!=null)predicates.add(cb.greaterThanOrEqualTo(root.get("areaM2"),minArea));
+            if(maxArea!=null)predicates.add(cb.lessThanOrEqualTo(root.get("areaM2"),maxArea));
+            if(occupants!=null)predicates.add(cb.greaterThanOrEqualTo(root.get("maxOccupants"),occupants));
             return cb.and(predicates.toArray(Predicate[]::new));
         };
         Specification<Apartment> vacant = (root, query, cb) -> cb.equal(root.get("availability"), Apartment.Availability.VACANT);
