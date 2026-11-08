@@ -54,13 +54,9 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
           {activeTab === 'dashboard' && (
             <DashboardPage
               propertyName={navigation.selectedBuildingId === 'all' ? 'Tất cả tài sản' : initialBuildings.find(p => p.id === navigation.selectedBuildingId)?.name ?? 'Tài sản'}
-              rooms={rooms}
-              invoices={invoices}
-              tickets={tickets}
-              contracts={contracts}
+              report={workspace.financialReport}
+              counters={workspace.ownerCounters.data}
               onNavigateTab={setActiveTab}
-              onOpenInvoiceModal={(inv) => setSelectedInvoice(inv)}
-              onOpenRoomModal={(rm) => setSelectedRoom(rm)}
             />
           )}
 
@@ -132,7 +128,7 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
             />
           )}
 
-          {activeTab === 'reports' && <ReportsPage rooms={rooms} buildings={initialBuildings} invoices={invoices} contracts={contracts} selectedPropertyId={navigation.selectedBuildingId} loading={workspace.billingLoading||workspace.inventoryLoading} />}
+          {activeTab === 'reports' && <ReportsPage report={workspace.financialReport} propertyName={navigation.selectedBuildingId === 'all' ? 'Tất cả tài sản' : initialBuildings.find(p => p.id === navigation.selectedBuildingId)?.name ?? 'Tài sản'} />}
 
           {activeTab === 'settings' && (
             <SettingsPage key={navigation.selectedBuildingId} propertyId={navigation.selectedBuildingId} />
