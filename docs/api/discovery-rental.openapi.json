@@ -85,6 +85,37 @@
               "type": "integer",
               "minimum": 0
             }
+          },
+          {
+            "name": "minArea",
+            "in": "query",
+            "required": false,
+            "description": "Area boundary in m², applied on the same apartment.",
+            "schema": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "maxArea",
+            "in": "query",
+            "required": false,
+            "description": "Area boundary in m², applied on the same apartment.",
+            "schema": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "occupants",
+            "in": "query",
+            "required": false,
+            "description": "Minimum unit capacity required; applied with all other filters on the same public VACANT apartment.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
           }
         ],
         "responses": {
