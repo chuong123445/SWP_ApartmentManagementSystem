@@ -1,3 +1,4 @@
+import { externalDepositNotice } from '@/utils/depositPolicy';
 import type { ContractParty, ContractSnapshot, ContractTerms } from '@/types/contract';
 import { formatRent } from '@/utils/format';
 const missing = 'Chưa có dữ liệu';
@@ -24,7 +25,7 @@ export function ContractReview({ snapshot, terms, number, status = 'DRAFT' }: { 
     <PartyReview party={snapshot.owner} title="Bên cho thuê (Bên A)" /><PartyReview party={snapshot.customer} title="Bên thuê (Bên B)" /><AssetReview snapshot={snapshot} />
     <section className="border border-slate-200 rounded-xl p-4 space-y-4"><h3 className="font-bold">Điều kiện thuê</h3><ReviewFields fields={[
       ['Bắt đầu', terms.startDate], ['Kết thúc', terms.endDate], ['Tiền thuê / tháng (VND)', formatRent(terms.monthlyRent)], ['Đặt cọc (VND)', formatRent(terms.deposit)], ['Ngày thanh toán mỗi tháng', terms.paymentDay], ['Phương thức thanh toán', terms.paymentMethod], ['Đơn giá điện (VND/kWh)', formatRent(terms.electricityUnitPrice)], [terms.waterBillingMode==='PER_PERSON'?'Nước (VND/người/tháng)':'Đơn giá nước (VND/m³)', formatRent(terms.waterUnitPrice)],...(terms.waterBillingMode==='PER_PERSON'?[['Số người',terms.occupantCount??1] as [string,number]]:[]),['Internet / tháng (VND)',formatRent(terms.internetFee??'0')],['Vệ sinh và rác / tháng (VND)',formatRent(terms.garbageFee??'0')], ['Mục đích thuê', terms.usagePurpose],
-    ]} /></section>
+    ]} /><p className="text-xs text-slate-600">{externalDepositNotice}</p></section>
     <section className="space-y-4"><h3 className="font-bold">Điều khoản chi tiết</h3>{terms.clauses.map((c, i) => <section key={i} className="rounded-xl border border-slate-200 p-4"><h4 className="font-semibold">Điều {i + 1}. {c.title}</h4><p className="mt-2 text-sm leading-relaxed whitespace-pre-wrap">{c.body}</p></section>)}</section>
     <section className="grid grid-cols-2 gap-4 text-center border-t border-slate-200 pt-5">{[['BÊN CHO THUÊ (BÊN A)', snapshot.owner.fullName], ['BÊN THUÊ (BÊN B)', snapshot.customer.fullName]].map(([label, name]) => <div key={label}><h3 className="font-bold text-sm">{label}</h3><p className="text-xs text-slate-500 mt-2">Ký, ghi rõ họ tên</p><div className="h-24 border border-dashed rounded-lg my-3" /><p className="font-semibold text-sm">{name}</p></div>)}</section>
     <p className="text-xs text-slate-500">Lưu hợp đồng để xem bản PDF A4 và ký tay xác nhận. Nội dung được khóa sau chữ ký đầu tiên; quan hệ thuê chỉ kích hoạt sau khi cả hai bên ký.</p>

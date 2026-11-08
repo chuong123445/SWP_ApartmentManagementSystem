@@ -25,7 +25,7 @@ export function DashboardPage({propertyName,report,counters,onNavigateTab}:{prop
         <FinancialCard label="Phiếu bổ sung chưa thu — mọi kỳ" value={money(data.arrears.additionalAmount)} note={`${data.arrears.additionalCount} phiếu gắn đúng người thuê.`}/>
       </section>
       <div className="flex flex-wrap gap-2">{[['reports','Mở báo cáo năm'],['contracts','Xử lý hợp đồng'],['maintenance','Quản lý bảo trì'],['finance','Mở sổ quỹ']].map(([tab,label])=><button key={tab} onClick={()=>onNavigateTab(tab as ActiveTab)} className="px-4 py-2 text-sm border border-slate-300 rounded-lg bg-white">{label}</button>)}</div>
-      <p className="text-xs text-slate-500">Tiền thu theo ngày thanh toán có thể thuộc hóa đơn kỳ khác. Sổ quỹ thủ công và các khoản cọc/rút ví được theo dõi riêng; chưa dùng số liệu này để tính lợi nhuận.</p>
+      <p className="text-xs text-slate-500">Tiền thu theo ngày thanh toán có thể thuộc hóa đơn kỳ khác. Cọc do hai bên tự quản lý ngoài hệ thống; sổ quỹ thủ công và rút ví được theo dõi riêng; chưa dùng số liệu này để tính lợi nhuận.</p>
     </>}
   </div>;
 }

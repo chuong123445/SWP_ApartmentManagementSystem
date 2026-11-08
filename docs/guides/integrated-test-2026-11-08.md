@@ -2,6 +2,8 @@
 
 Nhánh: `test/system-improvements-20261108`.
 
+Quyết định cọc mới nhất: Owner và người thuê tự đối soát/thu/hoàn ngoài hệ thống; số cọc hợp đồng là thỏa thuận, không thực thu/số dư ví. Đã bỏ nhãn/nút giữ cọc Escrow giả và làm rõ ước tính biên bản cũ. [Rà soát cọc ngoài hệ thống](../reports/external-deposit-review-2026-11-08.md).
+
 FIX-09 được bổ sung từ nhánh feat/early-termination-handover: backend `aedfadf` và giao diện kết thúc sớm/bàn giao cư trú mới. [Hướng dẫn và bằng chứng FIX-09](../reports/contract-exit-ui-2026-11-08.md). FIX-10/11 tạm hoãn theo yêu cầu; chưa triển khai quản lý/hoàn cọc.
 
 Rà soát bổ sung: `1ea9dc0` giữ nhãn hủy trước hiệu lực trong bảng quan hệ thuê; `e87d0fc` cho áp dụng bộ lọc người dùng bổ sung sau khi AI trả gợi ý rỗng. Xem [báo cáo kiểm tra tích hợp](../reports/integrated-review-2026-11-08.md). Checklist thủ công với DB ứng dụng bên dưới vẫn chưa chạy; các kiểm tra tự động dùng DB test và API fixtures.

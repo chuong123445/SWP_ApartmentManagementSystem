@@ -21,7 +21,7 @@ export function buildFinancialCsv(data:OwnerFinancialSummary){
     ...data.months.map(month=>[month.period,month.invoices.invoiceCount,month.invoices.billedAmount,month.invoices.paidInvoiceAmount,month.invoices.unpaidInvoiceAmount,month.receipts.monthlyInvoiceAmount,month.receipts.additionalAmount,month.receipts.totalAmount]),[],
     ['Theo tài sản'],['Mã tài sản','Tài sản','Tổng căn hiện tại','Đang ở hiện tại','Trống hiện tại','Số hóa đơn','HĐ đã gửi','Đã thanh toán theo kỳ HĐ','Chưa thu theo kỳ HĐ','Nhận từ HĐ tháng','Nhận từ phiếu bổ sung','Tổng tiền nhận'],
     ...data.properties.map(property=>[property.id,property.name,property.inventory.units,property.inventory.occupied,property.inventory.vacant,property.invoices.invoiceCount,property.invoices.billedAmount,property.invoices.paidInvoiceAmount,property.invoices.unpaidInvoiceAmount,property.receipts.monthlyInvoiceAmount,property.receipts.additionalAmount,property.receipts.totalAmount]),[],
-    ['Ghi chú','Tiền thanh toán có thể do nền tảng thu hộ; không phải số dư ví hoặc tiền đã rút về ngân hàng. Sổ quỹ thủ công, cọc, hoàn tiền, rút ví theo dõi riêng. Chưa tính lợi nhuận khi thiếu chi phí đầy đủ và đối soát. Tiền giữ nguyên chuỗi thập phân trong CSV; không phải tệp XLSX.'],
+    ['Ghi chú','Tiền thanh toán có thể do nền tảng thu hộ; không phải số dư ví hoặc tiền đã rút về ngân hàng. Tiền cọc do hai bên tự quản lý ngoài hệ thống, không tính vào báo cáo này. Sổ quỹ thủ công và rút ví theo dõi riêng. Chưa tính lợi nhuận khi thiếu chi phí đầy đủ và đối soát. Tiền giữ nguyên chuỗi thập phân trong CSV; không phải tệp XLSX.'],
   ];
   return '\uFEFF'+rows.map(row=>row.map(cell).join(',')).join('\r\n')+'\r\n';
 }

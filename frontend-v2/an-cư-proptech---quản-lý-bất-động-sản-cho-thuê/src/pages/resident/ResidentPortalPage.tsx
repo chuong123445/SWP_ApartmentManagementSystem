@@ -1,3 +1,5 @@
+import {billingMoney} from '@/services/billing/billingService';
+import { externalDepositNotice } from '@/utils/depositPolicy';
 import React, { useState } from 'react';
 import {
   Home,
@@ -161,18 +163,18 @@ export const ResidentPortalPage: React.FC<ResidentPortalPageProps> = ({
           </div>
         </div>
 
-        {/* Card 2: Hợp đồng & Tiền cọc Escrow */}
+        {/* Contract deposit is an agreement, not a platform balance. */}
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Hợp Đồng & Cọc Escrow</span>
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Hợp đồng và cọc thỏa thuận</span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-1">
                 <Lock className="w-3 h-3" />
-                MBBank Escrow
+                Hai bên tự quản lý
               </span>
             </div>
             <div className="text-xl font-bold text-emerald-700 mt-2">
-              {contract.deposit.toLocaleString('vi-VN')} đ
+              {currentTenant.contractDeposit == null ? 'Chưa có thông tin cọc' : billingMoney(currentTenant.contractDeposit)}
             </div>
             <span className="text-xs text-slate-500 mt-1 block">
               Mã HĐ: <strong className="text-slate-800">{contract.contractNumber}</strong>
@@ -182,11 +184,11 @@ export const ResidentPortalPage: React.FC<ResidentPortalPageProps> = ({
             </span>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+          <div className="mt-4 pt-3 border-t border-slate-100 space-y-2 text-xs">
             <span className="text-emerald-700 font-semibold flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5" /> Bảo chứng cọc 100%
+              <ShieldCheck className="w-3.5 h-3.5" /> Cọc ngoài hệ thống
             </span>
-            <span className="text-slate-400 font-mono text-[11px]">{contract.escrowCode}</span>
+            <span className="block text-slate-600 text-[11px] break-words">{externalDepositNotice}</span>
           </div>
         </div>
 
