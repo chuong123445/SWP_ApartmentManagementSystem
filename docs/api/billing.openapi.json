@@ -884,7 +884,8 @@
             "enum": [
               "DRAFT",
               "ACTIVE",
-              "ENDED"
+              "ENDED",
+              "CANCELLED"
             ]
           },
           "startDate": {
