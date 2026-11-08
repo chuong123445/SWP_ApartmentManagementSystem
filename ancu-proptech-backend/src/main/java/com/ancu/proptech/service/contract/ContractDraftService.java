@@ -27,6 +27,7 @@ import java.util.*;
 @Service @RequiredArgsConstructor
 public class ContractDraftService {
     static final int RENEWAL_REQUEST_DAYS = 10;
+    private final com.ancu.proptech.service.rental.SelectionCancellationGuard cancellationGuard;
     private final ContractDraftRepository drafts;
     private final RentalContractRepository contracts;
     private final RentalRequestRepository requests;
@@ -51,7 +52,9 @@ public class ContractDraftService {
     public ContractContextResponse context(Jwt jwt,Long requestId) {
         var owner=access.owner(jwt);
         var request=requests.findForOwnerUpdate(requestId,owner.getId()).orElseThrow(ContractDraftService::notFound);
+        entityManager.refresh(request);
         if(request.getStatus()!=RentalRequest.Status.ACCEPTED) throw conflict("REQUEST_NOT_ACCEPTED","Chỉ tạo hợp đồng từ yêu cầu đã chấp nhận.");
+        cancellationGuard.requireOpen(requestId);
         var existing=drafts.findByRentalRequestId(requestId).orElse(null);
         var a=request.getApartment();
         var snapshot=snapshot(request);
@@ -64,11 +67,12 @@ public class ContractDraftService {
     public ContractDraftResponse create(Jwt jwt,Long requestId,ContractDraftCreate input) {
         var owner=access.owner(jwt);
         var r=requests.findForOwnerUpdate(requestId,owner.getId()).orElseThrow(ContractDraftService::notFound);
+        entityManager.refresh(r);cancellationGuard.requireOpen(requestId);
         if(r.getVersion()!=input.getRequestVersion()) throw stale();
         if(r.getStatus()!=RentalRequest.Status.ACCEPTED) throw conflict("REQUEST_NOT_ACCEPTED","Chỉ tạo hợp đồng từ yêu cầu đã chấp nhận.");
         if(drafts.findByRentalRequestId(requestId).isPresent()) throw conflict("CONTRACT_ALREADY_EXISTS","Yêu cầu này đã có hợp đồng. Hãy mở bản đã lưu.");
         var a=apartments.findForRequest(r.getApartment().getId()).orElseThrow(ContractDraftService::notFound);
-        if(a.getAvailability()!=Apartment.Availability.CONTRACT_IN_PROGRESS || contracts.findByApartmentId(a.getId()).stream().anyMatch(c->c.getStatus()!=RentalContract.Status.ENDED))
+        if(a.getAvailability()!=Apartment.Availability.CONTRACT_IN_PROGRESS || contracts.findByApartmentId(a.getId()).stream().anyMatch(c->c.isOpen()))
             throw conflict("APARTMENT_NOT_SELECTED","Căn hộ không còn ở bước làm hợp đồng hoặc đã có hợp đồng hiện hành.");
         var customer=r.getCustomer();
         if(!customer.hasRole(AuthAccount.Role.CUSTOMER) || customer.getStatus()!=AuthAccount.Status.ACTIVE || !verification.isRentalVerified(customer))
@@ -107,8 +111,10 @@ public class ContractDraftService {
         var owner=access.owner(jwt);
         var requestId=drafts.findRequestId(id).orElseThrow(ContractDraftService::notFound);
         requests.findForOwnerUpdate(requestId,owner.getId()).orElseThrow(ContractDraftService::notFound);
+        cancellationGuard.requireOpen(requestId);
         var d=drafts.findByContractId(id).orElseThrow(ContractDraftService::notFound);
         var c=contracts.lockById(id).orElseThrow(ContractDraftService::notFound);
+        entityManager.refresh(c);entityManager.refresh(d);
         if(d.getContentVersion()!=input.getVersion()) throw stale();
         if(c.getStatus()!=RentalContract.Status.DRAFT) throw conflict("CONTRACT_NOT_DRAFT","Chỉ bản nháp mới được chỉnh sửa.");
         if(d.getOwnerSignedAt()!=null || d.getCustomerSignedAt()!=null)
@@ -139,6 +145,7 @@ public class ContractDraftService {
         }
         // Same lock order as editing: parent selection, then contract. No party can sign for the other.
         requests.findForOwnerUpdate(d.getRentalRequest().getId(),ownerId).orElseThrow(ContractDraftService::notFound);
+        cancellationGuard.requireOpen(d.getRentalRequest().getId());
         c=contracts.lockById(id).orElseThrow(ContractDraftService::notFound);
         // Refresh after acquiring the lock so a concurrent signature is not overwritten.
         d=drafts.findByContractId(id).orElseThrow(ContractDraftService::notFound);
@@ -180,7 +187,7 @@ public class ContractDraftService {
         if(d.getOwnerSignedAt()!=null && d.getCustomerSignedAt()!=null) {
             if(apartment.getAvailability()!=Apartment.Availability.CONTRACT_IN_PROGRESS)
                 throw conflict("APARTMENT_NOT_SELECTED","Căn hộ không còn ở bước làm hợp đồng.");
-            if(contracts.findByApartmentId(apartment.getId()).stream().anyMatch(other->!other.getId().equals(id) && other.getStatus()!=RentalContract.Status.ENDED))
+            if(contracts.findByApartmentId(apartment.getId()).stream().anyMatch(other->!other.getId().equals(id) && other.isOpen()))
                 throw conflict("ACTIVE_CONTRACT_EXISTS","Căn hộ đã có hợp đồng khác.");
             c.setStatus(RentalContract.Status.ACTIVE);
             // A signed agreement does not invent meter readings. Missing readings stay missing.
@@ -250,12 +257,12 @@ public class ContractDraftService {
             d.getTemplateType()==null?"APARTMENT":d.getTemplateType(),
             new ContractDraftResponse.Signing(c.getApartment().getProperty().getOwner().getId().toString(),c.getCustomer().getId().toString(),contentHash(d),
                 d.getOwnerSignedAt()!=null && d.getCustomerSignedAt()!=null?"SIGNED":d.getOwnerSignedAt()!=null?"WAITING_CUSTOMER":d.getCustomerSignedAt()!=null?"WAITING_OWNER":"UNSIGNED",
-                d.getOwnerSignedAt(),d.getCustomerSignedAt(),image(d.getOwnerSignature()),image(d.getCustomerSignature())),lifecycle(c),c.getWaterBillingMode().name(),c.getOccupantCount(),c.getInternetFee().toPlainString(),c.getGarbageFee().toPlainString());
+                d.getOwnerSignedAt(),d.getCustomerSignedAt(),image(d.getOwnerSignature()),image(d.getCustomerSignature())),lifecycle(c),c.getWaterBillingMode().name(),c.getOccupantCount(),c.getInternetFee().toPlainString(),c.getGarbageFee().toPlainString(),cancellationGuard.state(d.getRentalRequest().getId()));
     }
     private ContractDraftResponse.Lifecycle lifecycle(RentalContract c) {
         var today = rights.today();
         var renewalRequestOpensOn = c.getEndDate().minusDays(RENEWAL_REQUEST_DAYS);
-        var next=contracts.findByRenewalOfContractIdAndStatusNot(c.getId(),RentalContract.Status.ENDED).stream().findFirst().orElse(null);
+        var next=contracts.findByRenewalOfContractIdAndStatusNot(c.getId(),RentalContract.Status.ENDED).stream().filter(RentalContract::isOpen).findFirst().orElse(null);
         var h=handovers.findFirstByContractIdOrderByIdDesc(c.getId()).orElse(null);
         var r=renewalRequests.findByContractId(c.getId()).orElse(null);
         var renewal=r==null?null:new ContractDraftResponse.RenewalRequest(r.getId().toString(),r.getStatus().name(),r.getMessage(),r.getDecision(),r.getDecisionReason(),r.getCreatedAt(),r.getDecidedAt(),r.getVersion());

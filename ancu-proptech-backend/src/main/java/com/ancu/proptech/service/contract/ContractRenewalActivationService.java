@@ -43,7 +43,7 @@ public class ContractRenewalActivationService {
         if(previous.getStatus()!=RentalContract.Status.ACTIVE||!previous.getEndDate().isBefore(rights.today())||!c.getStartDate().isAfter(previous.getEndDate())||c.getEndDate().isBefore(rights.today()))throw blocked();
         if(handovers.existsByContractIdAndStatus(previous.getId(),ContractHandover.Status.PENDING)||invoices.existsByContractIdAndStatus(previous.getId(),RentalInvoice.Status.DRAFT))throw blocked();
         var a=apartments.findForRequest(c.getApartment().getId()).orElseThrow();
-        if(a.getAvailability()!=Apartment.Availability.OCCUPIED||contracts.findByApartmentId(a.getId()).stream().anyMatch(other->!other.getId().equals(id)&&!other.getId().equals(previous.getId())&&other.getStatus()!=RentalContract.Status.ENDED))throw blocked();
+        if(a.getAvailability()!=Apartment.Availability.OCCUPIED||contracts.findByApartmentId(a.getId()).stream().anyMatch(other->!other.getId().equals(id)&&!other.getId().equals(previous.getId())&&other.isOpen()))throw blocked();
         var landlord=a.getProperty().getOwner();
         if(landlord.getStatus()!=AuthAccount.Status.ACTIVE||!landlord.hasRole(AuthAccount.Role.OWNER)||!verification.isVerified(landlord)||c.getCustomer().getStatus()!=AuthAccount.Status.ACTIVE||!verification.isRentalVerified(c.getCustomer()))throw blocked();
         rights.contract(a.getProperty(),c.getStartDate(),c.getEndDate());

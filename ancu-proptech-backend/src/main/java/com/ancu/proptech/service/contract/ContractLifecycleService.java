@@ -159,7 +159,7 @@ public class ContractLifecycleService {
         if(current.cost().compareTo(h.getUtilityAmount())!=0 || current.electricStart().compareTo(h.getElectricityStartReading())!=0 || current.waterStart().compareTo(h.getWaterStartReading())!=0)
             throw conflict("HANDOVER_SOURCE_CHANGED","Hóa đơn hoặc chỉ số đã thay đổi. Chủ nhà cần lập lại biên bản.");
         var a=apartments.findForRequest(c.getApartment().getId()).orElseThrow(ContractLifecycleService::missing);
-        if(a.getAvailability()!=Apartment.Availability.OCCUPIED || contracts.findByApartmentId(a.getId()).stream().anyMatch(other->!other.getId().equals(id)&&other.getStatus()!=RentalContract.Status.ENDED))
+        if(a.getAvailability()!=Apartment.Availability.OCCUPIED || contracts.findByApartmentId(a.getId()).stream().anyMatch(other->!other.getId().equals(id)&&other.isOpen()))
             throw conflict("INVALID_STATE","Phòng đang có quan hệ hợp đồng khác. Không thể trả phòng.");
         h.setStatus(ContractHandover.Status.CONFIRMED);h.setCustomerConfirmedAt(Instant.now());
         c.setStatus(RentalContract.Status.ENDED);c.setEndReason("HANDOVER");c.setEndedAt(Instant.now());
@@ -200,7 +200,7 @@ public class ContractLifecycleService {
     private void returnable(RentalContract c) {
         if(c.getStatus()!=RentalContract.Status.ACTIVE || c.getEndDate().isAfter(rights.today()))throw conflict("NOT_EXPIRED","Bàn giao khi hợp đồng đến ngày kết thúc hoặc đã hết hạn.");
     }
-    private RentalContract openRenewal(Long id){return contracts.findByRenewalOfContractIdAndStatusNot(id,RentalContract.Status.ENDED).stream().findFirst().orElse(null);}
+    private RentalContract openRenewal(Long id){return contracts.findByRenewalOfContractIdAndStatusNot(id,RentalContract.Status.ENDED).stream().filter(RentalContract::isOpen).findFirst().orElse(null);}
     private ContractHandover pending(Long id,long version){var h=handovers.findFirstByContractIdOrderByIdDesc(id).orElseThrow(ContractLifecycleService::missing);entities.refresh(h);
         if(h.getStatus()!=ContractHandover.Status.PENDING)throw conflict("INVALID_STATE","Biên bản không còn chờ xác nhận.");if(h.getVersion()!=version)throw stale();return h;}
     private void requireNoDraftInvoice(RentalContract c){if(invoices.existsByContractIdAndStatus(c.getId(),RentalInvoice.Status.DRAFT))throw conflict("OPEN_INVOICE_DRAFT","Cần xử lý hóa đơn nháp trước khi kết thúc thuê.");}

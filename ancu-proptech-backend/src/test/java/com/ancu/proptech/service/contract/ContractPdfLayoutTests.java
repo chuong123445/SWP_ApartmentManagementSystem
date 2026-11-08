@@ -17,7 +17,7 @@ class ContractPdfLayoutTests {
         for(int i=1;i<=7;i++)clauses.add(new ContractClause("Thỏa thuận "+i,longContent?"Hai bên thống nhất nội dung đã rà soát. ".repeat(35)+"KẾT THÚC ĐIỀU "+i:"Hai bên thống nhất giữ gìn tài sản và thực hiện đúng các khoản thanh toán đã thỏa thuận."));
         return new ContractDraftResponse(1L,1L,"HD-1","DRAFT",0,LocalDate.of(2026,11,1),LocalDate.of(2027,11,1),"2600000","3800","50000","2600000",3,"Chuyển khoản","Để ở",clauses,
             new ContractSnapshot(party,party,asset,new ContractSnapshot.ReceivingAccount("BANK-OMIT","ACCOUNT-OMIT","HOLDER-OMIT")),Instant.parse("2026-11-03T00:00:00Z"),"ROOM",
-            new ContractDraftResponse.Signing("1","2","a".repeat(64),"UNSIGNED",null,null,null,null),null,"PER_PERSON",2,"100000","30000");
+            new ContractDraftResponse.Signing("1","2","a".repeat(64),"UNSIGNED",null,null,null,null),null,"PER_PERSON",2,"100000","30000","NONE");
     }
     @Test void compactFormKeepsAgreedFieldsWithoutCatalogOrContactMetadata()throws Exception {
         byte[] bytes=new ContractPdfService().render(draft(false));

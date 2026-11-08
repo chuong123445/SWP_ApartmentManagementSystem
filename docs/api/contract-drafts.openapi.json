@@ -2063,7 +2063,8 @@
             "enum": [
               "DRAFT",
               "ACTIVE",
-              "ENDED"
+              "ENDED",
+              "CANCELLED"
             ]
           },
           "version": {
@@ -2102,6 +2103,17 @@
           },
           "garbageFee": {
             "type": "string"
+          },
+          "cancellationState": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "PENDING",
+              "CANCELLED",
+              "REJECTED",
+              "WITHDRAWN"
+            ],
+            "description": "PENDING pauses draft create/edit/sign; CANCELLED initial contract is read-only history, distinct from ENDED."
           }
         },
         "required": [
