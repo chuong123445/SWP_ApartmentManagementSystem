@@ -2,6 +2,8 @@
 
 Nhánh: `test/system-improvements-20261108`.
 
+Rà soát bổ sung: `1ea9dc0` giữ nhãn hủy trước hiệu lực trong bảng quan hệ thuê; `e87d0fc` cho áp dụng bộ lọc người dùng bổ sung sau khi AI trả gợi ý rỗng. Xem [báo cáo kiểm tra tích hợp](../reports/integrated-review-2026-11-08.md). Checklist thủ công với DB ứng dụng bên dưới vẫn chưa chạy; các kiểm tra tự động dùng DB test và API fixtures.
+
 Nhánh được tạo từ `a93f01d`, bao gồm toàn bộ 14 commit sau local `main` (`9138d17`). Các unit đã nối tiếp nhau trong lịch sử; không cần cherry-pick hay tạo merge commit rỗng. Các chức năng trước đó đã nằm trong main cũng được giữ lại. Mốc origin/main ở đây là ref local đã có; lượt này không fetch/push hoặc tạo PR.
 
 ## Chạy trên máy hiện tại
