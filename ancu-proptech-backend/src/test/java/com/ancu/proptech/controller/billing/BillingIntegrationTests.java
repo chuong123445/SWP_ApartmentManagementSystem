@@ -203,7 +203,7 @@ class BillingIntegrationTests {
         String json=create(ownerToken,"{\"period\":\"2026-10\",\"baselineVersion\":2,\"useSavedReadings\":true,\"dueDate\":\"2026-11-05\"}").andExpect(status().isCreated()).andExpect(jsonPath("$.electricityEndReading").value("1120")).andExpect(jsonPath("$.electricityUnitPrice").value("4000.00")).andExpect(jsonPath("$.waterBillingMode").value("PER_PERSON")).andReturn().getResponse().getContentAsString();
         assertEquals(0,new BigDecimal(JsonPath.<String>read(json,"$.totalAmount")).compareTo(new BigDecimal("5710000")));
         String id=JsonPath.read(json,"$.id");send(ownerToken,id,0).andExpect(status().isOk());
-        mvc.perform(get("/api/v1/owner/contracts/"+contract.getId()+"/billing-context").header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.period").value("2026-11")).andExpect(jsonPath("$.electricityStartReading").value("1120")).andExpect(jsonPath("$.savedReading").isEmpty());
+        mvc.perform(get("/api/v1/owner/contracts/"+contract.getId()+"/billing-context").header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.period").value("2026-11")).andExpect(jsonPath("$.electricityStartReading").value("1120.00")).andExpect(jsonPath("$.savedReading").isEmpty());
         mvc.perform(get("/api/v1/invoices/"+id).header("Authorization","Bearer "+tenantToken)).andExpect(status().isOk()).andExpect(jsonPath("$.electricityUnitPrice").value("4000.00"));
     }
     @Test void cannotCreateFromMissingSavedReadingsOrEditAfterInvoice()throws Exception{
@@ -213,9 +213,75 @@ class BillingIntegrationTests {
         create(ownerToken,body("2026-10",1,"1120","208")).andExpect(status().isCreated());
         saveMeter(ownerToken,body("2026-10",2,"1130","208")).andExpect(status().isConflict());
     }
+
+    private String changeBody(long version,long chain,String electric,String water){return "{\"version\":"+version+",\"billingVersion\":"+chain+",\"reason\":\"Correct meter\",\"electricityEndReading\":\""+electric+"\",\"waterEndReading\":\""+water+"\",\"dueDate\":\"2026-11-10\"}";}
+    private ResultActions edit(String token,String id,String body)throws Exception{return mvc.perform(patch("/api/v1/owner/invoices/"+id+"/draft").header("Authorization","Bearer "+token).contentType("application/json").content(body));}
+    private ResultActions cancel(String token,String id,long version,long chain)throws Exception{return mvc.perform(post("/api/v1/owner/invoices/"+id+"/cancel").header("Authorization","Bearer "+token).contentType("application/json").content("{\"version\":"+version+",\"billingVersion\":"+chain+",\"reason\":\"Duplicate draft\"}"));}
+    private ResultActions history(String token,String id)throws Exception{return mvc.perform(get("/api/v1/owner/invoices/"+id+"/history").header("Authorization","Bearer "+token));}
+    @Test void draftEditRecalculatesFrozenTermsAuditsAndFeedsNextSentBaseline()throws Exception{
+        String id=createDraft();contract.setMonthlyRent(new BigDecimal("9999999"));contract.setElectricityUnitPrice(new BigDecimal("9000"));contracts.saveAndFlush(contract);
+        var result=edit(ownerToken,id,changeBody(0,1,"1130.25","209.50")).andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1)).andExpect(jsonPath("$.billingVersion").value(2)).andExpect(jsonPath("$.dueDate").value("2026-11-10")).andReturn().getResponse().getContentAsString();
+        assertEquals(0,new BigDecimal(JsonPath.<String>read(result,"$.totalAmount")).compareTo(new BigDecimal("5598375")));
+        assertEquals(0,new BigDecimal(JsonPath.<String>read(result,"$.monthlyRent")).compareTo(new BigDecimal("5000000")));
+        assertEquals(0,new BigDecimal(JsonPath.<String>read(result,"$.electricityUnitPrice")).compareTo(new BigDecimal("3500")));
+        history(ownerToken,id).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2)).andExpect(jsonPath("$[1].action").value("UPDATED")).andExpect(jsonPath("$[1].reason").value("Correct meter")).andExpect(jsonPath("$[1].before.version").value(0)).andExpect(jsonPath("$[1].after.version").value(1));
+        assertEquals(0,jdbc.queryForObject("SELECT electricity_end_reading FROM billing_meter_readings WHERE contract_id=?",BigDecimal.class,contract.getId()).compareTo(new BigDecimal("1130.25")));
+        send(ownerToken,id,1).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/owner/contracts/"+contract.getId()+"/billing-context").header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.period").value("2026-11")).andExpect(jsonPath("$.electricityStartReading").value("1130.25"));
+        edit(ownerToken,id,changeBody(2,3,"1140","210")).andExpect(status().isConflict());cancel(ownerToken,id,2,3).andExpect(status().isConflict());
+        history(ownerToken,id).andExpect(jsonPath("$.length()").value(3)).andExpect(jsonPath("$[2].action").value("SENT"));
+    }
+    @Test void cancelledDraftIsRetainedPrivateAndCanBeRecreatedInSamePeriod()throws Exception{
+        String id=createDraft();edit(ownerToken,id,changeBody(0,1,"1130","209")).andExpect(status().isOk());
+        cancel(ownerToken,id,1,2).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CANCELLED")).andExpect(jsonPath("$.billingVersion").value(3));
+        cancel(ownerToken,id,1,2).andExpect(status().isOk()); // lost-response retry, one event
+        history(ownerToken,id).andExpect(jsonPath("$.length()").value(3)).andExpect(jsonPath("$[2].action").value("CANCELLED"));
+        send(ownerToken,id,2).andExpect(status().isConflict());
+        mvc.perform(get("/api/v1/invoices/"+id).header("Authorization","Bearer "+tenantToken)).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/me/invoices").header("Authorization","Bearer "+tenantToken)).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get("/api/v1/owner/invoices").param("filter","CANCELLED").header("Authorization","Bearer "+ownerToken)).andExpect(jsonPath("$.totalElements").value(1));
+        mvc.perform(get("/api/v1/owner/contracts/"+contract.getId()+"/billing-context").header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.period").value("2026-10")).andExpect(jsonPath("$.electricityStartReading").value("1000.00")).andExpect(jsonPath("$.savedReading.electricityEndReading").value("1130"));
+        String next=JsonPath.read(create(ownerToken,body("2026-10",3,"1130","209")).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(),"$.id");assertNotEquals(id,next);
+        cancel(ownerToken,next,0,4).andExpect(status().isOk());
+        create(ownerToken,body("2026-10",5,"1130","209")).andExpect(status().isCreated());
+        assertEquals(3,jdbc.queryForObject("SELECT COUNT(*) FROM rental_invoices WHERE contract_id=?",Integer.class,contract.getId()));
+    }
+    @Test void draftChangesRejectStaleTokensInvalidReadingsTamperingAndCrossAccountReads()throws Exception{
+        String id=createDraft();String valid=changeBody(0,1,"1130","209");
+        edit(token(otherOwner),id,valid).andExpect(status().isNotFound());cancel(token(otherOwner),id,0,1).andExpect(status().isNotFound());history(token(otherOwner),id).andExpect(status().isNotFound());
+        edit(tenantToken,id,valid).andExpect(status().isForbidden());cancel(tenantToken,id,0,1).andExpect(status().isForbidden());history(tenantToken,id).andExpect(status().isForbidden());
+        edit(ownerToken,id,changeBody(1,1,"1130","209")).andExpect(status().isConflict());edit(ownerToken,id,changeBody(0,0,"1130","209")).andExpect(status().isConflict());cancel(ownerToken,id,0,0).andExpect(status().isConflict());
+        edit(ownerToken,id,changeBody(0,1,"999","209")).andExpect(status().isBadRequest());edit(ownerToken,id,changeBody(0,1,"1130","199")).andExpect(status().isBadRequest());
+        edit(ownerToken,id,valid.replace("2026-11-10","2026-09-30")).andExpect(status().isBadRequest());edit(ownerToken,id,valid.replace("Correct meter"," ")).andExpect(status().isBadRequest());
+        for(String field:List.of("monthlyRent","totalAmount","period","electricityStartReading","occupantCount"))edit(ownerToken,id,valid.replace("{","{\""+field+"\":1,")).andExpect(status().isBadRequest());
+        history(ownerToken,id).andExpect(jsonPath("$.length()").value(1));edit(ownerToken,id,valid).andExpect(status().isOk());
+    }
+    @Test void perPersonEditRetainsOccupantsAndTariffs()throws Exception{
+        contract.setWaterBillingMode(com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.PER_PERSON);contract.setOccupantCount(2);contracts.saveAndFlush(contract);String id=createDraft();
+        contract.setOccupantCount(9);contracts.saveAndFlush(contract);
+        var result=edit(ownerToken,id,changeBody(0,1,"1130","999")).andExpect(status().isOk()).andExpect(jsonPath("$.occupantCount").value(2)).andReturn().getResponse().getContentAsString();
+        assertEquals(0,new BigDecimal(JsonPath.<String>read(result,"$.waterEndReading")).compareTo(new BigDecimal("200")));assertEquals(0,new BigDecimal(JsonPath.<String>read(result,"$.waterAmount")).compareTo(new BigDecimal("30000")));
+    }
+    @Test void concurrentSendAndCancelHaveOneWinnerAndConsistentHistory()throws Exception{
+        String id=createDraft();TestTransaction.flagForCommit();TestTransaction.end();var pool=Executors.newFixedThreadPool(2);var gate=new CountDownLatch(1);
+        try{var a=pool.submit(()->{gate.await();return send(ownerToken,id,0).andReturn().getResponse().getStatus();});var b=pool.submit(()->{gate.await();return cancel(ownerToken,id,0,1).andReturn().getResponse().getStatus();});gate.countDown();var statuses=new ArrayList<>(List.of(a.get(20,TimeUnit.SECONDS),b.get(20,TimeUnit.SECONDS)));Collections.sort(statuses);assertEquals(List.of(200,409),statuses);assertEquals(2,jdbc.queryForObject("SELECT COUNT(*) FROM invoice_events WHERE invoice_id=?",Integer.class,Long.valueOf(id)));}
+        finally{pool.shutdownNow();cleanupCommitted();}
+    }
+    @Test void concurrentEditAndCancelRejectTheLosingVersionWithoutPartialMeterWrites()throws Exception{
+        String id=createDraft();TestTransaction.flagForCommit();TestTransaction.end();var pool=Executors.newFixedThreadPool(2);var gate=new CountDownLatch(1);
+        try{var a=pool.submit(()->{gate.await();return edit(ownerToken,id,changeBody(0,1,"1130","209")).andReturn().getResponse().getStatus();});var b=pool.submit(()->{gate.await();return cancel(ownerToken,id,0,1).andReturn().getResponse().getStatus();});gate.countDown();var statuses=new ArrayList<>(List.of(a.get(20,TimeUnit.SECONDS),b.get(20,TimeUnit.SECONDS)));Collections.sort(statuses);assertEquals(List.of(200,409),statuses);
+            String state=jdbc.queryForObject("SELECT status FROM rental_invoices WHERE id=?",String.class,Long.valueOf(id));assertEquals(state.equals("DRAFT")?1:0,jdbc.queryForObject("SELECT COUNT(*) FROM billing_meter_readings WHERE contract_id=?",Integer.class,contract.getId()));assertEquals(2,jdbc.queryForObject("SELECT COUNT(*) FROM invoice_events WHERE invoice_id=?",Integer.class,Long.valueOf(id)));
+        }finally{pool.shutdownNow();cleanupCommitted();}
+    }
+    @Test void changedBaselinePreventsEditingOrSendingButAllowsCancellingDraftForRepair()throws Exception{
+        String id=createDraft();contract.setElectricityBaseline(new BigDecimal("1050"));contract.setBillingVersion(2);contracts.saveAndFlush(contract);
+        edit(ownerToken,id,changeBody(0,2,"1130","209")).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("BILLING_SEQUENCE_CONFLICT"));send(ownerToken,id,0).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("BILLING_SEQUENCE_CONFLICT"));
+        cancel(ownerToken,id,0,2).andExpect(status().isOk());
+        history(ownerToken,id).andExpect(jsonPath("$.length()").value(2));
+    }
     private void cleanupCommitted(){
         String cid=contract.getId().toString(),aid=apartment.getId().toString();
-        jdbc.update("DELETE FROM invoice_notifications WHERE invoice_id IN(SELECT id FROM rental_invoices WHERE contract_id=?)",cid);jdbc.update("DELETE FROM rental_invoices WHERE contract_id=?",cid);jdbc.update("DELETE FROM rental_contracts WHERE id=?",cid);jdbc.update("DELETE FROM rental_apartment_amenities WHERE apartment_id=?",aid);jdbc.update("DELETE FROM rental_apartments WHERE id=?",aid);jdbc.update("DELETE FROM rental_properties WHERE id=?",property.getId().toString());
+        jdbc.update("DELETE FROM invoice_notifications WHERE invoice_id IN(SELECT id FROM rental_invoices WHERE contract_id=?)",cid);jdbc.update("DELETE FROM invoice_events WHERE invoice_id IN(SELECT id FROM rental_invoices WHERE contract_id=?)",cid);jdbc.update("DELETE FROM billing_meter_readings WHERE contract_id=?",cid);jdbc.update("DELETE FROM rental_invoices WHERE contract_id=?",cid);jdbc.update("DELETE FROM rental_contracts WHERE id=?",cid);jdbc.update("DELETE FROM rental_apartment_amenities WHERE apartment_id=?",aid);jdbc.update("DELETE FROM rental_apartments WHERE id=?",aid);jdbc.update("DELETE FROM rental_properties WHERE id=?",property.getId().toString());
         for(var account:List.of(owner,tenant,otherOwner,otherTenant)){String id=account.getId().toString();jdbc.update("DELETE FROM auth_refresh_tokens WHERE session_id IN(SELECT id FROM auth_sessions WHERE account_id=?)",id);jdbc.update("DELETE FROM auth_sessions WHERE account_id=?",id);jdbc.update("DELETE FROM auth_account_roles WHERE account_id=?",id);jdbc.update("DELETE FROM auth_accounts WHERE id=?",id);}
     }
 }

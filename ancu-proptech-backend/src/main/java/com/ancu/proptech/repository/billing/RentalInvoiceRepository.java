@@ -22,7 +22,10 @@ public interface RentalInvoiceRepository extends JpaRepository<RentalInvoice,Lon
         @org.springframework.data.repository.query.Param("paid") Boolean paid);
     @Query("select i.contract.id from RentalInvoice i where i.id=:id")
     Optional<Long> findContractId(@org.springframework.data.repository.query.Param("id") Long id);
+    boolean existsByContractIdAndPeriodAndStatusNot(Long contractId,String period,RentalInvoice.Status status);
+    // Fixture provisioning must also respect retained cancelled documents.
     boolean existsByContractIdAndPeriod(Long contractId,String period);
+    boolean existsByContractIdAndPeriodGreaterThanAndStatusNot(Long contractId,String period,RentalInvoice.Status status);
     boolean existsByContractIdAndStatus(Long contractId,RentalInvoice.Status status);
     Optional<RentalInvoice> findFirstByContractIdAndStatusOrderByPeriodDesc(Long contractId,RentalInvoice.Status status);
     @EntityGraph(attributePaths={"contract","contract.apartment","contract.apartment.property","contract.apartment.property.owner","contract.customer"})
