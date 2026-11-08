@@ -2,6 +2,8 @@
 
 Nhánh: `test/system-improvements-20261108`.
 
+FIX-09 được bổ sung từ nhánh feat/early-termination-handover: backend `aedfadf` và giao diện kết thúc sớm/bàn giao cư trú mới. [Hướng dẫn và bằng chứng FIX-09](../reports/contract-exit-ui-2026-11-08.md). FIX-10/11 tạm hoãn theo yêu cầu; chưa triển khai quản lý/hoàn cọc.
+
 Rà soát bổ sung: `1ea9dc0` giữ nhãn hủy trước hiệu lực trong bảng quan hệ thuê; `e87d0fc` cho áp dụng bộ lọc người dùng bổ sung sau khi AI trả gợi ý rỗng. Xem [báo cáo kiểm tra tích hợp](../reports/integrated-review-2026-11-08.md). Checklist thủ công với DB ứng dụng bên dưới vẫn chưa chạy; các kiểm tra tự động dùng DB test và API fixtures.
 
 Nhánh được tạo từ `a93f01d`, bao gồm toàn bộ 14 commit sau local `main` (`9138d17`). Các unit đã nối tiếp nhau trong lịch sử; không cần cherry-pick hay tạo merge commit rỗng. Các chức năng trước đó đã nằm trong main cũng được giữ lại. Mốc origin/main ở đây là ref local đã có; lượt này không fetch/push hoặc tạo PR.
@@ -30,7 +32,7 @@ npm run dev
 
 Mở **http://localhost:3000** (hoặc cổng Vite thực tế thông báo). Frontend proxy `/api` đến localhost:8080 trừ khi đã đặt `API_PROXY_TARGET`. Dùng tài khoản hiện có của Owner và Customer; có thể mở hai trình duyệt/profile để test hai bên. Không cần reset dữ liệu/tài khoản.
 
-Khởi động backend sẽ chạy các script schema đã đăng ký, gồm V57 (lịch sử nháp hóa đơn), V58 (audit AI), V59 (hủy lựa chọn). Đây là kiểm thử có ghi dữ liệu: dùng DB test/bản sao nếu không muốn thay đổi hồ sơ, hóa đơn và hợp đồng đang dùng. Không chạy hai phiên bản backend cũ/mới cùng DB. Không dùng `ddl-auto=create` hoặc xóa DB để chuẩn bị test.
+Khởi động backend sẽ chạy các script schema đã đăng ký, gồm V57 (lịch sử nháp hóa đơn), V58 (audit AI), V59 (hủy lựa chọn), V60 (kết thúc sớm/bàn giao cư trú/chứng cứ). Đây là kiểm thử có ghi dữ liệu: dùng DB test/bản sao nếu không muốn thay đổi hồ sơ, hóa đơn và hợp đồng đang dùng. Không chạy hai phiên bản backend cũ/mới cùng DB. Không dùng `ddl-auto=create` hoặc xóa DB để chuẩn bị test.
 
 Nếu Vite báo ECONNREFUSED ở `/api/...`, kiểm tra backend đã khởi động ở cổng proxy, xem lỗi startup đầu tiên. Đổi nhánh frontend đơn lẻ không giải quyết lỗi backend.
 
@@ -52,11 +54,12 @@ Chưa đánh dấu đạt cho các bước thủ công dưới đây. Chuẩn b�
 | AI-04 | Owner → Tài sản cho thuê → mở hồ sơ tài sản đang chuẩn bị | Kiểm tra checklist, chọn chứng từ và đồng ý quét; xem kết quả từng tệp/thiếu dữ liệu, ghi đã xem; đổi thông tin/tệp làm mất hiệu lực kết quả cũ; không tự nộp/duyệt hồ sơ | Chưa chạy |
 | FIX-07a | Owner → Yêu cầu thuê; Customer `/my/rental-requests`; hoặc chi tiết hợp đồng → Hủy / lịch sử làm hợp đồng | Dùng yêu cầu ACCEPTED chưa ký: một bên hủy với lý do → CANCELLED, phòng trống, lịch sử còn, không tự nhận yêu cầu tiếp theo | Chưa chạy |
 | FIX-07b | Cùng vị trí, hợp đồng thuê đầu có đúng một chữ ký | Đề nghị hủy → khóa sửa/ký. Bên còn lại từ chối hoặc bên đề nghị rút → được tiếp tục ký. Thử lại và bên còn lại đồng ý → hủy, giữ chữ ký/nội dung/lịch sử, giải phóng phòng nếu đủ điều kiện | Chưa chạy |
+| FIX-09 | `/contracts/{id}` → Kết thúc thuê / bàn giao cư trú | Hai bên đề nghị/đồng ý kết thúc sớm; chưa mở phòng. Owner lập biên bản ngày thực tế/chỉ số/phòng-thiết bị/chìa khóa/ảnh; Customer phản hồi bất đồng → Owner lập lại → Customer xác nhận mới ENDED/VACANT. Giữ nợ, PDF và chữ ký; không cọc/hoàn tiền. Thử cả hết hạn thông thường từ popup danh sách Owner | Chưa chạy |
 | Quyền/xung đột | Hai phiên Owner/Customer và tài khoản ngoài quan hệ | Bên ngoài không xem/hủy hồ sơ của người khác. Hai tab cùng sửa/hủy phải báo stale hoặc yêu cầu tải lại; không ghi đè kết quả mới | Chưa chạy |
 
 AI-01/04 dùng cấu hình Gemini backend hiện có (`GEMINI_API_KEY`, `GEMINI_MODEL`); không đặt key trong frontend. `ASSISTANCE_AI_ENABLED=false` tắt nhóm AI hỗ trợ này. Checklist cục bộ không chứng minh provider hoạt động. Các lượt trước dùng HTTP loopback/API fixtures, **chưa xác minh Gemini thật**. Chỉ gửi dữ liệu test đã được phép gửi khi thử provider thật.
 
-FIX-09 (kết thúc sớm/tranh chấp), FIX-10 (cọc thực thu), FIX-11 (quyết toán/hoàn cọc) và các AI backlog khác chưa được triển khai trong nhánh này. FIX-07 không hủy hợp đồng ACTIVE/thuê tiếp và không hoàn tiền tự động.
+FIX-10 (cọc thực thu), FIX-11 (quyết toán/hoàn cọc) được người dùng tạm hoãn; các AI backlog khác chưa triển khai. FIX-07 không hủy hợp đồng ACTIVE/thuê tiếp; FIX-09 xử lý ACTIVE qua đồng thuận và bàn giao cư trú, không hoàn tiền tự động.
 
 ## Bằng chứng hiện có và giới hạn
 

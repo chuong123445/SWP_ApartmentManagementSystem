@@ -1,3 +1,4 @@
+import {exitFixture,proposedHandover} from './fixtures/contractExit';
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -14,10 +15,11 @@ function document() {
 function handover() { return { id: '8', version: 0, status: 'PENDING', returnDate: '2026-10-28', electricityReading: '215', waterReading: '55', electricityStartReading: '200', waterStartReading: '50', keysReturned: true, conditionNotes: 'Đã kiểm tra phòng và chìa khóa', depositAmount: '10000000', deductionAmount: '100000', utilityAmount: '127500', refundAmount: '9772500', extraAmountDue: '0', ownerConfirmedAt: '2026-10-28T10:00:00Z', customerConfirmedAt: null as string | null }; }
 
 async function setup(page: Page, owner: boolean, mode: 'renewal' | 'handover' | 'confirm') {
-  const old = document();if (mode === 'confirm') old.lifecycle.handover = handover();
+  const exit = exitFixture('42','1','2');const old = document();if (mode === 'confirm') old.lifecycle.handover = handover();
   if (mode === 'renewal') { old.lifecycle.renewalRequest = { id: '9', status: 'ACCEPTED', version: 1, message: 'Khách đã gửi yêu cầu thuê tiếp' };old.lifecycle.handoverAvailable = false; }
   const pdf = readFileSync(resolve('../../ancu-proptech-backend/target/contract-preview-unsigned.pdf'));
   let renewalPosted = false;
+  await page.route('https://accounts.google.com/**',r=>r.fulfill({contentType:'application/javascript',body:'window.google={accounts:{id:{initialize(){},renderButton(){},disableAutoSelect(){},cancel(){}}}}'}));
   await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname;
     const json = (body: unknown) => route.fulfill({ json: body });
@@ -34,9 +36,9 @@ async function setup(page: Page, owner: boolean, mode: 'renewal' | 'handover' | 
       return json({ ...old, id: '43', contractNumber: 'HD-43', status: 'DRAFT', startDate: body.startDate, endDate: body.endDate,
         signing: { ...old.signing, state: 'UNSIGNED', ownerSignedAt: null, customerSignedAt: null }, lifecycle: { ...old.lifecycle, previousContractId: '42', renewalContractId: null, expired: false, version: 0 } });
     }
-    if (path.endsWith('/42/handover')) {
-      const body = route.request().postDataJSON();expect(body.version).toBe(3);expect(body.keysReturned).toBe(true);expect(body.consent).toBe(true);
-      expect(body.electricityReading).toBe('215');expect(body.waterReading).toBe('55');old.lifecycle.handover = handover();return json(old);
+    if (path === '/api/v1/contracts/42/exit') return json(exit);
+    if (path === '/api/v1/contracts/42/exit/actions') {
+      const body=route.request().postDataJSON();expect(body.sourceVersion).toBe(exit.sourceVersion);expect(body.consent).toBe(true);expect(body.action).toBe('PROPOSE_HANDOVER');expect(body.handover.electricityReading).toBe(215);expect(body.handover.waterReading).toBe(55);expect(body.handover).not.toHaveProperty('deductionAmount');proposedHandover(exit,body.handover);return json(exit);
     }
     if (path.endsWith('/42/handover/confirm')) {
       expect(route.request().postDataJSON()).toEqual({ version: 0, consent: true });old.status = 'ENDED';old.lifecycle.endReason = 'HANDOVER';
@@ -60,17 +62,17 @@ test('Owner renews an expired contract through the wizard with no copied signatu
   await expect(wizard.getByText('Chờ hai bên ký', { exact: true })).toBeVisible();
 });
 
-test('Owner proposes handover without immediately ending tenancy', async ({ page }) => {
-  await setup(page, true, 'handover');await page.getByRole('button', { name: 'Lập biên bản bàn giao', exact: true }).click();
-  const form = page.getByRole('form', { name: 'Thông tin bàn giao' });
-  await form.getByLabel('Chỉ số điện bàn giao', { exact: true }).fill('215');await form.getByLabel('Chỉ số nước bàn giao', { exact: true }).fill('55');
-  await form.getByLabel('Khấu trừ khác theo thỏa thuận (đ)', { exact: true }).fill('100000');
-  await form.getByLabel('Tình trạng phòng, tài sản và ghi chú đối soát', { exact: true }).fill('Đã kiểm tra phòng và chìa khóa');
-  await form.getByRole('checkbox').nth(0).check();await form.getByRole('checkbox').nth(1).check();
-  await form.getByRole('button', { name: 'Gửi bàn giao cho khách xác nhận' }).click();
-  await expect(page.getByRole('heading', { name: 'Bàn giao · Chờ khách thuê xác nhận' })).toBeVisible();
-  await expect(page.getByText('9.772.500 đ', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Xác nhận bàn giao và trả phòng' })).toHaveCount(0);
+test('Owner proposes physical handover without deposit settlement or immediately ending tenancy', async ({ page }) => {
+  await setup(page,true,'handover');await page.getByRole('button',{name:'Kết thúc thuê / bàn giao cư trú',exact:true}).click();
+  await page.getByRole('button',{name:'Lập biên bản bàn giao cư trú',exact:true}).click();
+  const form=page.getByRole('form',{name:'Thông tin bàn giao cư trú'});
+  await form.getByLabel('Điện bàn giao',{exact:true}).fill('215');await form.getByLabel('Nước bàn giao',{exact:true}).fill('55');
+  await form.getByLabel('Lý do xử lý kết thúc thuê',{exact:true}).fill('Đã kiểm tra phòng và chìa khóa');
+  for(const box of await form.getByRole('checkbox').all())await box.check();
+  await form.getByRole('button',{name:'Xác nhận: Lập biên bản bàn giao cư trú',exact:true}).click();
+  await expect(page.getByText('Bàn giao cư trú: Chờ người thuê xác nhận',{exact:true})).toBeVisible();
+  await expect(page.getByText('9.772.500 đ',{exact:true})).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Xác nhận bàn giao và trả phòng',exact:true})).toHaveCount(0);
 });
 
 test('Tenant explicitly confirms handover before the contract ends', async ({ page }) => {

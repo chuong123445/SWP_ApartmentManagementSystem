@@ -1,3 +1,4 @@
+import {exitFixture,proposedHandover} from './fixtures/contractExit';
 import { test, expect } from '@playwright/test';
 
 for (const width of [1440, 390]) for (const scenario of ['requests', 'renewal', 'pending', 'owner', 'stale', 'changed', 'legacy']) {
@@ -11,6 +12,7 @@ for (const width of [1440, 390]) for (const scenario of ['requests', 'renewal', 
       snapshot: { owner: party('3'), customer: party('2'), asset: { apartmentId: '17', propertyId: '2', propertyName: 'Tài sản mẫu', roomNumber: 'B.101', title: `Căn hợp đồng ${id}`, address: 'Địa chỉ mẫu', amenities: [], areaM2: '45' }, receivingAccount: null },
       signing: { ownerAccountId: '3', customerAccountId: '2', state: 'SIGNED', ownerSignedAt: '2026-05-01T00:00:00Z', customerSignedAt: '2026-05-01T00:00:00Z', ownerSignature: null, customerSignature: null, contentHash: 'a'.repeat(64) },
       lifecycle: { version: 3, expired: true, previousContractId: null, renewalContractId: null, endReason: null, handover: null as any, renewalRequest: null as any, renewalRequestAvailable: true, renewalRequestOpensOn: '2026-10-21', handoverAvailable: owner } });
+    const exit=exitFixture('4','3','2');
     const docs = [make('4'), make('5'), make('6')];
     docs[1].lifecycle.renewalRequest = { id: '8', version: 2, status: 'PENDING', message: 'Muốn thuê tiếp', decisionReason: null };
     docs[1].lifecycle.handoverAvailable = false; docs[2].status = 'ENDED'; docs[2].lifecycle.handoverAvailable = false;
@@ -18,6 +20,7 @@ for (const width of [1440, 390]) for (const scenario of ['requests', 'renewal', 
       : docs.map(d => ({ id: d.id, apartmentId: '17', propertyName: 'Tài sản mẫu', roomNumber: 'B.101', customerId: '2', customerName: 'Người thuê mẫu', customerEmail: 'tenant@example.invalid', status: d.status, startDate: d.startDate, endDate: d.endDate, monthlyRent: d.monthlyRent, version: 0 }));
     page.on('pageerror', e => errors.push(e.message));
     page.on('console', m => { if (m.type() === 'error' && !(scenario === 'stale' && m.text().includes('409'))) consoleErrors.push(m.text()); });
+    await page.route('https://accounts.google.com/**',r=>r.fulfill({contentType:'application/javascript',body:'window.google={accounts:{id:{initialize(){},renderButton(){},disableAutoSelect(){},cancel(){}}}}'}));
     await page.route('**/api/**', async route => {
       const req = route.request(), url = new URL(req.url()), path = url.pathname;
       const json = (body: unknown) => route.fulfill({ json: body });
@@ -34,13 +37,13 @@ for (const width of [1440, 390]) for (const scenario of ['requests', 'renewal', 
         const body = req.postDataJSON(); writes.push({ path, body }); expect(body.version).toBe(3); expect(body.consent).toBe(true);
         docs[0].lifecycle.renewalRequest = { id: '11', status: 'PENDING', version: 0, message: body.message }; return json(docs[0]);
       }
-      if (path.endsWith('/4/handover') && req.method() === 'POST') {
-        const body = req.postDataJSON(); writes.push({ path, body }); expect(body.version).toBe(3); expect(body.consent).toBe(true); expect(body.keysReturned).toBe(true);
-        if (scenario === 'stale') return route.fulfill({ status: 409, json: { message: 'Dữ liệu đã thay đổi. Hãy làm mới hợp đồng.' } });
-        docs[0].lifecycle.handoverAvailable = false;
-        docs[0].lifecycle.handover = { id: '20', version: 0, status: 'PENDING', ...body, depositAmount: '2000000', utilityAmount: '100000', deductionAmount: '100000', refundAmount: '1800000', extraAmountDue: '0', ownerConfirmedAt: '2026-11-03T00:00:00Z', customerConfirmedAt: null };
-        return json(docs[0]);
+      if(path==='/api/v1/contracts/4/exit')return json(exit);
+      if(path==='/api/v1/contracts/4/exit/actions'){
+        const body=req.postDataJSON();writes.push({path,body});expect(body.sourceVersion).toBe(exit.sourceVersion);expect(body.consent).toBe(true);expect(body.action).toBe('PROPOSE_HANDOVER');expect(body.handover.keysReturned).toBe(true);expect(body.handover).not.toHaveProperty('deductionAmount');
+        if(scenario==='stale')return route.fulfill({status:409,json:{message:'Dữ liệu đã thay đổi. Hãy tải lại.'}});
+        proposedHandover(exit,body.handover);docs[0].lifecycle.handoverAvailable=false;return json(exit);
       }
+      if(path.endsWith('/owner/workspace-summary'))return json({propertyId:null,asOf:'2026-11-08',expiringThrough:'2026-11-28',unpaidMonthlyInvoiceCount:0,unpaidAdditionalReceiptCount:0,unpaidCount:0,expiringContractCount:0,expiredContractCount:0});
       if (path.endsWith('/owner/properties')) return json([{ id: '2', name: 'Tài sản mẫu', approvalStatus: 'APPROVED' }]);
       if (path.endsWith('/owner/apartments')) return json([{ id: '17', propertyId: '2', propertyName: 'Tài sản mẫu', roomNumber: 'B.101', title: 'Căn mẫu', availability: 'OCCUPIED', areaM2: '45', advertisedMonthlyRent: '8500000', amenities: [], version: 0 }]);
       if (path.endsWith('/owner/maintenance-tickets')) return json([]);
@@ -77,12 +80,13 @@ for (const width of [1440, 390]) for (const scenario of ['requests', 'renewal', 
         await modal.getByRole('checkbox').check(); await modal.getByRole('button', { name: 'Gửi yêu cầu thuê tiếp', exact: true }).click();
         await expect(modal.getByRole('heading', { name: /Yêu cầu thuê tiếp · Chờ chủ nhà xử lý/ })).toBeVisible(); expect(writes.length).toBe(1);
       } else {
-        await modal.getByLabel('Chỉ số điện bàn giao', { exact: true }).fill('215'); await modal.getByLabel('Chỉ số nước bàn giao', { exact: true }).fill('55');
-        await modal.getByLabel('Tình trạng phòng, tài sản và ghi chú đối soát', { exact: true }).fill('Phòng đã kiểm tra, đủ chìa khóa.');
+        await modal.getByRole('button',{name:'Lập biên bản bàn giao cư trú',exact:true}).click();
+        await modal.getByLabel('Điện bàn giao', { exact: true }).fill('215'); await modal.getByLabel('Nước bàn giao', { exact: true }).fill('55');
+        await modal.getByLabel('Lý do xử lý kết thúc thuê', { exact: true }).fill('Phòng đã kiểm tra, đủ chìa khóa.');
         for (const box of await modal.getByRole('checkbox').all()) await box.check();
-        await modal.getByRole('button', { name: 'Gửi bàn giao cho khách xác nhận', exact: true }).click();
+        await modal.getByRole('button', { name: 'Xác nhận: Lập biên bản bàn giao cư trú', exact: true }).click();
         if (scenario === 'stale') await expect(modal.getByRole('alert')).toContainText('Dữ liệu đã thay đổi');
-        else await expect(modal.getByRole('heading', { name: 'Bàn giao · Chờ khách thuê xác nhận', exact: true })).toBeVisible();
+        else await expect(modal.getByText('Bàn giao cư trú: Chờ người thuê xác nhận',{exact:true})).toBeVisible();
         expect(writes.length).toBe(1);
       }
       await modal.getByRole('button', { name: 'Đóng', exact: true }).click(); await expect(page.getByRole('dialog')).toHaveCount(0);

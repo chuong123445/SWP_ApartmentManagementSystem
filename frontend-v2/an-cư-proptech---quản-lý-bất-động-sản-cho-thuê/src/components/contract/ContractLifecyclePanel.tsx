@@ -11,7 +11,7 @@ const button = 'rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibo
 const primary = `${button} bg-emerald-700 border-emerald-700 text-white`;
 const input = 'mt-2 block w-full border border-slate-300 bg-white rounded-lg p-3 text-sm';
 
-export function ContractLifecyclePanel({ draft, onUpdated, initialAction }: { draft: ContractDraft; onUpdated: (draft: ContractDraft) => void; initialAction?: 'renewal' | 'handover' }) {
+export function ContractLifecyclePanel({ draft, onUpdated, initialAction, hideHandover = false }: { draft: ContractDraft; onUpdated: (draft: ContractDraft) => void; initialAction?: 'renewal' | 'handover'; hideHandover?: boolean }) {
   const { user } = useAuth();const life = draft.lifecycle;
   const { owner, customer, canRequest, canCreate, canHandover } = contractLifecycleActions(draft, user?.id);
   const [renewing, setRenewing] = useState(false);const [formOpen, setFormOpen] = useState(initialAction === 'handover');
@@ -56,12 +56,12 @@ export function ContractLifecyclePanel({ draft, onUpdated, initialAction }: { dr
     </form>}
     {(canCreate || canHandover) && <div className="flex flex-wrap gap-3">
       {canCreate && <button type="button" className={primary} disabled={busy} onClick={() => setRenewing(true)}>Tạo hợp đồng ký tiếp</button>}
-      {canHandover && initialAction !== 'handover' && <button type="button" className={button} disabled={busy} onClick={() => { setFormOpen(value => !value);setError(''); }}>Lập biên bản bàn giao</button>}
+      {canHandover && !hideHandover && initialAction !== 'handover' && <button type="button" className={button} disabled={busy} onClick={() => { setFormOpen(value => !value);setError(''); }}>Lập biên bản bàn giao</button>}
     </div>}
     {owner && draft.status === 'DRAFT' && draft.signing?.state !== 'SIGNED' && life.previousContractId && <button type="button" className={`${button} text-rose-700`} disabled={busy} onClick={() => {
       if (window.confirm('Hủy bản ký tiếp chưa đủ hai chữ ký? Bản cũ và mọi chữ ký đã lưu vẫn được giữ trong lịch sử.')) void perform(() => cancelRenewal(draft.id, life.version));
     }}>Hủy bản ký tiếp</button>}
-    {formOpen && canHandover && <form aria-label="Thông tin bàn giao" className="space-y-4 rounded-xl border border-amber-200 bg-amber-50/30 p-4" onSubmit={event => {
+    {formOpen && canHandover && !hideHandover && <form aria-label="Thông tin bàn giao" className="space-y-4 rounded-xl border border-amber-200 bg-amber-50/30 p-4" onSubmit={event => {
       event.preventDefault();if (!keys || !consent) return;
       void perform(() => proposeHandover(draft.id, { version: life.version, returnDate, electricityReading: electricity, waterReading: water,
         electricityStartReading: electricityStart || undefined, waterStartReading: waterStart || undefined,
