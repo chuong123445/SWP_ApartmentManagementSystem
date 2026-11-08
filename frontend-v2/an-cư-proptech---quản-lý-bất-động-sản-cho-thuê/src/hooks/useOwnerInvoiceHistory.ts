@@ -25,7 +25,7 @@ export function useOwnerInvoiceHistory(enabled: boolean, propertyId: string, ext
       if (!active || running) return; running = true;
       const [monthly, additional] = await Promise.allSettled([
         ownerInvoices(page, 20, scope, filter),
-        filter === 'DRAFT' ? Promise.resolve(null) : ownerReceivedInvoices(additionalPage, 20, scope, filter),
+        (filter === 'DRAFT' || filter === 'CANCELLED') ? Promise.resolve(null) : ownerReceivedInvoices(additionalPage, 20, scope, filter),
       ]);
       if (active) setSnapshot({ key, loading: false,
         monthly: monthly.status === 'fulfilled' ? monthly.value : null,

@@ -1,3 +1,4 @@
+import { InvoiceDraftModal } from '@/components/billing/InvoiceDraftModal';
 import {Link} from 'react-router';
 import { useState } from 'react';
 import { ReceiptText, RefreshCw, Plus, FileText, Send, Search, CalendarDays, ArrowUpRight, CheckCircle2 } from 'lucide-react';
@@ -15,6 +16,7 @@ export function InvoicesPage({ invoices, history, onOpenInvoiceModal, onOpenCrea
   onSendInvoice: (id: string) => Promise<void>; error: string; loading: boolean; onReload: () => void;
   page: number; totalPages: number; onPageChange: (page: number) => void;
 }) {
+  const [manageId, setManageId] = useState('');
   const [search, setSearch] = useState('');
   const [sendError, setSendError] = useState('');
   const [sending, setSending] = useState('');
@@ -43,7 +45,7 @@ export function InvoicesPage({ invoices, history, onOpenInvoiceModal, onOpenCrea
     {(error || sendError) && <p role="alert" className="op-error">{error || sendError}</p>}
     <div className="op-panel">
       <div className="op-toolbar">
-        <div className="op-tabs" aria-label="Lọc hóa đơn">{([['ALL','Tất cả'],['DRAFT','Bản nháp'],['UNPAID','Chưa thanh toán'],['PAID','Đã thanh toán']] as [OwnerInvoiceFilter,string][]).map(([value,label])=><button key={value} aria-pressed={history.filter===value} onClick={()=>history.changeFilter(value)}>{label}</button>)}</div>
+        <div className="op-tabs" aria-label="Lọc hóa đơn">{([['ALL','Tất cả'],['DRAFT','Bản nháp'],['CANCELLED','Đã hủy'],['UNPAID','Chưa thanh toán'],['PAID','Đã thanh toán']] as [OwnerInvoiceFilter,string][]).map(([value,label])=><button key={value} aria-pressed={history.filter===value} onClick={()=>history.changeFilter(value)}>{label}</button>)}</div>
         <label className="op-search"><Search size={15}/><input aria-label="Tìm hóa đơn" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Tìm căn hộ, người thuê, kỳ..."/></label>
       </div>
       {loading && <p role="status" className="op-empty">Đang tải hóa đơn...</p>}
@@ -55,8 +57,8 @@ export function InvoicesPage({ invoices, history, onOpenInvoiceModal, onOpenCrea
           <td data-label="Người thuê"><span className="op-person"><span className="op-avatar" aria-hidden="true">{i.tenantName.trim().split(/\s+/).slice(-2).map(x=>x[0]).join('')}</span>{i.tenantName}</span></td>
           <td data-label="Hạn đóng">{dateLabel(i.dueDate)}</td>
           <td data-label="Tổng tiền"><span className="op-money">{i.apiInvoice?billingMoney(i.apiInvoice.totalAmount):'—'}</span></td>
-          <td data-label="Trạng thái"><span className={`op-badge ${i.apiInvoice?.status==='SENT'?'green':'amber'}`}>{i.apiInvoice?.status==='SENT'?<><CheckCircle2 size={11}/>Đã gửi</>:<><FileText size={11}/>Bản nháp</>}</span>{i.apiInvoice?.status==='SENT'&&<span className="block text-xs mt-1">{i.apiInvoice.paymentStatus==='PAID'?'Đã thanh toán':'Chưa thanh toán'}</span>}</td>
-          <td data-label="Thao tác"><div className="op-buttons"><button onClick={()=>onOpenInvoiceModal(i)} className="op-link">Chi tiết<ArrowUpRight size={13}/></button>{i.apiInvoice?.status==='DRAFT'&&<button disabled={!!sending} onClick={()=>void send(i.id)} className="op-link"><Send size={12}/>{sending===i.id?'Đang gửi...':'Gửi người thuê'}</button>}</div></td>
+          <td data-label="Trạng thái"><span className={`op-badge ${i.apiInvoice?.status==='SENT'?'green':'amber'}`}>{i.apiInvoice?.status==='CANCELLED'?'Đã hủy':i.apiInvoice?.status==='SENT'?<><CheckCircle2 size={11}/>Đã gửi</>:<><FileText size={11}/>Bản nháp</>}</span>{i.apiInvoice?.status==='SENT'&&<span className="block text-xs mt-1">{i.apiInvoice.paymentStatus==='PAID'?'Đã thanh toán':'Chưa thanh toán'}</span>}</td>
+          <td data-label="Thao tác"><div className="op-buttons"><button onClick={()=>setManageId(i.id)} className="op-link">{i.apiInvoice?.status==='DRAFT'?'Sửa / hủy · Lịch sử':'Lịch sử'}</button><button onClick={()=>onOpenInvoiceModal(i)} className="op-link">Chi tiết<ArrowUpRight size={13}/></button>{i.apiInvoice?.status==='DRAFT'&&<button disabled={!!sending} onClick={()=>void send(i.id)} className="op-link"><Send size={12}/>{sending===i.id?'Đang gửi...':'Gửi người thuê'}</button>}</div></td>
         </tr>)}
         {!visible.length&&<tr><td colSpan={7} className="op-empty-cell"><div className="op-empty"><ReceiptText size={29}/><strong>Chưa có hóa đơn phù hợp.</strong>Thử đổi bộ lọc hoặc lập hóa đơn mới cho người thuê.</div></td></tr>}
       </tbody></table>}
@@ -64,5 +66,6 @@ export function InvoicesPage({ invoices, history, onOpenInvoiceModal, onOpenCrea
     </div>
     <Pagination page={page} totalPages={totalPages} onChange={onPageChange}/>
     <OwnerAdditionalInvoices key={history.scopeKey} history={history} search={search} />
+    {manageId && <InvoiceDraftModal key={manageId} id={manageId} onClose={()=>setManageId('')} onChanged={onReload}/>}
   </section>;
 }
