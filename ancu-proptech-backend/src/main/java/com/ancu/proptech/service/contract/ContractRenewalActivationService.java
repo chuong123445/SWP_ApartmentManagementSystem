@@ -18,6 +18,7 @@ import java.time.Instant;
 
 @Service @RequiredArgsConstructor
 public class ContractRenewalActivationService {
+    private final ContractExitGuard exitGuard;
     private final RentalContractRepository contracts;
     private final ContractDraftRepository drafts;
     private final ContractHandoverRepository handovers;
@@ -35,6 +36,7 @@ public class ContractRenewalActivationService {
         var oldDraft=drafts.findByContractId(c.getRenewalOfContractId()).orElseThrow();
         Long owner=c.getApartment().getProperty().getOwner().getId();
         requests.findForOwnerUpdate(oldDraft.getRentalRequest().getId(),owner).orElseThrow();
+        exitGuard.requireOpen(c.getRenewalOfContractId());
         requests.findForOwnerUpdate(d.getRentalRequest().getId(),owner).orElseThrow();
         contracts.lockById(id).orElseThrow();entities.refresh(c);entities.refresh(d);
         if(c.getStatus()!=RentalContract.Status.DRAFT)return;

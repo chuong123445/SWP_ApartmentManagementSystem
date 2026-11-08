@@ -1,0 +1,792 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Contract early termination and physical handover",
+    "version": "1.0.0",
+    "description": "FIX-09, approved 2026-11-08. Deposit receipts/refunds deferred. Legacy financial handover APIs remain separate; no rewriting signed endDate/snapshot."
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/contracts/{id}/exit": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Read own contract exit state, capabilities, evidence and immutable history",
+        "responses": {
+          "200": {
+            "description": "Private exact-party result; Cache-Control: no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/View"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation/consent/date/reason/image error"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Wrong party for action"
+          },
+          "404": {
+            "description": "Resource not in exact-party scope or absent authoring draft"
+          },
+          "409": {
+            "description": "Stale/source/state/competing flow/missing baseline/open draft invoice"
+          },
+          "413": {
+            "description": "Request exceeds multipart limit"
+          }
+        }
+      }
+    },
+    "/api/v1/contracts/{id}/exit/actions": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          }
+        }
+      ],
+      "post": {
+        "summary": "Propose/respond termination or physical handover; never move money",
+        "description": "Explicit consent and sourceVersion required. Termination/Handover payload required only for corresponding propose action. Nonempty reason for reject/dispute/cancel. Same party cannot accept its own termination proposal. No Admin adjudication or timeout. State/ownership enforced by server.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Command"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Private exact-party result; Cache-Control: no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/View"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation/consent/date/reason/image error"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Wrong party for action"
+          },
+          "404": {
+            "description": "Resource not in exact-party scope or absent authoring draft"
+          },
+          "409": {
+            "description": "Stale/source/state/competing flow/missing baseline/open draft invoice"
+          },
+          "413": {
+            "description": "Request exceeds multipart limit"
+          }
+        }
+      }
+    },
+    "/api/v1/contracts/{id}/exit/evidence": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          }
+        }
+      ],
+      "post": {
+        "summary": "Upload private re-encoded JPEG/PNG evidence (1MB input; max20/contract)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Private exact-party result; Cache-Control: no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Evidence"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation/consent/date/reason/image error"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Wrong party for action"
+          },
+          "404": {
+            "description": "Resource not in exact-party scope or absent authoring draft"
+          },
+          "409": {
+            "description": "Stale/source/state/competing flow/missing baseline/open draft invoice"
+          },
+          "413": {
+            "description": "Request exceeds multipart limit"
+          }
+        }
+      }
+    },
+    "/api/v1/contracts/{id}/exit/evidence/{evidenceId}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          }
+        },
+        {
+          "name": "evidenceId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Download private exact-party evidence, no-store/nosniff/attachment",
+        "responses": {
+          "200": {
+            "description": "Private image bytes",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation/consent/date/reason/image error"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Wrong party for action"
+          },
+          "404": {
+            "description": "Resource not in exact-party scope or absent authoring draft"
+          },
+          "409": {
+            "description": "Stale/source/state/competing flow/missing baseline/open draft invoice"
+          },
+          "413": {
+            "description": "Request exceeds multipart limit"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "TerminationInput": {
+        "type": "object",
+        "properties": {
+          "returnDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 3000
+          },
+          "clauseReference": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 3000
+          },
+          "penaltyAmount": {
+            "type": "string",
+            "pattern": "^\\d{1,13}(\\.\\d{1,2})?$"
+          },
+          "penaltyPayer": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "OWNER",
+              "CUSTOMER"
+            ]
+          }
+        },
+        "required": [
+          "returnDate",
+          "reason",
+          "clauseReference",
+          "penaltyAmount",
+          "penaltyPayer"
+        ]
+      },
+      "HandoverInput": {
+        "type": "object",
+        "properties": {
+          "returnDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "electricityReading": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647
+          },
+          "waterReading": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647
+          },
+          "electricityStartReading": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "waterStartReading": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "keysReturned": {
+            "type": "boolean",
+            "const": true
+          },
+          "conditionNotes": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 3000
+          },
+          "evidenceIds": {
+            "type": "array",
+            "maxItems": 5,
+            "items": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9]+$"
+                },
+                {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              ]
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "returnDate",
+          "electricityReading",
+          "waterReading",
+          "keysReturned",
+          "conditionNotes",
+          "evidenceIds"
+        ]
+      },
+      "Termination": {
+        "type": "object",
+        "properties": {
+          "returnDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 3000
+          },
+          "clauseReference": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 3000
+          },
+          "penaltyAmount": {
+            "type": "string",
+            "pattern": "^\\d{1,13}(\\.\\d{1,2})?$"
+          },
+          "penaltyPayer": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "OWNER",
+              "CUSTOMER"
+            ]
+          },
+          "proposerId": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          },
+          "responderId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9]+$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "responseReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "returnDate",
+          "reason",
+          "clauseReference",
+          "penaltyAmount",
+          "penaltyPayer",
+          "proposerId",
+          "responderId",
+          "responseReason"
+        ]
+      },
+      "Handover": {
+        "type": "object",
+        "properties": {
+          "returnDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "electricityStartReading": {
+            "type": "string"
+          },
+          "waterStartReading": {
+            "type": "string"
+          },
+          "electricityReading": {
+            "type": "string"
+          },
+          "waterReading": {
+            "type": "string"
+          },
+          "utilityAmount": {
+            "type": "string"
+          },
+          "conditionNotes": {
+            "type": "string"
+          },
+          "keysReturned": {
+            "type": "boolean"
+          },
+          "evidenceIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            }
+          },
+          "disputeReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "disputedBy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9]+$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "disputeEvidenceIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            }
+          }
+        },
+        "required": [
+          "returnDate",
+          "electricityStartReading",
+          "waterStartReading",
+          "electricityReading",
+          "waterReading",
+          "utilityAmount",
+          "conditionNotes",
+          "keysReturned",
+          "evidenceIds",
+          "disputeReason",
+          "disputedBy",
+          "disputeEvidenceIds"
+        ]
+      },
+      "Evidence": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "uploaderId": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "filename",
+          "uploaderId",
+          "createdAt"
+        ]
+      },
+      "Event": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          },
+          "actorId": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          },
+          "actorName": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "PROPOSE_TERMINATION",
+              "ACCEPT_TERMINATION",
+              "REJECT_TERMINATION",
+              "WITHDRAW_TERMINATION",
+              "PROPOSE_HANDOVER",
+              "CONFIRM_HANDOVER",
+              "DISPUTE_HANDOVER",
+              "CANCEL_HANDOVER"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "before": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "after": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "id",
+          "actorId",
+          "actorName",
+          "action",
+          "reason",
+          "createdAt",
+          "before",
+          "after"
+        ]
+      },
+      "View": {
+        "type": "object",
+        "properties": {
+          "contractId": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          },
+          "ownerId": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          },
+          "customerId": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          },
+          "contractStatus": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "ACTIVE",
+              "ENDED",
+              "CANCELLED"
+            ]
+          },
+          "today": {
+            "type": "string",
+            "format": "date"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "sourceVersion": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "terminationState": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "PENDING",
+              "AGREED",
+              "REJECTED",
+              "WITHDRAWN"
+            ]
+          },
+          "termination": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Termination"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "handoverState": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "PENDING",
+              "DISPUTED",
+              "CANCELLED",
+              "CONFIRMED"
+            ]
+          },
+          "handover": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Handover"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Evidence"
+            }
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Event"
+            }
+          },
+          "canProposeTermination": {
+            "type": "boolean"
+          },
+          "canRespondTermination": {
+            "type": "boolean"
+          },
+          "canWithdrawTermination": {
+            "type": "boolean"
+          },
+          "canProposeHandover": {
+            "type": "boolean"
+          },
+          "canConfirmHandover": {
+            "type": "boolean"
+          },
+          "canDisputeHandover": {
+            "type": "boolean"
+          },
+          "canCancelHandover": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "contractId",
+          "ownerId",
+          "customerId",
+          "contractStatus",
+          "today",
+          "startDate",
+          "endDate",
+          "sourceVersion",
+          "terminationState",
+          "termination",
+          "handoverState",
+          "handover",
+          "evidence",
+          "history",
+          "canProposeTermination",
+          "canRespondTermination",
+          "canWithdrawTermination",
+          "canProposeHandover",
+          "canConfirmHandover",
+          "canDisputeHandover",
+          "canCancelHandover"
+        ]
+      },
+      "Command": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "PROPOSE_TERMINATION",
+              "ACCEPT_TERMINATION",
+              "REJECT_TERMINATION",
+              "WITHDRAW_TERMINATION",
+              "PROPOSE_HANDOVER",
+              "CONFIRM_HANDOVER",
+              "DISPUTE_HANDOVER",
+              "CANCEL_HANDOVER"
+            ]
+          },
+          "sourceVersion": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "consent": {
+            "type": "boolean",
+            "const": true
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 3000
+          },
+          "termination": {
+            "$ref": "#/components/schemas/TerminationInput"
+          },
+          "handover": {
+            "$ref": "#/components/schemas/HandoverInput"
+          },
+          "evidenceIds": {
+            "type": "array",
+            "maxItems": 5,
+            "items": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9]+$"
+                },
+                {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              ]
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "action",
+          "sourceVersion",
+          "consent"
+        ]
+      }
+    }
+  }
+}
