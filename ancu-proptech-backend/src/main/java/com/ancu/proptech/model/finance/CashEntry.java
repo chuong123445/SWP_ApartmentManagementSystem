@@ -33,5 +33,7 @@ public class CashEntry {
     @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="posted_by") private AuthAccount postedBy;
     @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="cancelled_by") private AuthAccount cancelledBy;
     @Nationalized @Column(length=1000) private String cancellationReason;
+    private Long sourceInvoiceId;
+    private Long sourceMaintenanceId;
     @Version private long version;
 }
