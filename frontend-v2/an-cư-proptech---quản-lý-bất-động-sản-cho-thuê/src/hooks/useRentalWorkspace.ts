@@ -12,8 +12,9 @@ import type { PropertyCreateInput } from '@/types/property';
 import { useOwnerInvoiceHistory } from '@/hooks/useOwnerInvoiceHistory';
 import { useCashbook } from '@/hooks/useCashbook';
 import { useOwnerWorkspaceSummary } from '@/hooks/useOwnerWorkspaceSummary';
+import { useOwnerFinancialSummary } from '@/hooks/useOwnerFinancialSummary';
 
-export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all', invoiceHistoryEnabled = false, cashbookEnabled = false) {
+export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all', invoiceHistoryEnabled = false, cashbookEnabled = false, financialSummaryEnabled = false) {
   // Global Data States
   const [rooms, setRooms] = useState<Room[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
@@ -28,6 +29,7 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingRevision, setBillingRevision] = useState(0);
   const ownerCounters = useOwnerWorkspaceSummary(canManage, selectedPropertyId, `${inventoryRevision}:${billingRevision}`);
+  const financialReport = useOwnerFinancialSummary(canManage && financialSummaryEnabled, selectedPropertyId, `${inventoryRevision}:${billingRevision}`);
   const invoiceHistory = useOwnerInvoiceHistory(canManage && invoiceHistoryEnabled, selectedPropertyId, billingRevision);
   const cashbook = useCashbook(canManage && cashbookEnabled, selectedPropertyId);
   const [invoicePage, setInvoicePage] = useState(0);
@@ -186,7 +188,7 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
     handleReserveEscrow,
     handleCreateInvoice, handleSaveConfig: setConfig,
     currentResidentTenant, currentResidentRoom, currentResidentContract, residentInvoices, residentTickets,
-    ownerCounters, maintenanceCount,
+    ownerCounters, financialReport, maintenanceCount,
   };
 }
 
