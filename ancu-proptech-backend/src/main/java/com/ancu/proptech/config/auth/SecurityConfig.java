@@ -106,7 +106,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,"/api/v1/rental-requests/*/cancellation").authenticated()
                         .requestMatchers(HttpMethod.POST,"/api/v1/rental-requests/*/cancellation/actions").authenticated()
                         .requestMatchers(HttpMethod.POST,"/api/v1/owner/properties/*/ai-precheck","/api/v1/owner/properties/*/ai-precheck/*/acknowledge","/api/v1/me/rental-properties/*/ai-precheck","/api/v1/me/rental-properties/*/ai-precheck/*/acknowledge").authenticated()
-                        .requestMatchers(HttpMethod.POST,"/api/v1/apartments/ai-search","/api/v1/apartments/ai-search/*/apply").permitAll()
+                        .requestMatchers(HttpMethod.POST,"/api/v1/apartments/ai-chat","/api/v1/apartments/ai-search","/api/v1/apartments/ai-search/*/apply").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/apartments", "/api/v1/apartments/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/apartment/images/**").permitAll()
                         .requestMatchers(HttpMethod.HEAD, "/apartment/images/**").permitAll()

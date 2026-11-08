@@ -7,6 +7,9 @@ import java.util.List;
 public final class AiSearchDtos {
  private AiSearchDtos(){}
  public record Request(@NotBlank @Size(max=1000) String text,@NotNull @AssertTrue Boolean consent){}
+ public record Message(@NotNull @Pattern(regexp="user|assistant") String role,@NotBlank @Size(max=2000) String text){}
+ public record ChatRequest(@NotBlank @Size(max=1000) String text,@NotNull @AssertTrue Boolean consent,@NotNull @Size(max=8) List<@jakarta.validation.Valid Message> history){}
+ public record ChatResult(String reply,Result search){}
  public record Filters(@Size(max=120) String q,@Size(max=80) String city,@Size(max=80) String district,@Size(max=80) String ward,
   @DecimalMin("0") @Digits(integer=13,fraction=2) @JsonFormat(shape=JsonFormat.Shape.STRING) BigDecimal minRent,
   @DecimalMin("0") @Digits(integer=13,fraction=2) @JsonFormat(shape=JsonFormat.Shape.STRING) BigDecimal maxRent,

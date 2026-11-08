@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "An Cu AI assistance",
-    "version": "1.1.0",
-    "description": "Customer search intent only; inventory remains GET /api/v1/apartments. See customer-ai-search-v1 ADR. Private applicant draft precheck is independent of Admin review. See owner-dossier-precheck-v1 ADR."
+    "version": "1.2.0",
+    "description": "Customer search intent only; inventory remains GET /api/v1/apartments. See customer-ai-search-v1 ADR. Private applicant draft precheck is independent of Admin review. See owner-dossier-precheck-v1 ADR. Home chat supports contextual answers and automatically applies validated search filters (2026-11-09)."
   },
   "paths": {
     "/api/v1/apartments/ai-search": {
@@ -417,6 +417,74 @@
           },
           "503": {
             "description": "AI incomplete/unavailable; normal submission remains available"
+          }
+        }
+      }
+    },
+    "/api/v1/apartments/ai-chat": {
+      "post": {
+        "description": "Public consented conversation; returns reply (plain text <=2000) and search (existing Result with filters, notes, canApply, runId). Automatic frontend apply only when canApply and nonempty filters. Same rate limit as ai-search. Raw conversation/reply not stored. Inventory stays GET /api/v1/apartments.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "text",
+                  "consent",
+                  "history"
+                ],
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000
+                  },
+                  "consent": {
+                    "const": true
+                  },
+                  "history": {
+                    "type": "array",
+                    "maxItems": 8,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "role",
+                        "text"
+                      ],
+                      "properties": {
+                        "role": {
+                          "enum": [
+                            "user",
+                            "assistant"
+                          ]
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Validated reply and search capability; Cache-Control no-store"
+          },
+          "400": {
+            "description": "Invalid input/consent/history"
+          },
+          "429": {
+            "description": "Rate/capacity limit"
+          },
+          "503": {
+            "description": "AI unavailable or invalid output; normal filters remain usable"
           }
         }
       }
