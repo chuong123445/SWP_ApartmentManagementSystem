@@ -26,6 +26,7 @@ import java.util.*;
 
 @Service @RequiredArgsConstructor
 public class ContractDraftService {
+    private final ContractExitGuard exitGuard;
     static final int RENEWAL_REQUEST_DAYS = 10;
     private final com.ancu.proptech.service.rental.SelectionCancellationGuard cancellationGuard;
     private final ContractDraftRepository drafts;
@@ -142,6 +143,7 @@ public class ContractDraftService {
         if(c.getRenewalOfContractId()!=null) {
             var parentRequestId=drafts.findRequestId(c.getRenewalOfContractId()).orElseThrow(ContractDraftService::notFound);
             requests.findForOwnerUpdate(parentRequestId,ownerId).orElseThrow(ContractDraftService::notFound);
+            exitGuard.requireOpen(c.getRenewalOfContractId());
         }
         // Same lock order as editing: parent selection, then contract. No party can sign for the other.
         requests.findForOwnerUpdate(d.getRentalRequest().getId(),ownerId).orElseThrow(ContractDraftService::notFound);
@@ -273,7 +275,7 @@ public class ContractDraftService {
                 h.getElectricityReading().toPlainString(),h.getWaterReading().toPlainString(),h.getElectricityStartReading()==null?null:h.getElectricityStartReading().toPlainString(),h.getWaterStartReading()==null?null:h.getWaterStartReading().toPlainString(),h.isKeysReturned(),h.getConditionNotes(),h.getDepositAmount().toPlainString(),
                 h.getDeductionAmount().toPlainString(),h.getUtilityAmount().toPlainString(),h.getRefundAmount().toPlainString(),h.getExtraAmountDue().toPlainString(),h.getOwnerConfirmedAt(),h.getCustomerConfirmedAt()),renewal,
             c.getStatus()==RentalContract.Status.ACTIVE&&!c.getEndDate().isAfter(today)&&next==null&&!requestOpen&&(h==null||h.getStatus()==ContractHandover.Status.CANCELLED),
-            c.getStatus()==RentalContract.Status.ACTIVE&&!renewalRequestOpensOn.isAfter(today)&&next==null&&r==null
+            c.getStatus()==RentalContract.Status.ACTIVE&&!exitGuard.blocks(c.getId())&&!renewalRequestOpensOn.isAfter(today)&&next==null&&r==null
                 &&!handovers.existsByContractIdAndStatus(c.getId(),ContractHandover.Status.PENDING),renewalRequestOpensOn);
     }
     private String image(byte[] bytes){return bytes==null?null:"data:image/png;base64,"+Base64.getEncoder().encodeToString(bytes);}

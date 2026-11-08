@@ -25,6 +25,7 @@ import java.util.*;
 
 @Service @RequiredArgsConstructor
 public class ContractLifecycleService {
+    private final ContractExitGuard exitGuard;
     private final ContractDraftRepository drafts;
     private final RentalContractRepository contracts;
     private final ContractHandoverRepository handovers;
@@ -181,7 +182,7 @@ public class ContractLifecycleService {
         if(!owner.equals(account.getId()) && (ownerOnly || !c.getCustomer().getId().equals(account.getId())))throw missing();
         if(c.getRenewalOfContractId()!=null)requests.findForOwnerUpdate(drafts.findRequestId(c.getRenewalOfContractId()).orElseThrow(ContractLifecycleService::missing),owner).orElseThrow(ContractLifecycleService::missing);
         requests.findForOwnerUpdate(d.getRentalRequest().getId(),owner).orElseThrow(ContractLifecycleService::missing);
-        contracts.lockById(id).orElseThrow(ContractLifecycleService::missing);entities.refresh(c);entities.refresh(d);return d;
+        contracts.lockById(id).orElseThrow(ContractLifecycleService::missing);entities.refresh(c);entities.refresh(d);exitGuard.requireOpen(id);return d;
     }
     private void eligibleForRenewal(RentalContract c) {
         if(c.getStatus()!=RentalContract.Status.ACTIVE)throw conflict("INVALID_STATE","Chỉ yêu cầu thuê tiếp cho hợp đồng đang có hiệu lực hoặc chờ xử lý hết hạn.");

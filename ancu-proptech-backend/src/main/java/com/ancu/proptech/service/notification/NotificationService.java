@@ -19,6 +19,11 @@ public class NotificationService {
  public record Feed(List<Item> items,int page,int size,long totalElements,int totalPages,long unreadCount,Instant snapshotAt){}
  private static final String FEED="""
  WITH feed AS (
+ SELECT CONCAT('contract-exit:',e.id) notification_key,N'Cập nhật kết thúc thuê / bàn giao' title,
+ CONCAT(N'HD-',c.id,N' — ',e.reason) message,CONCAT('/contracts/',c.id) url,e.created_at
+ FROM contract_exit_events e JOIN rental_contracts c ON c.id=e.contract_id JOIN rental_apartments a ON a.id=c.apartment_id JOIN rental_properties p ON p.id=a.property_id
+ WHERE e.actor_id<>:account AND (p.owner_id=:account OR c.customer_id=:account)
+ UNION ALL
  SELECT CONCAT('contract-expiry:',n.id) notification_key,N'Hợp đồng sắp hết hạn' title,
  CONCAT(N'HD-',c.id,N' hết hạn ngày ',CONVERT(varchar(10),n.expires_on,23),N'. Xem hợp đồng để yêu cầu thuê tiếp hoặc theo dõi bàn giao.') message,
  CASE WHEN p.owner_id=:account THEN CONCAT('/app?tab=contracts&propertyId=',p.id,'&contractId=',c.id)
