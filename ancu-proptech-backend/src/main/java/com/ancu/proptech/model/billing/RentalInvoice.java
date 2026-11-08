@@ -5,10 +5,11 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.*;
 
-@Entity @Table(name="rental_invoices",uniqueConstraints=@UniqueConstraint(name="ux_invoice_contract_period",columnNames={"contract_id","period"}))
+// V57 enforces uniqueness only for invoices that have not been cancelled.
+@Entity @Table(name="rental_invoices")
 @Getter @Setter @NoArgsConstructor
 public class RentalInvoice {
-    public enum Status { DRAFT, SENT }
+    public enum Status { DRAFT, SENT, CANCELLED }
 
     @Enumerated(EnumType.STRING) @Column(nullable=false,length=16) private com.ancu.proptech.model.property.PropertySettings.WaterBillingMode waterBillingMode=com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.METERED;
     @Column(nullable=false) private int occupantCount=1;

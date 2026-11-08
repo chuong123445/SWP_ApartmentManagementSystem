@@ -216,7 +216,7 @@ class SepayIntegrationTests {
     private void cleanupCommitted(){
         String cid=contract.getId().toString(),aid=apartment.getId().toString();
         jdbc.update("DELETE FROM sepay_events WHERE owner_id=?",owner.getId());jdbc.update("DELETE FROM invoice_payments WHERE owner_id=?",owner.getId());jdbc.update("DELETE FROM sepay_connections WHERE owner_id=?",owner.getId());
-        jdbc.update("DELETE FROM invoice_notifications WHERE invoice_id IN(SELECT id FROM rental_invoices WHERE contract_id=?)",cid);jdbc.update("DELETE FROM rental_invoices WHERE contract_id=?",cid);jdbc.update("DELETE FROM rental_contracts WHERE id=?",cid);jdbc.update("DELETE FROM rental_apartment_amenities WHERE apartment_id=?",aid);jdbc.update("DELETE FROM rental_apartments WHERE id=?",aid);jdbc.update("DELETE FROM rental_properties WHERE id=?",property.getId().toString());
+        jdbc.update("DELETE FROM invoice_notifications WHERE invoice_id IN(SELECT id FROM rental_invoices WHERE contract_id=?)",cid);jdbc.update("DELETE FROM invoice_events WHERE invoice_id IN(SELECT id FROM rental_invoices WHERE contract_id=?)",cid);jdbc.update("DELETE FROM billing_meter_readings WHERE contract_id=?",cid);jdbc.update("DELETE FROM rental_invoices WHERE contract_id=?",cid);jdbc.update("DELETE FROM rental_contracts WHERE id=?",cid);jdbc.update("DELETE FROM rental_apartment_amenities WHERE apartment_id=?",aid);jdbc.update("DELETE FROM rental_apartments WHERE id=?",aid);jdbc.update("DELETE FROM rental_properties WHERE id=?",property.getId().toString());
         for(var account:List.of(owner,tenant,otherOwner,otherTenant)){String id=account.getId().toString();jdbc.update("DELETE FROM auth_refresh_tokens WHERE session_id IN(SELECT id FROM auth_sessions WHERE account_id=?)",id);jdbc.update("DELETE FROM auth_sessions WHERE account_id=?",id);jdbc.update("DELETE FROM auth_account_roles WHERE account_id=?",id);jdbc.update("DELETE FROM auth_accounts WHERE id=?",id);}
     }
 
@@ -248,7 +248,8 @@ class SepayIntegrationTests {
             send(ownerToken, invoice, 0).andExpect(status().isOk());
             String issued = ticket(tenantToken, invoice);
             String code = JsonPath.read(issued, "$.paymentCode");
-            String amount = JsonPath.read(issued, "$.amount");
+            // Real webhook amounts are whole VND, regardless of the stored decimal scale.
+            String amount = new BigDecimal(JsonPath.<String>read(issued, "$.amount")).toBigIntegerExact().toString();
             assertEquals(otherOwner.getId(), payments.findByInvoiceId(Long.valueOf(invoice)).orElseThrow().getCollectionOwnerId());
             mvc.perform(get("/api/v1/invoices/" + invoice + "/payment").header("Authorization", "Bearer " + ownerToken))
                     .andExpect(jsonPath("$.paymentCode").value(code)).andExpect(jsonPath("$.qrUrl").isEmpty());
