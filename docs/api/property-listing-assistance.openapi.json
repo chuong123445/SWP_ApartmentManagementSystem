@@ -3,7 +3,7 @@
   "info": {
     "title": "Property listing evidence, room images and grouped discovery",
     "version": "1.0.0",
-    "description": "Backend contracts implemented. SQL acceptance and live provider checks pending. Precheck and acknowledge endpoints also accept optional propertyFields. These declarations participate in sourceHash and are advisory input."
+    "description": "Backend contracts implemented. SQL acceptance and live provider checks pending. Precheck and acknowledge endpoints also accept optional propertyFields. These declarations participate in sourceHash and are advisory input. Upload in the listing wizard automatically requests extraction and fills readable fields, including city/district/ward. Dates remain ISO yyyy-MM-dd in API responses and requests, while UI/PDF use dd/MM/yyyy. Provider DMY values are normalized before comparison. User-corrected values remain editable and are preserved across automatic fills."
   },
   "paths": {
     "/api/v1/me/apartments/{id}/images": {

@@ -2,7 +2,7 @@
 
 ## Chuẩn bị
 
-Dùng nhánh `feat/property-listing-wizard`, backend Java21 và frontend React/Vite của dự án. Cấu hình SQL Server và AI theo các file setup hiện hành, giữ thông tin bí mật trong môi trường local.
+Dùng nhánh `fix/property-auto-extraction`, backend Java21 và frontend React/Vite của dự án. Cấu hình SQL Server và AI theo các file setup hiện hành, giữ thông tin bí mật trong môi trường local.
 
 Backend startup có V61 và V62. V62 tạo bản nháp riêng tư và quan hệ ảnh với căn/phòng. Cần nghiệm thu trên database test trước khi chạy nhánh này với dữ liệu sử dụng thật. Trong phiên triển khai, kết nối test localhost1433 bị từ chối bởi môi trường, nên migration và hành vi giao dịch chưa được xác nhận qua SQL thực tế.
 
@@ -13,11 +13,11 @@ Backend startup có V61 và V62. V62 tạo bản nháp riêng tư và quan hệ 
 1. Mở `/account/properties/new`.
 2. Chọn được ủy quyền hoặc thuê lại. Với chính chủ, chọn nộp giấy tờ thủ công trong nhánh chính chủ.
 3. Bắt đầu hồ sơ hoặc chọn bản nháp đã lưu.
-4. Tải chứng từ theo nhóm. Chọn AI đọc giấy tờ nếu muốn lấy gợi ý.
-5. Chọn từng giá trị gợi ý, kiểm tra tệp/trang nguồn, bổ sung tên và địa phương. Xác nhận đã đối chiếu thông tin.
+4. Tải chứng từ theo nhóm. Hệ thống tự gửi giấy tờ tới Gemini đã cấu hình và đọc nội dung.
+5. Các trường đọc được tự điền, gồm tỉnh/thành, quận/huyện và phường/xã. Kiểm tra nguồn, sửa nếu cần và bổ sung phần giấy tờ không có. Ngày hiển thị và nhập dd/MM/yyyy. Xác nhận đã đối chiếu thông tin.
 6. Tạo nguyên căn hoặc nhiều phòng. Chọn các phòng muốn đưa vào hồ sơ và nhập diện tích, giá, phí. Có thể thu gọn thông tin từng phòng và sao chép điều kiện chung.
 7. Tải ảnh chung và ảnh riêng mỗi phòng. Có thể bỏ ảnh hoặc đặt ảnh đầu làm đại diện.
-8. Xem trước thông tin công khai và hồ sơ riêng tư. Có thể chạy đối chiếu AI lần cuối với dữ liệu hiện tại.
+8. Xem trước thông tin công khai và hồ sơ riêng tư. Hệ thống tự đối chiếu AI lần cuối với dữ liệu hiện tại.
 9. Gửi hồ sơ. Sau khi Admin duyệt, công khai từng căn theo luồng hiện có.
 
 Nút lưu tiến trình lưu phần đang khai vào server. Tải lại trang hoặc mở danh sách hồ sơ để tiếp tục. Thay đổi chưa bấm lưu có thông báo riêng. Nếu xung đột phiên bản, tải bản đã lưu rồi đối chiếu lại nội dung.
@@ -49,9 +49,9 @@ Dùng đúng các folder tại `F:\2026\Fa26\DTD\output\pdf\Bo_demo_3_bo_ho_so`.
 
 | Bộ | Thao tác | Kết quả mong đợi |
 |---|---|---|
-| 01_DAY_DU | Upload giấy tờ, chọn gợi ý, khai hai phòng khác diện tích/giá, gán ảnh riêng rồi gửi | Dữ liệu xác nhận và nguồn hiển thị rõ, hai phòng giữ giá và ảnh riêng, hồ sơ vào quy trình Admin |
+| 01_DAY_DU | Chọn chính chủ thủ công, upload giấy tờ mới của Nguyễn Văn Chương, khai hai phòng khác diện tích/giá, gán ảnh riêng rồi gửi | Dữ liệu xác nhận và nguồn hiển thị rõ, hai phòng giữ giá và ảnh riêng, hồ sơ vào quy trình Admin |
 | 02_THIEU | Upload phần chứng từ hiện có rồi lưu, tải lại, thử tiếp tục khi thiếu giấy bắt buộc | Tiến trình vẫn đọc lại được, thông báo thiếu nhóm giấy, bổ sung trước khi gửi |
-| 03_KHONG_KHOP | Upload các chứng từ mâu thuẫn, quét và xem các giá trị có nguồn | Người dùng xem và lựa chọn giá trị, bước đối chiếu và Admin vẫn xử lý các sai lệch, AI không tự thay quyết định |
+| 03_KHONG_KHOP | Chọn chính chủ thủ công, upload giấy chứng nhận cũ và văn bản ủy quyền cũ vào nhóm bổ sung | Thông tin tự điền từ giấy tờ có chủ Lê Minh Khoa khác người nộp Nguyễn Văn Chương; bước đối chiếu và Admin xử lý sai lệch, AI không tự thay quyết định |
 
 Trong mỗi bộ, dùng `THONG_TIN_NHAP.txt`, `DU_LIEU.json`, `PDF_GIAY_TO` hoặc `PNG_GIAY_TO` và `ANH_TAI_SAN`. Nếu cần minh họa hai phòng bằng cùng ảnh có sẵn, nói rõ đây là dữ liệu trình diễn. Muốn kiểm tra phân biệt ảnh, chọn hai tệp khác nhau cho hai phòng.
 
@@ -66,3 +66,12 @@ Backend chạy các nhóm `PropertyListingServiceTests`, `PropertyDossierPayment
 Playwright trong phiên đã chạy bản build qua route giả lập do môi trường chặn loopback. Các thao tác được kiểm tra ở trình duyệt thật với API fixture. Chưa chạy thành công SQL migration, đồng thời/rollback trên database hoặc provider Gemini thật. Test CLI Playwright được lưu để chạy lại ở môi trường local có thể mở server, kết quả MCP không được coi là kết quả CLI.
 
 L08 về AI ảnh và mô tả được hoãn theo yêu cầu giới hạn đến L07.
+
+
+## Tự đọc giấy tờ và ngày tháng, cập nhật 09/11/2026
+
+Tải tệp thành công sẽ lưu trước rồi tự gọi AI. Tệp đã đọc được đánh dấu trong bản nháp, tệp lỗi sẽ thử lại khi bổ sung giấy tờ hoặc mở lại bản nháp. Trường do người dùng sửa được giữ khi tệp khác trả về giá trị mới. Các giá trị tự điền trước đó có thể được cập nhật. Nguồn tệp/trang vẫn có trong phần thu gọn.
+
+Chỉ tách địa chỉ được nêu trên giấy. Nếu không có quận/huyện thì trường này để trống để bổ sung. API và database giữ yyyy-MM-dd, giao diện và giấy tờ dùng dd/MM/yyyy. So sánh AI chuẩn hóa cả hai dạng về cùng ngày trước khi báo khác biệt. Kết quả AI cũ cần quét lại để áp dụng quy tắc mới.
+
+Bộ đầy đủ mới dùng OWNERSHIP. Dữ liệu cá nhân đối chiếu ảnh và bản local lưu 04/11/2026 vì kết nối SQL hiện tại bị chặn. Cần đối chiếu lại tài khoản đang dùng trước demo. Hai PDF đầy đủ cũ được giữ nguyên byte trong bộ sai thông tin.

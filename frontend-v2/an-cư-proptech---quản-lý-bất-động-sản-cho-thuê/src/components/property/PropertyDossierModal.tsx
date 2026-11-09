@@ -1,3 +1,4 @@
+import { DossierDateInput } from '@/components/property/DossierDateInput';
 import { OwnerPrecheckPanel } from '@/components/property/OwnerPrecheckPanel';
 import { useEffect, useState, type FormEvent } from 'react';
 import { X } from 'lucide-react';
@@ -61,15 +62,15 @@ export function PropertyDossierModal({ propertyId, onClose, onSaved, selfService
           {limited&&<fieldset className="border rounded-xl p-3 grid sm:grid-cols-2 gap-3 min-w-0"><legend className="font-semibold text-sm px-1">Chủ sở hữu gốc và thời hạn quyền cho thuê</legend>
             <label className="text-sm">Họ tên chủ sở hữu gốc *<input required maxLength={100} value={principalName} onChange={e=>setPrincipalName(e.target.value)} className={field}/></label>
             <label className="text-sm">CCCD chủ sở hữu gốc *<input required pattern="[0-9]{12}" maxLength={12} inputMode="numeric" value={principalNumber} onChange={e=>setPrincipalNumber(e.target.value)} className={field}/></label>
-            <label className="text-sm">Quyền cho thuê từ ngày *<input required type="date" value={validFrom} onChange={e=>setValidFrom(e.target.value)} className={field}/></label>
-            <label className="text-sm">Quyền cho thuê đến hết ngày *<input required type="date" min={validFrom||undefined} value={validUntil} onChange={e=>setValidUntil(e.target.value)} className={field}/></label>
-            {rightType==='SUBLEASE'&&<><label className="text-sm">Hợp đồng thuê gốc từ ngày *<input required type="date" value={leaseFrom} onChange={e=>setLeaseFrom(e.target.value)} className={field}/></label><label className="text-sm">Hợp đồng thuê gốc đến hết ngày *<input required type="date" min={leaseFrom||undefined} value={leaseUntil} onChange={e=>setLeaseUntil(e.target.value)} className={field}/></label></>}
+            <label className="text-sm">Quyền cho thuê từ ngày *<DossierDateInput required value={validFrom} onChange={setValidFrom} className={field}/></label>
+            <label className="text-sm">Quyền cho thuê đến hết ngày *<DossierDateInput required value={validUntil} onChange={setValidUntil} className={field}/></label>
+            {rightType==='SUBLEASE'&&<><label className="text-sm">Hợp đồng thuê gốc từ ngày *<DossierDateInput required value={leaseFrom} onChange={setLeaseFrom} className={field}/></label><label className="text-sm">Hợp đồng thuê gốc đến hết ngày *<DossierDateInput required value={leaseUntil} onChange={setLeaseUntil} className={field}/></label></>}
             <p className="text-xs text-slate-500 sm:col-span-2">Điền theo giấy tờ để Admin đối chiếu. Hệ thống không tự cộng một năm khi giấy tờ thiếu thời hạn; quyền cho thuê lại không vượt hợp đồng thuê gốc.</p>
           </fieldset>}
           <label className="block text-sm">Căn cứ quyền khai thác<textarea maxLength={1000} value={rightDescription} onChange={e => setRightDescription(e.target.value)} className={field} rows={2} /></label>
           <div className="border rounded-xl p-3 space-y-3"><h3 className="font-semibold text-sm">Thông tin giấy chứng nhận</h3><p className="text-xs text-slate-500">Nếu cung cấp, hãy điền đủ số, ngày cấp và nơi cấp theo giấy tờ.</p>
             <label className="block text-sm">Số giấy chứng nhận<input required={!!(certificateDate || certificatePlace)} maxLength={100} value={certificateNumber} onChange={e => setCertificateNumber(e.target.value)} className={field} /></label>
-            <label className="block text-sm">Ngày cấp giấy chứng nhận<input type="date" required={!!(certificateNumber || certificatePlace)} max={new Date().toLocaleDateString('en-CA')} value={certificateDate} onChange={e => setCertificateDate(e.target.value)} className={field} /></label>
+            <label className="block text-sm">Ngày cấp giấy chứng nhận<DossierDateInput required={!!(certificateNumber || certificatePlace)} max={new Date().toLocaleDateString('en-CA')} value={certificateDate} onChange={setCertificateDate} className={field} /></label>
             <label className="block text-sm">Nơi cấp giấy chứng nhận<input required={!!(certificateNumber || certificateDate)} maxLength={200} value={certificatePlace} onChange={e => setCertificatePlace(e.target.value)} className={field} /></label>
           </div>
           <p className="text-sm text-slate-600">{rightType === 'OWNERSHIP' ? 'Đính kèm Sổ đỏ/Sổ hồng hoặc giấy tờ sở hữu tương đương.' : rightType==='AUTHORIZATION'?'Đính kèm giấy tờ sở hữu của chủ gốc và giấy ủy quyền.':'Đính kèm giấy tờ sở hữu của chủ gốc, hợp đồng thuê gốc và văn bản cho phép cho thuê lại riêng. Không dùng điều khoản trong hợp đồng để thay văn bản riêng.'}</p>
