@@ -65,6 +65,10 @@ public class OwnerApartmentService {
         if(sourceAppend&&!imported)throw new ApiException(HttpStatus.CONFLICT,"SOURCE_PROPERTY_REQUIRED","Tài sản không có liên kết nguồn.");
         if(application&&(!property.isOnboardingApplication()||property.getApprovalStatus()!=Property.ApprovalStatus.DRAFT||input.getPublicationStatus()!=Apartment.PublicationStatus.DRAFT))
             throw new ApiException(HttpStatus.CONFLICT,"APPLICATION_DRAFT_REQUIRED","Chỉ chuẩn bị căn nháp cho hồ sơ của bạn.");
+        if(!application&&!sourceAppend&&property.getApprovalStatus()==Property.ApprovalStatus.APPROVED){
+            rights.requireCurrent(property);
+            if(input.getImageIds().isEmpty())throw new ApiException(HttpStatus.BAD_REQUEST,"UNIT_IMAGES_REQUIRED","Cần ít nhất một ảnh riêng cho căn/phòng mới.");
+        }
         if(input.getPublicationStatus()==Apartment.PublicationStatus.PUBLISHED)rights.requireCurrent(property);
         if (input.getPublicationStatus() == Apartment.PublicationStatus.PUBLISHED && property.getApprovalStatus() != Property.ApprovalStatus.APPROVED)
             throw new ApiException(HttpStatus.CONFLICT, "PROPERTY_NOT_APPROVED", "Tài sản phải được duyệt trước khi đăng căn hộ công khai.");
@@ -83,7 +87,9 @@ public class OwnerApartmentService {
         a.setAmenities(new ArrayList<>(input.getAmenities())); a.setPublicationStatus(input.getPublicationStatus());
         a.setAvailability(Apartment.Availability.VACANT); a.setCreatedAt(Instant.now());
         a.setCoverImagePath("/images/apartment-placeholder.svg");
-        return response(apartments.save(a));
+        apartments.saveAndFlush(a);
+        if(!input.getImageIds().isEmpty())images.bindUnit(property,a.getId(),input.getImageIds());
+        return response(a);
     }
     @Transactional
     public OwnerApartmentResponse publication(Jwt jwt, Long id, ApartmentPublication input) {
@@ -99,7 +105,7 @@ public class OwnerApartmentService {
     }
     private OwnerApartmentResponse response(Apartment a) {
         var p = a.getProperty();
-        var gallery=images.unitUrls(p.getId(),a.getId());
+        var gallery=images.unitUrls(p.getId(),a.getId(),a.getCoverImagePath());
         return new OwnerApartmentResponse(a.getId(), p.getId(), p.getName(), p.getOwner().getId(),
                 a.getRoomNumber() == null ? a.getTitle() : a.getRoomNumber(), a.getTitle(), a.getDescription(), a.getFloor(),
                 a.getAreaM2().toPlainString(), a.getAdvertisedMonthlyRent().toPlainString(), a.getDeposit() == null ? null : a.getDeposit().toPlainString(),

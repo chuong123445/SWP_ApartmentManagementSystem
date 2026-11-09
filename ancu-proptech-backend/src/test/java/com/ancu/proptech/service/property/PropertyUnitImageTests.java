@@ -53,4 +53,10 @@ class PropertyUnitImageTests {
         verify(images).deleteAll(List.of(removed));
         verify(images,never()).findByPropertyIdAndApartmentIdIsNullOrderByPositionAsc(any());
     }
+    @Test void legacyPrivateCoverPrecedesSharedPropertyImages(){
+        when(images.unitIds(3L)).thenReturn(List.of());when(images.ids(2L)).thenReturn(List.of(8L));
+        assertEquals(List.of("/images/legacy-room.jpg","/api/v1/property-images/8"),service.unitUrls(2L,3L,"/images/legacy-room.jpg"));
+        when(images.unitIds(3L)).thenReturn(List.of(7L));
+        assertEquals(List.of("/api/v1/property-images/7","/api/v1/property-images/8"),service.unitUrls(2L,3L,"/images/legacy-room.jpg"));
+    }
 }

@@ -3,7 +3,7 @@
   "info": {
     "title": "An Cu Private Property Dossiers and Admin Review",
     "version": "1.2.0",
-    "description": "Implemented private PDF/JPEG/PNG up to10MB, VNeID-verified submissions, AUTHORIZATION/SUBLEASE typed papers and validity, Admin confirmation/promotion, append-only renewal. SQL binary private storage, no malware-scan/OCR claim. Self application/expiry endpoints are described in property-rights.openapi.json."
+    "description": "Implemented private PDF/JPEG/PNG up to10MB, VNeID-verified submissions, AUTHORIZATION/SUBLEASE typed papers and validity, Admin confirmation/promotion, append-only renewal. SQL binary private storage, no malware-scan/OCR claim. Self application/expiry endpoints are described in property-rights.openapi.json. Submission and approval reject certificates or exact canonical ownership evidence already attached to another approved property (CERTIFICATE_ALREADY_APPROVED/EVIDENCE_ALREADY_APPROVED, HTTP409). Same-property renewal is excluded. Admin approvals and source imports serialize duplicate checks in a SQL Server transaction-owned application lock. Rejection reasons and reviewedAt are returned by the existing private dossier history."
   },
   "servers": [
     {

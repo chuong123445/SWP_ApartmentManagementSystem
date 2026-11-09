@@ -208,4 +208,24 @@ class PropertyDossierIntegrationTests {
         publish(ownerToken,apartment,1,"HIDDEN").andExpect(status().isOk()).andExpect(jsonPath("$.availability").value("VACANT"));
         mvc.perform(get("/api/v1/apartments/"+apartment)).andExpect(status().isNotFound());
     }
+
+    @Test void pendingDuplicateIsBlockedAgainWhenAdminApproves()throws Exception{
+        String certificate="DUP-"+com.ancu.proptech.support.TestIds.next();
+        String firstFile=uploadRight();
+        String first=JsonPath.read(submit(ownerToken,property,withCertificate(body(firstFile,property.getVersion()),certificate)).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(),"$.id");
+        String otherToken=token(other);
+        String secondFile=JsonPath.read(upload(otherToken,foreignProperty,"RIGHT_DOCUMENT",png).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(),"$.id");
+        String second=JsonPath.read(submit(otherToken,foreignProperty,withCertificate(body(secondFile,foreignProperty.getVersion()),certificate)).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(),"$.id");
+        decision(adminToken,first,"APPROVE","Checked",0).andExpect(status().isOk());
+        decision(adminToken,second,"APPROVE","Checked",0).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CERTIFICATE_ALREADY_APPROVED"));
+        assertEquals(PropertyDossier.Status.PENDING_APPROVAL,dossiers.findById(Long.valueOf(second)).orElseThrow().getStatus());
+    }
+    @Test void reusedOwnershipFileCannotBeSubmittedAfterAnotherPropertyApproved()throws Exception{
+        String first=send(uploadRight());decision(adminToken,first,"APPROVE","Checked",0).andExpect(status().isOk());
+        String otherToken=token(other);
+        String copy=JsonPath.read(upload(otherToken,foreignProperty,"RIGHT_DOCUMENT",png).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(),"$.id");
+        submit(otherToken,foreignProperty,body(copy,foreignProperty.getVersion())).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EVIDENCE_ALREADY_APPROVED"));
+        assertFalse(dossiers.existsByPropertyId(foreignProperty.getId()));
+    }
+    private String withCertificate(String value,String certificate){return value.replace("\"rightType\"","\"certificateNumber\":\""+certificate+"\",\"certificateIssueDate\":\"2025-01-01\",\"certificateIssuePlace\":\"Test office\",\"rightType\"");}
 }

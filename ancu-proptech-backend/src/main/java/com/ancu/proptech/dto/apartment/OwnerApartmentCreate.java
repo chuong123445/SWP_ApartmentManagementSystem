@@ -24,6 +24,7 @@ public class OwnerApartmentCreate {
     @NotNull private Apartment.PublicationStatus publicationStatus = Apartment.PublicationStatus.DRAFT;
     @DecimalMin("0") @Digits(integer=13,fraction=2) private java.math.BigDecimal electricityUnitPrice;
     @DecimalMin("0") @Digits(integer=13,fraction=2) private java.math.BigDecimal waterUnitPrice;
+    @NotNull @Size(max=4) private List<@NotNull Long> imageIds=new ArrayList<>();
     @JsonAnySetter public void rejectUnknown(String field, Object value) {
         throw new IllegalArgumentException("Unsupported field: " + field);
     }
