@@ -51,8 +51,13 @@ public class PropertyListingService {
     @Transactional(readOnly=true) public View get(Jwt jwt,Long id){var p=access.read(jwt,id);return view(owned(p),p);}
     @Transactional public View save(Jwt jwt,Long id,Save input){
         var p=access.write(jwt,id);var d=owned(p);editable(d,p,input.version());
+        if(input.payload()==null||!input.payload().isObject())throw bad("Bản nháp phải là một đối tượng JSON.");
         String payload=json.writeValueAsString(input.payload());
-        if(input.payload()==null||!input.payload().isObject()||payload.length()>150_000)throw bad("Bản nháp quá lớn hoặc không hợp lệ.");
+        if(payload.length()>150_000)throw bad("Bản nháp quá lớn hoặc không hợp lệ.");
+        var units=input.payload().path("units");
+        if(!units.isMissingNode()&&(!units.isArray()||units.size()>50))throw bad("Bản nháp có tối đa 50 căn/phòng.");
+        var step=input.payload().path("step");
+        if(!step.isMissingNode()&&(!step.isIntegralNumber()||!step.canConvertToInt()||step.asInt()<0||step.asInt()>4))throw bad("Bước đăng tải không hợp lệ.");
         d.setPayload(payload);d.setUpdatedAt(Instant.now());drafts.flush();return view(d,p);
     }
     @Transactional public View finish(Jwt jwt,Long id,Finish input){
@@ -68,7 +73,7 @@ public class PropertyListingService {
             input.dossier().setPropertyVersion(p.getVersion());
             dossiers.submit(jwt,id,input.dossier());
         }
-        d.setCompleted(true);d.setPayload("{}");d.setUpdatedAt(Instant.now());drafts.flush();return view(d,p);
+        d.setPayload("{}");d.setUpdatedAt(Instant.now());drafts.flush();return view(d,p);
     }
     private PropertyListingDraft owned(Property p){return drafts.findById(p.getId()).filter(d->d.getAccountId().equals(p.getOwner().getId())).orElseThrow(PropertyListingService::missing);}
     private void editable(PropertyListingDraft d,Property p,long version){

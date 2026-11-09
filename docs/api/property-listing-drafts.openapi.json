@@ -1,0 +1,778 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Private property listing drafts",
+    "version": "1.0.0",
+    "description": "L01-L02. Creation requestKey retries return the existing owned draft. Completed-command retries return the completed view. Creation limits unfinished drafts to 20. Completion uses typed validation and a single transaction. SQL acceptance pending environment access."
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/me/listing-drafts": {
+      "post": {
+        "operationId": "startListingDraft",
+        "responses": {
+          "200": {
+            "description": "Private response",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/View"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid command",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account ineligible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource unavailable to actor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale version or draft not editable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Start"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listListingDrafts",
+        "responses": {
+          "200": {
+            "description": "Private response",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/View"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid command",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account ineligible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource unavailable to actor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale version or draft not editable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/listing-drafts/{id}": {
+      "get": {
+        "operationId": "getListingDraft",
+        "responses": {
+          "200": {
+            "description": "Private response",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/View"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid command",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account ineligible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource unavailable to actor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale version or draft not editable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ]
+      },
+      "put": {
+        "operationId": "saveListingDraft",
+        "responses": {
+          "200": {
+            "description": "Private response",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/View"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid command",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account ineligible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource unavailable to actor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale version or draft not editable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Save"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/listing-drafts/{id}/complete": {
+      "post": {
+        "operationId": "completeListingDraft",
+        "responses": {
+          "200": {
+            "description": "Private response",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/View"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid command",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account ineligible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource unavailable to actor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale version or draft not editable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./property-dossiers.openapi.json#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Finish"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Start": {
+        "type": "object",
+        "required": [
+          "requestKey",
+          "rightType"
+        ],
+        "properties": {
+          "requestKey": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "rightType": {
+            "type": "string",
+            "enum": [
+              "OWNERSHIP",
+              "AUTHORIZATION",
+              "SUBLEASE"
+            ]
+          }
+        }
+      },
+      "Save": {
+        "type": "object",
+        "required": [
+          "version",
+          "payload"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Private resume state up to 150000 serialized characters. Optional step is integer 0..4. Optional units is array of at most 50. Never executed as a persistence command."
+          }
+        }
+      },
+      "View": {
+        "type": "object",
+        "required": [
+          "propertyId",
+          "version",
+          "propertyVersion",
+          "rightType",
+          "completed",
+          "payload",
+          "files"
+        ],
+        "properties": {
+          "propertyId": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "propertyVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "rightType": {
+            "type": "string",
+            "enum": [
+              "OWNERSHIP",
+              "AUTHORIZATION",
+              "SUBLEASE"
+            ]
+          },
+          "completed": {
+            "type": "boolean"
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "./property-dossiers.openapi.json#/components/schemas/EvidenceFile"
+            }
+          }
+        }
+      },
+      "Finish": {
+        "type": "object",
+        "required": [
+          "version",
+          "property",
+          "dossier",
+          "submit"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "property": {
+            "$ref": "#/components/schemas/PropertyCreate"
+          },
+          "dossier": {
+            "$ref": "./property-dossiers.openapi.json#/components/schemas/DossierSubmit"
+          },
+          "submit": {
+            "type": "boolean",
+            "description": "true sends dossier for review; false completes inventory only and leaves submission to existing dossier API."
+          }
+        }
+      },
+      "PropertyCreate": {
+        "type": "object",
+        "required": [
+          "imageIds",
+          "name",
+          "address",
+          "city",
+          "district",
+          "rentalMode",
+          "apartments"
+        ],
+        "properties": {
+          "imageIds": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4,
+            "items": {
+              "type": "string"
+            }
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150
+          },
+          "address": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "city": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "district": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "ward": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 80
+          },
+          "rentalMode": {
+            "type": "string",
+            "enum": [
+              "SINGLE_UNIT",
+              "MULTI_UNIT"
+            ]
+          },
+          "apartments": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "items": {
+              "type": "object",
+              "required": [
+                "roomNumber",
+                "title",
+                "description",
+                "floor",
+                "areaM2",
+                "advertisedMonthlyRent",
+                "amenities"
+              ],
+              "properties": {
+                "roomNumber": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 20
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 150
+                },
+                "description": {
+                  "type": "string",
+                  "maxLength": 3000
+                },
+                "floor": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 200
+                },
+                "areaM2": {
+                  "type": [
+                    "string",
+                    "number"
+                  ],
+                  "pattern": "^\\d+(\\.\\d{1,2})?$"
+                },
+                "advertisedMonthlyRent": {
+                  "type": [
+                    "string",
+                    "number"
+                  ],
+                  "pattern": "^\\d+(\\.\\d{1,2})?$"
+                },
+                "imageIds": {
+                  "type": "array",
+                  "maxItems": 4,
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "amenities": {
+                  "type": "array",
+                  "maxItems": 50,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  }
+                },
+                "electricityUnitPrice": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number"
+                      ],
+                      "pattern": "^\\d+(\\.\\d{1,2})?$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "waterUnitPrice": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number"
+                      ],
+                      "pattern": "^\\d+(\\.\\d{1,2})?$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "deposit": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number"
+                      ],
+                      "pattern": "^\\d+(\\.\\d{1,2})?$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "bedrooms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                },
+                "bathrooms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                },
+                "electricityIndex": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                },
+                "waterIndex": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                },
+                "maxOccupants": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

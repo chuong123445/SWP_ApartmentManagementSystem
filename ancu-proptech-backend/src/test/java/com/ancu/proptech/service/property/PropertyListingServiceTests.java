@@ -37,5 +37,25 @@ class PropertyListingServiceTests {
     @Test void idempotencyKeyIsScopedToActor(){String key=UUID.randomUUID().toString();when(accounts.findForIdentityUpdate(1L)).thenReturn(Optional.of(p.getOwner()));when(drafts.findByRequestKey(key)).thenReturn(Optional.of(d));
         assertEquals("2",service.start(null,new Start(key,PropertyDossier.RightType.AUTHORIZATION)).propertyId());verify(properties,never()).saveAndFlush(any());
         d.setAccountId(8L);assertThrows(ApiException.class,()->service.start(null,new Start(key,PropertyDossier.RightType.AUTHORIZATION)));}
+    @Test void invalidResumeStateIsRejected(){
+        for(String payload:List.of("[]","{\"step\":5}","{\"step\":1.5}","{\"units\":{}}")){
+            assertThrows(ApiException.class,()->service.save(null,2L,new Save(3L,json.readTree(payload))));
+        }
+        assertThrows(ApiException.class,()->service.save(null,2L,new Save(3L,null)));
+        assertEquals("{}",d.getPayload());
+    }
+    @Test void completionRejectsStalePropertyBeforeCreatingRooms(){
+        var dossier=new PropertyDossierSubmit();dossier.setRightType(PropertyDossier.RightType.AUTHORIZATION);dossier.setPropertyVersion(1L);
+        assertEquals("STALE_VERSION",assertThrows(ApiException.class,()->service.finish(null,2L,new Finish(3L,new OwnerPropertyCreate(),dossier,true))).code);
+        verifyNoInteractions(creation,dossiers);assertFalse(d.isCompleted());
+    }
+    @Test void completionRejectsChangedRightType(){
+        var dossier=new PropertyDossierSubmit();dossier.setRightType(PropertyDossier.RightType.OWNERSHIP);
+        assertThrows(ApiException.class,()->service.finish(null,2L,new Finish(3L,new OwnerPropertyCreate(),dossier,true)));
+        verifyNoInteractions(creation,dossiers);
+    }
+    @Test void completedDraftCannotBeSavedAgain(){
+        d.setCompleted(true);
+        assertEquals("LISTING_NOT_EDITABLE",assertThrows(ApiException.class,()->service.save(null,2L,new Save(3L,json.createObjectNode()))).code);
+    }
 }
-
