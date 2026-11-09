@@ -22,7 +22,7 @@ export function PropertiesPage({ properties, onAdd, onSelect, onDossier, onReloa
       <span className={`inline-block text-xs font-semibold px-2 py-1 rounded ${p.legalStatus === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'}`}>{p.verificationSource === 'AUTH0_VNEID_SIMULATION' ? 'Đã xác thực qua VNeID' : labels[p.legalStatus] ?? p.legalStatus}</span>
       {p.legalStatus !== 'APPROVED' && <p className="text-sm text-slate-500">Chưa được công khai. Gửi hồ sơ chứng minh quyền sở hữu/khai thác để Admin kiểm duyệt.</p>}
       {p.verificationSource === 'AUTH0_VNEID_SIMULATION' ? <p className="text-sm text-emerald-800">Không cần Admin duyệt. Quản lý các căn/phòng để theo dõi việc cho thuê.</p> : <button onClick={() => onDossier(p.id)} className="block text-sm font-semibold text-emerald-700 underline">{p.legalStatus === 'DRAFT' ? 'Chuẩn bị hồ sơ kiểm duyệt' : 'Xem hồ sơ kiểm duyệt'}</button>}
-      <button onClick={() => onSelect(p.id)} className="block text-sm font-semibold text-emerald-700 underline">Xem các căn/phòng</button>
+      {p.legalStatus==='APPROVED'&&<button onClick={() => onSelect(p.id)} className="block text-sm font-semibold text-emerald-700 underline">Xem các căn/phòng</button>}
     </article>)}</div>
   </section>;
 }

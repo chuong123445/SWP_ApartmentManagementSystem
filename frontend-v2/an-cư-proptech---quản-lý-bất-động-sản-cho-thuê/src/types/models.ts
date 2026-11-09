@@ -42,7 +42,7 @@ export interface Room {
   depositEscrowLocked?: boolean;
 }
 
-export type NewRoom = Omit<Room, 'id' | 'electricityIndex' | 'waterIndex'> & { electricityIndex: number | null; waterIndex: number | null };
+export type NewRoom = { imageIds?:string[] } & Omit<Room, 'id' | 'electricityIndex' | 'waterIndex'> & { electricityIndex: number | null; waterIndex: number | null };
 
 export interface Tenant {
   contractId?: string;

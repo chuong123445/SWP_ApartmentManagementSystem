@@ -73,7 +73,7 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
       if (!active) return;
       setTenancies(leases);
       const views = tenancyViews(leases);setTenants(views.tenants);setContracts(views.contracts);
-      const inventory = apartments.map(a => ({ ...a, currentTenantId: leases.find(c => c.apartmentId === a.id && c.status === 'ACTIVE')?.customerId }));
+      const inventory = apartments.filter(a=>a.propertyApprovalStatus==='APPROVED').map(a => ({ ...a, currentTenantId: leases.find(c => c.apartmentId === a.id && c.status === 'ACTIVE')?.customerId }));
       setRooms(inventory);setSelectedRoom(prev => prev ? inventory.find(a => a.id === prev.id) ?? null : null);
       setBuildings(properties.map(p => ({ id: p.id, name: p.name, address: p.address,
         rentalMode: p.rentalMode, verificationSource: p.verificationSource, rightType:p.rightType,rightsValidFrom:p.rightsValidFrom,rightsValidUntil:p.rightsValidUntil,totalRooms: apartments.filter(a => a.buildingId === p.id).length, pcccCertified: false, legalStatus: p.approvalStatus })));

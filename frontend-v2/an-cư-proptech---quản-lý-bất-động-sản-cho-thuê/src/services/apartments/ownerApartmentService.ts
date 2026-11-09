@@ -37,6 +37,7 @@ export function toOwnerApartmentCreate(room: NewRoom) {
     deposit: room.deposit === undefined ? null : String(room.deposit), electricityIndex: room.electricityIndex,
     waterIndex: room.waterIndex, maxOccupants: room.maxOccupants, amenities: room.amenities,
     publicationStatus: room.publicationStatus ?? 'DRAFT',
+    imageIds:room.imageIds??[],electricityUnitPrice:room.electricityUnitPrice??null,waterUnitPrice:room.waterUnitPrice??null,
   };
 }
 async function ownerRequest(url: string, options?: RequestInit) {
