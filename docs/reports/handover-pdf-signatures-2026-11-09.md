@@ -48,3 +48,9 @@ UI hai chữ ký ban đầu được commit `baa7ec3`. Người dùng yêu cầu
 Đã thêm route `/contracts/:id/handover` dùng cùng guard đăng nhập và quyền đúng bên ở backend. Lưu biên bản thành công điều hướng trực tiếp sang trang này, không gọi lại callback của modal đã rời trang. Modal/form chỉ hiển thị liên kết mở lại biên bản. Trang mới có PDF bàn giao, chữ ký hai bên, trạng thái, tải lại, bất đồng/hủy và các đường dẫn trở về danh sách hoặc hợp đồng thuê. Danh sách hợp đồng của chủ nhà và khách thuê có liên kết Biên bản bàn giao / ký.
 
 Playwright MCP đã kiểm tra bốn ca PDF/ký theo hai thứ tự ở 1440/390 px, bao gồm URL sau lưu, không còn dialog mở, chỉ có một iframe PDF bàn giao và reload trang. Bốn ca hết hạn/kết thúc sớm, stale, bất đồng/lập lại, chứng cứ và lỗi tải lại sau khi đã lưu cũng đạt qua cả entry modal và trang hợp đồng. Các ca dùng API fixtures và PDF thật do backend test tạo. TypeScript, 156 frontend tests và Vite build đạt. Context7 dùng tài liệu React Router 7.13.0 gần nhất, project khai báo 8.4.0 và kiểm tra bằng bộ types/build đang cài. Thay đổi trang này chỉ nằm ở frontend.
+
+## Điều chỉnh khung PDF và lịch sử ngày 09/11/2026
+
+Khung PDF bàn giao dùng tỷ lệ A4 210/297 theo chiều rộng, thay cho chiều cao 60vh. Lịch sử hiển thị tên thao tác tiếng Việt, người thực hiện, thời gian và ghi chú. JSON trước/sau và hash trong ghi chú ký được loại khỏi phần hiển thị. Audit nguồn vẫn dùng cho kiểm tra phiên bản và truy vết ở backend.
+
+156 frontend tests, TypeScript và build đạt. Bốn ca Playwright MCP desktop/mobile với API fixtures đạt, gồm đo tỷ lệ khung A4, mở lịch sử có sự kiện thật trong fixture, kiểm tra tên thao tác ký và không xuất hiện payload JSON/hash. Ảnh lịch sử mobile đã được xem.
