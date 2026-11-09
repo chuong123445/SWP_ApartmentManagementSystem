@@ -19,7 +19,7 @@ export function HandoverDocument({data,disabled,onUpdated}:{data:ContractExit;di
  if(!data.document||!data.signing)return null;
  return <section aria-label="PDF và chữ ký bàn giao" className="rounded-xl border p-4 space-y-4 min-w-0">
   <h3 className="font-bold">Biên bản bàn giao · {data.document.number}</h3>
-  <p className="text-sm">{data.signing.state==='SIGNED'?'Hai bên đã ký, bàn giao hoàn tất.':data.signing.state==='WAITING_OWNER'?'Chờ chủ nhà ký.':data.signing.state==='WAITING_CUSTOMER'?'Chờ khách thuê ký.':'Chờ chữ ký của chủ nhà và khách thuê.'}</p>
+  <p className="text-sm">{data.handoverState==='CANCELLED'?'Biên bản đã hủy.':data.handoverState==='DISPUTED'?'Biên bản đang có nội dung bất đồng, chờ chủ nhà lập lại.':data.signing.state==='SIGNED'?'Hai bên đã ký, bàn giao hoàn tất.':data.signing.state==='WAITING_OWNER'?'Chờ chủ nhà ký.':data.signing.state==='WAITING_CUSTOMER'?'Chờ khách thuê ký.':'Chờ chữ ký của chủ nhà và khách thuê.'}</p>
   {error&&<p role="alert" className="text-red-700 text-sm">{error}</p>}
   {pdfError?<p role="alert" className="text-red-700 text-sm">{pdfError}<button type="button" className="underline ml-2" onClick={()=>setRetry(v=>v+1)}>Tải lại PDF bàn giao</button></p>:!url?<p role="status">Đang tải PDF bàn giao…</p>:<>
    <div className="flex flex-wrap gap-3 text-sm"><a className="underline text-emerald-800" href={url} download={`${data.document.number}.pdf`}>Tải PDF bàn giao</a><a className="underline text-emerald-800" href={url} target="_blank" rel="noreferrer">Mở PDF bàn giao / In</a></div>
