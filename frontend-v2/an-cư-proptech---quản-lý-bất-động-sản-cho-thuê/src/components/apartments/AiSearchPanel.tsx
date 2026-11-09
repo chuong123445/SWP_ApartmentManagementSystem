@@ -51,7 +51,6 @@ export function AiSearchPanel({ onApply }: { onApply:(filters:ApartmentFilters)=
       </div>
       <form className="ai-chat-compose" onSubmit={e=>{e.preventDefault();void send();}}>
         {error&&<p role="alert" className="ai-chat-error">{error} Bạn vẫn có thể dùng bộ lọc trên trang.</p>}
-        <p className="ai-chat-privacy">AI có thể nhầm. Không gửi thông tin cá nhân hoặc giấy tờ.</p>
         <div className="ai-chat-input"><textarea ref={input} aria-label="Tin nhắn cho AI" placeholder="Nhập tin nhắn…" rows={2} maxLength={1000} disabled={busy} value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void send();}}}/><button type="submit" aria-label="Gửi tin nhắn" disabled={busy||!text.trim()}><Send size={19}/></button></div>
       </form>
     </section>}
