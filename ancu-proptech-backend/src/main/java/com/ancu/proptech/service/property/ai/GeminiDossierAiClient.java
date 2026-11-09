@@ -53,6 +53,8 @@ public class GeminiDossierAiClient implements DossierAiClient {
             generation.put("maxOutputTokens",16384);
             generation.put("thinkingConfig",Map.of("thinkingBudget",1024));
         }
+        if(settings.getModel().startsWith("gemini-3"))generation.put("maxOutputTokens",16384);
+        com.ancu.proptech.service.ai.GeminiGenerationConfig.adapt(generation,settings.getModel());
         var payload=Map.of("systemInstruction",Map.of("parts",List.of(Map.of("text",instruction))),"contents",List.of(Map.of("role","user","parts",parts)),
             "generationConfig",generation);
         var request=HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(60)).header("Content-Type","application/json").header("x-goog-api-key",settings.getApiKey()).POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(payload))).build();
