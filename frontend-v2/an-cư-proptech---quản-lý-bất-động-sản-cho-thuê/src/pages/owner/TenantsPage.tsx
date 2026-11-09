@@ -43,7 +43,7 @@ export function TenantsPage({ tenants, loading = false, error = '', onReload }: 
       <div className="overflow-x-auto"><table className="w-full text-left text-xs min-w-[1050px]">
         <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[11px]"><tr>{['Người thuê', 'Căn hộ / Tài sản', 'Xác thực email', 'Định danh tài khoản', 'Ký trong ứng dụng', 'Cọc theo hợp đồng', 'Quản lý cọc', 'Trạng thái'].map(label => <th key={label} className="px-4 py-3">{label}</th>)}</tr></thead>
         <tbody className="divide-y divide-slate-100">{filtered.map(tenant => <tr key={tenant.contractId ?? `${tenant.id}-${tenant.roomId}`} className="hover:bg-slate-50/80">
-          <td className="px-4 py-3"><div className="font-semibold text-slate-900">{tenant.name}</div><div className="text-slate-500 break-all mt-1">{tenant.email || 'Chưa có email'}</div>{tenant.localFixture && <div className="text-amber-800 mt-1">Hợp đồng dữ liệu mẫu</div>}</td>
+          <td className="px-4 py-3"><div className="font-semibold text-slate-900">{tenant.name}</div><div className="text-slate-500 break-all mt-1">{tenant.email || 'Chưa có email'}</div></td>
           <td className="px-4 py-3"><div className="font-bold text-emerald-700">{tenant.roomNumber}</div><div className="text-slate-500 mt-1">{tenant.buildingName}</div><div className="text-slate-500 mt-1">{tenant.contractId ? `HĐ #${tenant.contractId}` : 'Chưa có mã hợp đồng'}</div></td>
           <td className="px-4 py-3">{tenant.emailVerified === true ? 'Đã xác thực email' : tenant.emailVerified === false ? 'Chưa xác thực email' : 'Chưa có dữ liệu xác thực email'}</td>
           <td className="px-4 py-3">{identityLabel(tenant)}</td>
