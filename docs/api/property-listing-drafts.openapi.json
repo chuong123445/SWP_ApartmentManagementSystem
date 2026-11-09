@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Private property listing drafts",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "L01-L02. Creation requestKey retries return the existing owned draft. Completed-command retries return the completed view. Creation limits unfinished drafts to 20. Completion uses typed validation and a single transaction. SQL acceptance pending environment access."
   },
   "security": [
@@ -639,7 +639,10 @@
                 "floor",
                 "areaM2",
                 "advertisedMonthlyRent",
-                "amenities"
+                "amenities",
+                "electricityUnitPrice",
+                "waterUnitPrice",
+                "imageIds"
               ],
               "properties": {
                 "roomNumber": {
@@ -680,7 +683,8 @@
                   "maxItems": 4,
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "minItems": 1
                 },
                 "amenities": {
                   "type": "array",

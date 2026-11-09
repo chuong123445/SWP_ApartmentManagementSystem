@@ -31,7 +31,7 @@ public class OwnerPrecheckService {
  public View check(Jwt jwt,Long propertyId,Request input){return checkInternal(jwt,propertyId,input,false);}
  public View extract(Jwt jwt,Long propertyId,Request input){return checkInternal(jwt,propertyId,input,true);}
  private View checkInternal(Jwt jwt,Long propertyId,Request input,boolean extract){
-  var snapshot=read(()->snapshot(jwt,propertyId,input.draft(),input.fileId()));
+  var snapshot=read(()->snapshot(jwt,propertyId,input.draft(),input.fileId(),input.propertyFields()));
   if(input.fileId()==null)return view(snapshot,null,null,null);
   if(!Boolean.TRUE.equals(input.consent()))throw bad("Cần đồng ý gửi thông tin và tệp đã chọn đến Gemini.");
   if(!snapshot.hash().equals(input.sourceHash()))throw stale();
@@ -42,7 +42,7 @@ public class OwnerPrecheckService {
     var response=extract?client.extract(json.valueToTree(Map.of("rightType",input.draft().getRightType())),snapshot.document()):client.analyzeOwner(snapshot.fields(),snapshot.document());
     var review=DossierAiReport.parse(json.valueToTree(response),snapshot.document().id());
     // Revalidate after network I/O, without holding property/database locks while waiting.
-    var current=read(()->snapshot(jwt,propertyId,input.draft(),null));if(!snapshot.hash().equals(current.hash()))throw stale();
+    var current=read(()->snapshot(jwt,propertyId,input.draft(),null,input.propertyFields()));if(!snapshot.hash().equals(current.hash()))throw stale();
     var result=view(snapshot,run.getId(),run.getModel(),review);
     if(extract)result=new View(result.sourceHash(),result.propertyVersion(),List.of(),result.files(),result.runId(),result.model(),"property-extraction-v1",result.finishedAt(),result.review());audit.finish(run.getId(),json.writeValueAsString(result),null);return result;
    }catch(DossierAiClient.Failure e){audit.finish(run.getId(),null,e.code);throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,"AI_"+e.code,"Quét tệp chưa thành công. Bạn vẫn có thể kiểm tra và nộp hồ sơ theo cách thông thường.");}
@@ -50,7 +50,7 @@ public class OwnerPrecheckService {
   }catch(ApiException e){throw e;}catch(Exception e){throw GeminiAssistanceClient.failure("AI_UNAVAILABLE");}
  }
  private View view(Snapshot s,String run,String model,DossierAiReport.FileReview review){return new View(s.hash(),s.version(),s.checklist(),s.files(),run,model,PROMPT,review==null?null:Instant.now(),review==null?null:json.valueToTree(review));}
- private Snapshot snapshot(Jwt jwt,Long propertyId,PropertyDossierSubmit draft,Long selected){
+ private Snapshot snapshot(Jwt jwt,Long propertyId,PropertyDossierSubmit draft,Long selected,PropertyFields declared){
   var p=access.read(jwt,propertyId);
   if(draft==null||draft.getPropertyVersion()==null||draft.getRightType()==null||json.writeValueAsString(draft).length()>20000)throw bad("Dữ liệu bản nháp không hợp lệ.");
   if(p.getVersion()!=draft.getPropertyVersion())throw stale();
@@ -78,13 +78,13 @@ public class OwnerPrecheckService {
    if(draft.getRightsValidFrom()==null||draft.getRightsValidUntil()==null||draft.getRightsValidFrom().isAfter(draft.getRightsValidUntil()))checklist.add("Thời hạn quyền cho thuê chưa hợp lệ.");
    if(draft.getRightType()==PropertyDossier.RightType.SUBLEASE&&(draft.getOriginalLeaseFrom()==null||draft.getOriginalLeaseUntil()==null||draft.getRightsValidFrom()==null||draft.getRightsValidUntil()==null||draft.getOriginalLeaseFrom().isAfter(draft.getOriginalLeaseUntil())||draft.getRightsValidFrom().isBefore(draft.getOriginalLeaseFrom())||draft.getRightsValidUntil().isAfter(draft.getOriginalLeaseUntil())))checklist.add("Thời hạn cho thuê lại phải nằm trong hợp đồng thuê gốc.");
   }
-  var fields=new LinkedHashMap<String,Object>();fields.put("propertyName",p.getName());fields.put("propertyAddress",p.getAddress());fields.put("city",p.getCity());fields.put("district",p.getDistrict());fields.put("ward",p.getWard());fields.put("rightType",draft.getRightType());
-  fields.put("applicantName",identities.verified(p.getOwner().getId()).map(x->x.getLegalName()).orElse(p.getOwner().getFullName()));fields.put("principalName",draft.getPrincipalName());fields.put("certificateNumber",draft.getCertificateNumber());fields.put("certificateIssueDate",draft.getCertificateIssueDate());fields.put("certificateIssuePlace",draft.getCertificateIssuePlace());fields.put("exploitationRightDescription",draft.getExploitationRightDescription());fields.put("rightsValidFrom",draft.getRightsValidFrom());fields.put("rightsValidUntil",draft.getRightsValidUntil());fields.put("originalLeaseFrom",draft.getOriginalLeaseFrom());fields.put("originalLeaseUntil",draft.getOriginalLeaseUntil());
+  var fields=new LinkedHashMap<String,Object>();fields.put("propertyName",declared==null?p.getName():declared.name());fields.put("propertyAddress",declared==null?p.getAddress():declared.address());fields.put("city",declared==null?p.getCity():declared.city());fields.put("district",declared==null?p.getDistrict():declared.district());fields.put("ward",declared==null?p.getWard():declared.ward());fields.put("rightType",draft.getRightType());
+  fields.put("applicantName",identities.verified(p.getOwner().getId()).map(x->x.getLegalName()).orElse(p.getOwner().getFullName()));fields.put("principalName",draft.getPrincipalName());fields.put("principalDocumentNumber",draft.getPrincipalDocumentNumber());fields.put("applicantDocumentNumber",identities.verified(p.getOwner().getId()).map(x->x.getDocumentNumber()).orElse(null));fields.put("certificateNumber",draft.getCertificateNumber());fields.put("certificateIssueDate",draft.getCertificateIssueDate());fields.put("certificateIssuePlace",draft.getCertificateIssuePlace());fields.put("exploitationRightDescription",draft.getExploitationRightDescription());fields.put("rightsValidFrom",draft.getRightsValidFrom());fields.put("rightsValidUntil",draft.getRightsValidUntil());fields.put("originalLeaseFrom",draft.getOriginalLeaseFrom());fields.put("originalLeaseUntil",draft.getOriginalLeaseUntil());
   String hash=AssistanceAudit.hash(json.writeValueAsString(List.of(p.getVersion(),draft,manifest,fields)));
   return new Snapshot(p.getOwner().getId(),p.getVersion(),hash,List.copyOf(checklist),List.copyOf(manifest),json.valueToTree(fields),document);
  }
  public void acknowledge(Jwt jwt,Long propertyId,String id,Acknowledge input){
-  var current=read(()->snapshot(jwt,propertyId,input.draft(),null));if(!current.hash().equals(input.sourceHash()))throw stale();
+  var current=read(()->snapshot(jwt,propertyId,input.draft(),null,input.propertyFields()));if(!current.hash().equals(input.sourceHash()))throw stale();
   new TransactionTemplate(manager).execute(s->{var r=runs.lockById(id).filter(x->"OWNER_PRECHECK".equals(x.getTask())&&Objects.equals(x.getAccountId(),current.actor())&&Objects.equals(x.getPropertyId(),propertyId)&&"COMPLETED".equals(x.getStatus())).orElseThrow(OwnerPrecheckService::missing);
    if(!json.readTree(r.getResultJson()).path("sourceHash").asString().equals(current.hash()))throw stale();r.setAcceptedAt(Instant.now());r.setAcceptedJson(json.writeValueAsString(Map.of("sourceHash",current.hash(),"reviewed",true)));runs.saveAndFlush(r);return null;});
  }

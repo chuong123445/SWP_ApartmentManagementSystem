@@ -29,6 +29,11 @@ class PropertyListingIntegrationTests {
     @Autowired ExternalIdentityRepository identities;
     @Autowired PropertyListingDraftRepository drafts;
     @Autowired PropertyRepository properties;
+    @Autowired PropertyImageRepository images;
+    @Autowired PropertyEvidenceFileRepository evidence;
+    @Autowired PropertyEvidenceContentRepository contents;
+    @Autowired com.ancu.proptech.repository.apartment.ApartmentRepository apartments;
+    @Autowired PropertyDossierRepository dossiers;
     @Autowired PasswordEncoder passwords;
     @Autowired AuthService auth;
     private String token;
@@ -81,5 +86,34 @@ class PropertyListingIntegrationTests {
                 .contentType("application/json").content("{\"version\":0,\"property\":{},\"dossier\":{},\"submit\":true}"))
                 .andExpect(status().isBadRequest());
         assertFalse(drafts.findById(Long.valueOf(id)).orElseThrow().isCompleted());
+    }
+    @Test void completionCreatesPrivateInventoryAndRetryKeepsOneSubmission()throws Exception{
+        String key=UUID.randomUUID().toString();
+        var response=mvc.perform(post("/api/v1/me/listing-drafts").header("Authorization","Bearer "+token)
+                .contentType("application/json").content(json.writeValueAsString(Map.of("requestKey",key,"rightType","OWNERSHIP")))).andExpect(status().isOk()).andReturn();
+        var created=json.readTree(response.getResponse().getContentAsString());
+        Long id=Long.valueOf(created.path("propertyId").asString());
+        var file=new com.ancu.proptech.model.property.PropertyEvidenceFile();
+        file.setProperty(properties.findById(id).orElseThrow());file.setUploader(actor);
+        file.setPurpose(com.ancu.proptech.model.property.PropertyEvidenceFile.Purpose.RIGHT_DOCUMENT);
+        file.setFilename("fixture.png");file.setContentType("image/png");file.setSizeBytes(3);file.setCreatedAt(java.time.Instant.now());evidence.saveAndFlush(file);
+        var content=new com.ancu.proptech.model.property.PropertyEvidenceContent();content.setId(file.getId());content.setContent(new byte[]{1,2,3});contents.saveAndFlush(content);
+        Long common=com.ancu.proptech.support.PropertyImageFixtures.stage(images,actor.getId());
+        Long room=com.ancu.proptech.support.PropertyImageFixtures.stage(images,actor.getId());
+        var unit=new com.ancu.proptech.dto.property.OwnerPropertyCreate.Unit();unit.setRoomNumber("P101");unit.setTitle("Phòng 101");unit.setFloor(1);
+        unit.setAreaM2(new java.math.BigDecimal("24"));unit.setAdvertisedMonthlyRent(new java.math.BigDecimal("4000000"));
+        unit.setElectricityUnitPrice(new java.math.BigDecimal("3500"));unit.setWaterUnitPrice(new java.math.BigDecimal("15000"));unit.setImageIds(List.of(room));
+        var property=new com.ancu.proptech.dto.property.OwnerPropertyCreate();property.setName("Nhà kiểm thử");property.setAddress("12 Đường A");property.setCity("Test City");property.setDistrict("Test District");
+        property.setRentalMode(com.ancu.proptech.model.property.Property.RentalMode.SINGLE_UNIT);property.setImageIds(List.of(common));property.setApartments(List.of(unit));
+        var dossier=new com.ancu.proptech.dto.property.PropertyDossierSubmit();dossier.setPropertyVersion(0L);dossier.setRightType(com.ancu.proptech.model.property.PropertyDossier.RightType.OWNERSHIP);dossier.setDocumentFileIds(List.of(file.getId()));
+        String body=json.writeValueAsString(new com.ancu.proptech.dto.property.PropertyListingDtos.Finish(0L,property,dossier,true));
+        String route="/api/v1/me/listing-drafts/"+id+"/complete";
+        for(int attempt=0;attempt<2;attempt++)mvc.perform(post(route).header("Authorization","Bearer "+token).contentType("application/json").content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.completed").value(true));
+        assertEquals(1,apartments.countByPropertyId(id));
+        assertEquals(1,dossiers.findByPropertyIdOrderBySubmittedAtDescIdDesc(id).size());
+        var apartment=apartments.findByPropertyIdOrderByIdAsc(id).getFirst();
+        assertEquals(com.ancu.proptech.model.apartment.Apartment.PublicationStatus.DRAFT,apartment.getPublicationStatus());
+        assertFalse(actor.hasRole(AuthAccount.Role.OWNER));
     }
 }

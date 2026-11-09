@@ -16,3 +16,6 @@ GO
 IF COL_LENGTH('dbo.property_images','apartment_id') IS NULL
  ALTER TABLE dbo.property_images ADD apartment_id bigint NULL REFERENCES dbo.rental_apartments(id);
 GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('dbo.property_images') AND name='ix_property_images_apartment')
+ CREATE INDEX ix_property_images_apartment ON dbo.property_images(apartment_id,position);
+GO

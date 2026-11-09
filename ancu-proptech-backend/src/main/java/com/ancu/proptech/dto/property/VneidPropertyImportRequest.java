@@ -19,13 +19,14 @@ public class VneidPropertyImportRequest {
     @JsonAnySetter public void reject(String field,Object value){throw new IllegalArgumentException("Unsupported field: "+field);}
     @Getter @Setter @NoArgsConstructor
     public static class Unit {
+        @NotNull @Size(max=4) private List<@NotNull Long> imageIds=new java.util.ArrayList<>();
         @NotBlank @Size(max=100) private String externalUnitId;
         @NotNull @DecimalMin("0.01") @Digits(integer=13,fraction=2) private BigDecimal monthlyRent;
         @NotNull @DecimalMin("0") @Digits(integer=13,fraction=2) private BigDecimal deposit;
         @NotNull @DecimalMin("0") @Digits(integer=13,fraction=2) private BigDecimal electricityUnitPrice;
         @NotNull @DecimalMin("0") @Digits(integer=13,fraction=2) private BigDecimal waterUnitPrice;
-        @NotNull @Min(0) private Integer electricityIndex;
-        @NotNull @Min(0) private Integer waterIndex;
+        @Min(0) private Integer electricityIndex;
+        @Min(0) private Integer waterIndex;
         @NotNull @Min(0) @Max(200) private Integer floor;
         @NotNull @Min(1) @Max(1000) private Integer maxOccupants;
         @NotNull @Size(max=3000) private String description="";
