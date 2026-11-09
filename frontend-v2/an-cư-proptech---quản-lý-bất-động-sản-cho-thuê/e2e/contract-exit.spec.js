@@ -44,7 +44,7 @@ const scenario=async(page,baseURL,outputPath,pdf)=>{
     }
     if(path.includes('notifications'))return json({items:[],unreadCount:0});if(!['GET','HEAD'].includes(req.method()))throw Error('Unexpected mutation '+path);return json([]);
    });
-   const open=async next=>{actor=next;if(mode==='expired'&&next==='1'){await p.goto(new URL('/app?tab=contracts',baseURL).href);await p.locator('#contract-42').getByRole('button',{name:'Lập biên bản bàn giao',exact:true}).click();}else{await p.goto(new URL('/contracts/42',baseURL).href);await p.getByRole('button',{name:'Kết thúc thuê / bàn giao cư trú',exact:true}).click();}await p.getByRole('region',{name:'Kết thúc thuê và bàn giao'}).getByText('Kết thúc sớm:',{exact:false}).waitFor();};
+   const open=async next=>{actor=next;if(mode==='expired'&&next==='1'){await p.goto(new URL('/app?tab=contracts',baseURL).href);await p.locator('#contract-42').getByRole('button',{name:'Lập biên bản bàn giao',exact:true}).click();}else{await p.goto(new URL('/contracts/42',baseURL).href);await p.getByRole('button',{name:'Kết thúc thuê / bàn giao cư trú',exact:true}).click();}if(hand){await p.goto(new URL('/contracts/42/handover',baseURL).href);}await p.getByRole('region',{name:'Kết thúc thuê và bàn giao'}).getByText('Kết thúc sớm:',{exact:false}).waitFor();};
    await p.setViewportSize({width,height:1000});await open('2');let panel=p.getByRole('region',{name:'Kết thúc thuê và bàn giao'});
    const choose=async name=>{await panel.getByRole('button',{name,exact:true}).click();};
    const submit=async name=>{await panel.locator('form input[type=checkbox]').last().check();await panel.getByRole('button',{name:`Xác nhận: ${name}`,exact:true}).click();};

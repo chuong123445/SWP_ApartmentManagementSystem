@@ -32,6 +32,7 @@ export function ContractDraftList({ owner = false, propertyId, onLoaded }: { own
           {!owner && actions.canRequest && <button className="rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-semibold" onClick={() => setAction({ id: d.id, kind: 'renewal' })}>Gửi yêu cầu thuê tiếp</button>}
           {owner && actions.canHandover && <button className="rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-semibold" onClick={() => setAction({ id: d.id, kind: 'handover' })}>Lập biên bản bàn giao</button>}
         </div>
+        {['ACTIVE','ENDED'].includes(d.status)&&<Link to={`/contracts/${d.id}/handover`} className="inline-block text-sm font-semibold text-emerald-800 underline">Biên bản bàn giao / ký</Link>}
         {d.lifecycle?.renewalRequest && <p className="text-sm text-slate-600">Thuê tiếp: {{ PENDING: 'Chờ chủ nhà xử lý', ACCEPTED: 'Đã chấp nhận', REJECTED: 'Đã từ chối', FULFILLED: 'Đã ký kỳ mới', CANCELLED: 'Đã hủy' }[d.lifecycle.renewalRequest.status]}</p>}
         {d.lifecycle?.handover?.status === 'PENDING' && <p className="text-sm text-slate-600">Bàn giao đang chờ người thuê xác nhận.</p>}
       </article>;
