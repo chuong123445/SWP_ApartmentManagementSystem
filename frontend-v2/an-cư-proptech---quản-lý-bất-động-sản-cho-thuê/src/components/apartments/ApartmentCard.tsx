@@ -12,7 +12,7 @@ export function ApartmentCard({ apartment: a }: { apartment: ApartmentSummary })
       <h2 className="font-bold text-lg text-slate-900"><Link to={`/apartments/${a.id}`} className="hover:text-emerald-700">{a.title}</Link></h2>
       {a.lessorRelationship&&a.lessorRelationship!=='UNSPECIFIED'&&<p className="text-xs text-emerald-800">{rightLabels[a.lessorRelationship]}</p>}
       <p className="flex gap-1.5 text-xs text-slate-500"><MapPin className="w-3.5 h-3.5 shrink-0" />{a.address}</p>
-      <div className="flex gap-4 text-xs text-slate-500"><span className="flex gap-1 items-center"><BedDouble className="w-4 h-4" />{a.bedrooms === 0 ? 'Studio' : `${a.bedrooms} phòng ngủ`}</span><span className="flex gap-1 items-center"><Bath className="w-4 h-4" />{a.bathrooms} phòng tắm</span></div>
+      <div className="flex flex-wrap gap-4 text-xs text-slate-500"><span className="flex gap-1 items-center"><BedDouble className="w-4 h-4" />{a.bedrooms === 0 ? 'Studio' : `${a.bedrooms} phòng ngủ`}</span><span className="flex gap-1 items-center"><Bath className="w-4 h-4" />{a.bathrooms} phòng tắm</span>{a.maxOccupants!=null&&<span>Tối đa {a.maxOccupants} người</span>}</div>
       <div className="pt-3 border-t border-slate-100 flex justify-between items-center"><p className="text-lg font-bold text-emerald-700">{formatRent(a.advertisedMonthlyRent)}<span className="block text-xs font-normal text-slate-400">/ tháng</span></p><Link to={`/apartments/${a.id}`} className="flex items-center gap-1 text-sm font-semibold text-emerald-700">Chi tiết<ArrowRight className="w-4 h-4" /></Link></div>
     </div>
   </article>;
