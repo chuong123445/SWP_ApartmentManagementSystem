@@ -17,5 +17,6 @@ public class AssetManagementController {
     @PatchMapping("/api/v1/me/apartments/{id}") public ResponseEntity<Void> update(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody ApartmentInformationUpdate input){assets.update(jwt,id,input);return empty();}
     @PatchMapping("/api/v1/me/apartments/{id}/prices") public ResponseEntity<OwnerApartmentResponse> prices(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody ApartmentPrices input){return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(apartments.prices(jwt,id,input));}
     @PutMapping("/api/v1/me/properties/{id}/images") public ResponseEntity<Void> images(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody PropertyGalleryUpdate input){assets.gallery(jwt,id,input);return empty();}
+    @PutMapping("/api/v1/me/apartments/{id}/images") public ResponseEntity<Void> unitImages(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody PropertyGalleryUpdate input){assets.unitGallery(jwt,id,input);return empty();}
     private ResponseEntity<Void> empty(){return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();}
 }

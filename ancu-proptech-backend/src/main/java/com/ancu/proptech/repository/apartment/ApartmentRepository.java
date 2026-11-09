@@ -13,6 +13,9 @@ public interface ApartmentRepository extends JpaRepository<Apartment, Long>, Jpa
         @Param("status") com.ancu.proptech.model.auth.AuthAccount.Status status,@Param("role") com.ancu.proptech.model.auth.AuthAccount.Role role,@Param("today") java.time.LocalDate today);
     @EntityGraph(attributePaths = {"property", "property.owner", "amenities"})
     List<Apartment> findByPropertyOwnerIdOrderByCreatedAtAscIdAsc(Long ownerId);
+    @Modifying
+    @Query("update Apartment a set a.version=a.version+1 where a.id=:id")
+    int bumpImageVersion(@Param("id") Long id);
     boolean existsByPropertyIdAndRoomNumber(Long propertyId, String roomNumber);
     long countByPropertyId(Long propertyId);
     List<Apartment> findByPropertyIdOrderByIdAsc(Long propertyId);

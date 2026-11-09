@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "An Cu VNeID property import",
-    "version": "2.0.0",
+    "version": "1.1.0",
     "description": "Implemented Auth0 simulation source. Source-owned assets only; manual property review remains separate. Source evidence stays separate from Admin decisions; properties/units stay shared. Source rightDescription is retained for new imports. Receiving account is owner-declared, name-matched to linked verified citizen; not bank verification. Current28October: ACTIVE VERIFIED CUSTOMER or OWNER with explicit current linked-source consent may preview/import. Preview/consent does not promote. Successful complete source import atomically grants OWNER if needed; source property is not a manual onboarding dossier."
   },
   "paths": {
@@ -251,8 +251,6 @@
           "deposit",
           "electricityUnitPrice",
           "waterUnitPrice",
-          "electricityIndex",
-          "waterIndex",
           "floor",
           "maxOccupants"
         ],
@@ -279,12 +277,18 @@
             "description": "Decimal >=0 VND/m3, explicit zero allowed"
           },
           "electricityIndex": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "minimum": 0,
             "maximum": 2147483647
           },
           "waterIndex": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "minimum": 0,
             "maximum": 2147483647
           },
@@ -302,6 +306,15 @@
             "type": "string",
             "maxLength": 3000,
             "default": ""
+          },
+          "imageIds": {
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 4,
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional per-room staging images, maximum4. Existing clients may omit. New UI supplies room photos."
           }
         }
       },

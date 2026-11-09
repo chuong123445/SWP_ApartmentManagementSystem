@@ -34,5 +34,15 @@ public class AssetManagementService {
         // Gallery là bảng con: tăng version cha ngay trong khóa hiện tại để chặn ghi đè đồng thời.
         images.replace(p,input.getImageIds());properties.bumpVersion(p.getId());em.refresh(p);
     }
+    @Transactional public void unitGallery(Jwt jwt,Long id,PropertyGalleryUpdate input){
+        var actor=access.write(jwt);
+        var propertyId=apartments.findPropertyId(id).orElseThrow(AssetManagementService::missing);
+        var property=properties.findOwnedForCreation(propertyId,actor.getId()).orElseThrow(AssetManagementService::missing);
+        var apartment=apartments.findForOwnerUpdate(id,actor.getId()).orElseThrow(AssetManagementService::missing);
+        em.refresh(apartment,LockModeType.PESSIMISTIC_WRITE);
+        if(apartment.getVersion()!=input.getVersion())throw error(HttpStatus.CONFLICT,"STALE_VERSION","Ảnh căn/phòng đã thay đổi. Hãy tải lại.");
+        images.replaceUnit(property,id,input.getImageIds());
+        apartments.bumpImageVersion(id);em.refresh(apartment);
+    }
     private static RuntimeException missing(){return error(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy tài sản của bạn.");}
 }

@@ -20,6 +20,7 @@ import java.util.*;
 @Service @RequiredArgsConstructor
 public class ApartmentService {
     private final ApartmentRepository apartments;
+    private final com.ancu.proptech.repository.apartment.ApartmentGroupRepository groups;
     private final com.ancu.proptech.service.auth.AccountAccessService access;
     private final com.ancu.proptech.service.property.AssetManagementAccess assetAccess;
     private final com.ancu.proptech.repository.property.PropertyExternalImportRepository imports;
@@ -52,6 +53,30 @@ public class ApartmentService {
     }
     @Transactional(readOnly=true)
     public PageResponse<ApartmentSummary> search(String q,String city,String district,String ward,BigDecimal minRent,BigDecimal maxRent,Integer bedrooms,int page,int size,BigDecimal minArea,BigDecimal maxArea,Integer occupants){
+        return search(q,city,district,ward,minRent,maxRent,bedrooms,page,size,minArea,maxArea,occupants,null);
+    }
+    @Transactional(readOnly=true)
+    public PageResponse<ApartmentSummary> search(String q,String city,String district,String ward,BigDecimal minRent,BigDecimal maxRent,Integer bedrooms,int page,int size,BigDecimal minArea,BigDecimal maxArea,Integer occupants,Long propertyId){
+        var filter=searchFilter(q,city,district,ward,minRent,maxRent,bedrooms,page,size,minArea,maxArea,occupants);
+        if(propertyId!=null){
+            if(propertyId<1)throw new ApiException(HttpStatus.BAD_REQUEST,"VALIDATION_ERROR","Mã tài sản không hợp lệ.");
+            filter=filter.and((root,query,cb)->cb.equal(root.get("property").get("id"),propertyId));
+        }
+        return PageResponse.from(apartments.findAll(filter,PageRequest.of(page,size,Sort.by("createdAt","id"))).map(this::summary));
+    }
+    @Transactional(readOnly=true)
+    public PageResponse<PropertyListingSummary> grouped(String q,String city,String district,String ward,BigDecimal minRent,BigDecimal maxRent,Integer bedrooms,int page,int size,BigDecimal minArea,BigDecimal maxArea,Integer occupants){
+        if(size>0&&(long)page*size>Integer.MAX_VALUE)throw new ApiException(HttpStatus.BAD_REQUEST,"VALIDATION_ERROR","Trang tìm kiếm vượt giới hạn.");
+        var result=groups.search(searchFilter(q,city,district,ward,minRent,maxRent,bedrooms,page,size,minArea,maxArea,occupants),page,size);
+        var items=result.groups().stream().map(group->{
+            var gallery=images.urls(group.propertyId());
+            return new PropertyListingSummary(group.propertyId().toString(),group.name(),group.address(),
+                group.minRent().toPlainString(),group.maxRent().toPlainString(),group.minArea().toPlainString(),group.maxArea().toPlainString(),
+                group.rooms(),gallery.isEmpty()?"/images/apartment-placeholder.svg":gallery.getFirst());
+        }).toList();
+        return new PageResponse<>(items,page,size,result.total(),(int)((result.total()+size-1)/size));
+    }
+    private Specification<Apartment> searchFilter(String q,String city,String district,String ward,BigDecimal minRent,BigDecimal maxRent,Integer bedrooms,int page,int size,BigDecimal minArea,BigDecimal maxArea,Integer occupants){
         if((minArea!=null&&minArea.signum()<0)||(maxArea!=null&&maxArea.signum()<0)||(minArea!=null&&maxArea!=null&&minArea.compareTo(maxArea)>0)||(occupants!=null&&(occupants<1||occupants>100)))throw new ApiException(HttpStatus.BAD_REQUEST,"VALIDATION_ERROR","Bộ lọc diện tích/số người không hợp lệ.");
         validatePage(page, size);
         if ((q != null && q.length() > 120) || (city != null && city.length() > 80) || (district != null && district.length() > 80) || (ward != null && ward.length() > 80)
@@ -77,7 +102,7 @@ public class ApartmentService {
             return cb.and(predicates.toArray(Predicate[]::new));
         };
         Specification<Apartment> vacant = (root, query, cb) -> cb.equal(root.get("availability"), Apartment.Availability.VACANT);
-        return PageResponse.from(apartments.findAll(visible().and(rightsEffective()).and(vacant).and(filters), PageRequest.of(page, size, Sort.by("createdAt", "id"))).map(this::summary));
+        return visible().and(rightsEffective()).and(vacant).and(filters);
     }
 
     @Transactional(readOnly = true)
@@ -94,7 +119,7 @@ public class ApartmentService {
             boolean pending=requests.existsByApartmentIdAndStatus(id,com.ancu.proptech.model.rental.RentalRequest.Status.PENDING);
             boolean vacant=a.getAvailability()==Apartment.Availability.VACANT;
             management=new ApartmentDetail.Management(property.getId(),property.getVersion(),property.getApprovalStatus().name(),imports.findById(property.getId()).map(com.ancu.proptech.model.property.PropertyExternalImport::getSource).orElse(null),editable,editable&&vacant&&!pending,
-                !editable?"Cần xác thực tài khoản để chỉnh sửa.":!vacant?"Chỉ đổi giá khi căn hộ trống, chưa làm hợp đồng hoặc có người thuê.":pending?"Cần xử lý tất cả yêu cầu thuê đang chờ trước khi đổi giá.":null,images.gallery(property.getId()).stream().map(i->new ApartmentDetail.Image(i.id(),i.url())).toList(),a.getRoomNumber(),a.getMaxOccupants());
+                !editable?"Cần xác thực tài khoản để chỉnh sửa.":!vacant?"Chỉ đổi giá khi căn hộ trống, chưa làm hợp đồng hoặc có người thuê.":pending?"Cần xử lý tất cả yêu cầu thuê đang chờ trước khi đổi giá.":null,images.gallery(property.getId()).stream().map(i->new ApartmentDetail.Image(i.id(),i.url())).toList(),a.getRoomNumber(),a.getMaxOccupants(),images.unitGallery(a.getId()).stream().map(i->new ApartmentDetail.Image(i.id(),i.url())).toList());
         }
         var p = a.getProperty();
         var owner = p.getOwner();

@@ -29,7 +29,7 @@ public class PropertyImageService {
     @Transactional public List<Image> upload(Jwt jwt,List<MultipartFile> files){
         var a=applicants.verified(jwt);
         if(files.isEmpty()||files.size()>4)throw bad("Mỗi tài sản cần từ 1 đến 4 ảnh.");
-        if(images.countByUploaderIdAndPropertyIdIsNull(a.getId())+files.size()>100)throw bad("Có quá nhiều ảnh chưa gắn tài sản.");
+        if(images.countByUploaderIdAndPropertyIdIsNull(a.getId())+files.size()>300)throw bad("Có quá nhiều ảnh chưa gắn tài sản.");
         var result=new ArrayList<Image>();
         for(var file:files){
             if(file.isEmpty()||file.getSize()>5*1024*1024)throw bad("Mỗi ảnh JPEG/PNG tối đa 5MB.");
@@ -56,12 +56,32 @@ public class PropertyImageService {
     }
     /** Giữ ảnh đã chọn, gắn ảnh staging mới và xóa ảnh bỏ chọn trong cùng transaction. */
     public void replace(Property property,List<Long> ids){
-        if(ids==null||ids.isEmpty()||ids.size()>4||new HashSet<>(ids).size()!=ids.size())throw bad("Cần giữ từ 1 đến 4 ảnh khác nhau.");
+        if(ids==null||ids.isEmpty()||ids.size()>4||ids.stream().anyMatch(Objects::isNull)||new HashSet<>(ids).size()!=ids.size())throw bad("Cần giữ từ 1 đến 4 ảnh khác nhau.");
         var selected=new HashMap<Long,PropertyImage>();
         ids.stream().sorted().forEach(id->{var image=images.findForBinding(id).filter(i->i.getUploaderId().equals(property.getOwner().getId())&&(i.getPropertyId()==null||(i.getPropertyId().equals(property.getId())&&i.getApartmentId()==null))).orElseThrow(()->bad("Không được lấy ảnh của người khác hoặc tài sản khác."));selected.put(id,image);});
         var removed=images.findByPropertyIdAndApartmentIdIsNullOrderByPositionAsc(property.getId()).stream().filter(i->!selected.containsKey(i.getId())).toList();
         images.deleteAll(removed);
         for(int n=0;n<ids.size();n++){var image=selected.get(ids.get(n));image.setPropertyId(property.getId());image.setPosition(n);}images.flush();
+    }
+    public void replaceUnit(Property property,Long apartmentId,List<Long> ids){
+        if(ids==null||ids.isEmpty()||ids.size()>4||ids.stream().anyMatch(Objects::isNull)||new HashSet<>(ids).size()!=ids.size())
+            throw bad("Cần giữ từ 1 đến 4 ảnh riêng khác nhau.");
+        var selected=new HashMap<Long,PropertyImage>();
+        ids.stream().sorted().forEach(id->{
+            var image=images.findForBinding(id).filter(candidate->candidate.getUploaderId().equals(property.getOwner().getId())
+                    &&(candidate.getPropertyId()==null||(candidate.getPropertyId().equals(property.getId())&&Objects.equals(candidate.getApartmentId(),apartmentId))))
+                    .orElseThrow(()->bad("Ảnh không thuộc phòng hoặc tài khoản của bạn."));
+            selected.put(id,image);
+        });
+        var removed=images.findByApartmentIdOrderByPositionAsc(apartmentId).stream().filter(image->!selected.containsKey(image.getId())).toList();
+        images.deleteAll(removed);
+        for(int index=0;index<ids.size();index++){
+            var image=selected.get(ids.get(index));image.setPropertyId(property.getId());image.setApartmentId(apartmentId);image.setPosition(index);
+        }
+        images.flush();
+    }
+    @Transactional(readOnly=true) public List<Image> unitGallery(Long apartmentId){
+        return images.unitIds(apartmentId).stream().map(id->new Image(id,url(id))).toList();
     }
     @Transactional(readOnly=true) public List<Image> gallery(Long property){return images.ids(property).stream().map(id->new Image(id,url(id))).toList();}
     @Transactional(readOnly=true) public Download download(Jwt jwt,@com.fasterxml.jackson.annotation.JsonFormat(shape=com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING) Long id){

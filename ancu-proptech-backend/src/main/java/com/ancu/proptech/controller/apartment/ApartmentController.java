@@ -14,8 +14,16 @@ public class ApartmentController {
         @RequestParam(required = false) String district, @RequestParam(required = false) String ward, @RequestParam(required = false) BigDecimal minRent,
         @RequestParam(required = false) BigDecimal maxRent, @RequestParam(required = false) Integer bedrooms,
         @RequestParam(required=false) BigDecimal minArea,@RequestParam(required=false) BigDecimal maxArea,@RequestParam(required=false) Integer occupants,
+        @RequestParam(required=false) Long propertyId, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "6") int size) {
+        return apartments.search(q, city, district, ward, minRent, maxRent, bedrooms, page, size,minArea,maxArea,occupants,propertyId);
+    }
+    @GetMapping("/property-groups")
+    public PageResponse<PropertyListingSummary> groups(@RequestParam(required = false) String q, @RequestParam(required = false) String city,
+        @RequestParam(required = false) String district, @RequestParam(required = false) String ward, @RequestParam(required = false) BigDecimal minRent,
+        @RequestParam(required = false) BigDecimal maxRent, @RequestParam(required = false) Integer bedrooms,
+        @RequestParam(required=false) BigDecimal minArea,@RequestParam(required=false) BigDecimal maxArea,@RequestParam(required=false) Integer occupants,
         @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "6") int size) {
-        return apartments.search(q, city, district, ward, minRent, maxRent, bedrooms, page, size,minArea,maxArea,occupants);
+        return apartments.grouped(q, city, district, ward, minRent, maxRent, bedrooms, page, size,minArea,maxArea,occupants);
     }
     @GetMapping("/{id}") public org.springframework.http.ResponseEntity<ApartmentDetail> detail(@PathVariable Long id,@org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.oauth2.jwt.Jwt jwt) { return org.springframework.http.ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(apartments.detail(id,jwt)); }
     @GetMapping("/address-options") public java.util.List<AddressOption> addresses(){return apartments.addressOptions();}

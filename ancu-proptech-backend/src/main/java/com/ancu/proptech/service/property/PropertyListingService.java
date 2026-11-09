@@ -67,6 +67,10 @@ public class PropertyListingService {
         if(input.dossier().getRightType()!=p.getRightType())throw bad("Loại quyền không khớp bản nháp.");
         if(!Objects.equals(input.dossier().getPropertyVersion(),p.getVersion()))
             throw new ApiException(HttpStatus.CONFLICT,"STALE_VERSION","Thông tin tài sản đã thay đổi. Hãy tải lại.");
+        for(var unit:input.property().getApartments()){
+            if(unit.getImageIds()==null||unit.getImageIds().isEmpty())throw bad("Cần ít nhất một ảnh riêng cho mỗi căn/phòng được chọn.");
+            if(unit.getElectricityUnitPrice()==null||unit.getWaterUnitPrice()==null)throw bad("Cần khai báo đơn giá điện và nước cho từng căn/phòng.");
+        }
         creation.completeListing(jwt,p,input.property());
         d.setCompleted(true);drafts.flush();
         if(Boolean.TRUE.equals(input.submit())){

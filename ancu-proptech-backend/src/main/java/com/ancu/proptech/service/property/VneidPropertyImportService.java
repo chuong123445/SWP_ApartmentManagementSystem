@@ -34,6 +34,7 @@ public class VneidPropertyImportService {
     private final PropertyRepository properties;
     private final ApartmentRepository apartments;
     private final OwnerPropertyService propertyService;
+    private final PropertyImageService images;
     private final com.ancu.proptech.service.apartment.OwnerApartmentService apartmentService;
     private final TransactionTemplate transactions;
     private final EntityManager em;
@@ -82,7 +83,7 @@ public class VneidPropertyImportService {
             create.setCity(input.getCity().strip());create.setDistrict(input.getDistrict().strip());create.setWard(input.getWard());
             create.setRentalMode(Property.RentalMode.valueOf(source.rentalMode()));
             create.setApartments(source.units().stream().filter(unit->terms.containsKey(unit.externalUnitId())).map(unit->{
-                var t=terms.get(unit.externalUnitId());var u=new OwnerPropertyCreate.Unit();
+                var t=terms.get(unit.externalUnitId());var u=new OwnerPropertyCreate.Unit();u.setImageIds(t.getImageIds());
                 u.setRoomNumber(unit.code());u.setTitle(unit.code()+" · "+source.name());if(u.getTitle().length()>150)u.setTitle(source.name());
                 u.setAreaM2(unit.areaM2());u.setBedrooms(unit.bedrooms());u.setBathrooms(unit.bathrooms());u.setFloor(t.getFloor());
                 u.setMaxOccupants(t.getMaxOccupants());u.setDescription(t.getDescription());u.setAdvertisedMonthlyRent(t.getMonthlyRent());
@@ -139,7 +140,8 @@ public class VneidPropertyImportService {
                 create.setBedrooms(unit.bedrooms());create.setBathrooms(unit.bathrooms());create.setFloor(t.getFloor());create.setMaxOccupants(t.getMaxOccupants());
                 create.setAdvertisedMonthlyRent(t.getMonthlyRent());create.setDeposit(t.getDeposit());create.setElectricityIndex(t.getElectricityIndex());create.setWaterIndex(t.getWaterIndex());
                 create.setElectricityUnitPrice(t.getElectricityUnitPrice());create.setWaterUnitPrice(t.getWaterUnitPrice());create.setPublicationStatus(Apartment.PublicationStatus.PUBLISHED);
-                apartmentService.createSourceUnit(jwt,create);
+                var createdUnit=apartmentService.createSourceUnit(jwt,create);
+                images.bindUnit(p,createdUnit.id(),t.getImageIds());
             }
             apartments.flush();recordSelection(propertyId,source,terms.keySet());
             return new OwnerPropertyCreated(propertyService.list(jwt).stream().filter(x->x.id().equals(propertyId)).findFirst().orElseThrow(),

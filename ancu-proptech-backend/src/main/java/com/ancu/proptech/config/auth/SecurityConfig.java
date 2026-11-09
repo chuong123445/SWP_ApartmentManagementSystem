@@ -95,7 +95,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/csrf", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout", "/error").permitAll()
                         .requestMatchers("/api/v1/me/verifications", "/api/v1/me/verifications/vneid", "/api/v1/me/verifications/vneid/confirm", "/api/v1/me/verifications/vneid/cancel", "/api/v1/me/owner-upgrade").authenticated()
                         .requestMatchers("/api/v1/auth/vneid-config").permitAll()
-                        .requestMatchers("/api/v1/me/properties", "/api/v1/me/properties/*/images", "/api/v1/me/apartments/*", "/api/v1/me/apartments/*/prices").authenticated()
+                        .requestMatchers("/api/v1/me/properties", "/api/v1/me/properties/*/images", "/api/v1/me/apartments/*", "/api/v1/me/apartments/*/images", "/api/v1/me/apartments/*/prices").authenticated()
                         .requestMatchers("/api/v1/me/property-source-consent", "/api/v1/me/property-images").authenticated()
                         .requestMatchers(HttpMethod.GET,"/api/v1/property-images/*").permitAll()
                         .requestMatchers("/api/v1/me").authenticated()

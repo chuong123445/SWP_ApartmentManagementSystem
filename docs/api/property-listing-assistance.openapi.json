@@ -1,0 +1,424 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Property listing evidence, room images and grouped discovery",
+    "version": "1.0.0",
+    "description": "Backend contracts implemented. SQL acceptance and live provider checks pending. Precheck and acknowledge endpoints also accept optional propertyFields. These declarations participate in sourceHash and are advisory input."
+  },
+  "paths": {
+    "/api/v1/me/apartments/{id}/images": {
+      "put": {
+        "operationId": "replaceUnitGallery",
+        "responses": {
+          "204": {
+            "description": "Success",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request rejected according to authorization, validation, source version or provider status"
+          },
+          "401": {
+            "description": "Request rejected according to authorization, validation, source version or provider status"
+          },
+          "403": {
+            "description": "Request rejected according to authorization, validation, source version or provider status"
+          },
+          "404": {
+            "description": "Request rejected according to authorization, validation, source version or provider status"
+          },
+          "409": {
+            "description": "Request rejected according to authorization, validation, source version or provider status"
+          },
+          "503": {
+            "description": "Request rejected according to authorization, validation, source version or provider status"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GalleryUpdate"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/apartments/property-groups": {
+      "get": {
+        "operationId": "groupAvailableApartments",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request rejected according to authorization, validation, source version or provider status"
+          },
+          "401": {
+            "description": "Request rejected according to authorization, validation, source version or provider status"
+          },
+          "403": {
+            "description": "Request rejected according to authorization, validation, source version or provider status"
+          },
+          "404": {
+            "description": "Request rejected according to authorization, validation, source version or provider status"
+          },
+          "409": {
+            "description": "Request rejected according to authorization, validation, source version or provider status"
+          },
+          "503": {
+            "description": "Request rejected according to authorization, validation, source version or provider status"
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "city",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "district",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ward",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "minRent",
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "maxRent",
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "minArea",
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "maxArea",
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "bedrooms",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "occupants",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "description": "Groups and counts only published VACANT units under eligible properties, using the existing apartment filters. Pages are by property ID. GET /api/v1/apartments additionally accepts propertyId and returns paginated matching units."
+      }
+    },
+    "/api/v1/me/rental-properties/{id}/ai-extract": {
+      "post": {
+        "operationId": "extractPrivatePropertyEvidence",
+        "responses": {
+          "400": {
+            "description": "Request rejected according to authorization, validation, source version or provider status"
+          },
+          "401": {
+            "description": "Request rejected according to authorization, validation, source version or provider status"
+          },
+          "403": {
+            "description": "Request rejected according to authorization, validation, source version or provider status"
+          },
+          "404": {
+            "description": "Request rejected according to authorization, validation, source version or provider status"
+          },
+          "409": {
+            "description": "Request rejected according to authorization, validation, source version or provider status"
+          },
+          "503": {
+            "description": "Request rejected according to authorization, validation, source version or provider status"
+          },
+          "200": {
+            "description": "OwnerPrecheck view including review.fileId, readable, documentType, extractedFields[field,value,page?], findings, sourceHash, model, runId and promptVersion. Requires exact-owned selected evidence and matching sourceHash with consent."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrecheckRequest"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "GalleryUpdate": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "imageIds": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4,
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "version",
+          "imageIds"
+        ]
+      },
+      "PropertyFields": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "district": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "ward": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "name",
+          "address",
+          "city",
+          "district"
+        ]
+      },
+      "PropertyGroup": {
+        "type": "object",
+        "properties": {
+          "propertyId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "minRent": {
+            "type": "string"
+          },
+          "maxRent": {
+            "type": "string"
+          },
+          "minArea": {
+            "type": "string"
+          },
+          "maxArea": {
+            "type": "string"
+          },
+          "thumbnail": {
+            "type": "string"
+          },
+          "matchingRooms": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "propertyId",
+          "name",
+          "address",
+          "minRent",
+          "maxRent",
+          "minArea",
+          "maxArea",
+          "thumbnail",
+          "matchingRooms"
+        ]
+      },
+      "GroupPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PropertyGroup"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ]
+      },
+      "PrecheckRequest": {
+        "type": "object",
+        "properties": {
+          "draft": {
+            "$ref": "./property-dossiers.openapi.json#/components/schemas/DossierSubmit"
+          },
+          "fileId": {
+            "type": [
+              "string",
+              "integer",
+              "null"
+            ]
+          },
+          "sourceHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
+          },
+          "consent": {
+            "type": "boolean"
+          },
+          "propertyFields": {
+            "$ref": "#/components/schemas/PropertyFields"
+          }
+        },
+        "required": [
+          "draft"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}
