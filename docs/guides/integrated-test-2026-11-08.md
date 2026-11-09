@@ -70,3 +70,10 @@ Các unit đã có báo cáo riêng trong `docs/reports/`. Tại tip FIX-07: 91 
 Lượt tạo nhánh test chỉ xác minh ancestry của các nhánh unit và diff, không sửa code chức năng, không chạy server hoặc ghi DB, không tuyên bố checklist thủ công đã đạt. Ba file VNeID diagnostics có sẵn chưa track không thuộc nhánh được commit và không được đưa vào gói test.
 
 Các commit tích hợp: `b600d50`, `be08210`, `dd38a1b`, `02799b4`, `fb48967`, `441f8ca`, `928c8a4`, `6f7df77`, `a0ac59e`, `0c3fb09`, `5b4cf52`, `42dee53`, `5420312`, `a93f01d`.
+
+
+## Lập hóa đơn trực tiếp sau hiệu chỉnh merge 09/11
+
+Mở Lập hóa đơn mới, chọn hợp đồng ACTIVE. Form tự đọc chỉ số đầu kỳ và đơn giá, người dùng nhập chỉ số cuối kỳ ngay tại form. Không cần bản chốt chỉ số hoặc estimate trước đó để tạo hóa đơn. Với bản chốt có sẵn, form lấy số đã lưu và cho sửa, giữ đơn giá chốt. Nước tính theo người dùng số người và đơn giá đã lưu.
+
+Kiểm tra bỏ trống/số mới nhỏ hơn số đầu kỳ phải bị chặn. Nếu gửi hóa đơn lỗi sau khi tạo nháp, bấm Gửi lại phải sử dụng đúng nháp đã tạo. Test tại e2e/invoice-inline-readings.spec.ts và meter-billing-flow.spec.ts.

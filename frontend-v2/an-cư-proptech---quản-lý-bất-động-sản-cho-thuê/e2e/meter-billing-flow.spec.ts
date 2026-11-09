@@ -39,12 +39,11 @@ for(const perPerson of [false,true])for(const mobile of [false,true])test('Chố
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:info.outputPath('bang-dien-nuoc.png'),fullPage:true});
   await card.getByRole('button',{name:'Lập hóa đơn từ chỉ số đã chốt'}).click();
-  const dialog=page.getByRole('dialog',{name:'Lập hóa đơn'});await expect(dialog.getByText('Đã tự lấy chỉ số và đơn giá đã chốt. Không cần nhập lại.')).toBeVisible();
-  await expect(dialog.getByRole('spinbutton')).toHaveCount(0);await expect(dialog.getByText('Chỉ số điện cuối kỳ',{exact:true})).toHaveCount(0);await expect(dialog.getByText('Chỉ số nước cuối kỳ',{exact:true})).toHaveCount(0);
-  const amounts=dialog.locator('[aria-label="Chi tiết tiền hóa đơn"]');
-  await expect(amounts.getByText('480.000 đ',{exact:true})).toBeVisible();
-  await expect(amounts.getByText(perPerson?'100.000 đ':'120.000 đ',{exact:true}).first()).toBeVisible();
-  await expect(amounts.getByText(perPerson?'5.710.000 đ':'5.730.000 đ',{exact:true})).toBeVisible();
+  const dialog=page.getByRole('dialog',{name:'Lập hóa đơn'});await expect(dialog.getByText('Đã lấy chỉ số đã chốt. Bạn có thể sửa trực tiếp; đơn giá đã chốt được giữ nguyên.')).toBeVisible();
+  await expect(dialog.getByRole('spinbutton')).toHaveCount(perPerson?1:2);
+  await expect(dialog.getByLabel('Điện đầu kỳ (kWh)',{exact:true})).toHaveValue('1000');
+  await expect(dialog.getByRole('spinbutton',{name:/^Chỉ số điện cuối kỳ/})).toHaveValue('1120');
+  if(!perPerson)await expect(dialog.getByRole('spinbutton',{name:/^Chỉ số nước cuối kỳ/})).toHaveValue('208');
   await page.screenshot({path:info.outputPath('hoa-don-tu-chi-so.png'),fullPage:true});
   await dialog.getByRole('button',{name:'Lưu bản nháp',exact:true}).click();await expect(dialog).toHaveCount(0);
   expect(creates).toHaveLength(1);expect(creates[0]).toMatchObject({period:'2026-10',baselineVersion:1,useSavedReadings:true});expect(creates[0].electricityEndReading).toBeUndefined();expect(creates[0].waterEndReading).toBeUndefined();expect(errors).toEqual([]);
