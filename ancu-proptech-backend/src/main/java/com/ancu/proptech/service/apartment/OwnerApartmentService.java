@@ -99,7 +99,7 @@ public class OwnerApartmentService {
     }
     private OwnerApartmentResponse response(Apartment a) {
         var p = a.getProperty();
-        var gallery=images.urls(p.getId());
+        var gallery=images.unitUrls(p.getId(),a.getId());
         return new OwnerApartmentResponse(a.getId(), p.getId(), p.getName(), p.getOwner().getId(),
                 a.getRoomNumber() == null ? a.getTitle() : a.getRoomNumber(), a.getTitle(), a.getDescription(), a.getFloor(),
                 a.getAreaM2().toPlainString(), a.getAdvertisedMonthlyRent().toPlainString(), a.getDeposit() == null ? null : a.getDeposit().toPlainString(),

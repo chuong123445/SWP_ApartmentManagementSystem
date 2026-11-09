@@ -117,6 +117,6 @@ public class ApartmentService {
         return new ApartmentSummary(a.getId(), a.getTitle(), p.getAddress(), p.getCity(), p.getDistrict(),
                 a.getAreaM2().toPlainString(), a.getAdvertisedMonthlyRent().toPlainString(), image(a), a.getAvailability().name(), a.getBedrooms(), a.getBathrooms(),p.getRightType()==null?"UNSPECIFIED":p.getRightType().name());
     }
-    private List<String> gallery(Apartment a){var urls=images.urls(a.getProperty().getId());return urls.isEmpty()?List.of(image(a)):urls;}
-    private String image(Apartment a) { var urls=images.urls(a.getProperty().getId());if(!urls.isEmpty())return urls.getFirst();return a.getCoverImagePath() == null ? "/images/apartment-placeholder.svg" : a.getCoverImagePath(); }
+    private List<String> gallery(Apartment a){var urls=images.unitUrls(a.getProperty().getId(),a.getId());return urls.isEmpty()?List.of(image(a)):urls;}
+    private String image(Apartment a) { var urls=images.unitUrls(a.getProperty().getId(),a.getId());if(!urls.isEmpty())return urls.getFirst();return a.getCoverImagePath() == null ? "/images/apartment-placeholder.svg" : a.getCoverImagePath(); }
 }

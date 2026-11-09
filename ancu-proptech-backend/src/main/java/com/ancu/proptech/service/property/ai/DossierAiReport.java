@@ -5,7 +5,7 @@ import java.util.stream.Collectors;
 import static com.ancu.proptech.service.property.ai.DossierAiClient.Failure;
 
 public record DossierAiReport(String verdict,String summary,List<FileReview> files,List<Finding> overallFindings) {
-    public record Extraction(String field,String value){}
+    public record Extraction(String field,String value,Integer page){public Extraction(String field,String value){this(field,value,null);}}
     public record Finding(String type,String field,String message,String declaredValue,String observedValue){}
     public record FileReview(String fileId,boolean readable,String documentType,List<Extraction> extractedFields,List<Finding> findings){}
     private static final Set<String> FIELDS=Set.of("propertyName","propertyAddress","applicantName","applicantDocumentNumber","principalName","principalDocumentNumber","certificateNumber","certificateIssueDate","certificateIssuePlace","rightsValidFrom","rightsValidUntil","originalLeaseFrom","originalLeaseUntil","bank","accountNumber","accountHolderName","other");
@@ -15,7 +15,7 @@ public record DossierAiReport(String verdict,String summary,List<FileReview> fil
         var fields=node.path("extractedFields");var findings=node.path("findings");
         if(!fields.isArray()||fields.size()>30||!findings.isArray()||findings.size()>15)throw invalid();
         var extracts=new ArrayList<Extraction>();var issues=new ArrayList<Finding>();
-        for(var f:fields){String field=text(f,"field",50);if(!FIELDS.contains(field))throw invalid();extracts.add(new Extraction(field,text(f,"value",500)));}
+        for(var f:fields){String field=text(f,"field",50);if(!FIELDS.contains(field))throw invalid();Integer page=null;if(!f.path("page").isMissingNode()&&!f.path("page").isNull()){if(!f.path("page").isIntegralNumber()||f.path("page").asInt()<1||f.path("page").asInt()>100)throw invalid();page=f.path("page").asInt();}extracts.add(new Extraction(field,text(f,"value",500),page));}
         for(var f:findings){String type=text(f,"type",40),field=text(f,"field",50);if(!TYPES.contains(type)||!FIELDS.contains(field))throw invalid();
             String message=text(f,"message",1000);if(message.isBlank())throw invalid();
             String observed=text(f,"observedValue",500);if(type.equals("MISMATCH")&&observed.isBlank())throw invalid();

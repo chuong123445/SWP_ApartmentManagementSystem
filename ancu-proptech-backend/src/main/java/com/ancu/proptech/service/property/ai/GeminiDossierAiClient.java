@@ -32,6 +32,10 @@ public class GeminiDossierAiClient implements DossierAiClient {
     @Override public DossierAiReport.FileReview analyzeOwner(JsonNode declarations,Document document){
         return analyzeWithInstruction(declarations,document,ownerInstruction);
     }
+    @Override public DossierAiReport.FileReview extract(JsonNode declarations,Document document){
+        try {return analyzeWithInstruction(declarations,document,new ClassPathResource("ai/property-extraction-v1.txt").getContentAsString(StandardCharsets.UTF_8));}
+        catch(IOException e){throw new Failure("CONFIGURATION_MISSING",false);}
+    }
     private DossierAiReport.FileReview analyzeWithInstruction(JsonNode declarations,Document document,String instruction){
         if(!settings.configured())throw new Failure("CONFIGURATION_MISSING",false);
         if(document.content().length>10*1024*1024 || !Set.of("image/png","image/jpeg","application/pdf").contains(document.mimeType()))throw new Failure("INVALID_SOURCE",false);

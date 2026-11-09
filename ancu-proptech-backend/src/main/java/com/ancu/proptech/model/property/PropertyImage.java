@@ -10,6 +10,7 @@ public class PropertyImage {
     @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
     @Column(nullable=false) private Long uploaderId;
     private Long propertyId;
+    private Long apartmentId;
     @Column(nullable=false) private int position;
     @Column(nullable=false) private String contentType;
     @Column(nullable=false) private Instant createdAt;
