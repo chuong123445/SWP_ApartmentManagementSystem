@@ -19,8 +19,9 @@ async function exerciseReview(page, outputPath, origin) {
     if(path==='/api/v1/me')return json(user);
     if(path.endsWith('/auth/vneid-config'))return json({enabled:false});
     if(path.endsWith('/me/verifications'))return json({emailVerified:true,vneid:{status:'VERIFIED'}});
+    if(path==='/api/v1/me/listing-drafts')return json([]);
     if(path==='/api/v1/me/properties')return json(props.map(property=>({property,apartments:units.filter(a=>a.propertyId===property.id)})));
-    if(path.endsWith('/verification-dossiers')){const id=path.split('/').at(-2);return json([{id:'d'+id,propertyId:id,status:props.find(x=>x.id===id).approvalStatus,submittedAt:'2026-11-01T00:00:00Z',reviewedAt:id==='3'?null:'2026-11-09T00:00:00Z',reviewReason:id==='2'?'Địa chỉ giấy tờ không khớp':id==='1'?'Đã đối chiếu giấy chứng nhận':null,files:[]}]);}
+    if(path.endsWith('/verification-dossiers')){const id=path.split('/').at(-2);return json([{id:'d'+id,propertyId:id,rightType:'OWNERSHIP',applicantName:'Owner kiểm thử',status:props.find(x=>x.id===id).approvalStatus,submittedAt:'2026-11-01T00:00:00Z',reviewedAt:id==='3'?null:'2026-11-09T00:00:00Z',reviewReason:id==='2'?'Địa chỉ giấy tờ không khớp':id==='1'?'Đã đối chiếu giấy chứng nhận':null,files:[]}]);}
     if(path==='/api/v1/me/property-images')return json([{id:'71'}]);
     if(path==='/api/v1/owner/apartments'&&req.method()==='POST'){created=req.postDataJSON();const a=unit('44','1',created.roomNumber);units.push(a);return json(a);}
     if(path==='/api/v1/owner/apartments')return json(units);
@@ -35,6 +36,11 @@ async function exerciseReview(page, outputPath, origin) {
    await p.getByText('Địa chỉ giấy tờ không khớp',{exact:false}).waitFor();
    if(await p.getByRole('heading',{name:'Phòng bị từ chối',exact:true}).count()||await p.getByRole('heading',{name:'Phòng chờ duyệt',exact:true}).count())throw Error('Unapproved room card shown');
    await p.getByRole('heading',{name:'Phòng riêng đã duyệt',exact:true}).waitFor();
+   await p.locator('[data-testid=managed-property]').first().getByRole('link',{name:'Hồ sơ và giấy tờ',exact:true}).click();
+   await p.getByRole('dialog').waitFor();await p.getByRole('dialog').getByText('Đã đối chiếu giấy chứng nhận',{exact:false}).waitFor();
+   if(await p.getByRole('dialog').getByText('Không tìm thấy tài sản.',{exact:true}).count())throw Error('Legacy dossier inaccessible');
+   await p.getByRole('button',{name:'Đóng hồ sơ',exact:true}).click();
+   await p.goto(`${origin}/account/properties`);
    await p.getByRole('button',{name:'Thêm phòng vào tài sản này',exact:true}).click();
    await p.locator('#new-apartment-title').fill('Phòng thêm');
    await p.getByText('Mã / Số phòng *',{exact:true}).locator('..').locator('input').fill('P.404');

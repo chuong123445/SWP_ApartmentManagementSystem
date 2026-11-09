@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { PropertyDossierModal } from '@/components/property/PropertyDossierModal';
 import { listListingDrafts,type ListingDraft } from '@/services/property/listingDraftService';
 import { restoreListing } from '@/utils/listingWizard';
-import { getPropertyApplications } from '@/services/property/propertyApplicationService';
+import { getManagedProperties } from '@/services/property/assetManagementService';
 import type { OwnerProperty } from '@/types/property';
 import { rightLabels } from '@/types/dossier';
 
@@ -18,7 +18,7 @@ export function PropertyApplicationsPage() {
   const [kind,setKind] = useState<'AUTHORIZATION'|'SUBLEASE'>(location.state?.rightType === 'SUBLEASE' ? 'SUBLEASE' : 'AUTHORIZATION');const [selected,setSelected] = useState<string|null>(location.state?.openPropertyId??null);
   const verified = verification.data?.vneid.status === 'VERIFIED';
   useEffect(()=>{if(!verified){setItems([]);setLoading(false);return;}const controller=new AbortController();setLoading(true);setError('');
-    Promise.all([getPropertyApplications(controller.signal),listListingDrafts()]).then(([data,ongoing])=>{if(!controller.signal.aborted){setItems(data.filter(p=>!ongoing.some(d=>d.propertyId===p.id)));setDrafts(ongoing);}}).catch(e=>{if(!controller.signal.aborted)setError(e instanceof Error?e.message:'Chưa tải được hồ sơ.');}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});return()=>controller.abort();
+    Promise.all([getManagedProperties(controller.signal).then(groups=>groups.map(group=>group.property).filter(p=>!p.verificationSource)),listListingDrafts()]).then(([data,ongoing])=>{if(!controller.signal.aborted){setItems(data.filter(p=>!ongoing.some(d=>d.propertyId===p.id)));setDrafts(ongoing);}}).catch(e=>{if(!controller.signal.aborted)setError(e instanceof Error?e.message:'Chưa tải được hồ sơ.');}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});return()=>controller.abort();
   },[verified,user?.id,revision]);
   const labels:Record<string,string>={DRAFT:'Nháp',PENDING_APPROVAL:'Chờ Admin duyệt',NEEDS_INFORMATION:'Cần bổ sung',REJECTED:'Bị từ chối',APPROVED:'Đã duyệt'};
   return <CustomerLayout><main className="home-wrap asset-page space-y-5"><Link to="/account/properties" className="text-emerald-700 underline">Quay lại quản lý tài sản</Link><h1 className="text-2xl font-bold mb-4">Hồ sơ quyền cho thuê</h1>
