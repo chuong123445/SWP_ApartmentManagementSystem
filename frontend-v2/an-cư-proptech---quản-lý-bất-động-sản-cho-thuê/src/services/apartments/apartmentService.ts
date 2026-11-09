@@ -17,3 +17,9 @@ async function publicGet<T>(url: string, signal?: AbortSignal): Promise<T> {
   if (!response.ok) throw await readApiError(response);
   return response.json();
 }
+
+export async function getPropertyGroups(filters: ApartmentFilters, signal?: AbortSignal): Promise<PageResult<import('@/types/apartment').PropertyListingSummary>> {
+  const query = new URLSearchParams();
+  Object.entries(filters).forEach(([key,value])=>{if(value!==undefined&&value!=='')query.set(key,String(value));});
+  return publicGet(`/api/v1/apartments/property-groups?${query}`,signal);
+}

@@ -28,8 +28,8 @@ export function sourceAppendMessage(item:VneidAssetCandidate):string{
   return '';
 }
 export interface ImportUnitTerms {
-  externalUnitId: string; monthlyRent: string; deposit: string; electricityUnitPrice: string; waterUnitPrice: string;
-  electricityIndex: number; waterIndex: number; floor: number; maxOccupants: number; description: string;
+  imageIds?: string[]; externalUnitId: string; monthlyRent: string; deposit: string; electricityUnitPrice: string; waterUnitPrice: string;
+  electricityIndex: number|null; waterIndex: number|null; floor: number; maxOccupants: number; description: string;
 }
 export interface VneidImportInput { imageIds: string[]; externalAssetId: string; sourceVersion: string; city: string; district: string; ward: string | null; units: ImportUnitTerms[] }
 export async function getVneidAssets(signal?: AbortSignal): Promise<VneidAssetCandidate[]> {

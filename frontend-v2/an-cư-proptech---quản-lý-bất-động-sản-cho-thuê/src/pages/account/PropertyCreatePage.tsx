@@ -19,6 +19,6 @@ export function PropertyCreatePage(){
       relationship==='ownership'&&query.get('mode')!=='manual'?<>
         {!propertyId&&<div className="border rounded-xl bg-white p-4 space-y-2"><p>Chọn dữ liệu nguồn hoặc nộp giấy tờ để Admin xét duyệt.</p><Link to="/account/properties/new/ownership?mode=manual" className="underline text-emerald-700">Nộp giấy tờ chính chủ thủ công</Link></div>}
         <SourcePropertyOnboarding propertyId={propertyId} onClose={back} onBack={back} onImported={async()=>{await reloadUser();navigate('/account/properties');}}/>
-      </>:<PropertyListingWizard key={relationship} rightType={relationship==='ownership'?'OWNERSHIP':relationship==='authorization'?'AUTHORIZATION':'SUBLEASE'}/>}
+      </>:<PropertyListingWizard key={`${relationship}:${query.get('draft')??'new'}`} rightType={relationship==='ownership'?'OWNERSHIP':relationship==='authorization'?'AUTHORIZATION':'SUBLEASE'}/>}
   </main></CustomerLayout>;
 }
