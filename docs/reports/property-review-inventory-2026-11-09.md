@@ -36,3 +36,5 @@ No application DB changes, cleanup of historical duplicates, generated replaceme
 5. Check legacy covers, uploaded private image priority and common gallery separation.
 
 Context7 provided Spring Framework7.0.5 as available7.x documentation for project Spring Boot4.1.1, exact version unavailable. SQL lock ownership/return values checked against Microsoft. [sp_getapplock](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-getapplock-transact-sql)
+
+Legacy dossier follow-up uses the existing private managed-property catalog in Self dossier lookup/application list. This includes manual properties created before onboardingApplication existed. The latest 1440/390 MCP run also opened a legacy approved dossier through its card, read the review reason and closed it successfully. 151FE/tsc/build rerun passed.

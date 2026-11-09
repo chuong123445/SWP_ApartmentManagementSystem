@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { X } from 'lucide-react';
 import { Link } from 'react-router';
 import { useAccountVerification } from '@/hooks/useAccountVerification';
-import { getPropertyApplications } from '@/services/property/propertyApplicationService';
+import { getManagedProperties } from '@/services/property/assetManagementService';
 import { getOwnerProperties } from '@/services/apartments/ownerApartmentService';
 import { propertyDossiers, submitDossier, uploadEvidence } from '@/services/property/dossierService';
 import { DossierDetails } from '@/components/property/DossierDetails';
@@ -19,7 +19,7 @@ export function PropertyDossierModal({ propertyId, onClose, onSaved, selfService
   const [validFrom,setValidFrom]=useState('');const [validUntil,setValidUntil]=useState('');const [leaseFrom,setLeaseFrom]=useState('');const [leaseUntil,setLeaseUntil]=useState('');const [principalName,setPrincipalName]=useState('');const [principalNumber,setPrincipalNumber]=useState('');
   useEffect(() => {
     let active = true;setLoading(true);setError('');
-    Promise.all([selfService ? getPropertyApplications() : getOwnerProperties(), propertyDossiers(propertyId,selfService)]).then(([properties, dossiers]) => {
+    Promise.all([selfService ? getManagedProperties().then(groups=>groups.map(group=>group.property)) : getOwnerProperties(), propertyDossiers(propertyId,selfService)]).then(([properties, dossiers]) => {
       if (!active) return;const found = properties.find(p => p.id === propertyId);if (!found) throw new Error('Không tìm thấy tài sản.');
       setProperty(found);setHistory(dossiers);const latest = dossiers[0];
       if (latest) { setFiles(latest.files);setRightType(latest.rightType); }
