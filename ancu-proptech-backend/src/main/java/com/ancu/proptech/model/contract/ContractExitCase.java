@@ -10,5 +10,11 @@ public class ContractExitCase {
  @org.hibernate.annotations.Nationalized @Column(columnDefinition="nvarchar(max)") private String terminationJson;
  @org.hibernate.annotations.Nationalized @Column(columnDefinition="nvarchar(max)") private String handoverJson;
  @Column(nullable=false,columnDefinition="datetime2(6)") private Instant updatedAt;
+ @org.hibernate.annotations.Nationalized @Column(columnDefinition="nvarchar(max)") private String documentJson;
+ @Column(length=64) private String documentHash;
+ @Lob @Column(columnDefinition="varbinary(max)") private byte[] ownerSignature;
+ @Lob @Column(columnDefinition="varbinary(max)") private byte[] customerSignature;
+ @Column(columnDefinition="datetime2(6)") private Instant ownerSignedAt;
+ @Column(columnDefinition="datetime2(6)") private Instant customerSignedAt;
  @Version private long version;
 }

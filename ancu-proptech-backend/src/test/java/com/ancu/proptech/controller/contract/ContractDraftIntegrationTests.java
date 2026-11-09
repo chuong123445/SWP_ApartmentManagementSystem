@@ -210,38 +210,25 @@ class ContractDraftIntegrationTests {
             .andExpect(status().isOk()).andExpect(jsonPath("$.lifecycle.endReason").value("RENEWAL_CANCELLED"));
         assertEquals("ACTIVE",JsonPath.read(readContract(oldId),"$.status"));
         mvc.perform(get("/api/v1/owner/contracts/"+oldId+"/renewal-context").header("Authorization",token)).andExpect(status().isConflict());
-        mvc.perform(post("/api/v1/owner/contracts/"+oldId+"/handover").header("Authorization",token).contentType("application/json").content(handoverInput(readContract(oldId)))).andExpect(status().isOk());
+        mvc.perform(post("/api/v1/owner/contracts/"+oldId+"/handover").header("Authorization",token).contentType("application/json").content(handoverInput(readContract(oldId)))).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("HANDOVER_SIGNATURES_REQUIRED"));
     }
-    @Test void handoverRequiresCustomerConfirmationThenFreesRoomAndRetainsInvoicesAndOldSignatures() throws Exception {
+    @Test void legacyHandoverEndpointsCannotEndContractWithoutPdfSignatures() throws Exception {
         String old=expiredContract();String oldId=id(old);
-        String proposed=mvc.perform(post("/api/v1/owner/contracts/"+oldId+"/handover").header("Authorization",token).contentType("application/json").content(handoverInput(old)))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE")).andExpect(jsonPath("$.lifecycle.handover.status").value("PENDING"))
-            .andExpect(jsonPath("$.lifecycle.handover.utilityAmount").value("127500.00")).andExpect(jsonPath("$.lifecycle.handover.refundAmount").value("9772500.00"))
-            .andReturn().getResponse().getContentAsString();
+        mvc.perform(post("/api/v1/owner/contracts/"+oldId+"/handover").header("Authorization",token).contentType("application/json").content(handoverInput(old)))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("HANDOVER_SIGNATURES_REQUIRED"));
+        assertEquals("ACTIVE",JsonPath.read(readContract(oldId),"$.status"));
         assertEquals(Apartment.Availability.OCCUPIED,request.getApartment().getAvailability());
-        String confirmation="{\"version\":"+JsonPath.read(proposed,"$.lifecycle.handover.version")+",\"consent\":true}";
-        mvc.perform(post("/api/v1/contracts/"+oldId+"/handover/confirm").header("Authorization",token).contentType("application/json").content(confirmation)).andExpect(status().isForbidden());
-        mvc.perform(post("/api/v1/contracts/"+oldId+"/handover/confirm").header("Authorization",otherToken).contentType("application/json").content(confirmation)).andExpect(status().isNotFound());
-        mvc.perform(post("/api/v1/contracts/"+oldId+"/handover/confirm").header("Authorization",customerToken).contentType("application/json").content("{\"version\":99,\"consent\":true}")).andExpect(status().isConflict());
-        String ended=mvc.perform(post("/api/v1/contracts/"+oldId+"/handover/confirm").header("Authorization",customerToken).contentType("application/json").content(confirmation))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ENDED")).andExpect(jsonPath("$.lifecycle.handover.status").value("CONFIRMED"))
-            .andReturn().getResponse().getContentAsString();
-        assertEquals(Apartment.Availability.VACANT,request.getApartment().getAvailability());assertEquals(215,request.getApartment().getElectricityIndex());
-        assertEquals(JsonPath.<String>read(old,"$.signing.customerSignature"),JsonPath.<String>read(ended,"$.signing.customerSignature"));
-        mvc.perform(get("/api/v1/owner/contracts/"+oldId+"/billing-context").header("Authorization",token)).andExpect(status().isConflict());
-        mvc.perform(get("/api/v1/me/apartments/"+request.getApartment().getId()+"/rental-requests").header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
-        mvc.perform(post("/api/v1/apartments/"+request.getApartment().getId()+"/rental-requests").header("Authorization",customerToken).contentType("application/json").content("{\"message\":\"Yêu cầu mới sau trả phòng\"}")).andExpect(status().isCreated());
+        assertEquals(0,handovers.findAll().stream().filter(h->h.getContract().getId().toString().equals(oldId)).count());
     }
-    @Test void pendingHandoverCanBeCancelledButNotOverwrittenAndReadingsCannotDecrease() throws Exception {
-        String old=expiredContract();String oldId=id(old);
-        mvc.perform(post("/api/v1/owner/contracts/"+oldId+"/handover").header("Authorization",token).contentType("application/json").content(handoverInput(old).replace("\"215\"","\"199\""))).andExpect(status().isConflict());
-        String proposed=mvc.perform(post("/api/v1/owner/contracts/"+oldId+"/handover").header("Authorization",token).contentType("application/json").content(handoverInput(old))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        mvc.perform(post("/api/v1/owner/contracts/"+oldId+"/handover").header("Authorization",token).contentType("application/json").content(handoverInput(old))).andExpect(status().isConflict());
-        mvc.perform(get("/api/v1/owner/contracts/"+oldId+"/renewal-context").header("Authorization",token)).andExpect(status().isConflict());
-        mvc.perform(post("/api/v1/owner/contracts/"+oldId+"/handover/cancel").header("Authorization",token).contentType("application/json").content("{\"version\":"+JsonPath.read(proposed,"$.lifecycle.handover.version")+",\"consent\":true}"))
+    @Test void oldPendingHandoverRemainsReadableAndCancellableButCannotConfirmWithoutSignatures() throws Exception {
+        String old=expiredContract();String oldId=id(old);var c=contracts.findById(Long.valueOf(oldId)).orElseThrow();
+        var h=new com.ancu.proptech.model.contract.ContractHandover();h.setContract(c);h.setStatus(com.ancu.proptech.model.contract.ContractHandover.Status.PENDING);
+        h.setReturnDate(c.getEndDate());h.setElectricityReading(new BigDecimal("215"));h.setWaterReading(new BigDecimal("55"));h.setElectricityStartReading(new BigDecimal("200"));h.setWaterStartReading(new BigDecimal("50"));h.setKeysReturned(true);h.setConditionNotes("Old record");h.setDepositAmount(new BigDecimal("10000000"));h.setDeductionAmount(BigDecimal.ZERO);h.setUtilityAmount(new BigDecimal("127500"));h.setRefundAmount(new BigDecimal("9872500"));h.setExtraAmountDue(BigDecimal.ZERO);h.setOwnerConfirmedAt(Instant.now());handovers.saveAndFlush(h);
+        mvc.perform(post("/api/v1/contracts/"+oldId+"/handover/confirm").header("Authorization",customerToken).contentType("application/json").content("{\"version\":"+h.getVersion()+",\"consent\":true}"))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("HANDOVER_SIGNATURES_REQUIRED"));
+        assertEquals("ACTIVE",JsonPath.read(readContract(oldId),"$.status"));
+        mvc.perform(post("/api/v1/owner/contracts/"+oldId+"/handover/cancel").header("Authorization",token).contentType("application/json").content("{\"version\":"+h.getVersion()+",\"consent\":true}"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.lifecycle.handover.status").value("CANCELLED"));
-        mvc.perform(post("/api/v1/owner/contracts/"+oldId+"/handover").header("Authorization",token).contentType("application/json").content(handoverInput(readContract(oldId)))).andExpect(status().isOk());
-        assertEquals(2,handovers.findAll().stream().filter(h->h.getContract().getId().toString().equals(oldId)).count());
     }
     @Test void unexpiredContractCannotRenewOrHandoverAndOtherOwnersCannotReadRenewalContext() throws Exception {
         String saved=create();var c=contracts.findById(Long.valueOf(id(saved))).orElseThrow();c.setStatus(RentalContract.Status.ACTIVE);contracts.saveAndFlush(c);

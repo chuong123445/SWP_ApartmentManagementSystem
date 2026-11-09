@@ -140,12 +140,7 @@ public class ContractLifecycleService {
         var settlement=utilityCost(c,input.electricityReading(),input.waterReading(),input.electricityStartReading(),input.waterStartReading());
         var utilities=settlement.cost();var balance=d.getDeposit().subtract(input.deductionAmount()).subtract(utilities);
         if(balance.abs().compareTo(new BigDecimal("9999999999999.99"))>0)throw conflict("SETTLEMENT_TOO_LARGE","Số tiền đối soát vượt giới hạn. Hãy kiểm tra khấu trừ và chỉ số.");
-        var h=new ContractHandover();h.setContract(c);h.setStatus(ContractHandover.Status.PENDING);h.setReturnDate(input.returnDate());
-        h.setElectricityReading(input.electricityReading());h.setWaterReading(input.waterReading());h.setKeysReturned(true);h.setConditionNotes(input.conditionNotes().strip());
-        h.setElectricityStartReading(settlement.electricStart());h.setWaterStartReading(settlement.waterStart());
-        h.setDepositAmount(d.getDeposit());h.setDeductionAmount(input.deductionAmount());h.setUtilityAmount(utilities);
-        h.setRefundAmount(balance.max(BigDecimal.ZERO));h.setExtraAmountDue(balance.negate().max(BigDecimal.ZERO));h.setOwnerConfirmedAt(Instant.now());
-        handovers.saveAndFlush(h);return authoring.response(d);
+        throw conflict("HANDOVER_SIGNATURES_REQUIRED","Hãy lập và ký biên bản PDF trong mục Kết thúc thuê / bàn giao cư trú.");
     }
 
     @Transactional
@@ -162,11 +157,7 @@ public class ContractLifecycleService {
         var a=apartments.findForRequest(c.getApartment().getId()).orElseThrow(ContractLifecycleService::missing);
         if(a.getAvailability()!=Apartment.Availability.OCCUPIED || contracts.findByApartmentId(a.getId()).stream().anyMatch(other->!other.getId().equals(id)&&other.isOpen()))
             throw conflict("INVALID_STATE","Phòng đang có quan hệ hợp đồng khác. Không thể trả phòng.");
-        h.setStatus(ContractHandover.Status.CONFIRMED);h.setCustomerConfirmedAt(Instant.now());
-        c.setStatus(RentalContract.Status.ENDED);c.setEndReason("HANDOVER");c.setEndedAt(Instant.now());
-        a.setElectricityIndex(h.getElectricityReading().intValueExact());a.setWaterIndex(h.getWaterReading().intValueExact());a.setAvailability(Apartment.Availability.VACANT);
-        handovers.saveAndFlush(h);contracts.saveAndFlush(c);apartments.saveAndFlush(a);
-        return authoring.response(d);
+        throw conflict("HANDOVER_SIGNATURES_REQUIRED","Hãy lập và ký biên bản PDF trong mục Kết thúc thuê / bàn giao cư trú.");
     }
 
     @Transactional
