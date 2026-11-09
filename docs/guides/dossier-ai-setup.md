@@ -54,3 +54,16 @@ Từ bản sửa ngày 02/11/2026, riêng `gemini-2.5-flash` và alias `gemini-2
 Nếu còn lỗi, xem log backend `Dossier AI incomplete`: `finishReason`, `blockReason`, `outputTokens`, `thinkingTokens`. Log chỉ giữ enum đã cho phép và số token, không ghi tệp, nội dung trích xuất, key hay lỗi thô. Kết quả chưa hoàn tất vẫn bị từ chối, không được coi là quét thành công.
 
 Khởi động lại backend để nạp code mới, sau đó Admin chọn đúng hồ sơ và bấm **Quét lại hồ sơ**. Bản ghi FAILED không tự chạy lại sau khi chỉ cập nhật code. Thời điểm “Nộp vào hàng quét” là lúc tạo bản ghi, không phải lúc bắt đầu lần xử lý cuối; dùng `startedAt`/`finishedAt` để xác định thời gian xử lý.
+
+
+## Chuyển model khi key mới không dùng được model cũ, 09/11/2026
+
+Một lần gọi thực tế với key local đã trả HTTP404, báo gemini-2.5-flash không còn khả dụng cho người dùng mới. Model được provider đề nghị gemini-3.8-flash trả503 quá tải trong phiên kiểm tra. gemini-3.5-flash-lite trả200 với structured output cho câu tìm nhà dưới5triệu. Đây là kết quả tại thời điểm kiểm tra, quyền và khả dụng của project cần được đối chiếu khi cấu hình.
+
+Đổi GEMINI_MODEL trong .env.local và khởi động lại backend. Key được dùng chung cho chatbot/tìm kiếm/quét chứng từ. Local trong phiên đã chuyển sang gemini-3.5-flash-lite, file bí mật được loại khỏi Git.
+
+Client Gemini3 bỏ temperature và dùng thinkingLevel=low. Quét chứng từ giữ mức output16384 token cho Gemini3. Cấu hình Gemini2.5 cũ giữ nguyên để các project còn quyền dùng tiếp tục hoạt động.
+
+Chat trả mã riêng AI_MODEL_UNAVAILABLE (404), AI_PROVIDER_AUTH (401/403), AI_REQUEST_REJECTED (400), AI_RATE_LIMIT (429) và AI_PROVIDER_BUSY (503/504). Nội dung phản hồi thô của provider và key không đưa vào thông báo.
+
+Tài liệu chính thức. [Chuyển sang Gemini3.8](https://ai.google.dev/gemini-api/docs/whats-new-gemini-3.8), [Gemini3.5 Flash-Lite](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite).
