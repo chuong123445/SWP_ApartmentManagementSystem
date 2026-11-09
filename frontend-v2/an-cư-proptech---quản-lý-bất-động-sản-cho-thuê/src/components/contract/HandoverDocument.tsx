@@ -23,7 +23,7 @@ export function HandoverDocument({data,disabled,onUpdated}:{data:ContractExit;di
   {error&&<p role="alert" className="text-red-700 text-sm">{error}</p>}
   {pdfError?<p role="alert" className="text-red-700 text-sm">{pdfError}<button type="button" className="underline ml-2" onClick={()=>setRetry(v=>v+1)}>Tải lại PDF bàn giao</button></p>:!url?<p role="status">Đang tải PDF bàn giao…</p>:<>
    <div className="flex flex-wrap gap-3 text-sm"><a className="underline text-emerald-800" href={url} download={`${data.document.number}.pdf`}>Tải PDF bàn giao</a><a className="underline text-emerald-800" href={url} target="_blank" rel="noreferrer">Mở PDF bàn giao / In</a></div>
-   <iframe title="Bản PDF biên bản bàn giao" src={url} className="w-full h-[60vh] min-h-80 rounded-lg border"/>
+   <iframe title="Bản PDF biên bản bàn giao" src={url} className="block w-full rounded-lg border" style={{aspectRatio:'210 / 297',height:'auto'}}/>
   </>}
   <div className="grid sm:grid-cols-2 gap-3">{([
    ['Bên cho thuê - nhận lại nhà',data.document.snapshot.owner,data.signing.ownerSignedAt,data.signing.ownerSignature],
