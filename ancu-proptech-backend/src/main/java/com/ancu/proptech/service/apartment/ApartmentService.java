@@ -70,9 +70,12 @@ public class ApartmentService {
         var result=groups.search(searchFilter(q,city,district,ward,minRent,maxRent,bedrooms,page,size,minArea,maxArea,occupants),page,size);
         var items=result.groups().stream().map(group->{
             var gallery=images.urls(group.propertyId());
+            var thumbnail=gallery.isEmpty()
+                ?apartments.findById(group.representativeApartmentId()).map(this::image).orElse("/images/apartment-placeholder.svg")
+                :gallery.getFirst();
             return new PropertyListingSummary(group.propertyId().toString(),group.name(),group.address(),
                 group.minRent().toPlainString(),group.maxRent().toPlainString(),group.minArea().toPlainString(),group.maxArea().toPlainString(),
-                group.rooms(),gallery.isEmpty()?"/images/apartment-placeholder.svg":gallery.getFirst());
+                group.rooms(),thumbnail);
         }).toList();
         return new PageResponse<>(items,page,size,result.total(),(int)((result.total()+size-1)/size));
     }
@@ -127,7 +130,7 @@ public class ApartmentService {
                 a.getAreaM2().toPlainString(), a.getAdvertisedMonthlyRent().toPlainString(), gallery(a),
                 List.copyOf(a.getAmenities()), a.getAvailability().name(), a.getPublicationStatus().name(), a.getBedrooms(), a.getBathrooms(),
                 new ApartmentDetail.PublicOwner(owner.getId(), owner.getFullName(), owner.isContactVerified()), a.getVersion(),
-                a.getElectricityUnitPrice()==null?null:a.getElectricityUnitPrice().toPlainString(),a.getWaterUnitPrice()==null?null:a.getWaterUnitPrice().toPlainString(),p.getRightType()==null?"UNSPECIFIED":p.getRightType().name(),p.getRightsValidFrom(),p.getRightsValidUntil(),!rights.limited(p)||(p.getRightsValidFrom()!=null&&p.getRightsValidUntil()!=null&&!rights.today().isBefore(p.getRightsValidFrom())&&!rights.today().isAfter(p.getRightsValidUntil())),management);
+                a.getElectricityUnitPrice()==null?null:a.getElectricityUnitPrice().toPlainString(),a.getWaterUnitPrice()==null?null:a.getWaterUnitPrice().toPlainString(),p.getRightType()==null?"UNSPECIFIED":p.getRightType().name(),p.getRightsValidFrom(),p.getRightsValidUntil(),!rights.limited(p)||(p.getRightsValidFrom()!=null&&p.getRightsValidUntil()!=null&&!rights.today().isBefore(p.getRightsValidFrom())&&!rights.today().isAfter(p.getRightsValidUntil())),management,a.getMaxOccupants());
     }
 
     public static void validatePage(int page, int size) {
@@ -140,7 +143,7 @@ public class ApartmentService {
     private ApartmentSummary summary(Apartment a) {
         var p = a.getProperty();
         return new ApartmentSummary(a.getId(), a.getTitle(), p.getAddress(), p.getCity(), p.getDistrict(),
-                a.getAreaM2().toPlainString(), a.getAdvertisedMonthlyRent().toPlainString(), image(a), a.getAvailability().name(), a.getBedrooms(), a.getBathrooms(),p.getRightType()==null?"UNSPECIFIED":p.getRightType().name());
+                a.getAreaM2().toPlainString(), a.getAdvertisedMonthlyRent().toPlainString(), image(a), a.getAvailability().name(), a.getBedrooms(), a.getBathrooms(),p.getRightType()==null?"UNSPECIFIED":p.getRightType().name(),a.getMaxOccupants());
     }
     private List<String> gallery(Apartment a){var urls=images.unitUrls(a.getProperty().getId(),a.getId(),a.getCoverImagePath());return urls.isEmpty()?List.of(image(a)):urls;}
     private String image(Apartment a) { var urls=images.unitUrls(a.getProperty().getId(),a.getId(),a.getCoverImagePath());if(!urls.isEmpty())return urls.getFirst();return a.getCoverImagePath() == null ? "/images/apartment-placeholder.svg" : a.getCoverImagePath(); }
