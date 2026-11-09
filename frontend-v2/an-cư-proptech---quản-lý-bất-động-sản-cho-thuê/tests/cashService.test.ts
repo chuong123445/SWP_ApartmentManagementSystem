@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
-import { cashCreateIntent, cashSummary, listCashEntries, postCashEntry, cancelCashEntry } from '@/services/finance/cashService';
+import { cashSources, cashFromSource, cashCreateIntent, cashSummary, listCashEntries, postCashEntry, cancelCashEntry } from '@/services/finance/cashService';
 import type { CashCreate } from '@/types/finance';
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });
@@ -36,4 +36,15 @@ test('Cash actions send server version and cancellation reason; API errors remai
   await assert.rejects(() => postCashEntry(9, 4), /Phiếu đã thay đổi/);
   await assert.rejects(() => cancelCashEntry(9, 5, 'Ghi trùng'), /Phiếu đã thay đổi/);
   assert.deepEqual(calls, [{ url: '/api/v1/owner/cash-entries/9/post', body: { version: 4 } }, { url: '/api/v1/owner/cash-entries/9/cancel', body: { version: 5, reason: 'Ghi trùng' } }]);
+});
+
+
+test('Merged source APIs retain property/month scope and server-calculated amounts', async()=>{
+  const calls:{url:string;body:unknown}[]=[];
+  globalThis.fetch=async(url,options)=>{calls.push({url:String(url),body:options?.body?JSON.parse(options.body as string):null});return Response.json({id:9});};
+  await cashSources('21','2026-11',2);
+  const source={type:'INVOICE' as const,id:7,propertyId:21,propertyName:'Test',title:'Paid invoice',amount:'5000000',suggestedDate:'2026-11-01'};
+  await cashFromSource(source,'2026-11-01','BANK_TRANSFER');
+  const url=new URL(calls[0].url,'http://localhost');assert.equal(url.searchParams.get('propertyId'),'21');assert.equal(url.searchParams.get('month'),'2026-11');assert.equal(url.searchParams.get('page'),'2');
+  assert.deepEqual(calls[1].body,{type:'INVOICE',id:7,transactionDate:'2026-11-01',paymentMethod:'BANK_TRANSFER'});
 });

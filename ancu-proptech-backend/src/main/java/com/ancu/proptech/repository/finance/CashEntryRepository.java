@@ -5,6 +5,8 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
 public interface CashEntryRepository extends JpaRepository<CashEntry,Long>, JpaSpecificationExecutor<CashEntry> {
+    Optional<CashEntry> findBySourceInvoiceId(Long id);
+    Optional<CashEntry> findBySourceMaintenanceId(Long id);
     Optional<CashEntry> findByPropertyIdAndRequestKey(Long propertyId,String requestKey);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select e from CashEntry e where e.id=:id and e.property.owner.id=:owner")

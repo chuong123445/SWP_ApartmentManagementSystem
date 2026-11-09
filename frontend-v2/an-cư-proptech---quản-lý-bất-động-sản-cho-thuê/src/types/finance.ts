@@ -2,6 +2,7 @@ export type CashDirection = 'INCOME' | 'EXPENSE';
 export type CashStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type CashMethod = 'CASH' | 'BANK_TRANSFER';
 export interface CashEntry {
+  sourceType?:'INVOICE'|'MAINTENANCE'|null; sourceId?:number|null;
   id: number; code: string; propertyId: number; propertyName: string;
   direction: CashDirection; status: CashStatus; paymentMethod: CashMethod;
   amount: string; transactionDate: string; category: string; counterparty: string;
