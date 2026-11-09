@@ -5,7 +5,9 @@ import { uploadEvidence } from '@/services/property/dossierService';
 import { uploadPropertyImages } from '@/services/property/propertyImageService';
 import { precheckDossier } from '@/services/property/ownerPrecheckService';
 import { extractListingDocument,finishListingDraft,getListingDraft,listListingDrafts,saveListingDraft,startListingDraft,type ListingDraft } from '@/services/property/listingDraftService';
-import { acceptableSuggestion,blankListing,blankListingUnit,copyCommonTerms,legalFields,listingDossier,listingProperty,requiredEvidence,restoreListing,selectedListingUnits,type LegalKey,type ListingState,type Suggestion,type WizardUnit } from '@/utils/listingWizard';
+import { acceptableSuggestion,applyExtractedFields,propertyExtractionKeys,blankListing,blankListingUnit,copyCommonTerms,legalFields,listingDossier,listingProperty,requiredEvidence,restoreListing,selectedListingUnits,type LegalKey,type ListingState,type Suggestion,type WizardUnit } from '@/utils/listingWizard';
+import { DossierDateInput } from '@/components/property/DossierDateInput';
+import { dossierFieldDisplay } from '@/utils/dossierDates';
 import { OwnerPrecheckPanel } from '@/components/property/OwnerPrecheckPanel';
 import { ApartmentImage } from '@/components/apartments/ApartmentImage';
 
@@ -18,8 +20,13 @@ export function PropertyListingWizard({rightType}:{rightType:Dossier['rightType'
  const [busy,setBusy]=useState(false);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [notice,setNotice]=useState('');const [scanIssues,setScanIssues]=useState<string[]>([]);
  const [requestKey]=useState(()=>crypto.randomUUID());const form=useRef<HTMLFormElement>(null);const mounted=useRef(true);
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
- useEffect(()=>{let active=true;setLoading(true);setError('');(draftId?getListingDraft(draftId):listListingDrafts()).then(result=>{
-   if(!active)return;if(Array.isArray(result)){setSaved(result.filter(d=>d.rightType===rightType));setDraft(null);}else{if(result.rightType!==rightType)throw new Error('Loại quyền không khớp bản nháp.');if(result.completed){navigate('/account/rental-properties',{replace:true});return;}setDraft(result);setState(restoreListing(result.payload));}
+ useEffect(()=>{let active=true;setLoading(true);setError('');(draftId?getListingDraft(draftId):listListingDrafts()).then(async result=>{
+   if(!active)return;if(Array.isArray(result)){setSaved(result.filter(d=>d.rightType===rightType));setDraft(null);}else{if(result.rightType!==rightType)throw new Error('Loại quyền không khớp bản nháp.');if(result.completed){navigate('/account/rental-properties',{replace:true});return;}setDraft(result);const restored=restoreListing(result.payload);setState(restored);
+     if(result.files.some(file=>!restored.excludedFiles.includes(file.id)&&(restored.extractionVersion!==2||!restored.extractedFileIds?.includes(file.id)))){
+      setBusy(true);
+      try{await scanDocuments(result,restored,result.files.filter(file=>!restored.excludedFiles.includes(file.id)));}
+      finally{if(active)setBusy(false);}
+     }}
  }).catch(e=>{if(active)setError(e.message);}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[draftId,rightType,navigate]);
  const change=(next:Partial<ListingState>)=>{setState(s=>({...s,...next}));setNotice('Có thay đổi chưa lưu.');};
  const updateUnit=(key:string,values:Partial<WizardUnit>)=>{change({units:state.units.map(u=>u.key===key?{...u,...values}:u)});};
@@ -29,21 +36,54 @@ export function PropertyListingWizard({rightType}:{rightType:Dossier['rightType'
  const files=(draft?.files??[]).filter(f=>!state.excludedFiles.includes(f.id));const units=selectedListingUnits(state);
  const legalKeys=legalFields.filter(([key])=>rightType==='OWNERSHIP'?key.startsWith('certificate'):rightType==='AUTHORIZATION'?!key.startsWith('originalLease'):true);
  const dossier=()=>listingDossier(state,draft?.files??[],rightType,draft?.propertyVersion??0);
- const scan=()=>run(async()=>{
-   if(!draft||!files.length)throw new Error('Tải ít nhất một chứng từ để đọc.');
-   setScanIssues([]);const input=dossier();const base=await precheckDossier(draft.propertyId,input,{},undefined,true);const suggestions:Suggestion[]=[];const issues:string[]=[];
-   for(const file of files){try{const result=await extractListingDocument(draft.propertyId,input,file.id,base.sourceHash);
-     if(result.review?.readable)for(const item of result.review.extractedFields){if((item.field==='propertyAddress'||legalFields.some(([key])=>key===item.field))&&acceptableSuggestion(item.field,item.value))suggestions.push({...item,fileId:file.id,filename:file.filename});}
+ const scanDocuments=async(current:ListingDraft,next:ListingState,requested:EvidenceFile[])=>{
+   const selected=current.files.filter(file=>!next.excludedFiles.includes(file.id)&&(requested.some(item=>item.id===file.id)||!next.extractedFileIds?.includes(file.id)));
+   const extracted=new Set(next.extractedFileIds??[]);
+   const input=listingDossier(next,current.files,rightType,current.propertyVersion);
+   const base=await precheckDossier(current.propertyId,input,{},undefined,true);
+   const suggestions=next.suggestions.filter(item=>!selected.some(file=>file.id===item.fileId));
+   const issues:string[]=[];
+   for(const file of selected){
+    try{
+     const result=await extractListingDocument(current.propertyId,input,file.id,base.sourceHash);
+     if(!mounted.current)return;
+     extracted.add(file.id);
+     if(result.review?.readable){
+      for(const item of result.review.extractedFields){
+       if(propertyExtractionKeys.some(key=>key===item.field)||legalFields.some(([key])=>key===item.field))
+        suggestions.push({...item,fileId:file.id,filename:file.filename});
+      }
+     }
      for(const finding of result.review?.findings??[])issues.push(`${file.filename}: ${finding.message}`);
-   }catch(e){issues.push(`${file.filename}: ${e instanceof Error?e.message:'Chưa đọc được.'}`);}}
-   if(!mounted.current)return;setScanIssues(issues);await persist({...state,suggestions,confirmed:false});
-   if(!suggestions.length)setNotice('Chưa có dữ liệu đủ rõ để điền giúp. Bạn có thể nhập tay ở bước tiếp theo.');
- });
+    }catch(error){issues.push(`${file.filename}: ${error instanceof Error?error.message:'Chưa đọc được.'}`);}
+   }
+   if(!mounted.current)return;
+   setScanIssues(issues);
+   const filled={...applyExtractedFields(next,suggestions),extractionVersion:2,extractedFileIds:[...extracted]};
+   await persist(filled,current);
+   setNotice(issues.length?'Đã tự điền phần đọc được. Một số tệp cần kiểm tra hoặc bổ sung.':'Đã đọc giấy tờ và tự điền thông tin.');
+ };
  const upload=async(purpose:EvidencePurpose,chosen:File[])=>{
-   if(!draft||!chosen.length)return;if(files.length+chosen.length>20)throw new Error('Hồ sơ tối đa 20 tệp.');
+   if(!draft||!chosen.length)return;
+   if(files.length+chosen.length>20)throw new Error('Hồ sơ tối đa 20 tệp.');
    let current=draft;
-   for(const file of chosen){const result=await uploadEvidence(draft.propertyId,purpose,file,true);current={...current,files:[...current.files,result]};setDraft(current);}
-   await persist({...state,confirmed:false},current);
+   const added:EvidenceFile[]=[];
+   const uploadErrors:string[]=[];
+   for(const file of chosen){
+    try{
+     const uploaded=await uploadEvidence(draft.propertyId,purpose,file,true);
+     if(!mounted.current)return;
+     added.push(uploaded);current={...current,files:[...current.files,uploaded]};setDraft(current);
+    }catch(error){uploadErrors.push(`${file.name}: ${error instanceof Error?error.message:'Tải chưa thành công.'}`);}
+   }
+   if(!added.length)throw new Error(uploadErrors.join(' '));
+   const next={...state,confirmed:false};
+   const saved=await persist(next,current);
+   if(!saved||!mounted.current)return;
+   setNotice('Đang tự đọc giấy tờ và điền thông tin…');
+   try{await scanDocuments(saved,next,added);}
+   catch(error){setScanIssues([error instanceof Error?error.message:'Chưa đọc được giấy tờ.']);setNotice('Giấy tờ đã lưu. Bạn có thể tiếp tục bổ sung thông tin.');}
+   if(uploadErrors.length)setError(uploadErrors.join(' '));
  };
  const photos=async(chosen:File[],key?:string)=>{
    if(!chosen.length)return;const ids=await uploadPropertyImages(chosen);
@@ -51,10 +91,6 @@ export function PropertyListingWizard({rightType}:{rightType:Dossier['rightType'
  };
  const conflicts=legalFields.filter(([key])=>new Set(state.suggestions.filter(item=>item.field===key&&files.some(file=>file.id===item.fileId)).map(item=>item.value.trim().normalize('NFC').toLocaleLowerCase('vi'))).size>1);
  const changePhotos=(key:string|undefined,ids:string[])=>change(key?{units:state.units.map(unit=>unit.key===key?{...unit,imageIds:ids}:unit)}:{imageIds:ids});
- const apply=(item:Suggestion)=>{
-   if(item.field==='propertyAddress')change({address:item.value,confirmed:false});
-   else change({legal:{...state.legal,[item.field]:item.value},confirmed:false});
- };
  const validate=()=>{
    if(!form.current?.reportValidity())return false;
    if(state.step===0&&requiredEvidence(rightType).some(p=>!files.some(f=>f.purpose===p)))throw new Error('Cần đủ loại giấy tờ bắt buộc trước khi tiếp tục. Có thể lưu nháp để bổ sung sau.');
@@ -81,13 +117,13 @@ export function PropertyListingWizard({rightType}:{rightType:Dossier['rightType'
    {state.step===0&&<><h2 className="text-xl font-bold">Giấy tờ quyền cho thuê</h2><p>PDF/JPEG/PNG, tối đa 10 MB/tệp và 20 tệp. Giấy tờ được lưu riêng tư, không dùng làm ảnh quảng cáo.</p>
      {[...requiredEvidence(rightType),'SUPPORTING' as EvidencePurpose].map(p=><label key={p} className="block border rounded-lg p-3 text-sm">{evidenceLabels[p]}{p!=='SUPPORTING'?' *':''}<input className="block mt-2 w-full" type="file" multiple accept="application/pdf,image/png,image/jpeg" onChange={e=>{const chosen=Array.from(e.target.files??[]);e.target.value='';void run(()=>upload(p,chosen));}}/></label>)}
      <ul className="space-y-2">{files.map(f=><li key={f.id} className="flex justify-between gap-3 text-sm"><span className="break-all">{f.filename} · {evidenceLabels[f.purpose]}</span><button type="button" className="shrink-0 underline" onClick={()=>void run(async()=>{await persist({...state,excludedFiles:[...state.excludedFiles,f.id],suggestions:state.suggestions.filter(s=>s.fileId!==f.id),confirmed:false});})}>Bỏ</button></li>)}</ul>
-     <div className="rounded-xl bg-emerald-50 p-4 space-y-3"><h3 className="font-semibold">Đọc giấy tờ để điền giúp</h3><p className="text-sm">Bấm nút bên dưới sẽ gửi các tệp đã chọn đến Gemini. Bạn kiểm tra và chọn từng giá trị trước khi dùng. Có thể tiếp tục nhập tay.</p><button type="button" className={button} onClick={scan}>AI đọc giấy tờ</button><p className="text-sm">{state.suggestions.length} giá trị gợi ý. Xem và xác nhận ở bước tiếp theo.</p>{scanIssues.map((s,i)=><p key={i} className="text-sm text-amber-900 break-words">{s}</p>)}</div>
+     <div className="rounded-xl bg-emerald-50 p-4 space-y-2"><p className="text-sm">Giấy tờ tải lên được tự động gửi đến Gemini để đọc và điền thông tin. Sau khi xử lý xong, tiếp tục để xem các ô đã điền.</p>{busy&&<p role="status">Đang tải và đọc giấy tờ…</p>}{scanIssues.map((issue,index)=><p key={index} className="text-sm text-amber-900 break-words">{issue}</p>)}</div>
    </>}
    {state.step===1&&<><h2 className="text-xl font-bold">Xác nhận tài sản và quyền cho thuê</h2>
      {conflicts.length>0&&<p role="status" className="text-sm text-amber-900">Các tệp có giá trị khác nhau cho {conflicts.map(([,label])=>label).join(", ")}. Đối chiếu bản gốc trước khi chọn.</p>}
-     {state.suggestions.length>0&&<div className="space-y-2 rounded-xl bg-emerald-50 p-3"><h3 className="font-semibold">Dữ liệu đọc được — chọn để điền</h3><p className="text-sm">Nếu các tệp có giá trị khác nhau, đối chiếu bản gốc rồi chọn giá trị đúng. Bấm “Dùng giá trị này” sẽ thay nội dung trường tương ứng.</p>{state.suggestions.filter(s=>files.some(f=>f.id===s.fileId)).map((s,i)=><div key={i} className="border rounded-lg bg-white p-3 text-sm break-words"><strong>{s.field==='propertyAddress'?'Địa chỉ':legalFields.find(([key])=>key===s.field)?.[1]}: {s.value}</strong><p>Nguồn: {s.filename}{s.page?` · trang ${s.page}`:''}</p><button type="button" className="text-emerald-800 underline" onClick={()=>apply(s)}>Dùng giá trị này</button></div>)}</div>}
+     {state.suggestions.length>0&&<details className="rounded-xl bg-emerald-50 p-3 text-sm"><summary className="cursor-pointer font-semibold">Đã tự điền từ giấy tờ · xem nguồn</summary>{state.suggestions.filter(item=>files.some(file=>file.id===item.fileId)).map((item,index)=><p key={index} className="mt-2 break-words">{propertyExtractionKeys.includes(item.field as typeof propertyExtractionKeys[number])?({propertyName:'Tên tài sản',propertyAddress:'Địa chỉ',city:'Tỉnh/Thành phố',district:'Quận/Huyện',ward:'Phường/Xã'}[item.field as 'city']):legalFields.find(([key])=>key===item.field)?.[1]} · {dossierFieldDisplay(item.field,item.value)} — {item.filename}{item.page?` · trang ${item.page}`:''}</p>)}</details>}
      <div className="grid sm:grid-cols-2 gap-3">{([['name','Tên tài sản',150],['address','Địa chỉ tài sản',300],['city','Tỉnh/Thành phố',80],['district','Quận/Huyện/Khu vực',80],['ward','Phường/Xã',80]] as const).map(([key,label,max])=><label key={key} className="text-sm">{label}{key!=='ward'?' *':''}<input className={field} required={key!=='ward'} maxLength={max} value={state[key]} onChange={e=>change({[key]:e.target.value,confirmed:false})}/></label>)}</div>
-     <div className="grid sm:grid-cols-2 gap-3">{legalKeys.map(([key,label])=>{const date=/Date$|From$|Until$/.test(key);const certificate=key.startsWith('certificate');const required=certificate?Object.entries(state.legal).some(([k,v])=>k.startsWith('certificate')&&v!==''):true;return <label key={key} className="text-sm">{label}{required?' *':''}<input className={field} type={date?'date':'text'} required={required} pattern={key==='principalDocumentNumber'?'[0-9]{12}':undefined} maxLength={key==='principalDocumentNumber'?12:key==='certificateIssuePlace'?200:100} value={state.legal[key]} onChange={e=>change({legal:{...state.legal,[key]:e.target.value},confirmed:false})}/></label>;})}</div>
+     <div className="grid sm:grid-cols-2 gap-3">{legalKeys.map(([key,label])=>{const date=/Date$|From$|Until$/.test(key);const certificate=key.startsWith('certificate');const required=certificate?Object.entries(state.legal).some(([k,v])=>k.startsWith('certificate')&&v!==''):true;return <label key={key} className="text-sm">{label}{required?' *':''}<>{date?<DossierDateInput className={field} required={required} value={state.legal[key]} onChange={value=>change({legal:{...state.legal,[key]:value},confirmed:false})}/>:<input className={field} required={required} pattern={key==='principalDocumentNumber'?'[0-9]{12}':undefined} maxLength={key==='principalDocumentNumber'?12:key==='certificateIssuePlace'?200:100} value={state.legal[key]} onChange={e=>change({legal:{...state.legal,[key]:e.target.value},confirmed:false})}/>}</></label>;})}</div>
      <p className="text-sm text-slate-500">Giấy chứng nhận là nhóm tùy chọn: nếu nhập, cần đủ số, ngày và nơi cấp. Diện tích đất không thay thế diện tích phòng.</p>
      <label className="flex gap-2 text-sm"><input type="checkbox" required checked={state.confirmed} onChange={e=>change({confirmed:e.target.checked})}/>Tôi đã đối chiếu thông tin khai báo với giấy tờ.</label>
    </>}
@@ -108,7 +144,7 @@ export function PropertyListingWizard({rightType}:{rightType:Dossier['rightType'
    {state.step===3&&<><h2 className="text-xl font-bold">Ảnh chung và ảnh từng phòng</h2><p className="text-sm">Mỗi nhóm từ 1 đến 4 ảnh JPEG/PNG, tối đa 5 MB/ảnh. Ảnh đầu là ảnh đại diện. Chọn lại để thay nhóm ảnh.</p>
      {[{key:undefined,label:'Ảnh chung: mặt tiền, lối đi, khu vực chung',ids:state.imageIds},...units.map(u=>({key:u.key,label:`Ảnh riêng căn/phòng ${u.roomNumber}`,ids:u.imageIds}))].map(group=><section key={group.key??'common'} className="border rounded-xl p-3 space-y-3"><label className="block text-sm font-semibold">{group.label}<input className="block mt-2 w-full text-sm" type="file" multiple accept="image/png,image/jpeg" onChange={e=>{const chosen=Array.from(e.target.files??[]);e.target.value='';void run(()=>photos(chosen,group.key));}}/></label><div className="flex flex-wrap gap-2">{group.ids.map(id=><div key={id} className="space-y-1"><ApartmentImage src={`/api/v1/property-images/${id}`} alt={group.label} className="w-28 h-24 object-cover rounded-lg"/><button type="button" className="block text-xs underline" onClick={()=>changePhotos(group.key,[id,...group.ids.filter(other=>other!==id)])}>Đặt đại diện</button><button type="button" className="block text-xs underline text-rose-700" onClick={()=>changePhotos(group.key,group.ids.filter(other=>other!==id))}>Bỏ ảnh</button></div>)}</div></section>)}
    </>}
-   {state.step===4&&<><h2 className="text-xl font-bold">Kiểm tra trước khi gửi</h2><section className="border rounded-xl p-4 space-y-2"><h3 className="font-bold">Nội dung khách thuê sẽ thấy sau khi công khai</h3><p>{state.name} · {state.address}</p>{units.map(u=><div key={u.key} className="border-t pt-2"><strong>{u.roomNumber} · {u.areaM2} m² · {Number(u.advertisedMonthlyRent).toLocaleString('vi-VN')} đ/tháng</strong><p className="text-sm break-words">{u.description}</p><p className="text-sm">{u.imageIds.length} ảnh riêng · {u.amenities.join(', ')}</p></div>)}</section><section className="rounded-xl bg-slate-50 p-4"><h3 className="font-bold">Hồ sơ riêng tư gửi Admin</h3><p>{rightLabels[rightType]} · {files.length} chứng từ</p>{legalKeys.map(([key,label])=>state.legal[key]&&<p key={key} className="text-sm break-words">{label}: {state.legal[key]}</p>)}</section><OwnerPrecheckPanel propertyId={draft.propertyId} draft={dossier()} selfService propertyFields={{name:state.name,address:state.address,city:state.city,district:state.district,ward:state.ward||null}}/><p className="text-sm text-amber-900">Gửi hồ sơ chưa công khai các phòng. Sau khi Admin duyệt, bạn chọn công khai từng căn. Tiền cọc do hai bên tự quản lý ngoài hệ thống.</p></>}
+   {state.step===4&&<><h2 className="text-xl font-bold">Kiểm tra trước khi gửi</h2><section className="border rounded-xl p-4 space-y-2"><h3 className="font-bold">Nội dung khách thuê sẽ thấy sau khi công khai</h3><p>{state.name} · {state.address}</p>{units.map(u=><div key={u.key} className="border-t pt-2"><strong>{u.roomNumber} · {u.areaM2} m² · {Number(u.advertisedMonthlyRent).toLocaleString('vi-VN')} đ/tháng</strong><p className="text-sm break-words">{u.description}</p><p className="text-sm">{u.imageIds.length} ảnh riêng · {u.amenities.join(', ')}</p></div>)}</section><section className="rounded-xl bg-slate-50 p-4"><h3 className="font-bold">Hồ sơ riêng tư gửi Admin</h3><p>{rightLabels[rightType]} · {files.length} chứng từ</p>{legalKeys.map(([key,label])=>state.legal[key]&&<p key={key} className="text-sm break-words">{label}: {dossierFieldDisplay(key,state.legal[key])}</p>)}</section><OwnerPrecheckPanel autoScan propertyId={draft.propertyId} draft={dossier()} selfService propertyFields={{name:state.name,address:state.address,city:state.city,district:state.district,ward:state.ward||null}}/><p className="text-sm text-amber-900">Gửi hồ sơ chưa công khai các phòng. Sau khi Admin duyệt, bạn chọn công khai từng căn. Tiền cọc do hai bên tự quản lý ngoài hệ thống.</p></>}
    <div className="flex flex-wrap gap-3 border-t pt-4">{state.step>0&&<button type="button" className={button} onClick={()=>void run(async()=>{await persist({...state,step:state.step-1});})}>Quay lại</button>}<button type="button" className={button} onClick={()=>void run(async()=>{await persist(state);})}>Lưu tiến trình</button><button type="submit" className={`${button} bg-emerald-700 text-white`}>{busy?'Đang xử lý…':state.step===4?'Gửi hồ sơ kiểm duyệt':'Lưu và tiếp tục'}</button></div>
    </fieldset></form>
    {notice&&<p role="status" className="text-sm text-emerald-800">{notice}</p>}{error&&<div role="alert" className="rounded-lg bg-rose-50 p-3 text-rose-800 text-sm">{error}<button className="ml-3 underline" onClick={()=>window.location.reload()}>Tải lại bản đã lưu</button></div>}

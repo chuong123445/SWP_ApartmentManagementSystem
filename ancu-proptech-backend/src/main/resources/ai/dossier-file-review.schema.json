@@ -34,7 +34,10 @@
               "bank",
               "accountNumber",
               "accountHolderName",
-              "other"
+              "other",
+              "city",
+              "district",
+              "ward"
             ]
           },
           "value": {
@@ -90,7 +93,10 @@
               "bank",
               "accountNumber",
               "accountHolderName",
-              "other"
+              "other",
+              "city",
+              "district",
+              "ward"
             ]
           },
           "message": {

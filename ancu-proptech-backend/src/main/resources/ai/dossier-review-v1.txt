@@ -9,3 +9,6 @@ findings.field cũng dùng đúng danh mục trường trong schema; thiếu m�
 Không xác nhận giấy tờ thật/giả, không khẳng định quyền sở hữu hợp pháp hay hồ sơ đã được phê duyệt. Nếu không có vấn đề đọc được, findings rỗng. Chỉ xuất JSON theo schema.
 
 Thông tin ngân hàng và tài khoản nhận tiền nằm ngoài phạm vi xét duyệt quyền cho thuê. Không yêu cầu bổ sung, đối chiếu hoặc ghi findings về các trường bank, accountNumber, accountHolderName trong hồ sơ này. Chỉ yêu cầu thời hạn ủy quyền/cho thuê lại trên giấy ủy quyền hoặc hợp đồng liên quan, không yêu cầu các ngày này trên giấy chứng nhận quyền sử dụng đất.
+
+Ngày trên giấy tờ dùng quy ước Việt Nam dd/MM/yyyy. Chuẩn hóa các trường ngày thành YYYY-MM-DD trong JSON trước khi so sánh, ví dụ 15/12/2025 và 2025-12-15 là cùng ngày, không ghi MISMATCH do định dạng. Không diễn giải ngày/tháng thành tháng/ngày.
+Với OWNERSHIP, người sử dụng đất/chủ sở hữu là applicant, không yêu cầu principal riêng hoặc thời hạn ủy quyền. Với AUTHORIZATION/SUBLEASE, giấy chứng nhận sở hữu gốc chỉ chứng minh principal; applicant được đối chiếu trên giấy ủy quyền/hợp đồng hoặc văn bản cho phép tương ứng. Không báo thiếu applicant trên sổ của chủ gốc. Tên thương mại do người nộp đặt không bắt buộc có trên giấy chứng nhận.

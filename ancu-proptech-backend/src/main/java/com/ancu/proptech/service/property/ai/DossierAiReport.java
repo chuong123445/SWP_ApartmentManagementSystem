@@ -8,19 +8,30 @@ public record DossierAiReport(String verdict,String summary,List<FileReview> fil
     public record Extraction(String field,String value,Integer page){public Extraction(String field,String value){this(field,value,null);}}
     public record Finding(String type,String field,String message,String declaredValue,String observedValue){}
     public record FileReview(String fileId,boolean readable,String documentType,List<Extraction> extractedFields,List<Finding> findings){}
-    private static final Set<String> FIELDS=Set.of("propertyName","propertyAddress","applicantName","applicantDocumentNumber","principalName","principalDocumentNumber","certificateNumber","certificateIssueDate","certificateIssuePlace","rightsValidFrom","rightsValidUntil","originalLeaseFrom","originalLeaseUntil","bank","accountNumber","accountHolderName","other");
+    private static final Set<String> FIELDS=Set.of("propertyName","propertyAddress","city","district","ward","applicantName","applicantDocumentNumber","principalName","principalDocumentNumber","certificateNumber","certificateIssueDate","certificateIssuePlace","rightsValidFrom","rightsValidUntil","originalLeaseFrom","originalLeaseUntil","bank","accountNumber","accountHolderName","other");
     private static final Set<String> TYPES=Set.of("MISSING_INFORMATION","MISSING_IMAGE","MISMATCH","UNREADABLE","INCONCLUSIVE");
     public static FileReview parse(JsonNode node,String expectedId){
         if(!node.isObject() || !text(node,"fileId",30).equals(expectedId) || !node.path("readable").isBoolean())throw invalid();
         var fields=node.path("extractedFields");var findings=node.path("findings");
         if(!fields.isArray()||fields.size()>30||!findings.isArray()||findings.size()>15)throw invalid();
         var extracts=new ArrayList<Extraction>();var issues=new ArrayList<Finding>();
-        for(var f:fields){String field=text(f,"field",50);if(!FIELDS.contains(field))throw invalid();Integer page=null;if(!f.path("page").isMissingNode()&&!f.path("page").isNull()){if(!f.path("page").isIntegralNumber()||f.path("page").asInt()<1||f.path("page").asInt()>100)throw invalid();page=f.path("page").asInt();}extracts.add(new Extraction(field,text(f,"value",500),page));}
+        for(var f:fields){String field=text(f,"field",50);if(!FIELDS.contains(field))throw invalid();Integer page=null;if(!f.path("page").isMissingNode()&&!f.path("page").isNull()){if(!f.path("page").isIntegralNumber()||f.path("page").asInt()<1||f.path("page").asInt()>100)throw invalid();page=f.path("page").asInt();}extracts.add(new Extraction(field,DossierDateValues.normalize(field,text(f,"value",500)),page));}
         for(var f:findings){String type=text(f,"type",40),field=text(f,"field",50);if(!TYPES.contains(type)||!FIELDS.contains(field))throw invalid();
             String message=text(f,"message",1000);if(message.isBlank())throw invalid();
             String observed=text(f,"observedValue",500);if(type.equals("MISMATCH")&&observed.isBlank())throw invalid();
-            issues.add(new Finding(type,field,message,text(f,"declaredValue",500),observed));}
+            String declared=DossierDateValues.normalize(field,text(f,"declaredValue",500));
+            observed=DossierDateValues.normalize(field,observed);
+            if(type.equals("MISMATCH")&&!declared.isBlank()&&declared.equals(observed))continue;
+            issues.add(new Finding(type,field,message,declared,observed));}
         return new FileReview(expectedId,node.path("readable").asBoolean(),text(node,"documentType",120),List.copyOf(extracts),List.copyOf(issues));
+    }
+    public static FileReview relevant(FileReview report,JsonNode declared,String purpose){
+        String right=declared.path("rightType").asString("");
+        var findings=report.findings().stream().filter(finding->{
+            if("OWNERSHIP".equals(right)&&Set.of("principalName","principalDocumentNumber","rightsValidFrom","rightsValidUntil","originalLeaseFrom","originalLeaseUntil").contains(finding.field()))return false;
+            return !("MISSING_INFORMATION".equals(finding.type())&&"RIGHT_DOCUMENT".equals(purpose)&&Set.of("AUTHORIZATION","SUBLEASE").contains(right)&&Set.of("applicantName","applicantDocumentNumber").contains(finding.field()));
+        }).toList();
+        return new FileReview(report.fileId(),report.readable(),report.documentType(),report.extractedFields(),findings);
     }
     private static String text(JsonNode node,String field,int max){var value=node.path(field);if(!value.isString()||value.asString().length()>max)throw invalid();return value.asString();}
     public static DossierAiReport aggregate(List<FileReview> files){

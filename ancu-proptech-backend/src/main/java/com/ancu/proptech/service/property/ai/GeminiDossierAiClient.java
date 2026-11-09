@@ -73,7 +73,7 @@ public class GeminiDossierAiClient implements DossierAiClient {
                 }
                 var text=new StringBuilder();for(var part:candidate.path("content").path("parts")){if(!part.path("thought").asBoolean(false)&&part.path("text").isString())text.append(part.path("text").asString());}
                 if(text.isEmpty())throw new Failure("INVALID_RESPONSE",false);
-                return DossierAiReport.parse(json.readTree(text.toString()),document.id());
+                return DossierAiReport.relevant(DossierAiReport.parse(json.readTree(text.toString()),document.id()),declarations,document.purpose());
             }
         }catch(Failure e){throw e;}catch(InterruptedException e){Thread.currentThread().interrupt();throw new Failure("PROVIDER_TIMEOUT",true);}
         catch(IOException e){throw new Failure("PROVIDER_UNAVAILABLE",true);}catch(RuntimeException e){throw new Failure("INVALID_RESPONSE",false);}

@@ -33,10 +33,10 @@ async function exerciseWizard(page, outputPath, origin) {
     if(path.endsWith('/rental-properties/5/evidence-files')){
      const purpose=(req.postData()||'').match(/name="purpose"\r\n\r\n([^\r]+)/)?.[1];const file={id:String(++serial),purpose,filename:purpose+'.pdf',contentType:'application/pdf',size:10};current.files.push(file);return respond(r,file);
     }
-    if(path.endsWith('/rental-properties/5/ai-precheck')){declared=body().propertyFields;return respond(r,{sourceHash:'fixture-hash',propertyVersion:0,files:[],checklist:[],review:null});}
+    if(path.endsWith('/rental-properties/5/ai-precheck')){declared=body().propertyFields;return respond(r,{sourceHash:'fixture-hash',propertyVersion:0,files:current.files,checklist:[],review:body().fileId?{fileId:body().fileId,readable:true,findings:[],extractedFields:[]}:null});}
     if(path.endsWith('/rental-properties/5/ai-extract')){
      if(failAI)return r.fulfill({status:503,json:{message:'AI tạm thời không khả dụng'}});
-     return respond(r,{sourceHash:'fixture-hash',propertyVersion:0,files:[],checklist:[],review:{fileId:body().fileId,readable:true,findings:[],extractedFields:[{field:'principalName',value:'Nguyễn Chủ Sở Hữu',page:1}]}});
+     return respond(r,{sourceHash:'fixture-hash',propertyVersion:0,files:[],checklist:[],review:{fileId:body().fileId,readable:true,findings:[],extractedFields:[{field:'principalName',value:'Lê Minh Khoa',page:1},{field:'principalDocumentNumber',value:'999000000101',page:1},{field:'propertyName',value:'Nhà tự điền',page:1},{field:'propertyAddress',value:'12 Đường Kiểm Thử, Phường Linh Trung, Thành phố Thủ Đức, TP. Hồ Chí Minh',page:1},{field:'certificateNumber',value:'GCN-001',page:1},{field:'certificateIssueDate',value:'15/12/2025',page:1},{field:'certificateIssuePlace',value:'Văn phòng đăng ký đất đai TP. Hồ Chí Minh',page:1},{field:'rightsValidFrom',value:'05/06/2026',page:1},{field:'rightsValidUntil',value:'31/12/2028',page:1}]}});
     }
     if(path==='/api/v1/me/property-images')return respond(r,[{id:String(++serial),url:'/unused'}]);
     if(path.startsWith('/api/v1/property-images/'))return r.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aJ1sAAAAASUVORK5CYII=','base64')});
@@ -48,14 +48,12 @@ async function exerciseWizard(page, outputPath, origin) {
    await p.getByRole('button',{name:'Bắt đầu hồ sơ mới'}).click();
    const pdf={name:'rights.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4 fixture')};
    await p.getByLabel('Giấy tờ sở hữu / quyền khai thác *').setInputFiles(pdf);await p.getByRole('button',{name:'Lưu tiến trình',exact:true}).click({trial:true});
-   await p.getByLabel('Giấy ủy quyền *').setInputFiles(pdf);await p.getByRole('button',{name:'Lưu tiến trình',exact:true}).click({trial:true});
-   await p.getByRole('button',{name:'AI đọc giấy tờ'}).click();
-   await p.getByText('Chưa có dữ liệu đủ rõ để điền giúp.',{exact:false}).waitFor();
-   failAI=false;await p.getByRole('button',{name:'AI đọc giấy tờ'}).click();
-   await p.getByText('2 giá trị gợi ý.',{exact:false}).waitFor();
+   failAI=false;await p.getByLabel('Giấy ủy quyền *').setInputFiles(pdf);await p.getByRole('button',{name:'Lưu tiến trình',exact:true}).click({trial:true});
+   if(await p.getByRole('button',{name:'AI đọc giấy tờ'}).count())throw Error('Manual scan button remains');
    await p.getByRole('button',{name:'Lưu và tiếp tục'}).click();
-   await p.getByRole('button',{name:'Dùng giá trị này'}).first().click();
-   for(const [label,value] of [['Tên tài sản *','Nhà kiểm thử'],['Địa chỉ tài sản *','12 Đường Kiểm Thử'],['Tỉnh/Thành phố *','TP. Hồ Chí Minh'],['Quận/Huyện/Khu vực *','Thủ Đức'],['CCCD chủ sở hữu gốc *','001234567890'],['Quyền cho thuê từ ngày *','2026-11-01'],['Quyền cho thuê đến hết ngày *','2028-11-01']])await p.getByLabel(label,{exact:true}).fill(value);
+   if(await p.getByRole('button',{name:'Dùng giá trị này'}).count())throw Error('Manual field application remains');
+   const expected=[['Tên tài sản *','Nhà tự điền'],['Tỉnh/Thành phố *','TP. Hồ Chí Minh'],['Quận/Huyện/Khu vực *','Thủ Đức'],['Phường/Xã','Linh Trung'],['CCCD chủ sở hữu gốc *','999000000101'],['Quyền cho thuê từ ngày *','05/06/2026'],['Quyền cho thuê đến hết ngày *','31/12/2028'],['Ngày cấp giấy chứng nhận *','15/12/2025']];
+   for(const [label,value] of expected)if(await p.getByLabel(label,{exact:true}).inputValue()!==value)throw Error('Autofill/date failed '+label);
    await p.getByRole('checkbox',{name:'Tôi đã đối chiếu thông tin khai báo với giấy tờ.'}).check();
    await p.getByRole('button',{name:'Lưu và tiếp tục'}).click();
    await p.reload();await p.getByRole('heading',{name:'Các căn/phòng muốn cho thuê'}).waitFor();
@@ -70,15 +68,15 @@ async function exerciseWizard(page, outputPath, origin) {
    await p.locator('input[type=file]').nth(1).setInputFiles(png);await p.getByRole('button',{name:'Lưu tiến trình',exact:true}).click({trial:true});
    await p.getByRole('button',{name:'Lưu và tiếp tục'}).click();
    await p.getByRole('heading',{name:'Kiểm tra trước khi gửi'}).waitFor();
-   await p.getByRole('button',{name:'Kiểm tra thông tin bản nháp',exact:true}).click();await p.getByText('Chưa phát hiện trường bắt buộc bị thiếu',{exact:false}).waitFor();if(declared?.address!=='12 Đường Kiểm Thử')throw Error('Unsaved property declarations missing from precheck');
+   await p.getByText('Đã đọc đủ 2 tệp; hãy xem từng nhận xét bên dưới.').waitFor();if(await p.getByRole('button',{name:'Quét chứng từ bằng AI',exact:true}).count())throw Error('Final manual scan button still present');if(declared?.address!=='12 Đường Kiểm Thử, Phường Linh Trung, Thành phố Thủ Đức, TP. Hồ Chí Minh')throw Error('Unsaved property declarations missing from precheck');
    await p.evaluate(()=>window.scrollTo(0,0));
    if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Horizontal overflow');
    await p.screenshot({path:outputPath(`listing-wizard-${width}.png`),fullPage:true});
    await p.getByRole('button',{name:'Gửi hồ sơ kiểm duyệt',exact:true}).click();
    await p.waitForURL('**/account/rental-properties');
-   if(complete.property.apartments.length!==1||complete.property.apartments[0].electricityIndex!==null||complete.dossier.principalDocumentNumber!=='001234567890')throw Error('Incorrect completion command');
+   if(complete.property.apartments.length!==1||complete.property.apartments[0].electricityIndex!==null||complete.dossier.principalDocumentNumber!=='999000000101'||complete.dossier.rightsValidFrom!=='2026-06-05'||complete.dossier.certificateIssueDate!=='2025-12-15')throw Error('Incorrect completion command');
    if(errors.length||unexpected.length)throw Error(JSON.stringify({errors,unexpected}));
-   results.push({width,passed:true,savedReload:true,AIErrorFallback:true,explicitSuggestions:true,unselectedRoomIgnored:true,privatePublicImages:true});
+   results.push({width,passed:true,savedReload:true,automaticUpload:true,partialFailureRecovered:true,automaticFields:true,addressParts:true,fixedDMY:true,unselectedRoomIgnored:true,privatePublicImages:true});
   }catch(e){throw Error(String(e)+" BODY "+(await p.locator("body").innerText()).slice(0,2200)+" ERR "+JSON.stringify({errors,unexpected}));}finally{await context.close();}
  }
  return results;
