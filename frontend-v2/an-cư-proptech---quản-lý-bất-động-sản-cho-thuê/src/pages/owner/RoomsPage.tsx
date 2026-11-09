@@ -94,7 +94,7 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
             </span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Quản lý cùng nguồn căn hộ với Home; bản nháp và tài sản chưa duyệt chỉ hiển thị tại đây.
+            Danh sách căn/phòng thuộc tài sản đã duyệt. Theo dõi hồ sơ chưa duyệt tại Quản lý tài sản.
           </p>
         </div>
 

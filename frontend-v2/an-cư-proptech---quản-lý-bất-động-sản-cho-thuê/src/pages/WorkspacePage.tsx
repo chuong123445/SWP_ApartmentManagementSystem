@@ -35,7 +35,7 @@ export function WorkspacePage() {
     navigation.setIsAddRoomOpen(false);navigation.setIsCreateInvoiceOpen(false);
   }, [propertyId]);
   useEffect(() => {
-    if (!workspace.inventoryLoading && !workspace.inventoryError && propertyId !== 'all' && !workspace.buildings.some(p => p.id === propertyId))
+    if (!workspace.inventoryLoading && !workspace.inventoryError && propertyId !== 'all' && !workspace.buildings.some(p => p.id === propertyId && p.legalStatus==='APPROVED'))
       navigation.setSelectedBuildingId('all');
   }, [workspace.inventoryLoading, workspace.inventoryError, workspace.buildings, propertyId]);
   if (params.get('tab') === 'home') return <Navigate to="/" replace />;
@@ -43,7 +43,7 @@ export function WorkspacePage() {
     <ManagementLayout
       account={user!}
       canManage={canManage}
-      properties={workspace.buildings}
+      properties={workspace.buildings.filter(p=>p.legalStatus==='APPROVED')}
       propertiesLoading={workspace.inventoryLoading}
       propertiesError={!!workspace.inventoryError}
       navigation={navigation}
