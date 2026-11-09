@@ -11,10 +11,11 @@ export function VneidAssetImportForm({ onClose, onBack, onImported, propertyId }
   const [items, setItems] = useState<VneidAssetCandidate[]>([]);const [selected, setSelected] = useState<VneidAssetCandidate | null>(null);
   const [terms, setTerms] = useState<Record<string, Fields>>({});const [city, setCity] = useState('');const [district, setDistrict] = useState('');const [ward, setWard] = useState('');
   const [loading, setLoading] = useState(true);const [saving, setSaving] = useState(false);const [error, setError] = useState('');const [stale, setStale] = useState(false);const [revision, setRevision] = useState(0);
+  const [unitPhotos,setUnitPhotos]=useState<Record<string,File[]>>({});
   const [photos,setPhotos]=useState<File[]>([]);
   const [selectedIds,setSelectedIds]=useState<string[]>([]);
   const select = (item: VneidAssetCandidate) => {
-    setSelected(item);setTerms(Object.fromEntries(item.asset.units.map(unit => [unit.externalUnitId, blank()])));setSelectedIds([]);setPhotos([]);setCity('');setDistrict('');setWard('');setError('');setStale(false);
+    setSelected(item);setTerms(Object.fromEntries(item.asset.units.map(unit => [unit.externalUnitId, blank()])));setSelectedIds([]);setPhotos([]);setUnitPhotos({});setCity('');setDistrict('');setWard('');setError('');setStale(false);
   };
   useEffect(() => {
     const controller = new AbortController();setLoading(true);setItems([]);setError('');setSelected(null);setTerms({});setSelectedIds([]);setStale(false);
@@ -39,11 +40,11 @@ export function VneidAssetImportForm({ onClose, onBack, onImported, propertyId }
         <input type="radio" name="vneid-asset" disabled={!availableSourceUnits(item).length || saving || !!propertyId} checked={selected?.asset.externalAssetId === item.asset.externalAssetId} onChange={() => select(item)} className="mt-1 shrink-0" />
         <span className="min-w-0 break-words"><span className="block font-semibold">{item.asset.name}</span><span className="block text-sm text-slate-600">{item.asset.address}</span><span className="block text-sm mt-1">{item.asset.units.length} căn/phòng · {item.imported?`${item.unitStates?.length ?? 0} phòng đã thêm vào hệ thống`:'Có thể chọn'}{item.imported&&!sourceAppendMessage(item)&&availableSourceUnits(item).length>0?' · Có thể bổ sung phòng':''}</span>{sourceAppendMessage(item)&&<span className="block text-sm text-amber-800 mt-2">{sourceAppendMessage(item)}</span>}</span>
       </label>)}</div>}
-      {selected && <form className="space-y-5" onSubmit={async e => {
-        e.preventDefault();if (saving || stale) return;setError('');if(!selectedUnits.length){setError('Chọn ít nhất một phòng muốn cho thuê.');return;}if(!appending&&(photos.length<1||photos.length>4)){setError('Chọn từ 1 đến 4 ảnh tài sản.');return;}setSaving(true);
+      {selected && <form className="space-y-5" onInvalidCapture={event=>{(event.target as HTMLElement).closest("details")?.setAttribute("open","");}} onSubmit={async e => {
+        e.preventDefault();if (saving || stale) return;setError('');if(!selectedUnits.length){setError('Chọn ít nhất một phòng muốn cho thuê.');return;}if(!appending&&(photos.length<1||photos.length>4)){setError('Chọn từ 1 đến 4 ảnh tài sản.');return;}if(selectedUnits.some(u=>!unitPhotos[u.externalUnitId]?.length)){setError('Chọn ảnh riêng cho từng phòng muốn cho thuê.');return;}setSaving(true);
         try {
-          const units=selectedUnits.map(unit => { const t=terms[unit.externalUnitId];return { ...t, externalUnitId: unit.externalUnitId,
-            floor: Number(t.floor), maxOccupants: Number(t.maxOccupants), electricityIndex: Number(t.electricityIndex), waterIndex: Number(t.waterIndex) }; });
+          const units=await Promise.all(selectedUnits.map(async unit => { const t=terms[unit.externalUnitId];return { ...t, imageIds:await uploadPropertyImages(unitPhotos[unit.externalUnitId]), externalUnitId: unit.externalUnitId,
+            floor: Number(t.floor), maxOccupants: Number(t.maxOccupants), electricityIndex: t.electricityIndex?Number(t.electricityIndex):null, waterIndex: t.waterIndex?Number(t.waterIndex):null }; }));
           const result = appending?await appendVneidUnits(selected.propertyId!,{version:selected.propertyVersion!,sourceVersion:selected.sourceVersion,units}):await importVneidProperty({ imageIds:await uploadPropertyImages(photos), externalAssetId: selected.asset.externalAssetId, sourceVersion: selected.sourceVersion,
             city: city.trim(), district: district.trim(), ward: ward.trim() || null,
             units,
@@ -68,13 +69,15 @@ export function VneidAssetImportForm({ onClose, onBack, onImported, propertyId }
             <label className="text-sm">Quận/Huyện/Khu vực *<input required maxLength={80} value={district} onChange={e => setDistrict(e.target.value)} className={inputClass} /></label>
             <label className="text-sm">Phường/Xã<input maxLength={80} value={ward} onChange={e => setWard(e.target.value)} className={inputClass} /></label>
           </div></>}
-          {appending&&<p className="text-sm text-slate-600">Các phòng mới sẽ được thêm vào tài sản hiện có, dùng ảnh và địa phương đã lưu. Phòng đã thêm giữ nguyên thông tin.</p>}
-          {selectedUnits.map(unit => <fieldset key={unit.externalUnitId} className="border rounded-xl p-4 min-w-0" data-testid="vneid-unit-terms"><legend className="font-semibold px-1">{unit.code} · {unit.areaM2} m²</legend>
-            <div className="grid sm:grid-cols-2 gap-3">{([
+          {appending&&<p className="text-sm text-slate-600">Các phòng mới sẽ được thêm vào tài sản hiện có, dùng ảnh chung và địa phương đã lưu, kèm ảnh riêng từng phòng mới. Phòng đã thêm giữ nguyên thông tin.</p>}
+          {selectedUnits.map((unit,index) => <fieldset key={unit.externalUnitId} className="border rounded-xl p-4 min-w-0" data-testid="vneid-unit-terms"><legend className="font-semibold px-1">{unit.code} · {unit.areaM2} m²</legend>
+            <details open={index===0}><summary className="cursor-pointer text-sm text-emerald-800">Điều kiện thuê và ảnh riêng phòng {unit.code}</summary><div className="grid sm:grid-cols-2 gap-3">{([
               ['monthlyRent','Giá thuê/tháng (đ)', '0.01', '0.01'],['deposit','Tiền cọc (đ)', '0', '0.01'],['electricityUnitPrice','Đơn giá điện (đ/kWh)', '0', '0.01'],['waterUnitPrice','Đơn giá nước (đ/m³)', '0', '0.01'],
-              ['electricityIndex','Chỉ số điện ban đầu (kWh)', '0', '1'],['waterIndex','Chỉ số nước ban đầu (m³)', '0', '1'],['floor','Tầng', '0', '1'],['maxOccupants','Số người tối đa', '1', '1'],
+              ['floor','Tầng', '0', '1'],['maxOccupants','Số người tối đa', '1', '1'],
             ] as const).map(([key,label,min,step]) => <label key={key} className="text-sm">{label} *<input required type="number" min={min} step={step} max={key==='floor'?200:key==='maxOccupants'?1000:key.endsWith('Index')?2147483647:'9999999999999.99'} value={terms[unit.externalUnitId]?.[key] ?? ''} onChange={e => change(unit.externalUnitId,key,e.target.value)} className={inputClass} /></label>)}</div>
+            <div className="mt-3"><h4 className="font-semibold text-sm">Ảnh riêng phòng {unit.code}</h4><PropertyImagesField files={unitPhotos[unit.externalUnitId]??[]} onChange={files=>setUnitPhotos(prev=>({...prev,[unit.externalUnitId]:files}))} disabled={saving||stale}/></div>
             <label className="block text-sm mt-3">Mô tả cho thuê<textarea maxLength={3000} value={terms[unit.externalUnitId]?.description ?? ''} onChange={e => change(unit.externalUnitId,'description',e.target.value)} className={inputClass} /></label>
+            </details>
           </fieldset>)}
           <p className="text-sm text-emerald-900 bg-emerald-50 p-3 rounded-lg">Xác nhận sẽ thêm và công khai {selectedUnits.length} phòng đã chọn. Thông tin sở hữu, mã phòng và diện tích được kiểm tra lại từ nguồn VNeID mô phỏng.</p>
           <button type="submit" disabled={saving || stale || !selectedUnits.length} className="bg-emerald-600 text-white rounded-lg px-4 py-2 disabled:opacity-50">{saving ? 'Đang thêm phòng...' : `${appending?'Bổ sung':'Thêm'} và cho thuê ${selectedUnits.length} phòng`}</button>

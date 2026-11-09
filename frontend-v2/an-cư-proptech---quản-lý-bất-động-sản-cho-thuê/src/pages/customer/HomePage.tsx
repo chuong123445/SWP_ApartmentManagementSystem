@@ -2,9 +2,9 @@ import { AiSearchPanel } from '@/components/apartments/AiSearchPanel';
 import { useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 import { CustomerLayout } from '@/layouts/CustomerLayout';
-import { ApartmentCard } from '@/components/apartments/ApartmentCard';
+import { PropertyListingCard } from '@/components/apartments/PropertyListingCard';
 import { Pagination } from '@/components/common/Pagination';
-import { useApartments } from '@/hooks/useApartments';
+import { usePropertyGroups } from '@/hooks/usePropertyGroups';
 import { useAddressOptions } from '@/hooks/useAddressOptions';
 import type { ApartmentFilters } from '@/types/apartment';
 import { AddressFilter } from '@/components/apartments/AddressFilter';
@@ -20,7 +20,7 @@ export function HomePage({ embedded = false }: { embedded?: boolean }) {
   const [occupants, setOccupants] = useState('');
   const [validation, setValidation] = useState('');
   const [filters, setFilters] = useState<ApartmentFilters>({ page: 0, size: 6 });
-  const { data, loading, error, reload } = useApartments(filters);
+  const { data, loading, error, reload } = usePropertyGroups(filters);
   const addresses = useAddressOptions();
   const results = useRef<HTMLElement>(null);
   const validRent = () => {
@@ -67,10 +67,10 @@ export function HomePage({ embedded = false }: { embedded?: boolean }) {
       </section>
       <AiSearchPanel onApply={next=>{setAddress({city:next.city??'',district:next.district??'',ward:next.ward??''});setMinRent(next.minRent??'');setMaxRent(next.maxRent??'');setBedrooms(next.bedrooms??'');setOccupants(next.occupants??'');setValidation('');setFilters({...next,page:0,size:6});results.current?.scrollIntoView({behavior:'smooth',block:'start'});}}/>
       <section ref={results} className="home-section home-results" aria-labelledby="home-results-title" aria-busy={loading}>
-        <div className="home-heading"><div><h2 id="home-results-title">Căn hộ cho thuê</h2><p role="status">{loading ? 'Đang tải căn hộ...' : `${data?.totalElements ?? 0} căn hộ phù hợp`}</p></div><button type="button" className="home-text-link" onClick={clear}>Xóa bộ lọc</button></div>
+        <div className="home-heading"><div><h2 id="home-results-title">Căn hộ cho thuê</h2><p role="status">{loading ? 'Đang tải căn hộ...' : `${data?.totalElements ?? 0} tài sản có phòng phù hợp`}</p></div><button type="button" className="home-text-link" onClick={clear}>Xóa bộ lọc</button></div>
         {error && <div role="alert" className="home-error">{error}<button type="button" onClick={reload}>Thử lại</button></div>}
         {!loading && !error && <>
-          {data?.items.length ? <div className="home-listings">{data.items.map(a => <ApartmentCard key={a.id} apartment={a} />)}</div>
+          {data?.items.length ? <div className="home-listings">{data.items.map(a => <PropertyListingCard key={`${a.propertyId}:${JSON.stringify(filters)}`} listing={a} filters={filters} />)}</div>
             : <div className="home-empty"><HomeIcon name="apartment" /><h3>Chưa có căn hộ phù hợp</h3><p>Chưa có căn hộ phù hợp với bộ lọc này. Hãy thử đổi khu vực, ngân sách hoặc số phòng ngủ.</p><button type="button" className="home-pill" onClick={clear}>Xóa bộ lọc</button></div>}
           {data && <Pagination page={data.page} totalPages={data.totalPages} onChange={page => setFilters(value => ({ ...value, page }))} />}
         </>}

@@ -1,22 +1,22 @@
 import {useEffect,useRef,useState} from 'react';
 import type {DossierSubmit} from '@/types/dossier';
-import {precheckDossier,acknowledgePrecheck,precheckConflicts,type PrecheckView} from '@/services/property/ownerPrecheckService';
+import {precheckDossier,acknowledgePrecheck,precheckConflicts,type PrecheckPropertyFields,type PrecheckView} from '@/services/property/ownerPrecheckService';
 import {ApiError} from '@/services/http/client';
-export function OwnerPrecheckPanel({propertyId,draft,selfService=false}:{propertyId:string;draft:DossierSubmit;selfService?:boolean}){
- const fingerprint=JSON.stringify(draft);const epoch=useRef(0);const controller=useRef<AbortController|null>(null);
+export function OwnerPrecheckPanel({propertyId,draft,selfService=false,propertyFields}:{propertyId:string;draft:DossierSubmit;selfService?:boolean;propertyFields?:PrecheckPropertyFields}){
+ const fingerprint=JSON.stringify({draft,propertyFields});const epoch=useRef(0);const controller=useRef<AbortController|null>(null);
  const [base,setBase]=useState<PrecheckView|null>(null);const [reviews,setReviews]=useState<PrecheckView[]>([]);const [errors,setErrors]=useState<string[]>([]);const [busy,setBusy]=useState(false);const [attempted,setAttempted]=useState(false);const [acknowledged,setAcknowledged]=useState(false);const [stale,setStale]=useState(false);
  useEffect(()=>{epoch.current++;controller.current?.abort();setBase(null);setReviews([]);setErrors([]);setBusy(false);setAttempted(false);setAcknowledged(false);setStale(false);return()=>{epoch.current++;controller.current?.abort();};},[fingerprint,propertyId]);
  const run=async(scan:boolean)=>{
   if(busy)return;const ticket=++epoch.current;const c=new AbortController();controller.current=c;const current=()=>epoch.current===ticket&&!c.signal.aborted;
   setBusy(true);setErrors([]);setReviews([]);setAttempted(scan);setAcknowledged(false);setStale(false);
-  try{const source=await precheckDossier(propertyId,draft,{},c.signal,selfService);if(!current())return;setBase(source);
-   if(scan){for(const file of source.files){try{const result=await precheckDossier(propertyId,draft,{fileId:file.id,sourceHash:source.sourceHash,consent:true},c.signal,selfService);if(!current())return;if(result.sourceHash!==source.sourceHash)throw new Error('Nguồn hồ sơ đã thay đổi; cần quét lại.');setReviews(prev=>[...prev,result]);}
+  try{const source=await precheckDossier(propertyId,draft,{propertyFields},c.signal,selfService);if(!current())return;setBase(source);
+   if(scan){for(const file of source.files){try{const result=await precheckDossier(propertyId,draft,{fileId:file.id,sourceHash:source.sourceHash,consent:true,propertyFields},c.signal,selfService);if(!current())return;if(result.sourceHash!==source.sourceHash)throw new Error('Nguồn hồ sơ đã thay đổi; cần quét lại.');setReviews(prev=>[...prev,result]);}
     catch(e){if(!current())return;if(e instanceof ApiError&&e.status===409){setStale(true);setReviews([]);throw e;}setErrors(prev=>[...prev,`${file.filename}: ${e instanceof Error?e.message:'Không quét được tệp.'}`]);}}
    }
   }catch(e){if(current())setErrors(prev=>[...prev,e instanceof Error?e.message:'Không kiểm tra được bản nháp.']);}
   finally{if(current())setBusy(false);}
  };
- const acknowledge=async()=>{if(!base||busy||stale)return;const ticket=epoch.current;setBusy(true);setErrors([]);try{for(const r of reviews)if(r.runId){await acknowledgePrecheck(propertyId,r.runId,draft,base.sourceHash,selfService);if(ticket!==epoch.current)return;}if(ticket===epoch.current)setAcknowledged(true);}catch(e){if(ticket===epoch.current)setErrors([e instanceof Error?e.message:'Không ghi nhận được thao tác xem.']);}finally{if(ticket===epoch.current)setBusy(false);}};
+ const acknowledge=async()=>{if(!base||busy||stale)return;const ticket=epoch.current;setBusy(true);setErrors([]);try{for(const r of reviews)if(r.runId){await acknowledgePrecheck(propertyId,r.runId,draft,base.sourceHash,selfService,propertyFields);if(ticket!==epoch.current)return;}if(ticket===epoch.current)setAcknowledged(true);}catch(e){if(ticket===epoch.current)setErrors([e instanceof Error?e.message:'Không ghi nhận được thao tác xem.']);}finally{if(ticket===epoch.current)setBusy(false);}};
  const complete=!!base&&base.files.length>0&&reviews.length===base.files.length&&!stale;
  return <section aria-label="AI kiểm tra trước khi nộp" className="border rounded-xl p-3 space-y-3 bg-slate-50">
   <h3 className="font-semibold">Kiểm tra hồ sơ trước khi nộp</h3><p className="text-sm">Kiểm tra thông tin không gửi tệp ra ngoài. Quét AI là tùy chọn; nhận xét chỉ dành cho bạn, không phải kết luận pháp lý hoặc phê duyệt của Admin.</p>
