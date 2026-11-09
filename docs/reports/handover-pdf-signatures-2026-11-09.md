@@ -40,3 +40,11 @@ Các mốc công tơ được đưa vào mục tùy chọn. Điện và nước 
 - Bộ duyệt tự động từ chối bước dọn các helper cũ. Đã giữ các helper và kiểm soát cũ, chỉ thay bước hoàn tất bằng yêu cầu ký PDF. Lượt chạy kiểm thử riêng sau đó được chấp nhận.
 
 Không thực hiện bàn giao trên hai hợp đồng Hữu Hà trong database ứng dụng. Chưa xác minh quy trình bằng tài khoản người dùng trên backend ứng dụng sau restart. Chưa push hoặc tạo PR trong công việc này. Ba file chẩn đoán VNeID có sẵn được giữ ngoài commit.
+
+## Cập nhật trang riêng theo yêu cầu tiếp theo
+
+UI hai chữ ký ban đầu được commit `baa7ec3`. Người dùng yêu cầu tách phần PDF và ký khỏi form/modal.
+
+Đã thêm route `/contracts/:id/handover` dùng cùng guard đăng nhập và quyền đúng bên ở backend. Lưu biên bản thành công điều hướng trực tiếp sang trang này, không gọi lại callback của modal đã rời trang. Modal/form chỉ hiển thị liên kết mở lại biên bản. Trang mới có PDF bàn giao, chữ ký hai bên, trạng thái, tải lại, bất đồng/hủy và các đường dẫn trở về danh sách hoặc hợp đồng thuê. Danh sách hợp đồng của chủ nhà và khách thuê có liên kết Biên bản bàn giao / ký.
+
+Playwright MCP đã kiểm tra bốn ca PDF/ký theo hai thứ tự ở 1440/390 px, bao gồm URL sau lưu, không còn dialog mở, chỉ có một iframe PDF bàn giao và reload trang. Bốn ca hết hạn/kết thúc sớm, stale, bất đồng/lập lại, chứng cứ và lỗi tải lại sau khi đã lưu cũng đạt qua cả entry modal và trang hợp đồng. Các ca dùng API fixtures và PDF thật do backend test tạo. TypeScript, 156 frontend tests và Vite build đạt. Context7 dùng tài liệu React Router 7.13.0 gần nhất, project khai báo 8.4.0 và kiểm tra bằng bộ types/build đang cài. Thay đổi trang này chỉ nằm ở frontend.

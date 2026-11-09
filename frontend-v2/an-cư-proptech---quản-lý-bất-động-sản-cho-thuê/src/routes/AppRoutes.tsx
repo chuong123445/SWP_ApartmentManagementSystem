@@ -1,3 +1,4 @@
+import {HandoverPage} from '@/pages/customer/HandoverPage';
 import {SepayTestPaymentsPage} from '@/pages/account/SepayTestPaymentsPage';
 import { SettlementPage } from '@/pages/account/SettlementPage';
 import {AssetManagementPage} from '@/pages/customer/AssetManagementPage';
@@ -69,6 +70,7 @@ export function AppRoutes() {
     <Route path="/my/home" element={<RequireAccount><ResidentHomePage /></RequireAccount>} />
     <Route path="/my/contracts/:id" element={<RequireAccount role="CUSTOMER"><ContractDetailPage /></RequireAccount>} />
     <Route path="/my/invoices/additional/:id" element={<RequireAccount role="CUSTOMER"><InvoiceDetailPage additional /></RequireAccount>} />
+    <Route path="/contracts/:id/handover" element={<RequireAccount verified={false}><HandoverPage /></RequireAccount>} />
     <Route path="/contracts/:id" element={<RequireAccount verified={false}><ContractDetailPage /></RequireAccount>} />
     <Route path="/my/invoices/:id" element={<RequireAccount role="CUSTOMER"><InvoiceDetailPage /></RequireAccount>} />
     <Route path="/account/verification" element={<RequireAccount verified={false}><AccountVerificationPage /></RequireAccount>} />
