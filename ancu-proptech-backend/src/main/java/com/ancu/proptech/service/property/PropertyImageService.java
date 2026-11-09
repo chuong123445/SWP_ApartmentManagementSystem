@@ -101,7 +101,12 @@ public class PropertyImageService {
         for(int n=0;n<ids.size();n++){var i=locked.get(ids.get(n));i.setPropertyId(property.getId());i.setApartmentId(apartment);i.setPosition(n);}
     }
     @Transactional(readOnly=true) public List<String> unitUrls(Long property,Long apartment){
-        var result=new ArrayList<String>();images.unitIds(apartment).forEach(id->result.add(url(id)));result.addAll(urls(property));return result;
+        return unitUrls(property,apartment,null);
+    }
+    @Transactional(readOnly=true) public List<String> unitUrls(Long property,Long apartment,String legacyCover){
+        var result=new ArrayList<String>();images.unitIds(apartment).forEach(id->result.add(url(id)));
+        if(result.isEmpty()&&legacyCover!=null&&!legacyCover.isBlank()&&!legacyCover.equals("/images/apartment-placeholder.svg"))result.add(legacyCover);
+        result.addAll(urls(property));return List.copyOf(new LinkedHashSet<>(result));
     }
     public static String url(@com.fasterxml.jackson.annotation.JsonFormat(shape=com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING) Long id){return "/api/v1/property-images/"+id;}
     private static ApiException bad(String message){return new ApiException(HttpStatus.BAD_REQUEST,"INVALID_PROPERTY_IMAGES",message);}

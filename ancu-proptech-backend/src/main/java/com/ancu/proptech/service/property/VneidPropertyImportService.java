@@ -24,6 +24,7 @@ import static com.ancu.proptech.service.auth.AccountService.error;
 @Service @RequiredArgsConstructor
 public class VneidPropertyImportService {
     private final PropertyApplicantAccess applicants;
+    private final PropertyDuplicatePolicy duplicates;
     private final PropertySourceConsentService consents;
     private final AuthAccountRepository accounts;
     private final ExternalIdentityRepository identities;
@@ -75,9 +76,11 @@ public class VneidPropertyImportService {
             .orElseThrow(()->error(HttpStatus.NOT_FOUND,"ASSET_NOT_AVAILABLE","Tài sản không còn thuộc danh sách VNeID hợp lệ của bạn."));
         if(!hash(source).equals(input.getSourceVersion()))throw error(HttpStatus.CONFLICT,"ASSET_SOURCE_CHANGED","Thông tin tài sản đã thay đổi. Hãy tải lại danh sách.");
         return transactions.execute(status->{
+            duplicates.lockApproval();
             recheck(jwt,binding);
             if(imports.existsByIssuerAndExternalAssetId(binding.issuer(),source.externalAssetId()))
                 throw error(HttpStatus.CONFLICT,"ASSET_ALREADY_IMPORTED","Tài sản đã được thêm vào hệ thống.");
+            duplicates.check(-1L,source.certificateNumber(),List.of());
             var terms=SourceRoomSelection.terms(source,input.getUnits(),Set.of());
             var create=new OwnerPropertyCreate();create.setImageIds(input.getImageIds());create.setName(source.name());create.setAddress(source.address());
             create.setCity(input.getCity().strip());create.setDistrict(input.getDistrict().strip());create.setWard(input.getWard());

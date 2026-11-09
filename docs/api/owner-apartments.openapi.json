@@ -3,7 +3,7 @@
   "info": {
     "title": "An Cu Owner Apartment Inventory",
     "version": "1.2.0",
-    "description": "Implemented numeric identity inventory, private drafts/dossiers, explicit publication, property image sets and vacant apartment rent/electricity/water edits. Pending requests block price edits. Other apartment edit/delete and approval revocation remain separate."
+    "description": "Implemented numeric identity inventory, private drafts/dossiers, explicit publication, property image sets and vacant apartment rent/electricity/water edits. Pending requests block price edits. Other apartment edit/delete and approval revocation remain separate. Approved manual property append accepts imageIds (1–4 private staging image IDs) and binds images in the creation transaction. Missing private photos returns UNIT_IMAGES_REQUIRED. Source properties retain the Auth0 append flow."
   },
   "servers": [
     {
@@ -355,6 +355,15 @@
               "null"
             ],
             "description": "Nonnegative decimal VND per unit."
+          },
+          "imageIds": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            },
+            "description": "Private staging image IDs. At least one required when appending to an approved manual property. Bound in the creation transaction."
           }
         }
       },
