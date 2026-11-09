@@ -4,7 +4,7 @@ import type { CashCreate, CashEntry, CashFilters, CashSummary } from '@/types/fi
 
 const base = '/api/v1/owner/cash-entries';
 async function request<T>(url: string, body?: unknown): Promise<T> {
-  const response = await apiFetch(url, body === undefined ? undefined : {
+  const response = await apiFetch(url, body === undefined ? {cache:'no-store'} : {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   });
   if (!response.ok) throw await readApiError(response);
@@ -39,3 +39,16 @@ export function cashCreateIntent() {
     return result;
   };
 }
+
+export type { CashEntry, CashSummary, CashStatus, CashDirection } from '@/types/finance';
+export interface CashInput extends Omit<CashCreate,'propertyId'> { propertyId:string }
+export interface CashQuery extends CashFilters { propertyId:string; page:number }
+export const cashEntries=(query:CashQuery)=>listCashEntries(query,query.page);
+export const createCash=(input:CashInput)=>createCashEntry({...input,propertyId:Number(input.propertyId)});
+export const postCash=(entry:CashEntry)=>postCashEntry(entry.id,entry.version);
+export const cancelCash=(entry:CashEntry,reason:string)=>cancelCashEntry(entry.id,entry.version,reason);
+export function vnToday(){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());return ['year','month','day'].map(k=>parts.find(p=>p.type===k)!.value).join('-');}
+
+export interface CashSource{type:'INVOICE'|'MAINTENANCE';id:number;propertyId:number;propertyName:string;title:string;amount:string;suggestedDate:string;}
+export function cashSources(propertyId:string,month:string,page:number){const p=new URLSearchParams({month,page:String(page),size:'10'});if(propertyId!=='all')p.set('propertyId',propertyId);return request<PageResult<CashSource>>(base+'/sources?'+p);}
+export function cashFromSource(source:CashSource,transactionDate:string,paymentMethod:'CASH'|'BANK_TRANSFER'){return request<CashEntry>(base+'/from-source',{type:source.type,id:source.id,transactionDate,paymentMethod});}

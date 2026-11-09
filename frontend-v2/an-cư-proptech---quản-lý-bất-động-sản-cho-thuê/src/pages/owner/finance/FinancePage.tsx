@@ -1,91 +1,37 @@
-import { useState } from 'react';
-import type { Building } from '@/types';
-import type { Cashbook } from '@/hooks/useCashbook';
-import type { CashEntry, CashDirection, CashStatus } from '@/types/finance';
-import { cancelCashEntry, getCashEntry, postCashEntry } from '@/services/finance/cashService';
-import { CashEntryForm } from '@/components/finance/CashEntryForm';
-
-const statusLabels = { DRAFT: 'Nháp', POSTED: 'Đã xác nhận', CANCELLED: 'Đã hủy' };
-const money = (value: string) => `${Number(value).toLocaleString('vi-VN', { maximumFractionDigits: 2 })} đ`;
-const dateTime = (value: string | null) => value ? new Date(value).toLocaleString('vi-VN') : '—';
-const control = 'border border-slate-300 rounded-lg px-3 py-2 bg-white text-sm max-w-full';
-
-export function FinancePage({ cashbook: book, buildings, propertyId, inventoryError, inventoryLoading }: {
-  cashbook: Cashbook; buildings: Building[]; propertyId: string; inventoryError: string; inventoryLoading: boolean;
-}) {
-  const [adding, setAdding] = useState(false);
-  const [detail, setDetail] = useState<CashEntry | null>(null);
-  const [reason, setReason] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
-  const openDetail = async (entry: CashEntry) => {
-    setError('');setNotice('');setBusy(true);
-    try { setDetail(await getCashEntry(entry.id));setReason(''); }
-    catch (e) { setError(e instanceof Error ? e.message : 'Không tải được phiếu.'); }
-    finally { setBusy(false); }
-  };
-  const act = async (action: 'post' | 'cancel') => {
-    if (!detail || busy) return;
-    setBusy(true);setError('');setNotice('');
-    try {
-      const result = action === 'post' ? await postCashEntry(detail.id, detail.version) : await cancelCashEntry(detail.id, detail.version, reason.trim());
-      setDetail(result);book.reload();setNotice(action === 'post' ? 'Đã xác nhận phiếu trên hệ thống.' : 'Đã hủy phiếu trên hệ thống.');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Không lưu được thao tác.');book.reload();
-      // Refresh version/status after conflicts or a lost response after commit.
-      try { setDetail(await getCashEntry(detail.id)); } catch { setDetail(null); }
-    } finally { setBusy(false); }
-  };
-  return <div className="space-y-5">
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <h1 className="text-lg font-bold">Sổ Quỹ Thu - Chi & Dòng Tiền Thực Tế</h1>
-      <button className="rounded-lg bg-emerald-700 px-4 py-2 text-white text-sm disabled:opacity-50" disabled={inventoryLoading || !buildings.length || !!inventoryError || busy} onClick={() => { setAdding(true);setError('');setNotice(''); }}>Tạo Phiếu Thu / Chi</button>
-    </div>
-    <p className="text-sm text-slate-600">Sổ ghi nhận thu–chi thủ công. Chỉ phiếu đã xác nhận được tính vào tổng; ghi phiếu không tự cập nhật thanh toán hóa đơn.</p>
-    {inventoryError && <p role="alert" className="text-red-700">{inventoryError}</p>}
-    {!inventoryLoading && !inventoryError && !buildings.length && <p>Chưa có tài sản để lập phiếu thu–chi.</p>}
-    <div className="flex flex-wrap gap-3 items-end rounded-xl bg-white p-4 border">
-      <label className="text-sm grid gap-1">Tháng giao dịch<input aria-label="Tháng giao dịch" type="month" min="1900-01" max="9998-12" className={control} value={book.month} onChange={e => { if (e.target.validity.valid && e.target.value) book.setMonth(e.target.value); }} /></label>
-      <label className="text-sm grid gap-1">Loại phiếu<select aria-label="Lọc loại phiếu" className={control} value={book.direction} onChange={e => book.setDirection(e.target.value as CashDirection | '')}><option value="">Tất cả thu / chi</option><option value="INCOME">Khoản thu</option><option value="EXPENSE">Khoản chi</option></select></label>
-      <label className="text-sm grid gap-1">Trạng thái<select aria-label="Lọc trạng thái phiếu" className={control} value={book.status} onChange={e => book.setStatus(e.target.value as CashStatus | '')}><option value="">Tất cả trạng thái</option>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-      <button className={control} disabled={book.loading || busy} onClick={book.reload}>Tải lại sổ quỹ</button>
-    </div>
-    <p className="text-xs text-slate-500">Phạm vi tài sản theo bộ chọn ở đầu trang. Tổng bên dưới theo tháng, tài sản và loại phiếu; luôn chỉ tính phiếu đã xác nhận, không phụ thuộc bộ lọc trạng thái hoặc trang danh sách.</p>
-    {(error || book.error) && <p role="alert" className="text-sm text-red-700">{error || book.error}</p>}
-    {notice && <p role="status" className="text-sm text-emerald-700">{notice}</p>}
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      {[['Tổng thực thu', book.summary?.income], ['Tổng thực chi', book.summary?.expense], ['Dòng tiền ròng', book.summary?.netCashflow]].map(([label, value]) => <div className="bg-white border rounded-xl p-4 min-w-0" key={label}><div className="text-sm text-slate-600">{label}</div><div className="text-xl font-bold break-words mt-2">{value === undefined ? '—' : money(value)}</div></div>)}
-    </div>
-    <p className="text-xs text-slate-500">{book.summary ? `${book.summary.postedCount} phiếu đã xác nhận. ` : ''}Dòng tiền ròng là thu trừ chi, không phải lợi nhuận kinh doanh.</p>
-    {book.loading ? <p role="status">Đang tải sổ quỹ…</p> : book.list && <>
-      <div className="bg-white rounded-xl border overflow-hidden"><div className="overflow-x-auto">
-        <table className="w-full text-sm text-left"><thead className="bg-slate-50"><tr>{['Mã phiếu', 'Tài sản / Ngày', 'Danh mục / Đối tác', 'Nội dung', 'Phương thức', 'Số tiền', 'Trạng thái', 'Thao tác'].map(label => <th className="p-3 whitespace-nowrap" key={label}>{label}</th>)}</tr></thead>
-          <tbody>{book.list.items.map(entry => <tr className="border-t" key={entry.id}>
-            <td className="p-3 whitespace-nowrap font-mono">{entry.code}</td><td className="p-3 min-w-36">{entry.propertyName}<div className="text-xs text-slate-500">{entry.transactionDate}</div></td>
-            <td className="p-3 min-w-36">{entry.category}<div className="text-xs text-slate-500">{entry.counterparty}</div></td>
-            <td className="p-3 min-w-44 max-w-sm break-words">{entry.description}</td><td className="p-3">{entry.paymentMethod === 'CASH' ? 'Tiền mặt' : 'Chuyển khoản'}</td>
-            <td className={`p-3 whitespace-nowrap font-semibold ${entry.direction === 'INCOME' ? 'text-emerald-700' : 'text-rose-700'}`}>{entry.direction === 'INCOME' ? '+' : '-'}{money(entry.amount)}</td>
-            <td className="p-3 whitespace-nowrap">{statusLabels[entry.status]}</td><td className="p-3"><button className="text-blue-700 underline whitespace-nowrap disabled:opacity-50" disabled={busy} onClick={() => void openDetail(entry)}>Xem phiếu {entry.code}</button></td>
-          </tr>)}{!book.list.items.length && <tr><td className="p-6 text-slate-500" colSpan={8}>Không có phiếu trong phạm vi đã chọn.</td></tr>}</tbody>
-        </table>
-      </div></div>
-      <div className="flex flex-wrap justify-between items-center gap-3 text-sm"><span>{book.list.totalElements} phiếu · Trang {book.list.totalPages ? book.page + 1 : 0}/{book.list.totalPages}</span><div className="flex gap-2"><button className={control} disabled={book.page === 0 || busy} onClick={() => book.setPage(book.page - 1)}>Trang trước</button><button className={control} disabled={book.page + 1 >= book.list.totalPages || busy} onClick={() => book.setPage(book.page + 1)}>Trang sau</button></div></div>
-    </>}
-    {adding && <CashEntryForm book={book} buildings={buildings} propertyId={propertyId} onClose={() => setAdding(false)} onSaved={entry => { setAdding(false);setDetail(entry);setReason('');setNotice(`Đã lưu nháp ${entry.code}. Kiểm tra phiếu trước khi xác nhận.`);book.reload(); }} />}
-    {detail && <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-3"><section role="dialog" aria-modal="true" aria-labelledby="cash-detail-title" className="bg-white rounded-xl p-5 w-full max-w-xl max-h-[90dvh] overflow-y-auto space-y-3 break-words">
-      <h2 id="cash-detail-title" className="text-lg font-bold">Phiếu {detail.code} — {statusLabels[detail.status]}</h2>
-      <dl className="text-sm grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2">
-        {[
-          ['Tài sản', detail.propertyName], ['Ngày giao dịch', detail.transactionDate], ['Loại', detail.direction === 'INCOME' ? 'Thu' : 'Chi'], ['Số tiền', money(detail.amount)], ['Danh mục', detail.category], ['Người nộp / nhận', detail.counterparty], ['Nội dung', detail.description], ['Phương thức', detail.paymentMethod === 'CASH' ? 'Tiền mặt' : 'Chuyển khoản'], ['Tham chiếu', detail.reference || '—'],
-          ['Tạo lúc / tài khoản', `${dateTime(detail.createdAt)} / #${detail.createdBy}`], ['Xác nhận lúc / tài khoản', `${dateTime(detail.postedAt)} / ${detail.postedBy ? `#${detail.postedBy}` : '—'}`], ['Hủy lúc / tài khoản', `${dateTime(detail.cancelledAt)} / ${detail.cancelledBy ? `#${detail.cancelledBy}` : '—'}`], ['Lý do hủy', detail.cancellationReason || '—'], ['Phiên bản', String(detail.version)],
-        ].map(([label, value]) => <div className="contents" key={label}><dt className="text-slate-500">{label}</dt><dd>{value}</dd></div>)}
-      </dl>
-      {error && <p role="alert" className="text-red-700 text-sm">{error}</p>}
-      {notice && <p role="status" className="text-emerald-700 text-sm">{notice}</p>}
-      {detail.status !== 'CANCELLED' && <label className="grid gap-1 text-sm">Lý do hủy phiếu<textarea aria-label="Lý do hủy phiếu" className={control} value={reason} maxLength={1000} disabled={busy} onChange={e => setReason(e.target.value)} /></label>}
-      <p className="text-xs text-slate-500">Xác nhận khi đã kiểm tra tiền thực nhận/chi. Hủy chỉ sửa sai ghi sổ, không thực hiện chuyển tiền hoàn.</p>
-      <div className="flex flex-wrap justify-end gap-2"><button className={control} disabled={busy} onClick={() => { setDetail(null);setError(''); }}>Đóng</button>{detail.status !== 'CANCELLED' && <button className={`${control} text-red-700`} disabled={busy || !reason.trim()} onClick={() => void act('cancel')}>Hủy phiếu</button>}{detail.status === 'DRAFT' && <button className="rounded-lg bg-emerald-700 text-white px-3 py-2 disabled:opacity-50" disabled={busy} onClick={() => void act('post')}>Xác nhận đã thu / chi</button>}</div>
-    </section></div>}
-  </div>;
+import {CashSourcesPanel} from '@/components/finance/CashSourcesPanel';
+import {useState} from 'react';
+import type {Cashbook} from '@/hooks/useCashbook';
+import {Plus,RefreshCw,Wallet,ArrowDownLeft,ArrowUpRight,X} from 'lucide-react';
+import type {Building} from '@/types';
+import {getCashEntry,postCash,cancelCash,vnToday,type CashEntry,type CashInput,type CashStatus} from '@/services/finance/cashService';
+import {billingMoney} from '@/services/billing/billingService';
+import '@/styles/operations.css';
+const statuses:Record<CashStatus,string>={DRAFT:'Nháp',POSTED:'Đã ghi sổ',CANCELLED:'Đã hủy'};
+const inputClass='mt-1 w-full border border-slate-200 rounded-lg p-2.5 bg-white text-sm';
+function NewEntry({properties,propertyId,onClose,onSaved,create}:{create:Cashbook['create'];properties:Building[];propertyId:string;onClose:()=>void;onSaved:(e:CashEntry)=>void}){
+ const [form,setForm]=useState<Omit<CashInput,'requestKey'>>({propertyId:propertyId==='all'?'':propertyId,direction:'INCOME',paymentMethod:'BANK_TRANSFER',amount:'',transactionDate:vnToday(),category:'',counterparty:'',description:'',reference:''});
+ const [saving,setSaving]=useState(false);const [error,setError]=useState('');
+ const field=(key:keyof Omit<CashInput,'requestKey'>,value:string)=>setForm(p=>({...p,[key]:value}));
+ const save=async(e:React.FormEvent)=>{e.preventDefault();if(saving)return;setSaving(true);setError('');try{const result=await create({...form,propertyId:Number(form.propertyId)});onSaved(result);}catch(e){setError(e instanceof Error?e.message:'Không thể lưu phiếu.');}finally{setSaving(false);}};
+ return <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4"><section role="dialog" aria-modal="true" aria-label="Tạo phiếu thu chi" className="w-full max-w-xl bg-white rounded-2xl p-6 max-h-[90vh] overflow-auto"><div className="flex justify-between gap-4"><h2 className="text-lg font-bold">Tạo phiếu thu / chi</h2><button aria-label="Đóng" disabled={saving} onClick={onClose}><X size={20}/></button></div><p className="text-sm text-slate-500 mt-2">Phiếu được lưu nháp. Chỉ xác nhận ghi sổ sau khi thực nhận hoặc trả tiền.</p>{error&&<p role="alert" className="text-rose-700 bg-rose-50 p-3 rounded-lg mt-3">{error}</p>}<form onSubmit={save} className="mt-4 space-y-4"><fieldset disabled={saving} className="grid sm:grid-cols-2 gap-4"><label className="text-sm">Tài sản<select aria-label="Tài sản" required value={form.propertyId} onChange={e=>field('propertyId',e.target.value)} className={inputClass}><option value="">Chọn tài sản</option>{properties.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><label className="text-sm">Loại phiếu<select value={form.direction} onChange={e=>field('direction',e.target.value)} className={inputClass}><option value="INCOME">Phiếu thu</option><option value="EXPENSE">Phiếu chi</option></select></label><label className="text-sm">Số tiền (đ)<input required type="number" min="0.01" max="9999999999999.99" step="0.01" value={form.amount} onChange={e=>field('amount',e.target.value)} className={inputClass}/></label><label className="text-sm">Ngày giao dịch<input required type="date" min="1900-01-01" max={vnToday()} value={form.transactionDate} onChange={e=>field('transactionDate',e.target.value)} className={inputClass}/></label><label className="text-sm">Danh mục<input required maxLength={100} value={form.category} onChange={e=>field('category',e.target.value)} className={inputClass}/></label><label className="text-sm">Người trả / nhận<input required maxLength={200} value={form.counterparty} onChange={e=>field('counterparty',e.target.value)} className={inputClass}/></label><label className="text-sm">Phương thức<select value={form.paymentMethod} onChange={e=>field('paymentMethod',e.target.value)} className={inputClass}><option value="BANK_TRANSFER">Chuyển khoản</option><option value="CASH">Tiền mặt</option></select></label><label className="text-sm">Mã tham chiếu<input maxLength={200} value={form.reference} onChange={e=>field('reference',e.target.value)} className={inputClass}/></label><label className="text-sm sm:col-span-2">Nội dung<textarea required maxLength={2000} value={form.description} onChange={e=>field('description',e.target.value)} className={inputClass}/></label></fieldset><div className="flex justify-end gap-3"><button type="button" onClick={onClose} disabled={saving} className="op-button">Hủy</button><button disabled={saving} className="op-button op-button-primary">{saving?'Đang lưu...':'Lưu bản nháp'}</button></div></form></section></div>;
+}
+export function FinancePage({propertyId,properties,cashbook:book,inventoryError,inventoryLoading}:{propertyId:string;properties:Building[];cashbook:Cashbook;inventoryError:string;inventoryLoading:boolean}){
+ const {month,setMonth,direction,setDirection,status,setStatus,page,setPage}=book;
+ const rows=book.list?.items??[];const summary=book.summary;const pages=book.list?.totalPages??0;const loading=book.loading;const error=book.error;
+ const [revision,setRevision]=useState(0);const [creating,setCreating]=useState(false);const [pageError,setPageError]=useState('');
+ const [action,setAction]=useState<{entry:CashEntry;type:'post'|'cancel'|'detail'}|null>(null);const [reason,setReason]=useState('');const [busy,setBusy]=useState(false);const [actionError,setActionError]=useState('');
+ const refresh=()=>{setRevision(v=>v+1);book.reload();};
+ const saved=(entry:CashEntry)=>{setCreating(false);setMonth(entry.transactionDate.slice(0,7));setDirection('');setStatus('');setPage(0);refresh();};
+ const open=async(entry:CashEntry,type:'post'|'cancel'|'detail')=>{if(busy)return;setBusy(true);setPageError('');setActionError('');try{setAction({entry:await getCashEntry(entry.id),type});setReason('');}catch(e){setPageError(e instanceof Error?e.message:'Không tải được phiếu.');}finally{setBusy(false);}};
+ const commit=async(e:React.FormEvent)=>{e.preventDefault();if(!action||busy)return;setBusy(true);setActionError('');try{if(action.type==='post')await postCash(action.entry);else await cancelCash(action.entry,reason);setAction(null);refresh();}catch(e){setActionError(e instanceof Error?e.message:'Không thể cập nhật phiếu.');refresh();try{setAction({...action,entry:await getCashEntry(action.entry.id)});}catch{setAction(null);}}finally{setBusy(false);}};
+ return <section className="operations-page space-y-5" aria-label="Sổ quỹ thu chi"><header className="op-heading"><div className="op-title-group"><span className="op-heading-icon"><Wallet size={23}/></span><div><h1>Sổ quỹ Thu–Chi</h1><p>Theo dõi tiền thực thu, thực chi theo tài sản và tháng.</p></div></div><div className="op-buttons"><button onClick={refresh} disabled={loading} className="op-button"><RefreshCw size={15}/>Làm mới</button><button onClick={()=>setCreating(true)} disabled={inventoryLoading||!!inventoryError||!properties.length||busy} className="op-button op-button-primary"><Plus size={15}/>Tạo phiếu thu / chi</button></div></header>
+ <div className="grid sm:grid-cols-3 gap-4">{[['Tổng thực thu',summary?.income,ArrowDownLeft,'text-emerald-700'],['Tổng thực chi',summary?.expense,ArrowUpRight,'text-rose-700'],['Dòng tiền ròng',summary?.netCashflow,Wallet,'text-slate-900']].map(([label,value,Icon,color])=>{const Glyph=Icon as typeof Wallet;return <div key={String(label)} aria-label={String(label)} className="bg-white border border-slate-200 rounded-2xl p-5"><div className={'flex justify-between text-sm '+color}><span>{String(label)}</span><Glyph size={18}/></div><p className={'mt-3 text-2xl font-bold '+color}>{typeof value==='string'?billingMoney(value):'—'}</p><p className="text-xs text-slate-500 mt-2">Chỉ tính phiếu đã ghi sổ</p></div>;})}</div>
+ <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-wrap gap-4"><label className="text-sm">Tháng<input aria-label="Tháng sổ quỹ" type="month" required value={month} onChange={e=>{setMonth(e.target.value);setPage(0);}} className={inputClass}/></label><label className="text-sm">Loại<select aria-label="Lọc thu chi" value={direction} onChange={e=>{setDirection(e.target.value as typeof direction);setPage(0);}} className={inputClass}><option value="">Tất cả</option><option value="INCOME">Khoản thu</option><option value="EXPENSE">Khoản chi</option></select></label><label className="text-sm">Trạng thái<select aria-label="Lọc trạng thái phiếu" value={status} onChange={e=>{setStatus(e.target.value as typeof status);setPage(0);}} className={inputClass}><option value="">Tất cả</option>{Object.entries(statuses).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label><p className="self-end text-xs text-slate-500 pb-3">Dòng tiền ròng = thực thu − thực chi, không phải lợi nhuận.</p></div>
+ {inventoryError&&<p role="alert" className="text-rose-700">{inventoryError}</p>}{pageError&&<p role="alert" className="text-rose-700">{pageError}</p>}{loading&&<p role="status">Đang tải sổ quỹ...</p>}{error&&<p role="alert" className="bg-rose-50 text-rose-700 p-4 rounded-xl">{error}</p>}
+ <CashSourcesPanel propertyId={propertyId} month={month} revision={revision} onSaved={saved}/>
+ {!loading&&!error&&<div className="max-w-full overflow-x-auto bg-white border border-slate-200 rounded-xl"><table className="w-full min-w-[850px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{['Mã phiếu / Tài sản','Ngày','Danh mục / Nội dung','Người trả / nhận','Số tiền','Trạng thái','Thao tác'].map(h=><th key={h} className="p-4">{h}</th>)}</tr></thead><tbody>{rows.map(e=><tr key={e.id} data-cash-id={e.id} className="border-t border-slate-100"><td className="p-4 font-semibold">{e.code}<span className="block text-xs font-normal text-slate-500">{e.propertyName}</span></td><td className="p-4 whitespace-nowrap">{e.transactionDate}</td><td className="p-4"><strong>{e.category}</strong><p className="text-xs text-slate-500 max-w-xs break-words">{e.description}</p></td><td className="p-4">{e.counterparty}<small className="block text-slate-500">{e.paymentMethod==='CASH'?'Tiền mặt':'Chuyển khoản'}</small></td><td className={'p-4 font-bold whitespace-nowrap '+(e.direction==='INCOME'?'text-emerald-700':'text-rose-700')}>{e.direction==='INCOME'?'+':'−'}{billingMoney(e.amount)}</td><td className="p-4 whitespace-nowrap">{statuses[e.status]}</td><td className="p-4"><div className="flex flex-wrap gap-2"><button className="text-emerald-700 underline" onClick={()=>open(e,'detail')}>Chi tiết</button>{e.status==='DRAFT'&&<button className="text-emerald-700 underline" onClick={()=>open(e,'post')}>Ghi sổ</button>}{e.status!=='CANCELLED'&&<button className="text-rose-700 underline" onClick={()=>open(e,'cancel')}>Hủy phiếu</button>}</div></td></tr>)}{!rows.length&&<tr><td colSpan={7} className="p-8 text-center text-slate-500">Chưa có phiếu trong phạm vi đang chọn.</td></tr>}</tbody></table></div>}
+ {!loading&&pages>1&&<div className="flex justify-end items-center gap-4"><button disabled={!page} onClick={()=>setPage(page-1)} className="op-button">Trước</button><span className="text-sm">Trang {page+1}/{pages}</span><button disabled={page+1>=pages} onClick={()=>setPage(page+1)} className="op-button">Sau</button></div>}
+ {creating&&<NewEntry create={book.create} propertyId={propertyId} properties={properties} onClose={()=>setCreating(false)} onSaved={saved}/>}
+ {action&&<div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4"><section role="dialog" aria-modal="true" aria-label={action.type==='detail'?'Chi tiết phiếu':action.type==='post'?'Xác nhận ghi sổ':'Hủy phiếu'} className="w-full max-w-lg bg-white rounded-2xl p-6 max-h-[90vh] overflow-auto"><h2 className="font-bold text-lg">{action.entry.code} · {statuses[action.entry.status]}</h2><p className="my-3">{action.entry.description}</p><p className="font-bold">{billingMoney(action.entry.amount)}</p>{actionError&&<p role="alert" className="text-rose-700 my-3">{actionError}</p>}{action.type==='detail'?<div className="space-y-2 mt-4 text-sm"><p>Tài sản: {action.entry.propertyName}</p><p>Ngày giao dịch: {action.entry.transactionDate}</p><p>Người trả/nhận: {action.entry.counterparty}</p><p>Tham chiếu: {action.entry.reference||'—'}</p>{action.entry.sourceType&&<p>Nguồn liên kết: {action.entry.sourceType==='INVOICE'?'Hóa đơn':'Sự cố'} #{action.entry.sourceId}</p>}<p>Tạo lúc: {new Date(action.entry.createdAt).toLocaleString('vi-VN')} · #{action.entry.createdBy??'—'}</p>{action.entry.postedAt&&<p>Ghi sổ lúc: {new Date(action.entry.postedAt).toLocaleString('vi-VN')} · #{action.entry.postedBy??'—'}</p>}{action.entry.cancelledAt&&<p>Hủy lúc: {new Date(action.entry.cancelledAt).toLocaleString('vi-VN')} · #{action.entry.cancelledBy??'—'} · {action.entry.cancellationReason}</p>}<button className="op-button" onClick={()=>setAction(null)}>Đóng</button></div>:<form onSubmit={commit} className="space-y-4 mt-4">{action.type==='post'?<p className="text-sm text-slate-600">Xác nhận khoản tiền này đã thực nhận hoặc đã thanh toán. Phiếu sẽ được tính vào dòng tiền.</p>:<label className="block text-sm">Lý do hủy<textarea required maxLength={1000} value={reason} onChange={e=>setReason(e.target.value)} disabled={busy} className={inputClass}/></label>}<div className="flex justify-end gap-3"><button type="button" className="op-button" disabled={busy} onClick={()=>setAction(null)}>Quay lại</button><button disabled={busy} className="op-button op-button-primary">{busy?'Đang xử lý...':action.type==='post'?'Xác nhận đã thu / chi':'Xác nhận hủy phiếu'}</button></div></form>}</section></div>}
+ </section>;
 }

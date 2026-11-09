@@ -85,10 +85,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
 
   return (
-    <aside className="w-64 bg-[#111827] text-slate-300 flex flex-col shrink-0 border-r border-slate-800 select-none min-h-0 h-full overflow-y-auto">
+    <aside className="w-72 bg-[#111827] text-slate-300 flex flex-col shrink-0 border-r border-slate-800 select-none min-h-0 h-full overflow-y-auto">
       {/* Building Selector */}
-      <div className="p-3 border-b border-slate-800 bg-slate-900/50">
-        <label htmlFor="select-building-sidebar" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+      <div className="p-5 border-b border-slate-800 bg-slate-900/50">
+        <label htmlFor="select-building-sidebar" className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-3">
           Tài sản đang chọn
         </label>
         <select
@@ -96,27 +96,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           value={selectedBuildingId}
           disabled={propertiesLoading || propertiesError || properties.length === 0}
           onChange={(e) => onSelectBuilding(e.target.value)}
-          className="w-full bg-[#1e293b] border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-medium cursor-pointer"
+          className="w-full bg-[#1e293b] border border-slate-700/80 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 font-medium cursor-pointer"
         >
           <option value="all">{propertiesLoading ? 'Đang tải tài sản...' : propertiesError ? 'Không thể tải tài sản' : `Tất cả tài sản (${properties.length})`}</option>
           {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
-        <button type="button" onClick={() => onSelectTab('properties')} className="mt-2 text-xs text-emerald-300 underline">Quản lý / thêm tài sản</button>
       </div>
 
       {/* Navigation Links */}
-      <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+      <nav aria-label="Quản lý tòa nhà" className="flex-1 p-3 space-y-1.5 overflow-y-auto">
         {canManage && counters.loading && <p role="status" className="px-3 py-2 text-xs text-slate-400">Đang tải số đếm…</p>}
         {canManage && counters.error && <div role="alert" className="px-3 py-2 text-xs text-amber-200">Chưa tải được số đếm.<button type="button" title={counters.error} className="block underline mt-1" onClick={counters.reload}>Thử lại số đếm</button></div>}
-        <div className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-          <span>{userRole === 'admin' ? 'Menu Quản Lý Tòa Nhà' : 'Cổng Dịch Vụ Cư Dân'}</span>
-          <span className="text-[10px] text-emerald-400 font-mono">
-            {userRole === 'admin' ? accountRole : 'USER'}
-          </span>
-        </div>
-
         {/* Admin Menu */}
-        {canManage && <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+        {canManage && <div className="px-3 pt-3 pb-3 text-xs font-bold uppercase tracking-wider text-slate-500">
           Vận Hành Quản Lý
         </div>}
 
@@ -132,7 +124,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => {
                 onSelectTab(item.id);
               }}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all group ${
+              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-medium transition-all group ${
                 isActive
                   ? 'bg-[#065f46] text-white shadow-xs font-bold ring-1 ring-emerald-500'
                   : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
@@ -140,7 +132,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             >
               <div className="flex items-center gap-2.5">
                 <Icon
-                  className={`w-4 h-4 transition-colors ${
+                  className={`w-[18px] h-[18px] transition-colors ${
                     isActive ? 'text-white' : 'text-slate-400 group-hover:text-emerald-400'
                   }`}
                 />

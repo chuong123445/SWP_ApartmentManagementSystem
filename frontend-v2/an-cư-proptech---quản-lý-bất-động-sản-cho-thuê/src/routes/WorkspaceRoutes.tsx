@@ -120,7 +120,7 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
             <FinancePage
               key={navigation.selectedBuildingId}
               cashbook={workspace.cashbook}
-              buildings={initialBuildings}
+              properties={initialBuildings}
               propertyId={navigation.selectedBuildingId}
               inventoryError={workspace.inventoryError}
               inventoryLoading={workspace.inventoryLoading}
