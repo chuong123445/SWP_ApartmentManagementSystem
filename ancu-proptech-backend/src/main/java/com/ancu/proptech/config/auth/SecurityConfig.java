@@ -86,7 +86,7 @@ public class SecurityConfig {
                                 || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/property-source-consent")
                                 || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/owner-upgrade")))))
                 .authorizeHttpRequests(a -> a
-                        .requestMatchers("/api/v1/contracts/*/exit", "/api/v1/contracts/*/exit/actions", "/api/v1/contracts/*/exit/evidence", "/api/v1/contracts/*/exit/evidence/*").authenticated()
+                        .requestMatchers("/api/v1/contracts/*/exit", "/api/v1/contracts/*/exit/actions", "/api/v1/contracts/*/exit/pdf", "/api/v1/contracts/*/exit/sign", "/api/v1/contracts/*/exit/evidence", "/api/v1/contracts/*/exit/evidence/*").authenticated()
                         .requestMatchers("/api/v1/owner/contracts/*/renewal-context", "/api/v1/owner/contracts/*/renewals", "/api/v1/owner/contracts/*/cancel-renewal",
                             "/api/v1/owner/contracts/*/handover", "/api/v1/owner/contracts/*/handover/cancel", "/api/v1/contracts/*/handover/confirm").authenticated()
                         .requestMatchers("/api/v1/owner/renewal-requests", "/api/v1/contracts/*/renewal-request", "/api/v1/owner/contracts/*/renewal-request/decision", "/api/v1/owner/contracts/*/renewal-request/cancel").authenticated()

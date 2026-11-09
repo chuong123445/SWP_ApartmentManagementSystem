@@ -76,7 +76,7 @@ public class ContractPdfService {
         w.formField("Tại",p.documentIssuePlace());w.formField("SĐT",p.phone());
         if(customer)w.formField("Nơi công tác",null);
     }
-    private static class Layout {
+    static class Layout {
         final PDDocument document;final PDType0Font font,bold;PDPage page;PDPageContentStream out;float y;
         final float left=48,width=PDRectangle.A4.getWidth()-96;
         Layout(PDDocument d,PDType0Font f,PDType0Font b)throws IOException{document=d;font=f;bold=b;newPage();}
@@ -125,32 +125,38 @@ public class ContractPdfService {
             room(18);line(lhs,11,false,left);line(rhs,11,false,left+split);y-=18;
         }
         void signatures(ContractDraftResponse d)throws IOException{
+            signatures(d.snapshot().owner().fullName(),d.snapshot().customer().fullName(),d.signing());
+        }
+        void signatures(String ownerName,String customerName,ContractDraftResponse.Signing signing)throws IOException{
             room(185);gap(6);float top=y;float half=(width-20)/2;
             for(int i=0;i<2;i++){
                 float x=left+i*(half+20);y=top;
                 line(i==0?"BÊN CHO THUÊ (BÊN A)":"BÊN THUÊ (BÊN B)",10,true,x);y-=19;
                 line("Ký, ghi rõ họ tên",9,false,x);
                 out.setStrokingColor(175/255f,185/255f,180/255f);out.addRect(x,top-119,half,75);out.stroke();
-                String signature=i==0?d.signing().ownerSignature():d.signing().customerSignature();
+                String signature=i==0?signing.ownerSignature():signing.customerSignature();
                 if(signature!=null){byte[] image=Base64.getDecoder().decode(signature.substring(22));var object=PDImageXObject.createFromByteArray(document,image,"signature");
                     float scale=Math.min((half-16)/object.getWidth(),63f/object.getHeight());float w=object.getWidth()*scale,h=object.getHeight()*scale;
                     out.drawImage(object,x+(half-w)/2,top-113+(63-h)/2,w,h);}
                 y=top-139;
-                String name=i==0?d.snapshot().owner().fullName():d.snapshot().customer().fullName();
+                String name=i==0?ownerName:customerName;
                 float nameSize=10;while(nameSize>7 && bold.getStringWidth(clean(name,bold))/1000*nameSize>half)nameSize-=.5f;
                 line(name,nameSize,true,x);y-=17;
-                Instant at=i==0?d.signing().ownerSignedAt():d.signing().customerSignedAt();
+                Instant at=i==0?signing.ownerSignedAt():signing.customerSignedAt();
                 line(at==null?"Chưa ký":at.atZone(ZoneId.of("Asia/Ho_Chi_Minh")).format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")),8,false,x);
             }y=top-170;
         }
         void finish(ContractDraftResponse d)throws IOException{
+            finish(d.contractNumber(),d.signing().state(),d.signing().contentHash());
+        }
+        void finish(String number,String signingState,String hash)throws IOException{
             out.close();out=null;int count=document.getNumberOfPages();
-            String state="SIGNED".equals(d.signing().state())?"HAI BÊN ĐÃ KÝ XÁC NHẬN":
-                "UNSIGNED".equals(d.signing().state())?"BẢN NHÁP - CHƯA KÝ":"ĐANG CHỜ CHỮ KÝ CÒN LẠI";
+            String state="SIGNED".equals(signingState)?"HAI BÊN ĐÃ KÝ XÁC NHẬN":
+                "UNSIGNED".equals(signingState)?"BẢN NHÁP - CHƯA KÝ":"ĐANG CHỜ CHỮ KÝ CÒN LẠI";
             for(int i=0;i<count;i++)try(var footer=new PDPageContentStream(document,document.getPage(i),PDPageContentStream.AppendMode.APPEND,true,true)){
                 footer.setNonStrokingColor(90/255f,100/255f,95/255f);footer.beginText();footer.setFont(font,8);footer.newLineAtOffset(left,44);
-                footer.showText(d.contractNumber()+" | "+state+" | Trang "+(i+1)+" / "+count);footer.endText();
-                footer.beginText();footer.setFont(font,6.5f);footer.newLineAtOffset(left,30);footer.showText("SHA-256: "+d.signing().contentHash());footer.endText();
+                footer.showText(number+" | "+state+" | Trang "+(i+1)+" / "+count);footer.endText();
+                footer.beginText();footer.setFont(font,6.5f);footer.newLineAtOffset(left,30);footer.showText("SHA-256: "+hash);footer.endText();
             }
         }
     }
