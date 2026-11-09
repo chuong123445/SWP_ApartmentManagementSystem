@@ -13,6 +13,8 @@ for(const width of [1440,390])for(const scenario of ['metered','per-person','sav
   if(path.endsWith('/vneid-config'))return json({enabled:false});
   if(path==='/api/v1/me')return json(user);
   if(path.endsWith('/me/notifications'))return json({items:[],totalPages:0,totalElements:0,unreadCount:0});
+  if(path.endsWith('/owner/financial-summary'))return json({});
+  if(path.endsWith('/owner/workspace-summary'))return json({propertyId:null,asOf:'2026-11-09',expiringThrough:'2026-12-09',unpaidMonthlyInvoiceCount:0,unpaidAdditionalReceiptCount:0,unpaidCount:0,expiringContractCount:0,expiredContractCount:0});
   if(path.endsWith('/owner/properties'))return json([{id:'11',name:'Tài sản kiểm thử',approvalStatus:'APPROVED'}]);
   if(path.endsWith('/owner/tenancies'))return json([{id:'42',apartmentId:'21',roomNumber:'A.102',apartmentTitle:'Phòng kiểm thử',propertyName:'Tài sản kiểm thử',customerId:'2',customerName:'Khách kiểm thử',customerEmail:'tenant@example.invalid',status:'ACTIVE',startDate:'2026-11-06',endDate:'2027-11-06',monthlyRent:'6000000',version:0}]);
   if(path.endsWith('/42/billing-context'))return json(context);
@@ -33,7 +35,7 @@ for(const width of [1440,390])for(const scenario of ['metered','per-person','sav
  await expect(modal.getByLabel('Điện đầu kỳ (kWh)',{exact:true})).toHaveValue(perPerson?'0':'300');
  const electric=modal.getByRole('spinbutton',{name:/^Chỉ số điện cuối kỳ/});
  if(saved)await expect(electric).toHaveValue('450');
- if(!saved){await modal.getByRole('button',{name:'Lưu bản nháp',exact:true}).click();expect(creates).toBe(0);}
+ if(!saved){await modal.getByRole('button',{name:'Lưu bản nháp',exact:true}).click();expect(creates).toBe(0);await electric.fill(perPerson?'-1':'299');await modal.getByRole('button',{name:'Lưu bản nháp',exact:true}).click();expect(creates).toBe(0);}
  await electric.fill(saved?'451.25':'410.25');
  if(perPerson){await expect(modal.getByRole('spinbutton',{name:/^Chỉ số nước cuối kỳ/})).toHaveCount(0);await expect(modal).toContainText('2 người');}
  else await modal.getByRole('spinbutton',{name:/^Chỉ số nước cuối kỳ/}).fill('25.50');
