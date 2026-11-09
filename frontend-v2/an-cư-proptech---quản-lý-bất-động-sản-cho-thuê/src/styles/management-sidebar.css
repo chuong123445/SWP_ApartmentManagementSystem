@@ -1,0 +1,32 @@
+/* Scoped to the management sidebar; keeps the public header and content unchanged. */
+.management-sidebar{width:288px;max-width:calc(100vw - 40px);height:100%;min-height:0;flex-shrink:0;display:flex;flex-direction:column;background:linear-gradient(180deg,#f8fbf9 0%,#fff 45%);border-right:1px solid #e1e9e5;color:#344b42;font-family:'Be Vietnam Pro',Arial,sans-serif;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#d6e2da transparent}
+.ms-property-wrap{margin:18px 16px 10px;padding:14px;border:1px solid #dce9e1;border-radius:16px;background:#fff;box-shadow:0 3px 12px #174d3210;flex-shrink:0}
+.ms-property-label{display:flex;align-items:center;gap:9px;color:#71847a;margin-bottom:9px}
+.ms-property-label label{font-size:10px;font-weight:700;letter-spacing:.085em;text-transform:uppercase}
+.ms-property-icon{width:28px;height:28px;display:grid;place-items:center;border-radius:9px;background:#edf6f0;color:#26735a}
+.ms-property-select{display:flex;align-items:center;position:relative}
+.ms-property-select select{appearance:none;width:100%;min-width:0;min-height:36px;border:0;border-radius:7px;padding:5px 25px 5px 1px;background:transparent;color:#193d2e;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;text-overflow:ellipsis}
+.ms-property-select select:disabled{color:#8b9c91;cursor:default}
+.ms-property-select select:focus-visible{outline:2px solid #059669;outline-offset:3px}
+.ms-property-select>svg{position:absolute;right:1px;pointer-events:none;color:#7c9586}
+.ms-navigation{padding:2px 12px 20px;flex:1}
+.ms-group{margin-top:15px}
+.ms-group-label{font-size:10px;line-height:1.5;text-transform:uppercase;letter-spacing:.105em;font-weight:700;color:#718377;padding:0 14px;margin:0 0 8px}
+.ms-group-items{display:flex;flex-direction:column;gap:3px}
+.ms-link{display:flex;align-items:center;gap:10px;position:relative;width:100%;min-height:44px;padding:7px 11px;border:1px solid transparent;border-radius:11px;background:transparent;color:#50645a;font-family:inherit;font-size:13px;font-weight:550;text-align:left;cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.ms-link:hover{background:#f0f6f2;color:#176c4d}
+.ms-link-icon{display:grid;place-items:center;flex-shrink:0;width:29px;height:29px;color:#7f9387;border-radius:9px;transition:background .15s,color .15s}
+.ms-link:hover .ms-link-icon{color:#1f7c58;background:#e5f0e9}
+.ms-link-label{flex:1;line-height:1.6;min-width:0}
+.ms-link-active,.ms-link-active:hover{background:#e5f3eb;border-color:#d4eadd;color:#116441;font-weight:700}
+.ms-link-active .ms-link-icon,.ms-link-active:hover .ms-link-icon{background:#fff;color:#13825c;box-shadow:0 2px 4px #144d3210}
+.ms-link-active:before{content:'';position:absolute;left:-1px;top:14px;bottom:14px;width:3px;border-radius:0 4px 4px 0;background:#15986b}
+.ms-link:focus-visible{outline:2px solid #15986b;outline-offset:2px}
+.ms-badges{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;max-width:84px}
+.ms-badge{display:inline-block;padding:2px 6px;border:1px solid;font-size:9px;font-weight:650;line-height:1.4;border-radius:6px;white-space:nowrap}
+.ms-badge-rose{color:#b3455e;background:#fff0f3;border-color:#f7dce3}
+.ms-badge-amber{color:#a16f20;background:#fff6e5;border-color:#f5e7c6}
+.ms-counter-status{font-size:11px;color:#74867c;padding:8px 14px}
+.ms-counter-error{font-size:11px;color:#956825;background:#fff8e8;border:1px solid #f4e8c7;border-radius:10px;padding:10px;margin:8px 3px}
+.ms-counter-error button{display:block;margin-top:5px;text-decoration:underline;cursor:pointer}
+@media(prefers-reduced-motion:reduce){.ms-link,.ms-link-icon{transition:none}}
