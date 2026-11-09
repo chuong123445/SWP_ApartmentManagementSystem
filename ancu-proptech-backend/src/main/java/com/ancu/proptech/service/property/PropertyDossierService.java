@@ -18,6 +18,7 @@ import java.util.*;
 public class PropertyDossierService {
     private final com.ancu.proptech.service.auth.VerifiedIdentityPolicy identityPolicy;
     private final PropertyRepository properties;
+    private final PropertyListingDraftRepository listingDrafts;
     private final PropertyDossierRepository dossiers;
     private final PropertyEvidenceFileRepository files;
     private final AccountAccessService access;
@@ -27,6 +28,8 @@ public class PropertyDossierService {
     private final com.ancu.proptech.service.property.ai.DossierAiReviewService aiReviews;
     @Transactional public PropertyDossierResponse submit(Jwt jwt,Long propertyId,PropertyDossierSubmit input){
         var p=applicants.write(jwt,propertyId);var owner=p.getOwner();
+        if(listingDrafts.existsByPropertyIdAndCompletedFalse(propertyId))
+            throw conflict("LISTING_INCOMPLETE","Hãy hoàn tất các bước đăng tải trước khi gửi hồ sơ.");
         if(p.getVersion()!=input.getPropertyVersion())throw conflict("STALE_VERSION","Tài sản đã thay đổi. Hãy tải lại trước khi gửi hồ sơ.");
         boolean renewal=p.getApprovalStatus()==Property.ApprovalStatus.APPROVED&&rights.limited(p);
         if(dossiers.existsByPropertyIdAndStatus(propertyId,PropertyDossier.Status.PENDING_APPROVAL)||

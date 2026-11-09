@@ -61,6 +61,19 @@ public class OwnerPropertyService {
         property.setOnboardingApplication(applicationRight!=null);property.setRightType(applicationRight);
         properties.saveAndFlush(property);
         images.bind(property,input.getImageIds());
+        return createUnits(jwt,property,input,applicationRight);
+    }
+    @Transactional public OwnerPropertyCreated completeListing(Jwt jwt,Property property,OwnerPropertyCreate input){
+        if(input.getRentalMode()==Property.RentalMode.SINGLE_UNIT && input.getApartments().size()!=1)
+            throw new ApiException(HttpStatus.BAD_REQUEST,"SINGLE_UNIT_REQUIRED","Cho thuê nguyên căn chỉ có một căn.");
+        var numbers=new HashSet<String>();
+        for(var unit:input.getApartments())if(!numbers.add(unit.getRoomNumber().strip().toLowerCase(java.util.Locale.ROOT)))
+            throw new ApiException(HttpStatus.BAD_REQUEST,"APARTMENT_NUMBER_EXISTS","Mã căn/phòng bị trùng.");
+        property.setName(input.getName().strip());property.setAddress(input.getAddress().strip());property.setCity(input.getCity().strip());property.setDistrict(input.getDistrict().strip());property.setWard(input.getWard());property.setRentalMode(input.getRentalMode());
+        images.bind(property,input.getImageIds());properties.flush();
+        return createUnits(jwt,property,input,property.getRightType());
+    }
+    private OwnerPropertyCreated createUnits(Jwt jwt,Property property,OwnerPropertyCreate input,com.ancu.proptech.model.property.PropertyDossier.RightType applicationRight){
         var created = input.getApartments().stream().map(unit -> {
             var apartment = new OwnerApartmentCreate();
             apartment.setPropertyId(property.getId()); apartment.setRoomNumber(unit.getRoomNumber()); apartment.setTitle(unit.getTitle());
@@ -70,7 +83,8 @@ public class OwnerPropertyService {
             apartment.setElectricityIndex(unit.getElectricityIndex()); apartment.setWaterIndex(unit.getWaterIndex());
             apartment.setElectricityUnitPrice(unit.getElectricityUnitPrice());apartment.setWaterUnitPrice(unit.getWaterUnitPrice());
             apartment.setAmenities(unit.getAmenities()); apartment.setPublicationStatus(Apartment.PublicationStatus.DRAFT);
-            return applicationRight==null?apartments.create(jwt, apartment):apartments.createApplication(jwt,apartment);
+            var result=applicationRight==null?apartments.create(jwt, apartment):apartments.createApplication(jwt,apartment);
+            images.bindUnit(property,result.id(),unit.getImageIds());return result;
         }).toList();
         return new OwnerPropertyCreated(response(property), created);
     }
