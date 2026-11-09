@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { contractActionLabel, contractStatusLabel, contractLifecycleActions } from '../src/utils/contractDisplay.ts';
+import { contractActionLabel, contractStatusLabel, contractLifecycleActions, contractListTitle } from '../src/utils/contractDisplay.ts';
 import type { ContractDraft } from '../src/types/contract.ts';
 
 test('list lifecycle actions follow exact party, request/handover conflicts and server handover permission', () => {
@@ -34,4 +34,14 @@ test('only a draft unsigned by the current party offers signing', () => {
   assert.equal(contractActionLabel(draft, '2'), 'Xem / ký hợp đồng');
   assert.equal(contractActionLabel({ ...draft, status: 'ACTIVE' }, '2'), 'Xem hợp đồng');
   assert.equal(contractActionLabel({ ...draft, status: 'ENDED' }, '2'), 'Xem hợp đồng');
+});
+
+test('existing fixture contracts use ordinary contract headings', () => {
+  for (const [id, title] of [['HD-5','[MẪU] Nhắc hạn 10 ngày - HH205.D10'],['HD-4','[MẪU] Hết hạn - HH205.TEST']]) {
+    const draft={contractNumber:id,snapshot:{asset:{roomNumber:'HH205.TEST',title}}} as ContractDraft;
+    assert.equal(contractListTitle(draft),`Hợp đồng thuê · ${id}`);
+    assert.equal(draft.snapshot.asset.title,title);
+  }
+  const regular={contractNumber:'HD-8',snapshot:{asset:{roomNumber:'A101',title:'Căn hộ Lê Văn Sỹ'}}} as ContractDraft;
+  assert.equal(contractListTitle(regular),'A101 · Căn hộ Lê Văn Sỹ');
 });
