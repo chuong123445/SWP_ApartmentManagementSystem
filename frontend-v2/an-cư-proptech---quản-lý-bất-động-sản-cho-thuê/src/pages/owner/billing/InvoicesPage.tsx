@@ -40,7 +40,7 @@ export function InvoicesPage({ invoices, history, onOpenInvoiceModal, onOpenCrea
       <div className="op-buttons"><Link to="/account/settings/payments" className="op-button">Số dư và rút tiền</Link><Link to="/account/settings/payments/test" className="op-button">Tạo phiếu thanh toán thử</Link><button onClick={onReload} className="op-button" disabled={loading}><RefreshCw size={14}/>Làm mới</button><button id="btn-create-invoice-page" onClick={onOpenCreateInvoiceModal} className="op-button op-button-primary"><Plus size={15}/>Lập hóa đơn mới</button></div>
     </header>
     <div className="op-stats">
-      {[{label:'Hóa đơn tháng trên trang',value:invoices.length,icon:ReceiptText,tone:''},{label:'Bản nháp trên trang',value:draftCount,icon:FileText,tone:'amber'},{label:'Đã thanh toán trên trang',value:paidCount,icon:CheckCircle2,tone:'blue'}].map(s=><div className="op-stat" key={s.label}><span className={`op-stat-icon ${s.tone}`}><s.icon size={19}/></span><div><small>{s.label}</small><strong>{loading?'—':s.value}</strong></div></div>)}
+      {[{label:'Hóa đơn tiền thuê và điện nước trên trang',value:invoices.length,icon:ReceiptText,tone:''},{label:'Bản nháp trên trang',value:draftCount,icon:FileText,tone:'amber'},{label:'Đã thanh toán trên trang',value:paidCount,icon:CheckCircle2,tone:'blue'}].map(s=><div className="op-stat" key={s.label}><span className={`op-stat-icon ${s.tone}`}><s.icon size={19}/></span><div><small>{s.label}</small><strong>{loading?'—':s.value}</strong></div></div>)}
     </div>
     {(error || sendError) && <p role="alert" className="op-error">{error || sendError}</p>}
     <div className="op-panel">
@@ -49,10 +49,10 @@ export function InvoicesPage({ invoices, history, onOpenInvoiceModal, onOpenCrea
         <label className="op-search"><Search size={15}/><input aria-label="Tìm hóa đơn" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Tìm căn hộ, người thuê, kỳ..."/></label>
       </div>
       {loading && <p role="status" className="op-empty">Đang tải hóa đơn...</p>}
-      <h2 className="font-bold px-4 pt-4">Hóa đơn tháng</h2>
+      <h2 className="font-bold px-4 pt-4">Hóa đơn tiền thuê và điện nước</h2>
       {!loading && !error && <table className="op-table"><thead><tr>{['Kỳ hóa đơn','Căn hộ','Người thuê','Hạn đóng','Tổng tiền','Trạng thái','Thao tác'].map(x=><th key={x} scope="col">{x}</th>)}</tr></thead><tbody>
         {visible.map(i=><tr key={i.id} data-invoice-id={i.id}>
-          <td data-label="Kỳ hóa đơn"><span className="op-period"><CalendarDays size={13}/>{i.monthYear}</span></td>
+          <td data-label="Kỳ hóa đơn"><span className="op-period"><CalendarDays size={13}/>{i.monthYear}</span><span className="block text-xs text-slate-500 mt-1">{i.apiInvoice?.kind==='RENT'?'Tiền thuê':i.apiInvoice?.kind==='UTILITY'?'Điện nước và dịch vụ':'Tổng hợp'}</span></td>
           <td data-label="Căn hộ"><span className="op-room">{i.roomNumber}</span></td>
           <td data-label="Người thuê"><span className="op-person"><span className="op-avatar" aria-hidden="true">{i.tenantName.trim().split(/\s+/).slice(-2).map(x=>x[0]).join('')}</span>{i.tenantName}</span></td>
           <td data-label="Hạn đóng">{dateLabel(i.dueDate)}</td>
@@ -62,7 +62,7 @@ export function InvoicesPage({ invoices, history, onOpenInvoiceModal, onOpenCrea
         </tr>)}
         {!visible.length&&<tr><td colSpan={7} className="op-empty-cell"><div className="op-empty"><ReceiptText size={29}/><strong>Chưa có hóa đơn phù hợp.</strong>Thử đổi bộ lọc hoặc lập hóa đơn mới cho người thuê.</div></td></tr>}
       </tbody></table>}
-      <div className="op-caption">{history.monthly?.totalElements ?? 0} hóa đơn tháng theo bộ lọc · Trang {page+1}/{Math.max(1,totalPages)} · Lọc trạng thái trên toàn bộ lịch sử; tìm kiếm trên trang hiện tại</div>
+      <div className="op-caption">{history.monthly?.totalElements ?? 0} hóa đơn tiền thuê/điện nước theo bộ lọc · Trang {page+1}/{Math.max(1,totalPages)} · Lọc trạng thái trên toàn bộ lịch sử; tìm kiếm trên trang hiện tại</div>
     </div>
     <Pagination page={page} totalPages={totalPages} onChange={onPageChange}/>
     <OwnerAdditionalInvoices key={history.scopeKey} history={history} search={search} />
