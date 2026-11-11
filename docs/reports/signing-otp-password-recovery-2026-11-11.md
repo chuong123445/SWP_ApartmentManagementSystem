@@ -19,6 +19,7 @@
 ## Kiểm tra
 
 - 84 kiểm thử SQL tích hợp đạt trong database riêng `ancu_contract_pdf_20261103`. Bao gồm mã sai, hết hạn, dùng lại, ràng buộc nội dung/mục đích, xác nhận mật khẩu, thu hồi phiên và hai luồng ký.
+- 158 kiểm thử frontend, TypeScript và Vite build đạt. 14 ca Playwright MCP trên bản build hiện tại và API giả lập đạt ở 1440px/390px cho hợp đồng, bàn giao, kết thúc sớm và quên mật khẩu. Kiểm tra mã sai, gửi lại, hai thứ tự ký, sai xác nhận mật khẩu, stale conflict và tràn ngang.
 - SMTP trong kiểm thử được giả lập. Chưa xác nhận email OTP thật tới hộp thư người dùng.
 - Cần khởi động lại backend để chạy V64 và nạp frontend mới.
 
