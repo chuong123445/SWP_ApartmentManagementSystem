@@ -19,7 +19,7 @@
 
 ## Kiểm tra
 
-- 160 kiểm thử frontend, TypeScript và build đã đạt. Còn cảnh báo Vite kích thước bundle/cấu hình đã có từ trước.
+- 161 kiểm thử frontend, TypeScript và build đã đạt. Còn cảnh báo Vite kích thước bundle/cấu hình đã có từ trước.
 - Kiểm thử SQL đã chạy trong DB riêng ancu_contract_pdf_20261103. Lượt Billing33, policy3, amount3, contract1, PDF2 đạt. Bàn giao18 và 47 ca hợp đồng khác đạt trong lượt hồi quy trước. Bổ sung kiểm thử PDF chu kỳ 6 tháng và chặn tự động khi đang kết thúc thuê đều đạt.
 - Playwright MCP bản build/API giả lập đạt 10 ca 1440px/390px cho lập hai loại hóa đơn, xem chi tiết người thuê, lưu tự động và lựa chọn đủ bốn chu kỳ.
 - PDF hợp đồng 6 tháng đã xuất và xem trang đầu. Kiểm thử giữ nội dung hợp đồng cũ và phân trang đạt.
@@ -32,3 +32,5 @@
 4. Gửi tiền thuê rồi lập điện nước cùng tháng để kiểm tra hai luồng độc lập. Xem lại bằng tài khoản khách thuê.
 5. Chọn từng tài sản ở Cài đặt Đơn giá để đổi chế độ tự động. Hợp đồng hoạt động có kỳ thu đến hạn trong 7 ngày được tạo sau lượt scheduler, mặc định mỗi 15 phút và lượt đầu sau 60 giây.
 6. Với ngày lẻ hoặc kỳ quá hạn, chủ nhà đối chiếu và xử lý riêng trước khi kết thúc thuê.
+
+Đã đồng bộ rentCycleMonths qua API quan hệ thuê và cách hiển thị hợp đồng cũ. Kiểm thử bổ sung xác nhận hóa đơn RENT đã gửi của cả bốn chu kỳ giữ nguyên kỳ/chỉ số điện nước. Lịch sử hóa đơn trước V65 có giá trị mặc định tương thích khi hiển thị.
