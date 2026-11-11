@@ -32,8 +32,14 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
+@SpringBootTest(properties="app.auth.otp-secret=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=") @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
 class ContractExitIntegrationTests {
+ @org.springframework.test.context.bean.override.mockito.MockitoBean com.ancu.proptech.service.auth.EmailOtpSender otpSender;
+ @Autowired com.ancu.proptech.repository.auth.ActionOtpChallengeRepository otpChallenges;
+ private String otpCode;
+ @BeforeEach void otpSetup(){org.mockito.Mockito.when(otpSender.isConfigured()).thenReturn(true);org.mockito.Mockito.doAnswer(call->{otpCode=call.getArgument(1);return null;}).when(otpSender).sendAction(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString());}
+ private void expireOtpCooldown(){otpChallenges.findAll().forEach(c->{c.setCreatedAt(Instant.now().minusSeconds(1000));});otpChallenges.flush();}
+
  @Autowired MockMvc mvc;@Autowired ObjectMapper json;@Autowired AuthAccountRepository accounts;@Autowired PropertyRepository properties;@Autowired ApartmentRepository apartments;@Autowired RentalRequestRepository requests;@Autowired RentalContractRepository contracts;@Autowired ContractDraftRepository drafts;@Autowired RentalInvoiceRepository invoices;@Autowired ContractExitCaseRepository cases;@Autowired ContractRenewalRequestRepository renewals;@Autowired ContractExitEventRepository events;@Autowired AuthService auth;@Autowired PasswordEncoder passwords;@Autowired JdbcTemplate jdbc;
  private AuthAccount owner,customer,other;private Apartment apartment;private RentalRequest request;private RentalContract contract;private ContractDraft draft;private String ot,ct,xt;private static String hash;private LocalDate today;
  @BeforeEach void setup(){today=LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));if(hash==null)hash=passwords.encode("Exit-test!12345");owner=account(AuthAccount.Role.OWNER);customer=account(AuthAccount.Role.CUSTOMER);other=account(AuthAccount.Role.ADMIN);ot=token(owner);ct=token(customer);xt=token(other);
@@ -54,7 +60,12 @@ class ContractExitIntegrationTests {
  private static String signature()throws Exception{var image=new java.awt.image.BufferedImage(200,80,java.awt.image.BufferedImage.TYPE_INT_ARGB);var g=image.createGraphics();g.setColor(java.awt.Color.BLACK);g.fillRect(20,20,100,4);g.dispose();var bytes=new java.io.ByteArrayOutputStream();javax.imageio.ImageIO.write(image,"png",bytes);return "data:image/png;base64,"+Base64.getEncoder().encodeToString(bytes.toByteArray());}
  private ResultActions sign(String actor)throws Exception{
   var data=json.readTree(mvc.perform(get(path()).header("Authorization",actor)).andReturn().getResponse().getContentAsString());
-  return mvc.perform(post(path()+"/sign").header("Authorization",actor).contentType("application/json").content(json.writeValueAsString(Map.of("sourceVersion",data.path("sourceVersion").asString(),"contentHash",data.path("signing").path("contentHash").asString(),"signature",signature(),"consent",true))));
+  expireOtpCooldown();
+  var input=new LinkedHashMap<String,Object>(Map.of("sourceVersion",data.path("sourceVersion").asString(),"contentHash",data.path("signing").path("contentHash").asString(),"signature",signature(),"consent",true));
+  var issued=mvc.perform(post(path()+"/signature-otp").header("Authorization",actor).contentType("application/json").content(json.writeValueAsString(input)));
+  var result=issued.andReturn();if(result.getResponse().getStatus()!=200)return issued;
+  input.put("challengeId",json.readTree(result.getResponse().getContentAsString()).path("challengeId").asString());input.put("code",otpCode);
+  return mvc.perform(post(path()+"/sign").header("Authorization",actor).contentType("application/json").content(json.writeValueAsString(input)));
  }
  private ResultActions complete()throws Exception{sign(ot).andExpect(status().isOk()).andExpect(jsonPath("$.contractStatus").value("ACTIVE"));return sign(ct);}
  private void agree()throws Exception{act(ct,"PROPOSE_TERMINATION",term()).andExpect(status().isOk());act(ot,"ACCEPT_TERMINATION",Map.of()).andExpect(status().isOk());}
@@ -131,4 +142,12 @@ class ContractExitIntegrationTests {
   try{var a=pool.submit(()->{gate.await();return act(ot,"PROPOSE_TERMINATION",source,term()).andReturn().getResponse().getStatus();});var b=pool.submit(()->{gate.await();return act(ct,"PROPOSE_TERMINATION",source,term()).andReturn().getResponse().getStatus();});gate.countDown();var statuses=new ArrayList<>(List.of(a.get(30,TimeUnit.SECONDS),b.get(30,TimeUnit.SECONDS)));Collections.sort(statuses);assertEquals(List.of(200,409),statuses);assertEquals(1,jdbc.queryForObject("select count(*) from contract_exit_events where contract_id=?",Integer.class,contract.getId()));assertEquals("OCCUPIED",jdbc.queryForObject("select availability from rental_apartments where id=?",String.class,apartment.getId()));}
   finally{pool.shutdownNow();Long id=contract.getId();jdbc.update("delete from contract_exit_events where contract_id=?",id);jdbc.update("delete from contract_exit_cases where contract_id=?",id);jdbc.update("delete from contract_drafts where contract_id=?",id);jdbc.update("delete from rental_contracts where id=?",id);jdbc.update("delete from rental_requests where id=?",request.getId());jdbc.update("delete from rental_apartment_amenities where apartment_id=?",apartment.getId());jdbc.update("delete from rental_apartments where id=?",apartment.getId());jdbc.update("delete from rental_properties where id=?",apartment.getProperty().getId());for(var a:List.of(owner,customer,other)){jdbc.update("delete from auth_refresh_tokens where session_id in(select id from auth_sessions where account_id=?)",a.getId());jdbc.update("delete from auth_sessions where account_id=?",a.getId());jdbc.update("delete from auth_account_roles where account_id=?",a.getId());jdbc.update("delete from auth_accounts where id=?",a.getId());}}
  }
+ @Test void handoverWithoutOtpCannotRecordSignatureOrEndLease()throws Exception{
+  agree();act(ot,"PROPOSE_HANDOVER",hand()).andExpect(status().isOk());
+  var data=json.readTree(mvc.perform(get(path()).header("Authorization",ot)).andReturn().getResponse().getContentAsString());
+  var input=Map.of("sourceVersion",data.path("sourceVersion").asString(),"contentHash",data.path("signing").path("contentHash").asString(),"signature",signature(),"consent",true);
+  mvc.perform(post(path()+"/sign").header("Authorization",ot).contentType("application/json").content(json.writeValueAsString(input))).andExpect(status().isBadRequest());
+  assertNull(cases.findById(contract.getId()).orElseThrow().getOwnerSignedAt());assertEquals(RentalContract.Status.ACTIVE,contract.getStatus());
+ }
+
 }

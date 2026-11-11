@@ -1,5 +1,8 @@
 package com.ancu.proptech.service.contract;
 
+import com.ancu.proptech.service.auth.ActionOtpService;
+import com.ancu.proptech.dto.auth.ActionOtpDtos.Challenge;
+import com.ancu.proptech.exception.auth.AuthException;
 import static com.ancu.proptech.dto.contract.ContractExitDtos.*;
 import com.ancu.proptech.model.contract.*;
 import com.ancu.proptech.model.apartment.Apartment;
@@ -25,6 +28,7 @@ import java.util.*;
 
 @Service @RequiredArgsConstructor
 public class ContractExitService {
+ private final ActionOtpService signatureOtp;
  private final ContractExitCaseRepository cases;
  private final ContractExitEventRepository events;
  private final ContractExitEvidenceRepository evidence;
@@ -143,7 +147,16 @@ public class ContractExitService {
   return new View(c.getId().toString(),c.getStatus().name(),c.getApartment().getProperty().getOwner().getId().toString(),c.getCustomer().getId().toString(),dates.today(),c.getStartDate(),c.getEndDate(),version(s),r.getTerminationState(),t,r.getHandoverState(),hand(r),canProposeTermination(s),pending&&!proposer,pending&&proposer,owner&&canProposeHandover(s),false,!owner&&hPending,owner&&active(c)&&Set.of("PENDING","DISPUTED").contains(r.getHandoverState()),
    evidence.findByContractIdOrderByIdAsc(c.getId()).stream().map(e->new Evidence(e.getId().toString(),e.getFilename(),e.getUploaderId().toString(),e.getCreatedAt())).toList(),events.findByContractIdOrderByIdAsc(c.getId()).stream().map(e->new Event(e.getId().toString(),e.getActorId().toString(),e.getActorName(),e.getAction(),e.getReason(),e.getCreatedAt(),json.readTree(e.getBeforeJson()),json.readTree(e.getAfterJson()))).toList(),document(r),signing(r),hPending&&r.getDocumentJson()!=null&&(owner?r.getOwnerSignedAt()==null:r.getCustomerSignedAt()==null));
  }
- @Transactional public View sign(Jwt jwt,Long id,SignInput input){
+ @Transactional public Challenge requestSignatureOtp(Jwt jwt,Long id,SignInput input){
+  var s=load(jwt,id,false);var value=view(s);
+  if(!value.canSign())throw conflict("HANDOVER_NOT_SIGNABLE","Biên bản chưa đủ điều kiện ký.");
+  if(!input.consent())throw bad("Cần đồng ý nội dung biên bản trước khi ký.");
+  if(!value.sourceVersion().equals(input.sourceVersion())||!Objects.equals(s.exit().getDocumentHash(),input.contentHash()))throw conflict("STALE_VERSION","Biên bản đã thay đổi. Hãy tải lại và ký lại.");
+  SignatureImage.normalize(input.signature());
+  return signatureOtp.issue(s.actor().getId(),ActionOtpService.HANDOVER,
+   ActionOtpService.binding(id,input.sourceVersion(),input.contentHash(),input.signature()));
+ }
+ @Transactional(noRollbackFor=AuthException.class) public View sign(Jwt jwt,Long id,SignInput input){
   var s=load(jwt,id,true);var root=s.exit();var c=s.contract();
   if(!input.consent())throw bad("Cần đồng ý nội dung biên bản trước khi ký.");
   if(!version(s).equals(input.sourceVersion())||!Objects.equals(root.getDocumentHash(),input.contentHash()))throw conflict("STALE_VERSION","Biên bản đã thay đổi. Hãy mở lại PDF và ký lại.");
@@ -157,6 +170,8 @@ public class ContractExitService {
   boolean owner=c.getApartment().getProperty().getOwner().getId().equals(s.actor().getId());
   if(owner?root.getOwnerSignedAt()!=null:root.getCustomerSignedAt()!=null)throw conflict("ALREADY_SIGNED","Bạn đã ký biên bản này.");
   String before=json.writeValueAsString(snapshot(s));var signature=SignatureImage.normalize(input.signature());
+  signatureOtp.consume(s.actor().getId(),ActionOtpService.HANDOVER,
+   ActionOtpService.binding(id,input.sourceVersion(),input.contentHash(),input.signature()),input.challengeId(),input.code());
   if(owner){root.setOwnerSignature(signature);root.setOwnerSignedAt(now());}
   else{root.setCustomerSignature(signature);root.setCustomerSignedAt(now());}
   if(root.getOwnerSignedAt()!=null&&root.getCustomerSignedAt()!=null){

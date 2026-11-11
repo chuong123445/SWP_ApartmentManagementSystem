@@ -26,8 +26,14 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
+@SpringBootTest(properties="app.auth.otp-secret=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=") @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
 class ContractDraftIntegrationTests {
+ @org.springframework.test.context.bean.override.mockito.MockitoBean com.ancu.proptech.service.auth.EmailOtpSender otpSender;
+ @Autowired com.ancu.proptech.repository.auth.ActionOtpChallengeRepository otpChallenges;
+ private String otpCode;
+ @BeforeEach void otpSetup(){org.mockito.Mockito.when(otpSender.isConfigured()).thenReturn(true);org.mockito.Mockito.doAnswer(call->{otpCode=call.getArgument(1);return null;}).when(otpSender).sendAction(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString());}
+ private void expireOtpCooldown(){otpChallenges.findAll().forEach(c->{c.setCreatedAt(Instant.now().minusSeconds(1000));});otpChallenges.flush();}
+
     @org.springframework.test.context.bean.override.mockito.MockitoBean
     com.ancu.proptech.service.property.ai.DossierAiClient dossierAiClient;
     @Autowired MockMvc mvc;
@@ -359,8 +365,13 @@ class ContractDraftIntegrationTests {
         return "data:image/png;base64,"+Base64.getEncoder().encodeToString(bytes.toByteArray());
     }
     private ResultActions sign(String contract,String actor,String hash,String image,boolean consent) throws Exception {
+        expireOtpCooldown();
+        String body="{\"version\":"+JsonPath.read(contract,"$.version")+",\"contentHash\":\""+hash+"\",\"signature\":\""+image+"\",\"consent\":"+consent+"}";
+        var issued=mvc.perform(post("/api/v1/contracts/"+id(contract)+"/signature-otp").header("Authorization",actor).contentType("application/json").content(body));
+        var result=issued.andReturn();if(result.getResponse().getStatus()!=200)return issued;
+        String challenge=JsonPath.read(result.getResponse().getContentAsString(),"$.challengeId");
         return mvc.perform(post("/api/v1/contracts/"+id(contract)+"/signatures").header("Authorization",actor)
-            .contentType("application/json").content("{\"version\":"+JsonPath.read(contract,"$.version")+",\"contentHash\":\""+hash+"\",\"signature\":\""+image+"\",\"consent\":"+consent+"}"));
+            .contentType("application/json").content(body.substring(0,body.length()-1)+",\"challengeId\":\""+challenge+"\",\"code\":\""+otpCode+"\"}"));
     }
     @Test void pdfIsRealPrivatePaginatedVietnameseAndHasTwoSignatureAreas() throws Exception {
         String contract=create();String contractId=id(contract);
@@ -550,4 +561,19 @@ class ContractDraftIntegrationTests {
         draft.setSnapshotJson(draft.getSnapshotJson().replaceAll(",\"(?:documentNumber|documentIssueDate|documentIssuePlace|permanentAddress|identityVerificationStatus|localFixture|certificateNumber|certificateIssueDate|certificateIssuePlace|exploitationRightDescription|evidence)\":null",""));drafts.saveAndFlush(draft);
         mvc.perform(get("/api/v1/contracts/"+id(result)).header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.snapshot.owner.fullName").value(owner.getFullName())).andExpect(jsonPath("$.snapshot.asset.certificateNumber").isEmpty()).andExpect(jsonPath("$.snapshot.evidence").isEmpty());
     }
+    @Test void signaturesRequireOtpAndWrongOtpLeavesContractUnsigned()throws Exception{
+        String contract=create();String image=signature();String contractId=id(contract);
+        String hash=JsonPath.read(contract,"$.signing.contentHash");
+        String body="{\"version\":"+JsonPath.read(contract,"$.version")+",\"contentHash\":\""+hash+"\",\"signature\":\""+image+"\",\"consent\":true}";
+        String url="/api/v1/contracts/"+contractId;
+        mvc.perform(post(url+"/signatures").header("Authorization",token).contentType("application/json").content(body)).andExpect(status().isBadRequest());
+        var issued=mvc.perform(post(url+"/signature-otp").header("Authorization",token).contentType("application/json").content(body)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String challenge=JsonPath.read(issued,"$.challengeId");String correct=otpCode;String wrong=correct.equals("000000")?"111111":"000000";
+        String prefix=body.substring(0,body.length()-1)+",\"challengeId\":\""+challenge+"\",\"code\":\"";
+        mvc.perform(post(url+"/signatures").header("Authorization",token).contentType("application/json").content(prefix+wrong+"\"}")).andExpect(status().isBadRequest());
+        mvc.perform(get(url).header("Authorization",token)).andExpect(jsonPath("$.signing.ownerSignedAt").isEmpty()).andExpect(jsonPath("$.status").value("DRAFT"));
+        assertEquals(1,otpChallenges.findById(challenge).orElseThrow().getAttempts());
+        mvc.perform(post(url+"/signatures").header("Authorization",token).contentType("application/json").content(prefix+correct+"\"}")).andExpect(status().isOk());
+    }
+
 }
