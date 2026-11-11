@@ -86,11 +86,12 @@ public class SecurityConfig {
                                 || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/property-source-consent")
                                 || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/owner-upgrade")))))
                 .authorizeHttpRequests(a -> a
-                        .requestMatchers("/api/v1/contracts/*/exit", "/api/v1/contracts/*/exit/actions", "/api/v1/contracts/*/exit/pdf", "/api/v1/contracts/*/exit/sign", "/api/v1/contracts/*/exit/evidence", "/api/v1/contracts/*/exit/evidence/*").authenticated()
+                        .requestMatchers("/api/v1/contracts/*/exit", "/api/v1/contracts/*/exit/actions", "/api/v1/contracts/*/exit/pdf", "/api/v1/contracts/*/exit/sign", "/api/v1/contracts/*/exit/signature-otp", "/api/v1/contracts/*/exit/evidence", "/api/v1/contracts/*/exit/evidence/*").authenticated()
                         .requestMatchers("/api/v1/owner/contracts/*/renewal-context", "/api/v1/owner/contracts/*/renewals", "/api/v1/owner/contracts/*/cancel-renewal",
                             "/api/v1/owner/contracts/*/handover", "/api/v1/owner/contracts/*/handover/cancel", "/api/v1/contracts/*/handover/confirm").authenticated()
                         .requestMatchers("/api/v1/owner/renewal-requests", "/api/v1/contracts/*/renewal-request", "/api/v1/owner/contracts/*/renewal-request/decision", "/api/v1/owner/contracts/*/renewal-request/cancel").authenticated()
-                        .requestMatchers("/api/v1/contracts/*/pdf", "/api/v1/contracts/*/signatures").authenticated()
+                        .requestMatchers("/api/v1/contracts/*/pdf", "/api/v1/contracts/*/signatures", "/api/v1/contracts/*/signature-otp").authenticated()
+                        .requestMatchers("/api/v1/auth/password-recovery", "/api/v1/auth/password-recovery/verify", "/api/v1/auth/password-recovery/reset").permitAll()
                         .requestMatchers("/api/v1/auth/google").permitAll()
                         .requestMatchers("/api/v1/auth/csrf", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout", "/error").permitAll()
                         .requestMatchers("/api/v1/me/verifications", "/api/v1/me/verifications/vneid", "/api/v1/me/verifications/vneid/confirm", "/api/v1/me/verifications/vneid/cancel", "/api/v1/me/owner-upgrade").authenticated()

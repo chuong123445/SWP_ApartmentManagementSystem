@@ -290,7 +290,7 @@
       ],
       "post": {
         "summary": "Sign own side of the handover; second signature atomically ends the lease",
-        "description": "Parent request/contract locks. Fresh sourceVersion/hash and explicit consent required. Reject duplicate/invalid/foreign/stale signatures. No caller-selected signer. One signature leaves ACTIVE/OCCUPIED. Both signatures transition ENDED/VACANT without changing publication or invoice debt.",
+        "description": "Parent request/contract locks. Fresh sourceVersion/hash and explicit consent required. Reject duplicate/invalid/foreign/stale signatures. No caller-selected signer. One signature leaves ACTIVE/OCCUPIED. Both signatures transition ENDED/VACANT without changing publication or invoice debt. Requires a single-use email OTP bound to this actor, contract, document version/hash and drawn signature. Rejected OTP leaves signature unchanged.",
         "requestBody": {
           "required": true,
           "content": {
@@ -329,6 +329,69 @@
           },
           "413": {
             "description": "Request exceeds multipart limit"
+          }
+        }
+      }
+    },
+    "/api/v1/contracts/{id}/exit/signature-otp": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          }
+        }
+      ],
+      "post": {
+        "summary": "Send email OTP for the exact drawn signature and document",
+        "description": "No signature is stored by this operation. Email OTP expires in 10 minutes, max 5 wrong attempts, 60-second resend cooldown, max 3 requests per purpose/account in 15 minutes.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignatureOtpRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Private exact-party result; Cache-Control: no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OtpChallenge"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation/consent/date/reason/image error"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Wrong party for action"
+          },
+          "404": {
+            "description": "Resource not in exact-party scope or absent authoring draft"
+          },
+          "409": {
+            "description": "Stale/source/state/competing flow/missing baseline/open draft invoice"
+          },
+          "413": {
+            "description": "Request exceeds multipart limit"
+          },
+          "429": {
+            "description": "OTP request limit"
+          },
+          "503": {
+            "description": "SMTP/OTP unavailable"
           }
         }
       }
@@ -1072,6 +1135,43 @@
           "sourceVersion",
           "contentHash",
           "signature",
+          "consent",
+          "challengeId",
+          "code"
+        ],
+        "properties": {
+          "sourceVersion": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "contentHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "signature": {
+            "type": "string",
+            "maxLength": 200000,
+            "description": "Nonblank drawn PNG data URL; server decodes and validates ink/dimensions"
+          },
+          "consent": {
+            "const": true
+          },
+          "challengeId": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[0-9]{6}$"
+          }
+        }
+      },
+      "SignatureOtpRequest": {
+        "type": "object",
+        "required": [
+          "sourceVersion",
+          "contentHash",
+          "signature",
           "consent"
         ],
         "properties": {
@@ -1090,6 +1190,27 @@
           },
           "consent": {
             "const": true
+          }
+        }
+      },
+      "OtpChallenge": {
+        "type": "object",
+        "required": [
+          "challengeId",
+          "maskedEmail",
+          "expiresAt"
+        ],
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "maskedEmail": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       }
