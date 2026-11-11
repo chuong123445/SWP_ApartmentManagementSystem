@@ -34,7 +34,7 @@ public class TenancyService {
             return new TenancyResponse(c.getId(),a.getId(),a.getRoomNumber(),a.getTitle(),a.getProperty().getName(),
                     u.getId(),u.getFullName(),u.getEmail(),c.getStatus().name(),c.getStartDate(),c.getEndDate(),c.getMonthlyRent().toPlainString(),c.getVersion(),
                     u.isEmailVerified(),source.isPresent()?"VERIFIED":"NOT_VERIFIED",source.orElse(null),
-                    saved == null ? null : saved.deposit().toPlainString(),saved == null ? "NO_DATA" : saved.signingStatus(),c.isLocalFixture());
+                    saved == null ? null : saved.deposit().toPlainString(),saved == null ? "NO_DATA" : saved.signingStatus(),c.isLocalFixture(),c.getRentCycleMonths());
         }).toList();
     }
 }

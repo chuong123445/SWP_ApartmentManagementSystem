@@ -1057,6 +1057,16 @@
           "localFixture": {
             "type": "boolean",
             "description": "Marks illustrative contract data, not actual party consent."
+          },
+          "rentCycleMonths": {
+            "type": "integer",
+            "enum": [
+              1,
+              3,
+              6,
+              12
+            ],
+            "default": 1
           }
         }
       },
