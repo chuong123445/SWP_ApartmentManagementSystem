@@ -18,8 +18,8 @@ test('Evidence upload uses multipart file only; backend determines uploader and 
 
 test('Handover signature binds the exact document and source without choosing another signer',async()=>{
  let body:any;let called='';globalThis.fetch=async(url,opts)=>{called=String(url);body=JSON.parse(String(opts?.body));return Response.json({});};
- await signHandover('42','a'.repeat(64),'b'.repeat(64),'data:image/png;base64,test');
- assert.equal(called,'/api/v1/contracts/42/exit/sign');assert.deepEqual(body,{sourceVersion:'a'.repeat(64),contentHash:'b'.repeat(64),signature:'data:image/png;base64,test',consent:true});
+ await signHandover('42','a'.repeat(64),'b'.repeat(64),'data:image/png;base64,test',{challengeId:'challenge',code:'123456'});
+ assert.equal(called,'/api/v1/contracts/42/exit/sign');assert.deepEqual(body,{sourceVersion:'a'.repeat(64),contentHash:'b'.repeat(64),signature:'data:image/png;base64,test',consent:true,challengeId:'challenge',code:'123456'});
 });
 test('Handover PDF uses private no-store fetch and keeps failures visible',async()=>{
  let options:any;globalThis.fetch=async(_url,opts)=>{options=opts;return new Response('%PDF-1.4',{headers:{'Content-Type':'application/pdf'}});};

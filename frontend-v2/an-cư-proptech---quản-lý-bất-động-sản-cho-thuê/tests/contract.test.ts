@@ -25,10 +25,10 @@ test('Signature command binds to the saved version and hash without allowing a c
   globalThis.fetch = async (url, init) => {
     assert.equal(url, '/api/v1/contracts/42/signatures');assert.equal(init?.method, 'POST');
     assert.equal(new Headers(init?.headers).get('Authorization'), 'Bearer signer-token');
-    assert.deepEqual(JSON.parse(init!.body as string), { version: 3, contentHash: 'a'.repeat(64), signature: 'data:image/png;base64,sample', consent: true });
+    assert.deepEqual(JSON.parse(init!.body as string), { version: 3, contentHash: 'a'.repeat(64), signature: 'data:image/png;base64,sample', consent: true, challengeId: 'challenge', code: '123456' });
     return Response.json({ id: '42' });
   };
-  await signContract({ id: '42', version: 3, signing: { contentHash: 'a'.repeat(64) } } as ContractDraft, 'data:image/png;base64,sample');
+  await signContract({ id: '42', version: 3, signing: { contentHash: 'a'.repeat(64) } } as ContractDraft, 'data:image/png;base64,sample', {challengeId: 'challenge', code: '123456'});
 });
 
 test('PDF is fetched privately as a real PDF blob and server errors are not rendered as documents', async () => {

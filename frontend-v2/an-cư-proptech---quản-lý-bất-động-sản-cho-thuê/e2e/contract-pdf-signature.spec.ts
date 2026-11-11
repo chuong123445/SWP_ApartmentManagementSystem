@@ -24,9 +24,10 @@ for (const role of ['OWNER', 'CUSTOMER'] as const) {
       if (path.endsWith('/me/tenancies')) return json([]);
       if (path === '/api/v1/contracts/42') return json(draft());
       if (path.endsWith('/42/pdf')) return route.fulfill({ contentType: 'application/pdf', body: pdf });
+      if (path.endsWith('/42/signature-otp')) return json({challengeId:'otp-test',maskedEmail:'te***@example.invalid',expiresAt:'2099-01-01T00:00:00Z'});
       if (path.endsWith('/42/signatures')) {
         const body = route.request().postDataJSON();expect(body.version).toBe(0);expect(body.contentHash).toBe('a'.repeat(64));
-        expect(body.consent).toBe(true);expect(body.signature).toMatch(/^data:image\/png;base64,/);expect(body).not.toHaveProperty('ownerId');expect(body).not.toHaveProperty('customerId');
+        expect(body.challengeId).toBe('otp-test');expect(body.code).toBe('123456');expect(body.consent).toBe(true);expect(body.signature).toMatch(/^data:image\/png;base64,/);expect(body).not.toHaveProperty('ownerId');expect(body).not.toHaveProperty('customerId');
         signed = true;return json(draft());
       }
       return route.fulfill({ status: 404, json: { message: `Unexpected fixture request: ${path}` } });
@@ -44,7 +45,7 @@ for (const role of ['OWNER', 'CUSTOMER'] as const) {
     await expect(confirm).toBeDisabled();await page.getByRole('checkbox').check();await expect(confirm).toBeEnabled();
     mkdirSync('test-results/contract-visual', { recursive: true });
     await page.screenshot({ path: `test-results/contract-visual/${role.toLowerCase()}-signature.png` });
-    await confirm.click();await expect(page.getByText('Đã lưu chữ ký của bạn vào hợp đồng.')).toBeVisible();
+    await confirm.click();expect(signed).toBe(false);await page.getByLabel('Mã OTP xác nhận chữ ký',{exact:true}).fill('123456');await page.getByRole('button',{name:'Xác nhận OTP và ký',exact:true}).click();await expect(page.getByText('Đã lưu chữ ký của bạn vào hợp đồng.')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Xác nhận ký hợp đồng' })).toHaveCount(0);
     await expect(page.getByText(role === 'OWNER' ? 'Chờ khách thuê ký' : 'Chờ chủ nhà ký', { exact: true })).toBeVisible();
     const download = page.waitForEvent('download');await page.getByRole('link', { name: 'Tải PDF', exact: true }).click();
