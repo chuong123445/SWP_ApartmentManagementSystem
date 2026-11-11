@@ -98,7 +98,7 @@ class BillingIntegrationTests {
     @Test void serverCalculatesFromContractAndTenantReceivesOnlySentInvoice()throws Exception{
         var result=create(ownerToken,body("2026-10",0,"1120","208")).andExpect(status().isCreated()).andReturn();
         var json=result.getResponse().getContentAsString();String id=JsonPath.read(json,"$.id");
-        assertEquals(0,new BigDecimal(JsonPath.<String>read(json,"$.totalAmount")).compareTo(new BigDecimal("5540000")));
+        assertEquals(0,new BigDecimal(JsonPath.<String>read(json,"$.totalAmount")).compareTo(new BigDecimal("540000")));
         assertEquals(0,new BigDecimal(JsonPath.<String>read(json,"$.electricityQuantity")).compareTo(new BigDecimal("120")));
         mvc.perform(get("/api/v1/me/invoices").header("Authorization","Bearer "+tenantToken)).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
         mvc.perform(get("/api/v1/invoices/"+id).header("Authorization","Bearer "+tenantToken)).andExpect(status().isNotFound());
@@ -110,7 +110,7 @@ class BillingIntegrationTests {
         contract.setWaterBillingMode(com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.PER_PERSON);contract.setOccupantCount(2);contract.setWaterUnitPrice(new BigDecimal("50000"));contract.setInternetFee(new BigDecimal("100000"));contract.setGarbageFee(new BigDecimal("30000"));contracts.saveAndFlush(contract);
         String json=create(ownerToken,body("2026-10",0,"1120","208")).andExpect(status().isCreated()).andExpect(jsonPath("$.waterBillingMode").value("PER_PERSON")).andExpect(jsonPath("$.occupantCount").value(2)).andReturn().getResponse().getContentAsString();
         assertEquals(0,new BigDecimal(JsonPath.<String>read(json,"$.waterAmount")).compareTo(new BigDecimal("100000")));
-        assertEquals(0,new BigDecimal(JsonPath.<String>read(json,"$.totalAmount")).compareTo(new BigDecimal("5650000")));
+        assertEquals(0,new BigDecimal(JsonPath.<String>read(json,"$.totalAmount")).compareTo(new BigDecimal("650000")));
         contract.setWaterUnitPrice(new BigDecimal("90000"));contract.setInternetFee(BigDecimal.ZERO);contracts.saveAndFlush(contract);
         mvc.perform(get("/api/v1/invoices/"+JsonPath.<String>read(json,"$.id")).header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.internetFee").value("100000"));
     }
@@ -140,10 +140,10 @@ class BillingIntegrationTests {
             .andExpect(jsonPath("$.electricityStartReading").value("120.25")).andExpect(jsonPath("$.waterStartReading").value("8.50"));
         create(ownerToken,body("2026-11",2,"119","9")).andExpect(status().isBadRequest());
     }
-    @Test void initialPartialMonthChargesFullAgreedMonthlyRent()throws Exception{
+    @Test void initialPartialMonthUtilityInvoiceExcludesRent()throws Exception{
         contract.setStartDate(LocalDate.of(2026,10,14));contract.setBaselineDate(contract.getStartDate());contracts.saveAndFlush(contract);
         String result=create(ownerToken,body("2026-10",0,"1120","208")).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-        assertEquals(0,contract.getMonthlyRent().compareTo(new BigDecimal((String)JsonPath.read(result,"$.monthlyRent"))));
+        assertEquals(0,BigDecimal.ZERO.compareTo(new BigDecimal((String)JsonPath.read(result,"$.monthlyRent"))));
     }
     @Test void duplicateSkippedDraftAndStaleBillingPeriodsAreRejected()throws Exception{
         create(ownerToken,body("2026-10",9,"1120","208")).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("VERSION_CONFLICT"));
@@ -201,7 +201,7 @@ class BillingIntegrationTests {
         saveMeter(ownerToken,body("2026-10",1,"1120","200").replace("baselineVersion\":1","keepSavedTariff\":true,\"baselineVersion\":1")).andExpect(status().isOk()).andExpect(jsonPath("$.electricityUnitPrice").value("4000.00"));
         create(ownerToken,body("2026-10",2,"1130","200")).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("SAVED_READING_MISMATCH"));
         String json=create(ownerToken,"{\"period\":\"2026-10\",\"baselineVersion\":2,\"useSavedReadings\":true,\"dueDate\":\"2026-11-05\"}").andExpect(status().isCreated()).andExpect(jsonPath("$.electricityEndReading").value("1120")).andExpect(jsonPath("$.electricityUnitPrice").value("4000.00")).andExpect(jsonPath("$.waterBillingMode").value("PER_PERSON")).andReturn().getResponse().getContentAsString();
-        assertEquals(0,new BigDecimal(JsonPath.<String>read(json,"$.totalAmount")).compareTo(new BigDecimal("5710000")));
+        assertEquals(0,new BigDecimal(JsonPath.<String>read(json,"$.totalAmount")).compareTo(new BigDecimal("710000")));
         String id=JsonPath.read(json,"$.id");send(ownerToken,id,0).andExpect(status().isOk());
         mvc.perform(get("/api/v1/owner/contracts/"+contract.getId()+"/billing-context").header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.period").value("2026-11")).andExpect(jsonPath("$.electricityStartReading").value("1120.00")).andExpect(jsonPath("$.savedReading").isEmpty());
         mvc.perform(get("/api/v1/invoices/"+id).header("Authorization","Bearer "+tenantToken)).andExpect(status().isOk()).andExpect(jsonPath("$.electricityUnitPrice").value("4000.00"));
@@ -221,8 +221,8 @@ class BillingIntegrationTests {
     @Test void draftEditRecalculatesFrozenTermsAuditsAndFeedsNextSentBaseline()throws Exception{
         String id=createDraft();contract.setMonthlyRent(new BigDecimal("9999999"));contract.setElectricityUnitPrice(new BigDecimal("9000"));contracts.saveAndFlush(contract);
         var result=edit(ownerToken,id,changeBody(0,1,"1130.25","209.50")).andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1)).andExpect(jsonPath("$.billingVersion").value(2)).andExpect(jsonPath("$.dueDate").value("2026-11-10")).andReturn().getResponse().getContentAsString();
-        assertEquals(0,new BigDecimal(JsonPath.<String>read(result,"$.totalAmount")).compareTo(new BigDecimal("5598375")));
-        assertEquals(0,new BigDecimal(JsonPath.<String>read(result,"$.monthlyRent")).compareTo(new BigDecimal("5000000")));
+        assertEquals(0,new BigDecimal(JsonPath.<String>read(result,"$.totalAmount")).compareTo(new BigDecimal("598375")));
+        assertEquals(0,new BigDecimal(JsonPath.<String>read(result,"$.monthlyRent")).compareTo(BigDecimal.ZERO));
         assertEquals(0,new BigDecimal(JsonPath.<String>read(result,"$.electricityUnitPrice")).compareTo(new BigDecimal("3500")));
         history(ownerToken,id).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2)).andExpect(jsonPath("$[1].action").value("UPDATED")).andExpect(jsonPath("$[1].reason").value("Correct meter")).andExpect(jsonPath("$[1].before.version").value(0)).andExpect(jsonPath("$[1].after.version").value(1));
         assertEquals(0,jdbc.queryForObject("SELECT electricity_end_reading FROM billing_meter_readings WHERE contract_id=?",BigDecimal.class,contract.getId()).compareTo(new BigDecimal("1130.25")));
@@ -291,7 +291,7 @@ class BillingIntegrationTests {
         String id=createDraft();send(ownerToken,id,0).andExpect(status().isOk());
         String command="{\"type\":\"INVOICE\",\"id\":"+id+",\"transactionDate\":\"2026-11-04\",\"paymentMethod\":\"CASH\"}";
         mvc.perform(post("/api/v1/owner/cash-entries/from-source").header("Authorization","Bearer "+ownerToken).contentType("application/json").content(command)).andExpect(status().isConflict());
-        var p=new com.ancu.proptech.model.payment.InvoicePayment();p.setInvoiceId(Long.valueOf(id));p.setOwnerId(owner.getId());p.setPaymentCode("CASH"+UUID.randomUUID().toString().replace("-","").substring(0,20));p.setBank("MB");p.setAccountNumber("12345678");p.setAccountHolderName("Test owner");p.setAmount(new BigDecimal("5540000"));p.setPaidAt(java.time.Instant.parse("2026-10-31T18:00:00Z"));invoicePayments.saveAndFlush(p);
+        var p=new com.ancu.proptech.model.payment.InvoicePayment();p.setInvoiceId(Long.valueOf(id));p.setOwnerId(owner.getId());p.setPaymentCode("CASH"+UUID.randomUUID().toString().replace("-","").substring(0,20));p.setBank("MB");p.setAccountNumber("12345678");p.setAccountHolderName("Test owner");p.setAmount(new BigDecimal("540000"));p.setPaidAt(java.time.Instant.parse("2026-10-31T18:00:00Z"));invoicePayments.saveAndFlush(p);
         mvc.perform(get("/api/v1/owner/cash-entries/sources").param("month","2026-10").header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
         mvc.perform(get("/api/v1/owner/cash-entries/sources").param("month","2026-11").header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.items[0].suggestedDate").value("2026-11-01"));
         mvc.perform(post("/api/v1/owner/cash-entries/from-source").header("Authorization","Bearer "+token(otherOwner)).contentType("application/json").content(command)).andExpect(status().isNotFound());
@@ -307,4 +307,54 @@ class BillingIntegrationTests {
         jdbc.update("DELETE FROM invoice_notifications WHERE invoice_id IN(SELECT id FROM rental_invoices WHERE contract_id=?)",cid);jdbc.update("DELETE FROM invoice_events WHERE invoice_id IN(SELECT id FROM rental_invoices WHERE contract_id=?)",cid);jdbc.update("DELETE FROM billing_meter_readings WHERE contract_id=?",cid);jdbc.update("DELETE FROM rental_invoices WHERE contract_id=?",cid);jdbc.update("DELETE FROM rental_contracts WHERE id=?",cid);jdbc.update("DELETE FROM rental_apartment_amenities WHERE apartment_id=?",aid);jdbc.update("DELETE FROM rental_apartments WHERE id=?",aid);jdbc.update("DELETE FROM rental_properties WHERE id=?",property.getId().toString());
         for(var account:List.of(owner,tenant,otherOwner,otherTenant)){String id=account.getId().toString();jdbc.update("DELETE FROM auth_refresh_tokens WHERE session_id IN(SELECT id FROM auth_sessions WHERE account_id=?)",id);jdbc.update("DELETE FROM auth_sessions WHERE account_id=?",id);jdbc.update("DELETE FROM auth_account_roles WHERE account_id=?",id);jdbc.update("DELETE FROM auth_accounts WHERE id=?",id);}
     }
+    @Autowired com.ancu.proptech.repository.billing.RentalInvoiceRepository invoiceRecords;
+    @Autowired com.ancu.proptech.service.billing.InvoiceService invoiceService;
+    @Autowired com.ancu.proptech.repository.property.PropertySettingsRepository propertyRates;
+    @org.junit.jupiter.params.ParameterizedTest @org.junit.jupiter.params.provider.ValueSource(ints={1,3,6,12})
+    void rentCycleAndUtilityAreSeparateAndCannotBeDuplicated(int cycle)throws Exception{
+        contract.setRentCycleMonths(cycle);contracts.flush();
+        String path="/api/v1/owner/contracts/"+contract.getId();
+        String body="{\"billingVersion\":0,\"coverageStart\":\"2026-10-01\",\"dueDate\":\"2026-10-05\"}";
+        var rent=mvc.perform(post(path+"/rent-invoices").header("Authorization","Bearer "+ownerToken).contentType("application/json").content(body))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.kind").value("RENT")).andExpect(jsonPath("$.rentMonths").value(cycle))
+            .andExpect(jsonPath("$.electricityAmount").value("0")).andReturn().getResponse().getContentAsString();
+        assertEquals(0,new BigDecimal((String)JsonPath.read(rent,"$.totalAmount")).compareTo(new BigDecimal("5000000").multiply(BigDecimal.valueOf(cycle))));
+        mvc.perform(post(path+"/rent-invoices").header("Authorization","Bearer "+ownerToken).contentType("application/json").content(body)).andExpect(status().isConflict());
+        send(ownerToken,JsonPath.read(rent,"$.id"),0).andExpect(status().isOk());
+        mvc.perform(get(path+"/billing-context").header("Authorization","Bearer "+ownerToken)).andExpect(jsonPath("$.period").value("2026-10")).andExpect(jsonPath("$.electricityStartReading").value("1000.00"));
+        create(ownerToken,body("2026-10",2,"1120","208")).andExpect(status().isCreated()).andExpect(jsonPath("$.kind").value("UTILITY")).andExpect(jsonPath("$.monthlyRent").value("0"));
+    }
+    @Test void rentDraftCanBeEditedWithoutMeterReadingsAndCancelledThenRecreated()throws Exception{
+        String root="/api/v1/owner/contracts/"+contract.getId();
+        String rent=mvc.perform(post(root+"/rent-invoices").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"billingVersion\":0,\"coverageStart\":\"2026-10-01\",\"dueDate\":\"2026-10-05\"}")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String id=JsonPath.read(rent,"$.id");
+        mvc.perform(patch("/api/v1/owner/invoices/"+id+"/draft").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"version\":0,\"billingVersion\":1,\"reason\":\"Due date adjustment\",\"dueDate\":\"2026-10-10\"}")).andExpect(status().isOk());
+        mvc.perform(post("/api/v1/owner/invoices/"+id+"/cancel").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"version\":1,\"billingVersion\":2,\"reason\":\"Recreate\"}")).andExpect(status().isOk());
+        mvc.perform(get(root+"/rent-billing-context").header("Authorization","Bearer "+ownerToken)).andExpect(jsonPath("$.coverageStart").value("2026-10-01"));
+    }
+    @Test void automaticRentDraftIsIdempotentAndOptionalSendingNotifiesOnce(){
+        var today=LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+        org.junit.jupiter.api.Assumptions.assumeTrue(today.getDayOfMonth()<=28);
+        contract.setStartDate(today.withDayOfMonth(1));contract.setEndDate(today.withDayOfMonth(1).plusYears(1).minusDays(1));contract.setRentPaymentDay(today.getDayOfMonth());contracts.flush();
+        invoiceService.prepareScheduledRent(contract.getId());invoiceService.prepareScheduledRent(contract.getId());
+        var list=invoiceRecords.findByContractIdAndStatusNotOrderByPeriodAsc(contract.getId(),com.ancu.proptech.model.billing.RentalInvoice.Status.CANCELLED);
+        assertEquals(1,list.size());assertEquals(com.ancu.proptech.model.billing.RentalInvoice.Status.DRAFT,list.getFirst().getStatus());
+        var settings=new com.ancu.proptech.model.property.PropertySettings();settings.setProperty(property);settings.setElectricityUnitPrice(BigDecimal.ZERO);settings.setWaterUnitPrice(BigDecimal.ZERO);settings.setInternetFee(BigDecimal.ZERO);settings.setGarbageFee(BigDecimal.ZERO);settings.setUpdatedAt(java.time.Instant.now());settings.setUpdatedBy(owner.getId());settings.setRentInvoiceMode(com.ancu.proptech.model.property.PropertySettings.RentInvoiceMode.SEND);propertyRates.saveAndFlush(settings);
+        invoiceService.prepareScheduledRent(contract.getId());invoiceService.prepareScheduledRent(contract.getId());
+        assertEquals(com.ancu.proptech.model.billing.RentalInvoice.Status.SENT,invoiceRecords.findById(list.getFirst().getId()).orElseThrow().getStatus());
+        assertEquals(1,notifications.countByInvoiceId(list.getFirst().getId()));
+    }
+
+    @Test void automaticRentSkipsAnOpenContractExitAndRentRespectsAgreedDueDay()throws Exception{
+        String path="/api/v1/owner/contracts/"+contract.getId();
+        mvc.perform(post(path+"/rent-invoices").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"billingVersion\":0,\"coverageStart\":\"2026-10-01\",\"dueDate\":\"2026-10-01\"}")).andExpect(status().isBadRequest());
+        mvc.perform(get(path+"/rent-billing-context").header("Authorization","Bearer "+token(otherOwner))).andExpect(status().isNotFound());
+        var today=LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+        org.junit.jupiter.api.Assumptions.assumeTrue(today.getDayOfMonth()<=28);
+        contract.setStartDate(today.withDayOfMonth(1));contract.setEndDate(today.withDayOfMonth(1).plusYears(1).minusDays(1));contract.setRentPaymentDay(today.getDayOfMonth());contracts.flush();
+        jdbc.update("INSERT INTO contract_exit_cases(contract_id,termination_state,handover_state,updated_at,version) VALUES(?,'PENDING','NONE',SYSUTCDATETIME(),0)",contract.getId());
+        invoiceService.prepareScheduledRent(contract.getId());
+        assertTrue(invoiceRecords.findByContractIdAndStatusNotOrderByPeriodAsc(contract.getId(),com.ancu.proptech.model.billing.RentalInvoice.Status.CANCELLED).isEmpty());
+    }
+
 }
