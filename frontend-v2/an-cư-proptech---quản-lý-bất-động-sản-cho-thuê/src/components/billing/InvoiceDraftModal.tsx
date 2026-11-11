@@ -31,7 +31,7 @@ export function InvoiceDraftModal({ id, onClose, onChanged }: { id: string; onCl
     submitting.current = true; setBusy(true); setError(''); setNotice('');
     try {
       const command = { version: invoice.version, billingVersion: invoice.billingVersion!, reason: reason.trim() };
-      const saved = cancel ? await cancelInvoiceDraft(id, command) : await updateInvoiceDraft(id, { ...command, electricityEndReading: electricity, waterEndReading: invoice.waterBillingMode === 'PER_PERSON' ? invoice.waterStartReading : water, dueDate: due });
+      const saved = cancel ? await cancelInvoiceDraft(id, command) : await updateInvoiceDraft(id, { ...command, ...(invoice.kind==='RENT'?{}:{electricityEndReading: electricity, waterEndReading: invoice.waterBillingMode === 'PER_PERSON' ? invoice.waterStartReading : water}), dueDate: due });
       setInvoice(saved); setElectricity(saved.electricityEndReading); setWater(saved.waterEndReading); setDue(saved.dueDate); setReason(''); setConfirmCancel(false);
       setNotice(cancel ? 'Đã hủy bản nháp. Bạn có thể lập lại cùng kỳ bằng hóa đơn mới.' : 'Đã lưu và tính lại tổng tiền trên máy chủ.');
       onChanged();
@@ -51,10 +51,10 @@ export function InvoiceDraftModal({ id, onClose, onChanged }: { id: string; onCl
         <InvoiceBreakdown invoice={invoice} />
         {invoice.status === 'DRAFT' && !editable && <p role="alert">Máy chủ chưa cung cấp phiên bản chuỗi chỉ số. Hãy cập nhật backend và tải lại trước khi sửa/hủy.</p>}
         {editable && <form ref={form} onSubmit={e => { e.preventDefault(); void save(false); }} className="mt-6 space-y-4">
-          <p className="text-sm text-slate-600">Chỉ sửa chỉ số cuối kỳ và hạn đóng. Tiền thuê, đơn giá, số người và phí đã chốt được giữ nguyên; máy chủ tính lại tổng tiền.</p>
+          <p className="text-sm text-slate-600">{invoice.kind==='RENT'?'Có thể điều chỉnh hạn đóng. Kỳ thuê và số tiền được lấy từ hợp đồng.':'Có thể sửa chỉ số cuối kỳ và hạn đóng. Máy chủ tính lại tổng tiền theo đơn giá đã chốt.'}</p>
           <fieldset disabled={busy || blocked} className="grid sm:grid-cols-2 gap-4">
-            <label className="grid gap-1">Chỉ số điện cuối kỳ (kWh)<input className="border rounded-lg p-2 min-w-0" type="number" required step="0.01" min={invoice.electricityStartReading} max="9999999999999.99" value={electricity} onChange={e => setElectricity(e.target.value)} /></label>
-            {invoice.waterBillingMode !== 'PER_PERSON' ? <label className="grid gap-1">Chỉ số nước cuối kỳ (m³)<input className="border rounded-lg p-2 min-w-0" type="number" required step="0.01" min={invoice.waterStartReading} max="9999999999999.99" value={water} onChange={e => setWater(e.target.value)} /></label> : <p>Nước tính theo {invoice.occupantCount} người/tháng.</p>}
+            {invoice.kind!=='RENT'&&<><label className="grid gap-1">Chỉ số điện cuối kỳ (kWh)<input className="border rounded-lg p-2 min-w-0" type="number" required step="0.01" min={invoice.electricityStartReading} max="9999999999999.99" value={electricity} onChange={e => setElectricity(e.target.value)} /></label>
+            {invoice.waterBillingMode !== 'PER_PERSON' ? <label className="grid gap-1">Chỉ số nước cuối kỳ (m³)<input className="border rounded-lg p-2 min-w-0" type="number" required step="0.01" min={invoice.waterStartReading} max="9999999999999.99" value={water} onChange={e => setWater(e.target.value)} /></label> : <p>Nước tính theo {invoice.occupantCount} người/tháng.</p>}</>}
             <label className="grid gap-1">Hạn đóng<input className="border rounded-lg p-2 min-w-0" type="date" required min={`${invoice.period}-01`} value={due} onChange={e => setDue(e.target.value)} /></label>
             <label className="grid gap-1 sm:col-span-2">Lý do sửa hoặc hủy<textarea className="border rounded-lg p-2 min-w-0" required maxLength={1000} value={reason} onChange={e => setReason(e.target.value)} /></label>
           </fieldset>

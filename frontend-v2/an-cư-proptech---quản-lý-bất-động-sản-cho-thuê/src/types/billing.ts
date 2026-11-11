@@ -1,4 +1,5 @@
 export interface Tenancy {
+  rentCycleMonths?:number;
   contractDeposit?: string | null;
   customerEmailVerified?: boolean;
   customerIdentityStatus?: 'VERIFIED' | 'NOT_VERIFIED';
@@ -20,7 +21,9 @@ export interface BillingContext {
   monthlyRent: string; electricityStartReading: string; electricityUnitPrice: string;
   waterStartReading: string; waterUnitPrice: string; baselineVersion: number;
 }
+export interface RentBillingContext {contractId:string;cycleMonths:number;coverageStart:string|null;coverageEnd:string|null;months:number;monthlyRent:string;totalAmount:string;dueDate:string|null;billingVersion:number;existingDraftId:string|null;hasPartialDays:boolean;automationMode:'MANUAL'|'DRAFT'|'SEND'}
 export interface BillingInvoice {
+  kind?:'LEGACY'|'RENT'|'UTILITY'|null;coverageStart?:string|null;coverageEnd?:string|null;rentMonths?:number;rentUnitPrice?:string|null;
   waterBillingMode?:'METERED'|'PER_PERSON';occupantCount?:number;internetFee?:string;garbageFee?:string;
   id: string; contractId: string; apartmentId: string; customerId: string; roomNumber: string; apartmentTitle: string;
   tenantName: string; period: string; dueDate: string; monthlyRent: string;
@@ -34,5 +37,5 @@ export interface InvoiceCreate {
 }
 
 export interface InvoiceDraftCommand { version: number; billingVersion: number; reason: string; }
-export interface InvoiceDraftUpdate extends InvoiceDraftCommand { electricityEndReading: string; waterEndReading?: string; dueDate: string; }
+export interface InvoiceDraftUpdate extends InvoiceDraftCommand { electricityEndReading?: string; waterEndReading?: string; dueDate: string; }
 export interface InvoiceHistoryEntry { id: string; actorId: string; action: 'CREATED' | 'UPDATED' | 'CANCELLED' | 'SENT'; occurredAt: string; reason: string | null; before: BillingInvoice | null; after: BillingInvoice; }

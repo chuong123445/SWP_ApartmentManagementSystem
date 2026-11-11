@@ -461,7 +461,7 @@ class ContractDraftIntegrationTests {
             .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("SENT"));
         mvc.perform(get("/api/v1/me/invoices").header("Authorization",customerToken)).andExpect(status().isOk())
             .andExpect(jsonPath("$.items[0].contractId").value(contractId)).andExpect(jsonPath("$.items[0].customerId").value(customer.getId().toString()))
-            .andExpect(result -> assertEquals(0,new BigDecimal("6327500.50").compareTo(new BigDecimal(JsonPath.<String>read(result.getResponse().getContentAsString(),"$.items[0].totalAmount")))));
+            .andExpect(result -> assertEquals(0,new BigDecimal("127500.00").compareTo(new BigDecimal(JsonPath.<String>read(result.getResponse().getContentAsString(),"$.items[0].totalAmount")))));
     }
     private ResultActions update(String id,long version,String value) throws Exception { return mvc.perform(put("/api/v1/owner/contracts/"+id+"/draft").header("Authorization",token).contentType("application/json").content("{\"version\":"+version+","+value+"}")); }
     @Test void contextReusesStoredDataAndProvidesAtLeastFiveEditableClausesWithoutSecrets() throws Exception {

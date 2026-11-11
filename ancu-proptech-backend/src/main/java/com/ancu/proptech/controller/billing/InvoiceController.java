@@ -13,6 +13,8 @@ import java.net.URI;
 @RestController @RequiredArgsConstructor
 public class InvoiceController {
     private final InvoiceService invoices;
+    @GetMapping("/api/v1/owner/contracts/{id}/rent-billing-context") public RentBillingContext rentContext(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id){return invoices.rentContext(jwt,id);}
+    @PostMapping("/api/v1/owner/contracts/{id}/rent-invoices") public InvoiceResponse createRent(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody RentInvoiceCreate input){return invoices.createRent(jwt,id,input);}
     @PatchMapping("/api/v1/owner/invoices/{id}/draft") public InvoiceResponse update(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody InvoiceDraftChange request){return invoices.updateDraft(jwt,id,request);}
     @PostMapping("/api/v1/owner/invoices/{id}/cancel") public InvoiceResponse cancel(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody InvoiceCancel request){return invoices.cancel(jwt,id,request);}
     @GetMapping("/api/v1/owner/invoices/{id}/history") public java.util.List<InvoiceHistoryResponse> history(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id){return invoices.history(jwt,id);}
