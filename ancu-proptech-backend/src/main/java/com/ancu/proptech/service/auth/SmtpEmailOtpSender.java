@@ -14,9 +14,16 @@ public class SmtpEmailOtpSender implements EmailOtpSender {
             @Value("${app.mail.from:}") String from,@Value("${spring.mail.username:}") String username,@Value("${spring.mail.password:}") String password){this.mail=mail;this.enabled=enabled;this.from=from;this.username=username;this.password=password;}
     @Override public boolean isConfigured(){return enabled&&!from.isBlank()&&!username.isBlank()&&!password.isBlank();}
     @Override public void send(String destination,String code){
+        sendMessage(destination,code,"Mã xác minh email An Cư PropTech");
+    }
+    @Override public void sendAction(String destination,String code,String purpose){
+        String action=switch(purpose){case "SIGN_CONTRACT" -> "Xác nhận ký hợp đồng thuê";case "SIGN_HANDOVER" -> "Xác nhận ký biên bản bàn giao";case "PASSWORD_RESET" -> "Đặt lại mật khẩu";default -> "Xác minh email";};
+        sendMessage(destination,code,action+" — An Cư PropTech");
+    }
+    private void sendMessage(String destination,String code,String subject){
         if(!isConfigured())throw unavailable();
         SimpleMailMessage message=new SimpleMailMessage();message.setFrom(from);message.setTo(destination);
-        message.setSubject("Mã xác minh email An Cư PropTech");
+        message.setSubject(subject);
         message.setText("Mã xác minh email của bạn: "+code+"\nMã có hiệu lực 10 phút. Không chia sẻ mã với người khác.\nNếu bạn không thực hiện thao tác này, hãy bỏ qua email.");
         try{mail.send(message);}catch(MailException e){throw unavailable();}
     }

@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { hasManagementRole } from '@/utils/auth';
 import { loginDestination } from '@/utils/navigation';
 import { SessionLoading } from '@/components/feedback/SessionLoading';
+import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
 import { AccountVerificationPage } from '@/pages/auth/AccountVerificationPage';
@@ -56,6 +57,7 @@ export function AppRoutes() {
     <Route path="/" element={<HomePage />} />
     <Route path="/apartments/:id" element={<ApartmentDetailPage />} />
     <Route path="/login" element={<LoginRoute />} />
+    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
     <Route path="/register" element={<RegisterPage />} />
     <Route path="/auth/vneid/callback" element={<VneidCallbackPage />} />
     <Route path="/app" element={<RequireAccount role="MANAGER"><WorkspacePage /></RequireAccount>} />
