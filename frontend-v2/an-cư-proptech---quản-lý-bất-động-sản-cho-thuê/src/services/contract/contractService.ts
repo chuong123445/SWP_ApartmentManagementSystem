@@ -46,9 +46,10 @@ export async function getContractPdf(id: string): Promise<Blob> {
   if (!response.headers.get('content-type')?.includes('application/pdf')) throw new Error('Máy chủ chưa trả về tệp PDF hợp đồng.');
   return response.blob();
 }
-export const signContract = (draft: ContractDraft, signature: string) => request<ContractDraft>(
+export const requestContractSignatureOtp = (draft: ContractDraft, signature: string) => request<import('@/services/auth/authService').OtpChallenge>(`/api/v1/contracts/${encodeURIComponent(draft.id)}/signature-otp`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({version: draft.version, contentHash: draft.signing?.contentHash, signature, consent: true})});
+export const signContract = (draft: ContractDraft, signature: string, otp: import('@/services/auth/authService').SignatureOtp) => request<ContractDraft>(
   `/api/v1/contracts/${encodeURIComponent(draft.id)}/signatures`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ version: draft.version, contentHash: draft.signing?.contentHash, signature, consent: true }) });
+    body: JSON.stringify({ version: draft.version, contentHash: draft.signing?.contentHash, signature, consent: true, ...otp }) });
 export const getDrafts = (owner: boolean, propertyId?: string) => request<ContractDraft[]>(owner ? `/api/v1/owner/contract-drafts${propertyId ? `?propertyId=${encodeURIComponent(propertyId)}` : ''}` : '/api/v1/me/contract-drafts');
 export function saveContract(context: ContractContext, terms: ContractTerms, existing: ContractDraft | null) {
   const url = existing ? `/api/v1/owner/contracts/${encodeURIComponent(existing.id)}/draft` : `/api/v1/owner/rental-requests/${encodeURIComponent(context.rentalRequestId)}/contract`;

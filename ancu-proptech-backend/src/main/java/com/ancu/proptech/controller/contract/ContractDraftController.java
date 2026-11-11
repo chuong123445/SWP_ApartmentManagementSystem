@@ -34,6 +34,10 @@ public class ContractDraftController {
             .header("Content-Disposition","inline; filename=\""+contract.contractNumber()+".pdf\"")
             .body(pdf.render(contract));
     }
+    @PostMapping("/contracts/{id}/signature-otp")
+    public org.springframework.http.ResponseEntity<com.ancu.proptech.dto.auth.ActionOtpDtos.Challenge> signatureOtp(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody ContractSignatureRequest input){
+        return org.springframework.http.ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(drafts.requestSignatureOtp(jwt,id,input));
+    }
     @PostMapping("/contracts/{id}/signatures")
     public ContractDraftResponse sign(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody ContractSignatureRequest input) {
         return drafts.sign(jwt,id,input);

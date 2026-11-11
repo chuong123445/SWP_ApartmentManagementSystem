@@ -22,8 +22,11 @@ export function actOnContractExit(id:string,action:ExitAction,sourceVersion:stri
 export function uploadExitEvidence(id:string,file:File){const body=new FormData();body.append('file',file);return request<ExitEvidence>(`${path(id)}/evidence`,{method:'POST',body});}
 export async function downloadExitEvidence(id:string,evidence:ExitEvidence){const r=await apiFetch(`${path(id)}/evidence/${encodeURIComponent(evidence.id)}`,{cache:'no-store'});if(!r.ok)throw await readApiError(r);const blob=await r.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');try{a.href=url;a.download=evidence.filename;document.body.appendChild(a);a.click();}finally{a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}}
 
-export function signHandover(id:string,sourceVersion:string,contentHash:string,signature:string){
- return request<ContractExit>(`${path(id)}/sign`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sourceVersion,contentHash,signature,consent:true})});
+export function requestHandoverSignatureOtp(id:string,sourceVersion:string,contentHash:string,signature:string){
+ return request<import('@/services/auth/authService').OtpChallenge>(`${path(id)}/signature-otp`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sourceVersion,contentHash,signature,consent:true})});
+}
+export function signHandover(id:string,sourceVersion:string,contentHash:string,signature:string,otp:import('@/services/auth/authService').SignatureOtp){
+ return request<ContractExit>(`${path(id)}/sign`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sourceVersion,contentHash,signature,consent:true,...otp})});
 }
 export async function getHandoverPdf(id:string,signal?:AbortSignal){
  const response=await apiFetch(`${path(id)}/pdf`,{cache:'no-store',signal});if(!response.ok)throw await readApiError(response);return response.blob();

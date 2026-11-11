@@ -1,5 +1,8 @@
 package com.ancu.proptech.service.contract;
 
+import com.ancu.proptech.service.auth.ActionOtpService;
+import com.ancu.proptech.dto.auth.ActionOtpDtos.Challenge;
+import com.ancu.proptech.exception.auth.AuthException;
 import com.ancu.proptech.dto.contract.*;
 import com.ancu.proptech.exception.common.ApiException;
 import com.ancu.proptech.model.apartment.Apartment;
@@ -26,6 +29,7 @@ import java.util.*;
 
 @Service @RequiredArgsConstructor
 public class ContractDraftService {
+    private final ActionOtpService signatureOtp;
     private final ContractExitGuard exitGuard;
     static final int RENEWAL_REQUEST_DAYS = 10;
     private final com.ancu.proptech.service.rental.SelectionCancellationGuard cancellationGuard;
@@ -133,6 +137,23 @@ public class ContractDraftService {
     }
 
     @Transactional
+    public Challenge requestSignatureOtp(Jwt jwt,Long id,ContractSignatureRequest input) {
+        var account=access.account(jwt);
+        var d=drafts.findByContractId(id).orElseThrow(ContractDraftService::notFound);
+        var c=d.getContract();
+        boolean owner=c.getApartment().getProperty().getOwner().getId().equals(account.getId());
+        if(!owner&&!c.getCustomer().getId().equals(account.getId()))throw notFound();
+        if(c.getStatus()!=RentalContract.Status.DRAFT)throw conflict("CONTRACT_NOT_DRAFT","Hợp đồng không còn ở bước ký.");
+        if(input.version()!=d.getContentVersion()||!contentHash(d).equals(input.contentHash()))throw stale();
+        if(!input.consent())throw new ApiException(HttpStatus.BAD_REQUEST,"CONSENT_REQUIRED","Bạn cần đồng ý nội dung trước khi ký.");
+        if(owner?d.getOwnerSignedAt()!=null:d.getCustomerSignedAt()!=null)throw conflict("ALREADY_SIGNED","Bạn đã ký hợp đồng này.");
+        SignatureImage.normalize(input.signature());
+        cancellationGuard.requireOpen(d.getRentalRequest().getId());
+        return signatureOtp.issue(account.getId(),ActionOtpService.CONTRACT,
+            ActionOtpService.binding(id,input.version().toString(),input.contentHash(),input.signature()));
+    }
+
+    @Transactional(noRollbackFor=AuthException.class)
     public ContractDraftResponse sign(Jwt jwt,Long id,ContractSignatureRequest input) {
         var account=access.account(jwt);
         var d=drafts.findByContractId(id).orElseThrow(ContractDraftService::notFound);
@@ -177,6 +198,8 @@ public class ContractDraftService {
                 throw conflict("RENEWAL_UNAVAILABLE","Hợp đồng cũ không còn đủ điều kiện ký tiếp.");
         }
         byte[] signature=SignatureImage.normalize(input.signature());
+        signatureOtp.consume(account.getId(),ActionOtpService.CONTRACT,
+            ActionOtpService.binding(id,input.version().toString(),input.contentHash(),input.signature()),input.challengeId(),input.code());
         if(owner){d.setOwnerSignature(signature);d.setOwnerSignedAt(Instant.now());}
         else {d.setCustomerSignature(signature);d.setCustomerSignedAt(Instant.now());}
         d.setSignedContentHash(contentHash(d));

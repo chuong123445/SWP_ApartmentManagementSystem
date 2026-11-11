@@ -3,7 +3,7 @@ import { ApiError, readApiError } from '@/services/http/client';
 import type { AuthSession, AuthUser } from '@/types/auth';
 export type { AuthSession, AuthUser } from '@/types/auth';
 
-async function authRequest(action: 'register' | 'login' | 'google' | 'refresh' | 'logout', body?: unknown): Promise<Response> {
+async function authRequest(action: 'register' | 'login' | 'google' | 'refresh' | 'logout' | 'password-recovery' | 'password-recovery/verify' | 'password-recovery/reset', body?: unknown): Promise<Response> {
   try {
     const csrfResponse = await fetch('/api/v1/auth/csrf', { credentials: 'same-origin', cache: 'no-store' });
     if (!csrfResponse.ok) throw await readApiError(csrfResponse);
@@ -54,4 +54,17 @@ export function refresh(): Promise<AuthSession> {
 export async function logout(): Promise<void> {
   if (refreshing) await refreshing.catch(() => undefined);
   await authRequest('logout');
+}
+
+export interface SignatureOtp { challengeId: string; code: string }
+export interface OtpChallenge { challengeId: string; maskedEmail: string; expiresAt: string }
+export interface PasswordResetProof { challengeId: string; resetToken: string; expiresAt: string }
+export async function requestPasswordRecovery(email: string): Promise<OtpChallenge> {
+  return (await authRequest('password-recovery', { email: email.trim() })).json();
+}
+export async function verifyPasswordRecovery(challengeId: string, code: string): Promise<PasswordResetProof> {
+  return (await authRequest('password-recovery/verify', { challengeId, code })).json();
+}
+export async function resetPassword(proof: PasswordResetProof, newPassword: string, confirmPassword: string) {
+  await authRequest('password-recovery/reset', { challengeId: proof.challengeId, resetToken: proof.resetToken, newPassword, confirmPassword });
 }
