@@ -237,9 +237,11 @@ public class InvoiceService {
         var history=invoices.findByContractIdAndStatusNotOrderByPeriodAsc(c.getId(),RentalInvoice.Status.CANCELLED);
         var draft=history.stream().filter(i->i.getKind()!=RentalInvoice.Kind.UTILITY&&i.getStatus()==RentalInvoice.Status.DRAFT).findFirst().orElse(null);
         var next=draft==null?RentSchedule.next(c,history):new RentSchedule.Period(start(draft),end(draft),draft.getRentMonths());
+        LocalDate due=next==null?null:next.start().withDayOfMonth(c.getRentPaymentDay());
+        if(draft!=null)due=draft.getDueDate();
         String mode=settings.findById(c.getApartment().getProperty().getId()).map(p->p.getRentInvoiceMode().name()).orElse("DRAFT");
         return new RentBillingContext(c.getId().toString(),c.getRentCycleMonths(),next==null?null:next.start(),next==null?null:next.end(),next==null?0:next.months(),
-            str(c.getMonthlyRent()),next==null?"0":str(c.getMonthlyRent().multiply(BigDecimal.valueOf(next.months()))),next==null?null:next.start().withDayOfMonth(c.getRentPaymentDay()),
+            str(c.getMonthlyRent()),next==null?"0":str(c.getMonthlyRent().multiply(BigDecimal.valueOf(next.months()))),due,
             c.getBillingVersion(),draft==null?null:draft.getId().toString(),RentSchedule.partial(c),mode);
     }
     @Transactional

@@ -329,6 +329,7 @@ class BillingIntegrationTests {
         String rent=mvc.perform(post(root+"/rent-invoices").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"billingVersion\":0,\"coverageStart\":\"2026-10-01\",\"dueDate\":\"2026-10-05\"}")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         String id=JsonPath.read(rent,"$.id");
         mvc.perform(patch("/api/v1/owner/invoices/"+id+"/draft").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"version\":0,\"billingVersion\":1,\"reason\":\"Due date adjustment\",\"dueDate\":\"2026-10-10\"}")).andExpect(status().isOk());
+        mvc.perform(get(root+"/rent-billing-context").header("Authorization","Bearer "+ownerToken)).andExpect(jsonPath("$.dueDate").value("2026-10-10"));
         mvc.perform(post("/api/v1/owner/invoices/"+id+"/cancel").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"version\":1,\"billingVersion\":2,\"reason\":\"Recreate\"}")).andExpect(status().isOk());
         mvc.perform(get(root+"/rent-billing-context").header("Authorization","Bearer "+ownerToken)).andExpect(jsonPath("$.coverageStart").value("2026-10-01"));
     }
