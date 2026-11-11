@@ -4,7 +4,7 @@ import java.util.*;
 public record ContractDraftResponse(@com.fasterxml.jackson.annotation.JsonFormat(shape=com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING) Long id,@com.fasterxml.jackson.annotation.JsonFormat(shape=com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING) Long rentalRequestId,String contractNumber,String status,long version,
         LocalDate startDate,LocalDate endDate,String monthlyRent,String electricityUnitPrice,String waterUnitPrice,String deposit,
         int paymentDay,String paymentMethod,String usagePurpose,List<ContractClause> clauses,ContractSnapshot snapshot,Instant createdAt,
-        String templateType, Signing signing, Lifecycle lifecycle,String waterBillingMode,int occupantCount,String internetFee,String garbageFee,String cancellationState) {
+        String templateType, Signing signing, Lifecycle lifecycle,String waterBillingMode,int occupantCount,String internetFee,String garbageFee,String cancellationState,int rentCycleMonths,boolean separateBillingAgreed) {
     public record Lifecycle(long version,boolean expired,String previousContractId,String renewalContractId,String endReason,Handover handover,RenewalRequest renewalRequest,boolean handoverAvailable,boolean renewalRequestAvailable,LocalDate renewalRequestOpensOn) {}
     public record RenewalRequest(String id,String status,String message,String decision,String decisionReason,Instant createdAt,Instant decidedAt,long version) {}
     public record Handover(String id,long version,String status,LocalDate returnDate,String electricityReading,String waterReading,String electricityStartReading,String waterStartReading,

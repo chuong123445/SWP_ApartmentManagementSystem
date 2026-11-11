@@ -10,12 +10,14 @@ export interface ContractSnapshot {
   receivingAccount: { bank: string; accountNumber: string; accountHolderName: string } | null;
 }
 export interface ContractTerms {
+  rentCycleMonths?: 1 | 3 | 6 | 12;
   waterBillingMode?: 'METERED'|'PER_PERSON';occupantCount?:number;internetFee?:string;garbageFee?:string;
   templateType?: 'APARTMENT' | 'HOUSE' | 'ROOM' | 'BUSINESS' | 'SHARED';
   startDate: string; endDate: string; monthlyRent: string; electricityUnitPrice: string; waterUnitPrice: string; deposit: string;
   paymentDay: number; paymentMethod: string; usagePurpose: string; clauses: ContractClause[];
 }
 export interface ContractDraft extends ContractTerms {
+  separateBillingAgreed?:boolean;
   id: string; rentalRequestId: string; contractNumber: string; status: 'DRAFT' | 'ACTIVE' | 'ENDED' | 'CANCELLED'; version: number; snapshot: ContractSnapshot; createdAt: string;
   cancellationState?: 'NONE'|'PENDING'|'CANCELLED'|'REJECTED'|'WITHDRAWN';
   signing?: ContractSigning;

@@ -1,3 +1,4 @@
+import {dossierDateDisplay} from '@/utils/dossierDates';
 import { apiFetch, readApiError } from '@/services/http/client';
 import type { BillingContext, MeterReadingInput, BillingInvoice, InvoiceCreate, Tenancy, InvoiceDraftCommand, InvoiceDraftUpdate, InvoiceHistoryEntry } from '@/types/billing';
 import type { PageResult } from '@/types/apartment';
@@ -35,13 +36,15 @@ export function myInvoices(page = 0, size = 20, paymentStatus: InvoicePaymentFil
 // Adapt server data to the existing Owner layout. Numbers are for display only.
 export function invoiceView(i: BillingInvoice): Invoice {
   return {
-    id: i.id, invoiceCode: `HD-${i.period}-${i.id.slice(0, 8)}`, monthYear: i.period, roomId: i.apartmentId,
+    id: i.id, invoiceCode: `${i.kind==='RENT'?'HDT':i.kind==='UTILITY'?'HDN':'HD'}-${i.period}-${i.id.slice(0, 8)}`, monthYear: i.kind==='RENT'?`${dossierDateDisplay(i.coverageStart)} – ${dossierDateDisplay(i.coverageEnd)}`:i.period, roomId: i.apartmentId,
     roomNumber: i.roomNumber, tenantName: i.tenantName, tenantPhone: '', createdAt: i.createdAt, dueDate: i.dueDate,
     status: i.paymentStatus==='PAID'?'paid':'unpaid', paidAmount: i.paymentStatus==='PAID'?Number(i.totalAmount):0, totalAmount: Number(i.totalAmount), apiInvoice: i,
     items: [
-      { name: 'Tiền thuê', unit: 'tháng', quantity: 1, unitPrice: Number(i.monthlyRent), amount: Number(i.monthlyRent) },
+      ...(i.kind==='UTILITY'?[]:[{ name: 'Tiền thuê', unit: 'tháng', quantity: i.rentMonths||1, unitPrice: Number(i.rentUnitPrice??i.monthlyRent), amount: Number(i.monthlyRent) }]),
+      ...(i.kind==='RENT'?[]:[
       { name: 'Tiền điện', unit: 'kWh', oldIndex: Number(i.electricityStartReading), newIndex: Number(i.electricityEndReading), quantity: Number(i.electricityQuantity), unitPrice: Number(i.electricityUnitPrice), amount: Number(i.electricityAmount) },
-      { name: 'Tiền nước', unit: i.waterBillingMode==='PER_PERSON'?'người/tháng':'m³', oldIndex: Number(i.waterStartReading), newIndex: Number(i.waterEndReading), quantity: Number(i.waterQuantity), unitPrice: Number(i.waterUnitPrice), amount: Number(i.waterAmount) },
+      { name: 'Tiền nước', unit: i.waterBillingMode==='PER_PERSON'?'người/tháng':'m³', oldIndex: Number(i.waterStartReading), newIndex: Number(i.waterEndReading), quantity: Number(i.waterQuantity), unitPrice: Number(i.waterUnitPrice), amount: Number(i.waterAmount) }
+      ]),
       ...(Number(i.internetFee??0)>0?[{name:'Internet',unit:'tháng',quantity:1,unitPrice:Number(i.internetFee),amount:Number(i.internetFee)}]:[]),
       ...(Number(i.garbageFee??0)>0?[{name:'Vệ sinh và rác',unit:'tháng',quantity:1,unitPrice:Number(i.garbageFee),amount:Number(i.garbageFee)}]:[]),
     ],
@@ -57,7 +60,7 @@ export function tenancyViews(items: Tenancy[]): { tenants: Tenant[]; contracts: 
       hometown: '', status: c.status === 'ACTIVE' ? 'active' : 'departed' })),
     contracts: items.map(c => ({ id: c.id, contractNumber: `HD-${c.id.slice(0, 8)}`, tenantId: c.customerId,
       tenantName: c.customerName, roomId: c.apartmentId, roomNumber: c.roomNumber, buildingName: c.propertyName,
-      startDate: c.startDate, endDate: c.endDate, monthlyRent: Number(c.monthlyRent), deposit: 0, paymentCycle: 1,
+      startDate: c.startDate, endDate: c.endDate, monthlyRent: Number(c.monthlyRent), deposit: 0, paymentCycle: c.rentCycleMonths??1,
       status: c.status === 'ACTIVE' ? 'active' : c.status === 'DRAFT' ? 'draft' : c.status === 'CANCELLED' ? 'cancelled' : 'terminated' })),
   };
 }
@@ -70,3 +73,6 @@ export function billingMoney(value: string) {
 export function updateInvoiceDraft(id: string, input: InvoiceDraftUpdate) { return request<BillingInvoice>(`/api/v1/owner/invoices/${encodeURIComponent(id)}/draft`, input, 'PATCH'); }
 export function cancelInvoiceDraft(id: string, input: InvoiceDraftCommand) { return request<BillingInvoice>(`/api/v1/owner/invoices/${encodeURIComponent(id)}/cancel`, input); }
 export function invoiceHistory(id: string) { return request<InvoiceHistoryEntry[]>(`/api/v1/owner/invoices/${encodeURIComponent(id)}/history`); }
+
+export const getRentBillingContext = (id:string) => request<import('@/types/billing').RentBillingContext>(`/api/v1/owner/contracts/${encodeURIComponent(id)}/rent-billing-context`);
+export const createRentInvoice = (id:string,input:{billingVersion:number;coverageStart:string;dueDate:string}) => request<BillingInvoice>(`/api/v1/owner/contracts/${encodeURIComponent(id)}/rent-invoices`,input);

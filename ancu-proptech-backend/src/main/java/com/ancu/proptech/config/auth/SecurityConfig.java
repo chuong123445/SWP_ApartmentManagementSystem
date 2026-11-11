@@ -121,7 +121,7 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/v1/owner/invoices/*/draft").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/owner/invoices/*/cancel").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/owner/invoices/*/history").authenticated()
-                        .requestMatchers("/api/v1/owner/tenancies", "/api/v1/me/tenancies", "/api/v1/owner/contracts/*/billing-context", "/api/v1/owner/contracts/*/meter-readings", "/api/v1/owner/contracts/*/invoices", "/api/v1/owner/invoices", "/api/v1/owner/invoices/*/send", "/api/v1/me/invoices", "/api/v1/invoices/*").authenticated()
+                        .requestMatchers("/api/v1/owner/tenancies", "/api/v1/me/tenancies", "/api/v1/owner/contracts/*/billing-context", "/api/v1/owner/contracts/*/rent-billing-context", "/api/v1/owner/contracts/*/rent-invoices", "/api/v1/owner/contracts/*/meter-readings", "/api/v1/owner/contracts/*/invoices", "/api/v1/owner/invoices", "/api/v1/owner/invoices/*/send", "/api/v1/me/invoices", "/api/v1/invoices/*").authenticated()
                         .requestMatchers("/api/v1/owner/rental-requests/*/contract-context", "/api/v1/owner/rental-requests/*/contract", "/api/v1/owner/contract-drafts", "/api/v1/me/contract-drafts", "/api/v1/contracts/*", "/api/v1/owner/contracts/*/draft").authenticated()
                         // API ký quỹ cũ chưa có ownership/provider hợp lệ: đóng mọi truy cập,
                         // kể cả Owner/Admin, thay vì chỉ kiểm tra role rồi cho đọc/sửa toàn bộ.

@@ -129,7 +129,7 @@ public class ContractExitService {
  private boolean canProposeTermination(Context s){return active(s.contract())&&dates.today().isBefore(s.contract().getEndDate())&&!Set.of("PENDING","AGREED").contains(s.exit().getTerminationState())&&!Set.of("PENDING","DISPUTED","CONFIRMED").contains(s.exit().getHandoverState())&&!competing(s.contract());}
  private boolean canProposeHandover(Context s){return active(s.contract())&&!s.exit().getTerminationState().equals("PENDING")&&(!Set.of("PENDING","CONFIRMED").contains(s.exit().getHandoverState())||(s.exit().getHandoverState().equals("PENDING")&&s.exit().getDocumentJson()==null))&&(s.exit().getTerminationState().equals("AGREED")?!term(s.exit()).returnDate().isAfter(dates.today()):!s.contract().getEndDate().isAfter(dates.today()))&&!competing(s.contract());}
  private BigDecimal[] meter(RentalContract c,BigDecimal suppliedElectric,BigDecimal suppliedWater){
-  var last=invoices.findFirstByContractIdAndStatusOrderByPeriodDesc(c.getId(),RentalInvoice.Status.SENT);
+  var last=invoices.findFirstByContractIdAndKindNotAndStatusOrderByPeriodDesc(c.getId(),RentalInvoice.Kind.RENT,RentalInvoice.Status.SENT);
   var e=last.map(RentalInvoice::getElectricityEndReading).orElse(c.getElectricityBaseline());var w=last.map(RentalInvoice::getWaterEndReading).orElse(c.getWaterBaseline());
   if(e==null&&suppliedElectric!=null)e=suppliedElectric;if(w==null&&suppliedWater!=null)w=suppliedWater;
   if(e==null||w==null)throw conflict("METER_BASELINE_MISSING","Thiếu chỉ số đầu; nhập mốc đã đối chiếu để bên thuê xác nhận, không mặc định bằng 0.");return new BigDecimal[]{e,w};
