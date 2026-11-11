@@ -9,7 +9,8 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ContractPdfLayoutTests {
-    private ContractDraftResponse draft(boolean longContent) {
+    private ContractDraftResponse draft(boolean longContent) {return draft(longContent,1);}
+    private ContractDraftResponse draft(boolean longContent,int cycle) {
         var party=new ContractSnapshot.Party("1","Người kiểm thử","private@example.invalid","0900000000","Địa chỉ liên hệ",LocalDate.of(1990,1,1),false,
             "999000000001",LocalDate.of(2021,4,6),"Cục Cảnh sát quản lý hành chính về trật tự xã hội","Địa chỉ thường trú kiểm thử","VERIFIED",false);
         var asset=new ContractSnapshot.Asset("1","1","CATALOG PROPERTY","CATALOG TITLE","208","33 Đường kiểm thử, Đà Nẵng",null,null,null,"45",2,3,2,List.of("CATALOG AMENITY"),"APPROVED",null,"OWNERSHIP","CERTIFICATE-PRIVATE",null,"CERTIFICATE ISSUER","RIGHT DESCRIPTION",false);
@@ -17,7 +18,7 @@ class ContractPdfLayoutTests {
         for(int i=1;i<=7;i++)clauses.add(new ContractClause("Thỏa thuận "+i,longContent?"Hai bên thống nhất nội dung đã rà soát. ".repeat(35)+"KẾT THÚC ĐIỀU "+i:"Hai bên thống nhất giữ gìn tài sản và thực hiện đúng các khoản thanh toán đã thỏa thuận."));
         return new ContractDraftResponse(1L,1L,"HD-1","DRAFT",0,LocalDate.of(2026,11,1),LocalDate.of(2027,11,1),"2600000","3800","50000","2600000",3,"Chuyển khoản","Để ở",clauses,
             new ContractSnapshot(party,party,asset,new ContractSnapshot.ReceivingAccount("BANK-OMIT","ACCOUNT-OMIT","HOLDER-OMIT")),Instant.parse("2026-11-03T00:00:00Z"),"ROOM",
-            new ContractDraftResponse.Signing("1","2","a".repeat(64),"UNSIGNED",null,null,null,null),null,"PER_PERSON",2,"100000","30000","NONE");
+            new ContractDraftResponse.Signing("1","2","a".repeat(64),"UNSIGNED",null,null,null,null),null,"PER_PERSON",2,"100000","30000","NONE",cycle,cycle!=1);
     }
     @Test void compactFormKeepsAgreedFieldsWithoutCatalogOrContactMetadata()throws Exception {
         byte[] bytes=new ContractPdfService().render(draft(false));
@@ -47,4 +48,17 @@ class ContractPdfLayoutTests {
             for(int i=1;i<=pdf.getNumberOfPages();i++){stripper.setStartPage(i);stripper.setEndPage(i);assertTrue(stripper.getText(pdf).length()>180,"No nearly empty page "+i);}
         }
     }
+    @Test void separateBillingCycleAndManualPartialDaysArePrintedInNewContract()throws Exception{
+        byte[] bytes=new ContractPdfService().render(draft(false,6));
+        try(var pdf=Loader.loadPDF(bytes)){
+            String text=new PDFTextStripper().getText(pdf).replaceAll("\\s+"," ");
+            assertTrue(text.contains("Tiền thuê thanh toán mỗi 6 tháng"));
+            assertTrue(text.contains("Tiền điện, nước và dịch vụ lập hóa đơn riêng hàng tháng"));
+            assertTrue(text.contains("phần ngày lẻ do hai bên đối chiếu và xử lý riêng"));
+            java.nio.file.Files.write(java.nio.file.Path.of("target/separate-billing-contract.pdf"),bytes);
+            var renderer=new org.apache.pdfbox.rendering.PDFRenderer(pdf);
+            javax.imageio.ImageIO.write(renderer.renderImageWithDPI(0,100),"png",new java.io.File("target/separate-billing-contract.png"));
+        }
+    }
+
 }

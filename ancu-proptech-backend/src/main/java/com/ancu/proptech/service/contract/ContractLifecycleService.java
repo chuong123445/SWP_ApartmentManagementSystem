@@ -198,7 +198,7 @@ public class ContractLifecycleService {
     private void requireNoDraftInvoice(RentalContract c){if(invoices.existsByContractIdAndStatus(c.getId(),RentalInvoice.Status.DRAFT))throw conflict("OPEN_INVOICE_DRAFT","Cần xử lý hóa đơn nháp trước khi kết thúc thuê.");}
     private record Settlement(BigDecimal electricStart,BigDecimal waterStart,BigDecimal cost) {}
     private Settlement utilityCost(RentalContract c,BigDecimal electric,BigDecimal water,BigDecimal suppliedElectricStart,BigDecimal suppliedWaterStart) {
-        var last=invoices.findFirstByContractIdAndStatusOrderByPeriodDesc(c.getId(),RentalInvoice.Status.SENT);
+        var last=invoices.findFirstByContractIdAndKindNotAndStatusOrderByPeriodDesc(c.getId(),RentalInvoice.Kind.RENT,RentalInvoice.Status.SENT);
         var electricStart=last.map(i->i.getElectricityEndReading()).orElse(c.getElectricityBaseline());
         var waterStart=last.map(i->i.getWaterEndReading()).orElse(c.getWaterBaseline());
         if(electricStart==null)electricStart=suppliedElectricStart;

@@ -10,7 +10,7 @@ IF EXISTS (SELECT 1 FROM sys.key_constraints WHERE parent_object_id=OBJECT_ID('d
     ALTER TABLE dbo.rental_invoices DROP CONSTRAINT ux_invoice_contract_period;
 IF EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('dbo.rental_invoices') AND name='ux_invoice_contract_period')
     DROP INDEX ux_invoice_contract_period ON dbo.rental_invoices;
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('dbo.rental_invoices') AND name='ux_invoice_current_contract_period')
+IF COL_LENGTH('dbo.rental_invoices','kind') IS NULL AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID('dbo.rental_invoices') AND name='ux_invoice_current_contract_period')
     CREATE UNIQUE INDEX ux_invoice_current_contract_period ON dbo.rental_invoices(contract_id,period) WHERE status <> 'CANCELLED';
 GO
 IF OBJECT_ID('dbo.invoice_events','U') IS NULL

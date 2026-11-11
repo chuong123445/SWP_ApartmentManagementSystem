@@ -235,6 +235,7 @@ public class ContractDraftService {
         if(!t.getEndDate().isAfter(t.getStartDate())) throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_CONTRACT_DATES","Ngày kết thúc phải sau ngày bắt đầu.");
     }
     void applyContract(RentalContract c,ContractTerms t) {
+        c.setRentCycleMonths(t.getRentCycleMonths());c.setRentPaymentDay(t.getPaymentDay());c.setSeparateBillingAgreed(true);
         c.setStartDate(t.getStartDate());c.setEndDate(t.getEndDate());c.setMonthlyRent(t.getMonthlyRent());
         c.setWaterBillingMode(t.getWaterBillingMode());c.setOccupantCount(t.getOccupantCount());c.setInternetFee(t.getInternetFee());c.setGarbageFee(t.getGarbageFee());
         c.setElectricityUnitPrice(t.getElectricityUnitPrice());c.setWaterUnitPrice(t.getWaterUnitPrice());
@@ -282,7 +283,7 @@ public class ContractDraftService {
             d.getTemplateType()==null?"APARTMENT":d.getTemplateType(),
             new ContractDraftResponse.Signing(c.getApartment().getProperty().getOwner().getId().toString(),c.getCustomer().getId().toString(),contentHash(d),
                 d.getOwnerSignedAt()!=null && d.getCustomerSignedAt()!=null?"SIGNED":d.getOwnerSignedAt()!=null?"WAITING_CUSTOMER":d.getCustomerSignedAt()!=null?"WAITING_OWNER":"UNSIGNED",
-                d.getOwnerSignedAt(),d.getCustomerSignedAt(),image(d.getOwnerSignature()),image(d.getCustomerSignature())),lifecycle(c),c.getWaterBillingMode().name(),c.getOccupantCount(),c.getInternetFee().toPlainString(),c.getGarbageFee().toPlainString(),cancellationGuard.state(d.getRentalRequest().getId()));
+                d.getOwnerSignedAt(),d.getCustomerSignedAt(),image(d.getOwnerSignature()),image(d.getCustomerSignature())),lifecycle(c),c.getWaterBillingMode().name(),c.getOccupantCount(),c.getInternetFee().toPlainString(),c.getGarbageFee().toPlainString(),cancellationGuard.state(d.getRentalRequest().getId()),c.getRentCycleMonths(),c.isSeparateBillingAgreed());
     }
     private ContractDraftResponse.Lifecycle lifecycle(RentalContract c) {
         var today = rights.today();
@@ -311,6 +312,7 @@ public class ContractDraftService {
         // Legacy contracts retain the exact hash when no new charges/mode were agreed.
         if(c.getWaterBillingMode()!=com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.METERED || c.getInternetFee().signum()!=0 || c.getGarbageFee().signum()!=0)
             content+="|charges-v1|"+c.getWaterBillingMode()+"|"+c.getOccupantCount()+"|"+c.getInternetFee().stripTrailingZeros().toPlainString()+"|"+c.getGarbageFee().stripTrailingZeros().toPlainString();
+        if(c.isSeparateBillingAgreed())content+="|rent-billing-v1|"+c.getRentCycleMonths()+"|WHOLE_MONTHS_MANUAL_PARTIAL";
         try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content.getBytes(StandardCharsets.UTF_8)));}
         catch(NoSuchAlgorithmException e){throw new IllegalStateException(e);}
     }

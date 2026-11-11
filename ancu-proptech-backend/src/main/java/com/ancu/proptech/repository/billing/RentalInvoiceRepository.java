@@ -23,6 +23,11 @@ public interface RentalInvoiceRepository extends JpaRepository<RentalInvoice,Lon
     @Query("select i.contract.id from RentalInvoice i where i.id=:id")
     Optional<Long> findContractId(@org.springframework.data.repository.query.Param("id") Long id);
     boolean existsByContractIdAndPeriodAndStatusNot(Long contractId,String period,RentalInvoice.Status status);
+    boolean existsByContractIdAndPeriodAndKindNotAndStatusNot(Long contractId,String period,RentalInvoice.Kind kind,RentalInvoice.Status status);
+    boolean existsByContractIdAndPeriodGreaterThanAndKindNotAndStatusNot(Long contractId,String period,RentalInvoice.Kind kind,RentalInvoice.Status status);
+    boolean existsByContractIdAndKindNotAndStatus(Long contractId,RentalInvoice.Kind kind,RentalInvoice.Status status);
+    Optional<RentalInvoice> findFirstByContractIdAndKindNotAndStatusOrderByPeriodDesc(Long contractId,RentalInvoice.Kind kind,RentalInvoice.Status status);
+    List<RentalInvoice> findByContractIdAndStatusNotOrderByPeriodAsc(Long contractId,RentalInvoice.Status status);
     // Fixture provisioning must also respect retained cancelled documents.
     boolean existsByContractIdAndPeriod(Long contractId,String period);
     boolean existsByContractIdAndPeriodGreaterThanAndStatusNot(Long contractId,String period,RentalInvoice.Status status);
