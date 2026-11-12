@@ -9,7 +9,7 @@ import type { ContractDraft } from '@/types/contract';
 import { contractLifecycleActions } from '@/utils/contractDisplay';
 
 const button = 'rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold disabled:opacity-50';
-const primary = `${button} bg-emerald-700 border-emerald-700 text-white`;
+const primary = `${button} bg-brand-700 border-emerald-700 text-white`;
 const input = 'mt-2 block w-full border border-slate-300 bg-white rounded-lg p-3 text-sm';
 
 export function ContractLifecyclePanel({ draft, onUpdated }: { draft: ContractDraft; onUpdated: (draft: ContractDraft) => void }) {
