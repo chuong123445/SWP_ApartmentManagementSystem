@@ -19,6 +19,13 @@ test('Khách thuê và chủ nhà nhắn tin hai chiều trên máy tính và đ
       if (pathname.endsWith('/auth/csrf')) return json({ headerName: 'X-XSRF-TOKEN', token: 'test' });
       if (pathname.endsWith('/auth/refresh')) return json({ accessToken: 'fixture', tokenType: 'Bearer', expiresIn: 900, user });
       if (pathname.endsWith('/me/notifications')) return json({ items: [], totalElements: 0, totalPages: 0, unreadCount: 0 });
+      if (pathname.endsWith('/me/verifications')) return json({ emailVerified: true, vneid: { status: 'UNVERIFIED' } });
+      if (pathname === '/api/v1/apartments/42') return json({
+        id: '42', title: 'Phòng 101', address: 'Hải Châu, Đà Nẵng', propertyName: 'Tòa thử',
+        areaM2: '25', advertisedMonthlyRent: '4000000', images: [], amenities: [],
+        availability: 'VACANT', publicationStatus: 'PUBLISHED', bedrooms: 0, bathrooms: 1,
+        publicOwner: { id: '11', displayName: 'Chủ nhà thử', contactVerified: true },
+      });
 
       const conversation = {
         id: conversationId, apartmentId: '42', apartmentTitle: 'Phòng 101',
@@ -28,6 +35,7 @@ test('Khách thuê và chủ nhà nhắn tin hai chiều trên máy tính và đ
       const view = (message: typeof sent[number]) => ({
         id: message.id, body: message.body, sentAt: message.sentAt, mine: message.author === role,
       });
+      if (pathname.endsWith('/conversations/apartments/42') && request.method() === 'POST') return json(conversation);
       if (pathname.endsWith('/me/conversations')) {
         return json({ items: sent.length ? [conversation] : [], page: 0, size: 20, totalPages: 1, totalElements: sent.length ? 1 : 0 });
       }
@@ -57,7 +65,9 @@ test('Khách thuê và chủ nhà nhắn tin hai chiều trên máy tính và đ
     const owner = await ownerContext.newPage();
     await fixture(customer, 'CUSTOMER');
     await fixture(owner, 'OWNER');
-    await customer.goto(`/my/messages/${conversationId}`);
+    await customer.goto('/apartments/42');
+    await customer.getByRole('button', { name: 'Nhắn tin cho chủ nhà' }).click();
+    await expect(customer).toHaveURL(new RegExp(`/my/messages/${conversationId}$`));
     const input = customer.getByRole('textbox', { name: 'Nội dung tin nhắn' });
     await input.fill('Cho mình hẹn xem phòng ạ');
     await customer.getByRole('button', { name: 'Gửi', exact: true }).click();
@@ -67,7 +77,9 @@ test('Khách thuê và chủ nhà nhắn tin hai chiều trên máy tính và đ
     await expect(customer.getByRole('log')).toContainText('Cho mình hẹn xem phòng ạ');
     expect(sent).toHaveLength(1);
 
-    await owner.goto('/my/messages');
+    await owner.goto('/apartments/42');
+    await owner.getByRole('button', { name: 'Tài khoản' }).click();
+    await owner.getByRole('navigation', { name: 'Điều hướng tài khoản' }).getByRole('link', { name: 'Tin nhắn', exact: true }).click();
     await owner.getByRole('link', { name: /Khách thuê thử.*Phòng 101/ }).click();
     await expect(owner.getByRole('log')).toContainText('Cho mình hẹn xem phòng ạ');
     await owner.getByRole('textbox', { name: 'Nội dung tin nhắn' }).fill('Chiều nay bạn qua xem được nhé');

@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router';
-import { ChevronDown, ClipboardList, LayoutDashboard, LogOut, UserRound, ReceiptText, Settings } from 'lucide-react';
+import { ChevronDown, ClipboardList, LayoutDashboard, LogOut, MessageCircle, UserRound, ReceiptText, Settings } from 'lucide-react';
 import type { AuthUser } from '@/types/auth';
 import { hasManagementRole, accountWorkspaces } from '@/utils/auth';
 
@@ -45,6 +45,7 @@ export function AccountMenu({ account, onLogout, isLoggingOut, authError, showAc
       </div>
       {canRent && <Link to="/my/rental-requests" onClick={() => setOpen(false)} className={linkClass}><ClipboardList className="w-4 h-4" />Yêu cầu & hợp đồng</Link>}
       {canRent&&<Link to="/my/invoices" onClick={()=>setOpen(false)} className={linkClass}><ReceiptText className="w-4 h-4"/>Hóa đơn của tôi</Link>}
+      {(canRent || account.roles.includes('OWNER')) && <Link to="/my/messages" onClick={() => setOpen(false)} className={linkClass}><MessageCircle className="w-4 h-4 shrink-0" />Tin nhắn</Link>}
       {showAccountLinks && !account.roles.includes('ADMIN') && <>
       <Link to="/account/settings" onClick={()=>setOpen(false)} className={linkClass}><Settings className="w-4 h-4"/>Cài đặt tài khoản</Link>
       <Link to="/account/profile" onClick={() => setOpen(false)} className={linkClass}><UserRound className="w-4 h-4" />Hồ sơ & tài khoản</Link>
