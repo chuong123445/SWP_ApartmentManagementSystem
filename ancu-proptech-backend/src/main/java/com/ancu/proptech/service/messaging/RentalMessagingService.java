@@ -47,12 +47,29 @@ public class RentalMessagingService {
         var existing = conversations.findByApartmentIdAndCustomerIdAndOwnerId(apartmentId, customer.getId(), owner.getId());
         if (existing.isPresent() && existing.get().getLastMessageAt() != null) return view(existing.get(), customer);
         requireEligibleRoom(apartment, customer);
-        if (existing.isPresent()) return view(existing.get(), customer);
+        return view(existing.orElseGet(() -> create(apartment, customer, owner)), customer);
+    }
+
+    @Transactional
+    public Conversation openForOwner(Jwt jwt, Long contractId) {
+        var owner = access.owner(jwt);
+        var contract = contracts.findById(contractId).orElseThrow(RentalMessagingService::missing);
+        var apartment = apartments.findForOwnerUpdate(contract.getApartment().getId(), owner.getId())
+            .orElseThrow(RentalMessagingService::missing);
+        var customer = contract.getCustomer();
+        if (!contracts.existsByIdAndStatus(contractId, RentalContract.Status.ACTIVE)
+            || owner.getId().equals(customer.getId()) || !canRent(customer)) throw missing();
+        var conversation = conversations.findByApartmentIdAndCustomerIdAndOwnerId(apartment.getId(), customer.getId(), owner.getId())
+            .orElseGet(() -> create(apartment, customer, owner));
+        return view(conversation, owner);
+    }
+
+    private RentalConversation create(Apartment apartment, AuthAccount customer, AuthAccount owner) {
         var conversation = new RentalConversation();
         conversation.setApartment(apartment);
         conversation.setCustomer(customer);
         conversation.setOwner(owner);
-        return view(conversations.save(conversation), customer);
+        return conversations.save(conversation);
     }
 
     @Transactional(readOnly = true)
@@ -102,8 +119,11 @@ public class RentalMessagingService {
             throw new ApiException(HttpStatus.CONFLICT, "CONVERSATION_UNAVAILABLE", "Cuộc trò chuyện này hiện chỉ có thể xem lại.");
         }
         if (conversation.getLastMessageAt() == null) {
-            if (!conversation.getCustomer().getId().equals(account.getId())) throw missing();
-            requireEligibleRoom(conversation.getApartment(), account);
+            if (conversation.getCustomer().getId().equals(account.getId())) {
+                requireEligibleRoom(conversation.getApartment(), account);
+            } else if (!hasActiveLease(conversation.getApartment(), conversation.getCustomer())) {
+                throw missing();
+            }
         }
         var row = new RentalMessage();
         row.setConversation(conversation);
@@ -122,13 +142,16 @@ public class RentalMessagingService {
     }
 
     private void requireEligibleRoom(Apartment apartment, AuthAccount customer) {
-        if (canLet(apartment.getProperty().getOwner()) &&
-            contracts.existsByApartmentIdAndCustomerIdAndStatus(apartment.getId(), customer.getId(), RentalContract.Status.ACTIVE)) {
+        if (canLet(apartment.getProperty().getOwner()) && hasActiveLease(apartment, customer)) {
             return;
         }
         if (apartment.getAvailability() != Apartment.Availability.VACANT ||
             !apartments.exists(ApartmentService.visible().and(ApartmentService.rightsEffective())
                 .and((root, query, cb) -> cb.equal(root.get("id"), apartment.getId())))) throw missing();
+    }
+
+    private boolean hasActiveLease(Apartment apartment, AuthAccount customer) {
+        return contracts.existsByApartmentIdAndCustomerIdAndStatus(apartment.getId(), customer.getId(), RentalContract.Status.ACTIVE);
     }
 
     private boolean canRent(AuthAccount account) {
