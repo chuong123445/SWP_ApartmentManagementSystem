@@ -12,6 +12,28 @@
 .ai-chat-widget * {
   box-sizing:border-box
 }
+.ai-search-entry.home-primary {
+  color:#176b4f;
+  background:#fff;
+  border:1px solid #b9d4c7;
+}
+.ai-search-entry.home-primary:hover {
+  background:#edf6f0;
+}
+.ai-chat-starters {
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:10px;
+}
+.ai-chat-starters button {
+  background:#edf6f0;
+  color:#176b4f;
+  border:1px solid #dce8e1;
+  border-radius:10px;
+  padding:6px 9px;
+  cursor:pointer;
+}
 .ai-chat-launcher {
   width:64px;
   height:64px;

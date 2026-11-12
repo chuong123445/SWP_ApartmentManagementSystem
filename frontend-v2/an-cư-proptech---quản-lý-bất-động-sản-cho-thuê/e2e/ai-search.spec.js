@@ -23,8 +23,15 @@ const scenario=async(page,baseURL,outputPath)=>{
    await p.setViewportSize({width,height:900});await p.goto(baseURL);
    if(await p.getByRole('dialog').count())throw Error('Chat open by default');
    if(await p.getByRole('button',{name:'Phân tích nhu cầu bằng AI'}).count())throw Error('Old CTA remains');
-   await p.getByRole('button',{name:'Mở chat AI'}).click();const panel=p.getByRole('dialog',{name:'Trợ lý An Cư AI'});const input=panel.getByRole('textbox',{name:'Tin nhắn cho AI'});await input.fill('Xin chào');
-   if(await panel.getByRole('checkbox').count())throw Error('AI consent checkbox remains');await input.press('Enter');await panel.getByText('Chào bạn! Mình có thể giải đáp về thuê nhà.',{exact:true}).waitFor();if(applies)throw Error('Ordinary chat applied filters');
+   const entry=p.getByRole('button',{name:'Trợ lý AI',exact:true});await entry.click();
+   const panel=p.getByRole('dialog',{name:'Trợ lý An Cư AI'});const input=panel.getByRole('textbox',{name:'Tin nhắn cho AI'});
+   await panel.getByRole('button',{name:'Tìm phòng theo ngân sách'}).click();
+   if(!(await input.inputValue()).includes('dưới 5 triệu')||chats)throw Error('Starter did not fill an editable draft');
+   await input.press('Escape');
+   if(await entry.getAttribute('aria-expanded')!=='false'||!await entry.evaluate(button=>document.activeElement===button))throw Error('Inline launcher did not restore focus');
+   await p.getByRole('button',{name:'Mở chat AI'}).click();await input.fill('Xin chào');
+   const queryCount=queries.length;
+   if(await panel.getByRole('checkbox').count())throw Error('AI consent checkbox remains');await panel.getByRole('button',{name:'Gửi tin nhắn'}).click();await panel.getByText('Chào bạn! Mình có thể giải đáp về thuê nhà.',{exact:true}).waitFor();if(applies||queries.length!==queryCount)throw Error('Ordinary chat submitted search filters');
    await input.fill('Tìm phòng dưới 5 triệu từ25m2 tại Thủ Đức cho2người');await panel.getByRole('button',{name:'Gửi tin nhắn'}).click();await panel.getByText(/Đã cập nhật bộ lọc/).waitFor();
    const room=panel.getByRole('link',{name:/Studio thử nghiệm/});await room.waitFor();
    if(await room.getAttribute('href')!=='/apartments/42')throw Error('Wrong public room link');
