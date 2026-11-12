@@ -13,6 +13,7 @@ async function fixture(page:Page,hasLease=true,withBank=true){
     if(path.endsWith('/vneid-config'))return json({enabled:false});
     if(path.endsWith('/me/tenancies'))return json(hasLease?leases:leases.map(c=>({...c,status:'ENDED'})));
     if(path.endsWith('/me/invoices'))return json({items:url.searchParams.get('page')==='0'?invoices.slice(0,2):invoices.slice(2),totalPages:2,totalElements:3});
+    if(path.endsWith('/me/payments/sepay/test-payments'))return json([]);
     if(path.endsWith('/me/maintenance-tickets')){
       if(request.method()==='POST'){
         const input=request.postDataJSON();created.push(input);const ticket={...issues[1],...input,id:'93'};issues.push(ticket);return route.fulfill({status:201,json:ticket});
@@ -26,6 +27,52 @@ async function fixture(page:Page,hasLease=true,withBank=true){
   });
   return {created};
 }
+test('Khách đang thuê mở hội thoại với chủ nhà của phòng đã chọn', async ({page}) => {
+  await page.setViewportSize({width:390,height:900});
+  await fixture(page);
+  const conversation={id:'81',apartmentId:'22',apartmentTitle:'Studio ban công',otherName:'Chủ nhà Tòa B',lastMessageAt:null};
+  await page.route('**/api/v1/me/conversations/apartments/22', route=>{
+    expect(route.request().method()).toBe('POST');
+    return route.fulfill({json:conversation});
+  });
+  await page.route('**/api/v1/me/conversations/81/messages', route=>route.fulfill({json:{conversation,messages:[],hasMore:false}}));
+  await page.goto('/my/home');
+  await page.getByRole('combobox',{name:'Chọn nơi ở'}).selectOption('22');
+  await page.getByRole('button',{name:'Nhắn tin cho chủ nhà'}).click();
+  await expect(page).toHaveURL(/\/my\/messages\/81$/);
+  await expect(page.getByRole('heading',{name:'Chủ nhà Tòa B'})).toBeVisible();
+  await expect(page.getByRole('textbox',{name:'Nội dung tin nhắn'})).toBeVisible();
+});
+
+test('Khách thuê xem thống kê toàn bộ hóa đơn trên điện thoại', async ({page}) => {
+  await page.setViewportSize({width:390,height:900});
+  await fixture(page);
+  let available = true;
+  await page.route('**/api/v1/me/financial-summary', route => available
+    ? route.fulfill({json:[
+        {kind:'RENT',paidCount:21,paidAmount:'105000000',unpaidCount:1,unpaidAmount:'5000000'},
+        {kind:'UTILITY',paidCount:0,paidAmount:'0',unpaidCount:2,unpaidAmount:'425000.125'},
+      ]})
+    : route.fulfill({status:503,json:{message:'Lỗi thống kê'}}));
+
+  await page.goto('/my/home');
+  await page.getByRole('button',{name:'Hóa đơn & thanh toán',exact:true}).click();
+  await page.getByRole('link',{name:'Xem thống kê hóa đơn'}).click();
+  const table = page.getByRole('table',{name:'Thống kê hóa đơn của tôi'});
+  await expect(table.getByRole('row',{name:/Tiền thuê/})).toContainText('21 hóa đơn');
+  await expect(table.getByRole('row',{name:/Điện, nước/})).toContainText('425.000,125 đ');
+  await page.getByLabel('Trạng thái thanh toán').selectOption('PAID');
+  await expect(table).toContainText('5.000.000 đ');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  available = false;
+  await page.getByRole('button',{name:'Làm mới',exact:true}).click();
+  await expect(page.getByText(/Chưa tải được thống kê hóa đơn/)).toBeVisible();
+  available = true;
+  await page.getByRole('button',{name:'Làm mới',exact:true}).click();
+  await expect(table).toBeVisible();
+});
+
 test('Menu gọn và từng phòng nối đúng sự cố, hóa đơn, tài khoản nhận tiền',async({page},info)=>{
   const state=await fixture(page);await page.goto('/my/home');
   await page.getByRole('button',{name:'Tài khoản'}).click();const menu=page.getByRole('navigation',{name:'Điều hướng tài khoản'});

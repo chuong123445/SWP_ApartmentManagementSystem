@@ -1,5 +1,6 @@
 import {OwnerApartmentField, OwnerApartmentPhotos} from '@/components/apartments/OwnerApartmentEditor';
 import {ApartmentGallery} from '@/components/apartments/ApartmentGallery';
+import { StartRentalConversation } from '@/components/apartments/StartRentalConversation';
 import {saveAssetCommand} from '@/services/property/assetManagementService';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
@@ -141,6 +142,9 @@ export function ApartmentDetailPage() {
         {(apartment.waterUnitPrice != null||apartment.management?.canEdit)&&<OwnerApartmentField key={`${apartment.id}-water`} apartment={apartment} field="waterUnitPrice" onSaved={reloadApartment}><p className="text-sm mt-2">Nước: {apartment.waterUnitPrice!=null?formatRent(apartment.waterUnitPrice):'Chưa có giá'}/m³</p></OwnerApartmentField>}
         {apartment.management&&!apartment.management.pricesEditable&&<p className="text-sm text-amber-800 mt-3">{apartment.management.priceLockReason??'Giá thuê, điện và nước đang được khóa, không thể chỉnh sửa.'}</p>}
         <div className="my-5 border-y border-slate-100 py-4"><p className="text-xs text-slate-500 mb-1">Chủ nhà</p><p className="font-semibold">{apartment.publicOwner.displayName}</p><p className="text-xs text-slate-500 mt-1">{apartment.propertyName}</p></div>
+        {!apartment.management && apartment.availability === 'VACANT' && apartment.rentalRightsAvailable !== false &&
+          <StartRentalConversation key={`${apartment.id}:${user?.id ?? 'guest'}`} apartmentId={apartment.id}
+            verified={customer} checking={checkingVerification || Boolean(verificationError)} />}
         {error && <p role="alert" className="text-sm text-rose-700 mb-3">{error}</p>}
         {apartment.management?<section className="space-y-4" aria-label="Quản lý căn hộ của bạn"><h2 className="font-bold text-lg">Căn hộ của bạn</h2><p className="text-sm">{apartment.management.approvalStatus==='APPROVED'?(apartment.management.verificationSource?'Đã xác thực tài sản từ VNeID':'Tài sản đã được Admin duyệt'):`Trạng thái hồ sơ: ${apartment.management.approvalStatus}`}</p><p className="text-sm">{apartment.publicationStatus==='PUBLISHED'?'Đang công khai':apartment.publicationStatus==='HIDDEN'?'Đã ẩn tin':'Tin nháp'}</p>
           {!apartment.management.canEdit&&<Link to="/account/verification" className="underline">Xác thực tài khoản để chỉnh sửa</Link>}

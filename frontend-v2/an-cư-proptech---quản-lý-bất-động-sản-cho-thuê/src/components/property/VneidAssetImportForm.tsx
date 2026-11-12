@@ -1,3 +1,4 @@
+import { DescriptionSuggestion } from '@/components/property/DescriptionSuggestion';
 import { PropertyImagesField } from '@/components/property/PropertyImagesField';
 import { uploadPropertyImages } from '@/services/property/propertyImageService';
 import { useEffect, useState } from 'react';
@@ -77,6 +78,14 @@ export function VneidAssetImportForm({ onClose, onBack, onImported, propertyId }
             ] as const).map(([key,label,min,step]) => <label key={key} className="text-sm">{label} *<input required type="number" min={min} step={step} max={key==='floor'?200:key==='maxOccupants'?1000:key.endsWith('Index')?2147483647:'9999999999999.99'} value={terms[unit.externalUnitId]?.[key] ?? ''} onChange={e => change(unit.externalUnitId,key,e.target.value)} className={inputClass} /></label>)}</div>
             <div className="mt-3"><h4 className="font-semibold text-sm">Ảnh riêng phòng {unit.code}</h4><PropertyImagesField files={unitPhotos[unit.externalUnitId]??[]} onChange={files=>setUnitPhotos(prev=>({...prev,[unit.externalUnitId]:files}))} disabled={saving||stale}/></div>
             <label className="block text-sm mt-3">Mô tả cho thuê<textarea maxLength={3000} value={terms[unit.externalUnitId]?.description ?? ''} onChange={e => change(unit.externalUnitId,'description',e.target.value)} className={inputClass} /></label>
+            <DescriptionSuggestion facts={{
+              areaM2: unit.areaM2,
+              monthlyRent: terms[unit.externalUnitId]?.monthlyRent ?? '',
+              bedrooms: unit.bedrooms,
+              bathrooms: unit.bathrooms,
+              floor: terms[unit.externalUnitId]?.floor ? Number(terms[unit.externalUnitId].floor) : undefined,
+              maxOccupants: terms[unit.externalUnitId]?.maxOccupants ? Number(terms[unit.externalUnitId].maxOccupants) : undefined,
+            }} onApply={description => change(unit.externalUnitId, 'description', description)} />
             </details>
           </fieldset>)}
           <p className="text-sm text-emerald-900 bg-emerald-50 p-3 rounded-lg">Xác nhận sẽ thêm và công khai {selectedUnits.length} phòng đã chọn. Thông tin sở hữu, mã phòng và diện tích được kiểm tra lại từ nguồn VNeID mô phỏng.</p>

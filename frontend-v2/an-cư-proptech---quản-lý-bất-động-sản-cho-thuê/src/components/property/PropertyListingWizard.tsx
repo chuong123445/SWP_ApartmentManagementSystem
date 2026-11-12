@@ -1,3 +1,4 @@
+import { DescriptionSuggestion } from './DescriptionSuggestion';
 import { useEffect,useRef,useState,type FormEvent } from 'react';
 import { useNavigate,useSearchParams } from 'react-router';
 import { evidenceLabels,rightLabels,type Dossier,type EvidenceFile,type EvidencePurpose } from '@/types/dossier';
@@ -135,7 +136,14 @@ export function PropertyListingWizard({rightType}:{rightType:Dossier['rightType'
        {([['areaM2','Diện tích (m²)',true,'0.01'],['advertisedMonthlyRent','Giá thuê/tháng (đ)',true,'0.01'],['deposit','Cọc thỏa thuận (đ)',false,'0'],['electricityUnitPrice','Đơn giá điện (đ/kWh)',true,'0'],['waterUnitPrice','Đơn giá nước (đ/m³)',true,'0']] as const).map(([key,label,required,min])=><label key={key} className="text-sm">{label}{required?' *':''}<input className={field} type="number" step="0.01" min={min} max={key==='areaM2'?'9999999999.99':'9999999999999.99'} required={required} value={u[key]??''} onChange={e=>updateUnit(u.key,{[key]:e.target.value||null})}/></label>)}
        {([['floor','Tầng',0],['maxOccupants','Số người tối đa',1],['bedrooms','Phòng ngủ',0],['bathrooms','Phòng tắm',0]] as const).map(([key,label,min])=><label key={key} className="text-sm">{label}<input className={field} type="number" min={min} max={key==='floor'?200:100} step="1" required={key==='floor'} value={u[key]??''} onChange={e=>updateUnit(u.key,{[key]:e.target.value===''?null:Number(e.target.value)})}/></label>)}
        <label className="text-sm sm:col-span-2">Tiện ích (phân cách bằng dấu phẩy)<input className={field} value={u.amenitiesText??u.amenities.join(', ')} onChange={e=>updateUnit(u.key,{amenitiesText:e.target.value,amenities:e.target.value.split(',').map(x=>x.trim()).filter(Boolean)})}/></label>
-       <label className="text-sm sm:col-span-2">Mô tả phòng<textarea className={field} rows={3} maxLength={3000} value={u.description} onChange={e=>updateUnit(u.key,{description:e.target.value})}/></label>
+       <div className="sm:col-span-2">
+         <label className="block text-sm">Mô tả phòng<textarea className={field} rows={3} maxLength={3000} value={u.description} onChange={e=>updateUnit(u.key,{description:e.target.value})}/></label>
+         <DescriptionSuggestion facts={{
+           areaM2: u.areaM2, monthlyRent: u.advertisedMonthlyRent,
+           floor: u.floor, maxOccupants: u.maxOccupants, bedrooms: u.bedrooms,
+           bathrooms: u.bathrooms, amenities: u.amenities,
+         }} onApply={description => updateUnit(u.key, { description })} />
+       </div>
        </div></details>}
        {index===0&&state.rentalMode==='MULTI_UNIT'&&<button type="button" className={button} onClick={()=>change({units:state.units.map((target,i)=>i&&target.selected?copyCommonTerms(u,target):target)})}>Áp dụng điện, nước, cọc, số người và tiện ích cho phòng đã chọn</button>}
      </section>)}
