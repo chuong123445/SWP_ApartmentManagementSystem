@@ -22,7 +22,7 @@ export function VneidButton({ intent, label }: { intent: 'login' | 'verify'; lab
   };
   return <div className="mt-5">
     <button type="button" onClick={start} disabled={loading || !config?.enabled || isLoading || busy}
-      className="w-full border border-emerald-600 text-emerald-800 rounded-lg px-4 py-3 font-semibold disabled:opacity-50">
+      className="w-full border border-brand-600 text-brand-800 rounded-lg px-4 py-3 font-semibold disabled:opacity-50">
       {busy ? 'Đang chuyển đến VNeID...' : label}
     </button>
     {(error || configError) && <p role="alert" className="text-sm text-rose-700 mt-2">{error || configError}</p>}
