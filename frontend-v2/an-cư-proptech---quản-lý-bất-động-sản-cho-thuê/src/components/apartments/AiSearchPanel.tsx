@@ -74,34 +74,34 @@ export function AiSearchPanel({ onApply, onViewResults }: {
   };
   return <>
     <button type="button" className="home-primary home-search ai-search-entry" aria-expanded={open} aria-controls="ai-chat-panel" onClick={e => toggle(e.currentTarget)}>
-      <Sparkles size={18} aria-hidden="true" />Trợ lý AI
+      <Sparkles size={18} aria-hidden="true" />TOBA
     </button>
     {createPortal(<div className="ai-chat-widget">
     {open&&<section id="ai-chat-panel" role="dialog" aria-modal="false" aria-labelledby="ai-chat-title" className="ai-chat-panel" onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();close();}}}>
-      <header className="ai-chat-header"><span className="ai-chat-avatar"><Sparkles size={22} aria-hidden="true"/></span><div><h2 id="ai-chat-title">Trợ lý An Cư AI</h2><p>Hỏi đáp & tìm căn hộ</p></div><button type="button" aria-label="Đóng chat AI" onClick={close}><X size={20}/></button></header>
-      <div className="ai-chat-messages" role="log" aria-label="Hội thoại với AI" aria-live="polite" ref={log}>
+      <header className="ai-chat-header"><span className="ai-chat-avatar"><Sparkles size={22} aria-hidden="true"/></span><div><h2 id="ai-chat-title">TOBA</h2><p>Hỏi đáp & tìm căn hộ</p></div><button type="button" aria-label="Đóng TOBA" onClick={close}><X size={20}/></button></header>
+      <div className="ai-chat-messages" role="log" aria-label="Hội thoại với TOBA" aria-live="polite" ref={log}>
         {messages.length === 0 && <div className="ai-chat-bubble ai-chat-assistant">
           <strong>Bạn cần tìm phòng hay có câu hỏi về thuê nhà?</strong>
           <div className="ai-chat-starters">{starterQuestions.map(([label, question]) =>
             <button key={label} type="button" onClick={() => { setText(question); input.current?.focus({ preventScroll: true }); }}>{label}</button>
           )}</div>
         </div>}
-        {messages.map((message,index)=><div key={index} className={`ai-chat-bubble ai-chat-${message.role}`}><span className="ai-chat-sender">{message.role==='user'?'Bạn':'An Cư AI'}</span><p>{message.text}</p>
+        {messages.map((message,index)=><div key={index} className={`ai-chat-bubble ai-chat-${message.role}`}><span className="ai-chat-sender">{message.role==='user'?'Bạn':'TOBA'}</span><p>{message.text}</p>
           {message.preview && <RoomPreview preview={message.preview} onView={filters => {
             onApply(filters);
             setOpen(false);
             onViewResults();
           }} />}
         </div>)}
-        {busy&&<p role="status" className="ai-chat-thinking">An Cư AI đang trả lời…</p>}
+        {busy&&<p role="status" className="ai-chat-thinking">TOBA đang trả lời…</p>}
       </div>
       <form className="ai-chat-compose" onSubmit={e=>{e.preventDefault();e.stopPropagation();void send();}}>
         <p className="ai-chat-privacy">Tin nhắn và các lượt trao đổi gần đây được gửi đến Gemini. Tránh nhập thông tin cá nhân.</p>
         {error&&<p role="alert" className="ai-chat-error">{error} Bạn vẫn có thể dùng bộ lọc trên trang.</p>}
-        <div className="ai-chat-input"><textarea ref={input} aria-label="Tin nhắn cho AI" placeholder="Nhập tin nhắn…" rows={2} maxLength={1000} disabled={busy} value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void send();}}}/><button type="submit" aria-label="Gửi tin nhắn" disabled={busy||!text.trim()}><Send size={19}/></button></div>
+        <div className="ai-chat-input"><textarea ref={input} aria-label="Tin nhắn cho TOBA" placeholder="Nhập tin nhắn…" rows={2} maxLength={1000} disabled={busy} value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void send();}}}/><button type="submit" aria-label="Gửi tin nhắn" disabled={busy||!text.trim()}><Send size={19}/></button></div>
       </form>
     </section>}
-    <button type="button" className="ai-chat-launcher" aria-label={open?'Thu gọn chat AI':'Mở chat AI'} aria-expanded={open} aria-controls="ai-chat-panel" onClick={e => toggle(e.currentTarget)}>{open?<X size={25}/>:<MessageCircle size={27}/>}<span>AI</span></button>
+    <button type="button" className="ai-chat-launcher" aria-label={open?'Thu gọn TOBA':'Mở TOBA'} aria-expanded={open} aria-controls="ai-chat-panel" onClick={e => toggle(e.currentTarget)}>{open?<X size={25}/>:<MessageCircle size={27}/>}<span>TOBA</span></button>
   </div>,document.body)}
   </>;
 }
