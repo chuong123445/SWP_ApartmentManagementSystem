@@ -25,6 +25,9 @@ const scenario=async(page,baseURL,outputPath)=>{
    if(await p.getByRole('button',{name:'Phân tích nhu cầu bằng AI'}).count())throw Error('Old CTA remains');
    const entry=p.getByRole('button',{name:'TOBA',exact:true});await entry.click();
    const panel=p.getByRole('dialog',{name:'TOBA'});const input=panel.getByRole('textbox',{name:'Tin nhắn cho TOBA'});
+   await panel.getByText('Chào bạn, mình là TOBA!',{exact:true}).waitFor();
+   await panel.getByText(/trợ lý AI của An Cư PropTech/).waitFor();
+   if(chats)throw Error('Opening the introduction sent an AI request');
    await panel.getByRole('button',{name:'Tìm phòng theo ngân sách'}).click();
    if(!(await input.inputValue()).includes('dưới 5 triệu')||chats)throw Error('Starter did not fill an editable draft');
    await input.press('Escape');
