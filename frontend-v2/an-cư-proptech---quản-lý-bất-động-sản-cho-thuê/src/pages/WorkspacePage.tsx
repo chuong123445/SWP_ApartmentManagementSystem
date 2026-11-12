@@ -56,11 +56,11 @@ export function WorkspacePage() {
       {workspace.inventoryLoading && <p role="status" className="p-3 text-sm text-slate-500">Đang tải căn hộ...</p>}
       {workspace.inventoryError && <div role="alert" className="p-3 mb-4 bg-rose-50 text-rose-700 rounded-lg">{workspace.inventoryError}
         <button onClick={workspace.reloadInventory} className="ml-3 underline">Thử lại</button></div>}
-      {empty && navigation.activeTab !== 'home' ? <section className="bg-white border rounded-2xl p-6 md:p-10 space-y-4">
-        <h1 className="text-2xl font-bold">Thêm tài sản cho thuê</h1>
+      {empty && navigation.activeTab !== 'home' ? <section className="app-panel p-6 md:p-10 space-y-4">
+        <h1 className="app-page-title">Thêm tài sản cho thuê</h1>
         <p className="text-slate-600">Bạn chưa có tài sản. Bắt đầu với một căn/nhà cho thuê nguyên căn hoặc tài sản gồm nhiều căn/phòng.</p>
         <p className="text-sm text-slate-500">Tài sản mới được lưu nháp và cần kiểm duyệt trước khi công khai.</p>
-        <Link to="/account/properties" className="inline-block bg-emerald-600 text-white px-4 py-3 rounded-lg font-semibold">Mở quản lý tài sản</Link>
+        <Link to="/account/properties" className="inline-block bg-brand-600 text-white px-4 py-3 rounded-lg font-semibold">Mở quản lý tài sản</Link>
       </section> : <>
         {navigation.activeTab !== 'home' && propertyId !== 'all' && <p className="mb-4 text-sm text-slate-600">Tài sản đang chọn: <strong>{workspace.buildings.find(p => p.id === propertyId)?.name}</strong></p>}
         <WorkspaceRoutes workspace={scoped} navigation={navigation} />
