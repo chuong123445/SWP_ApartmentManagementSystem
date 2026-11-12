@@ -7,7 +7,7 @@ async function exerciseWizard(page, outputPath, origin) {
  const results=[];
  for(const width of [1440,390]){
   const context=await page.context().browser().newContext({viewport:{width,height:950}});
-  const p=await context.newPage();const errors=[];const unexpected=[];let current=null,complete=null,serial=10,failAI=true,declared=null;
+  const p=await context.newPage();p.setDefaultTimeout(8000);const errors=[];const unexpected=[];let current=null,complete=null,serial=10,failAI=true,declared=null;
   const user={id:'1',fullName:'Người kiểm thử',email:'wizard@example.invalid',roles:['CUSTOMER'],accountStatus:'ACTIVE',contactVerificationStatus:'VERIFIED',version:0};
   const respond=(r,value)=>r.fulfill({json:value});
   try{
@@ -38,6 +38,10 @@ async function exerciseWizard(page, outputPath, origin) {
      if(failAI)return r.fulfill({status:503,json:{message:'AI tạm thời không khả dụng'}});
      return respond(r,{sourceHash:'fixture-hash',propertyVersion:0,files:[],checklist:[],review:{fileId:body().fileId,readable:true,findings:[],extractedFields:[{field:'principalName',value:'Lê Minh Khoa',page:1},{field:'principalDocumentNumber',value:'999000000101',page:1},{field:'propertyName',value:'Nhà tự điền',page:1},{field:'propertyAddress',value:'12 Đường Kiểm Thử, Phường Linh Trung, Thành phố Thủ Đức, TP. Hồ Chí Minh',page:1},{field:'certificateNumber',value:'GCN-001',page:1},{field:'certificateIssueDate',value:'15/12/2025',page:1},{field:'certificateIssuePlace',value:'Văn phòng đăng ký đất đai TP. Hồ Chí Minh',page:1},{field:'rightsValidFrom',value:'05/06/2026',page:1},{field:'rightsValidUntil',value:'31/12/2028',page:1}]}});
     }
+    if(path==='/api/v1/me/listing-description/suggest'){
+     if(body().areaM2!=='24'||body().monthlyRent!=='4000000'||'address' in body()||'legal' in body())throw Error('Unexpected listing facts');
+     return respond(r,{description:'Phòng 24 m², giá thuê 4 triệu đồng mỗi tháng.'});
+    }
     if(path==='/api/v1/me/property-images')return respond(r,[{id:String(++serial),url:'/unused'}]);
     if(path.startsWith('/api/v1/property-images/'))return r.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aJ1sAAAAASUVORK5CYII=','base64')});
     if(path==='/api/v1/me/rental-properties')return respond(r,[]);
@@ -59,6 +63,14 @@ async function exerciseWizard(page, outputPath, origin) {
    await p.reload();await p.getByRole('heading',{name:'Các căn/phòng muốn cho thuê'}).waitFor();
    await p.getByLabel('Cách cho thuê').selectOption('MULTI_UNIT');
    for(const [label,value] of [['Mã căn/phòng *','P101'],['Diện tích (m²) *','24'],['Giá thuê/tháng (đ) *','4000000'],['Đơn giá điện (đ/kWh) *','3500'],['Đơn giá nước (đ/m³) *','15000']])await p.getByLabel(label,{exact:true}).fill(value);
+   const description=p.getByRole('textbox',{name:'Mô tả phòng',exact:true});
+   await description.fill('Mô tả của chủ nhà');
+   await p.getByRole('button',{name:'AI gợi ý mô tả',exact:true}).click();
+   await p.getByRole('button',{name:'Dùng gợi ý',exact:true}).waitFor();
+   if(await description.inputValue()!=='Mô tả của chủ nhà')throw Error('AI overwrote the description before applying');
+   await p.getByRole('button',{name:'Dùng gợi ý',exact:true}).click();
+   if(await description.inputValue()!=='Phòng 24 m², giá thuê 4 triệu đồng mỗi tháng.')throw Error('AI description was not applied');
+   await description.fill('Phòng 24 m², giá thuê 4 triệu đồng mỗi tháng. Liên hệ để xem phòng.');
    await p.getByRole('button',{name:'Thêm phòng',exact:true}).click();
    await p.getByRole('checkbox').nth(1).uncheck();
    await p.getByRole('button',{name:'Lưu và tiếp tục'}).click();
@@ -74,6 +86,7 @@ async function exerciseWizard(page, outputPath, origin) {
    await p.screenshot({path:outputPath(`listing-wizard-${width}.png`),fullPage:true});
    await p.getByRole('button',{name:'Gửi hồ sơ kiểm duyệt',exact:true}).click();
    await p.waitForURL('**/account/rental-properties');
+   if(complete.property.apartments[0].description!=='Phòng 24 m², giá thuê 4 triệu đồng mỗi tháng. Liên hệ để xem phòng.')throw Error('Edited description was not submitted');
    if(complete.property.apartments.length!==1||complete.property.apartments[0].electricityIndex!==null||complete.dossier.principalDocumentNumber!=='999000000101'||complete.dossier.rightsValidFrom!=='2026-06-05'||complete.dossier.certificateIssueDate!=='2025-12-15')throw Error('Incorrect completion command');
    if(errors.length||unexpected.length)throw Error(JSON.stringify({errors,unexpected}));
    results.push({width,passed:true,savedReload:true,automaticUpload:true,partialFailureRecovered:true,automaticFields:true,addressParts:true,fixedDMY:true,unselectedRoomIgnored:true,privatePublicImages:true});
@@ -86,7 +99,7 @@ async function exerciseSourceAndGroups(page, outputPath, origin) {
  const results=[];
  for(const width of [1440,390]){
   const context=await page.context().browser().newContext({viewport:{width,height:950}});
-  const p=await context.newPage();const errors=[];let imported=null,uploads=0,groupsQueries=[],roomQueries=[],unitUpdate=null;
+  const p=await context.newPage();p.setDefaultTimeout(8000);const errors=[];let imported=null,uploads=0,groupsQueries=[],roomQueries=[],unitUpdate=null;
   const user={id:'1',fullName:'Người kiểm thử',email:'fixture@example.invalid',roles:['CUSTOMER','OWNER'],accountStatus:'ACTIVE',contactVerificationStatus:'VERIFIED',version:0};
   try{
    p.on('pageerror',e=>errors.push(e.message));p.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
