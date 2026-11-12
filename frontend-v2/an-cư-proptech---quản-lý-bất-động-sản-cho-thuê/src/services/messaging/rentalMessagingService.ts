@@ -31,8 +31,13 @@ async function request<T>(url: string, options: RequestInit): Promise<T> {
   return response.json();
 }
 
-export function openConversation(apartmentId: string, signal: AbortSignal) {
-  return request<Conversation>(`${root}/apartments/${encodeURIComponent(apartmentId)}`, { method: 'POST', signal });
+export type ConversationTarget = { apartmentId: string } | { contractId: string };
+
+export function openConversation(target: ConversationTarget, signal: AbortSignal) {
+  const path = 'contractId' in target
+    ? `contracts/${encodeURIComponent(target.contractId)}`
+    : `apartments/${encodeURIComponent(target.apartmentId)}`;
+  return request<Conversation>(`${root}/${path}`, { method: 'POST', signal });
 }
 
 export function listConversations(page: number, signal: AbortSignal) {
