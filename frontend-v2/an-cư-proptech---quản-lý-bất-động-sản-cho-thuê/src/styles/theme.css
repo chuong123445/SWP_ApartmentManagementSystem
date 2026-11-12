@@ -1,0 +1,84 @@
+@theme {
+  --font-sans: "Be Vietnam Pro", Arial, sans-serif;
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #1d4ed8;
+  --color-brand-700: #1e40af;
+  --color-brand-800: #173780;
+  --color-brand-900: #102956;
+  --color-brand-950: #0b1e40;
+}
+
+:root {
+  --app-primary: var(--color-brand-600);
+  --app-primary-hover: var(--color-brand-700);
+  --app-secondary: #1676a4;
+  --app-accent: #f59e0b;
+  --app-background: #f3f7fd;
+  --app-surface: #fff;
+  --app-text: #132747;
+  --app-muted: #52647c;
+  --app-border: #d9e4f2;
+  --app-focus: #2563eb;
+  --app-success: #067647;
+  --app-warning: #92400e;
+  --app-error: #b42318;
+  --app-radius: 14px;
+  --app-shadow: 0 1px 2px #10295608, 0 8px 24px #10295608;
+}
+
+@layer base {
+  body {
+    background: var(--app-background);
+    color: var(--app-text);
+    font-family: var(--font-sans);
+  }
+
+  :where(button, a, input, select, textarea, summary):focus-visible {
+    outline: 2px solid var(--app-focus);
+    outline-offset: 3px;
+  }
+
+  :where(button, input, select, textarea):disabled {
+    cursor: not-allowed;
+  }
+}
+
+.ancu-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: .65rem;
+  color: var(--color-brand-950);
+  flex-shrink: 0;
+}
+
+.ancu-brand img {
+  display: block;
+  width: 50px;
+  height: 46px;
+  object-fit: contain;
+  padding: 4px;
+  background: #f5f8fa;
+  border-radius: 10px;
+}
+
+.ancu-brand-name {
+  display: grid;
+  gap: .15rem;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -.035em;
+  line-height: 1.15;
+}
+
+.ancu-brand-name small {
+  font-size: .57rem;
+  font-weight: 700;
+  letter-spacing: .18em;
+}
+
+.ancu-brand-on-dark { color: #fff; }
