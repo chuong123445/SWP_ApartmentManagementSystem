@@ -138,7 +138,7 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
             </div>
             {onPublication && <div className="space-y-2"><button type="button" disabled={publicationBusy || (room.publicationStatus !== 'PUBLISHED' && room.propertyApprovalStatus !== 'APPROVED')} onClick={async () => {
               setPublicationError('');setPublicationBusy(true);try { await onPublication(room, room.publicationStatus === 'PUBLISHED' ? 'HIDDEN' : 'PUBLISHED'); } catch (e) { setPublicationError(e instanceof Error ? e.message : 'Không cập nhật được đăng tin.'); } finally { setPublicationBusy(false); }
-            }} className="bg-emerald-600 text-white px-3 py-2 rounded-lg font-semibold disabled:opacity-50">{publicationBusy ? 'Đang cập nhật...' : room.publicationStatus === 'PUBLISHED' ? 'Ẩn tin căn hộ' : 'Công khai căn hộ'}</button>{room.propertyApprovalStatus !== 'APPROVED' && <p>Cần tài sản được Admin duyệt trước khi công khai.</p>}{publicationError && <p role="alert" className="text-rose-700">{publicationError}</p>}</div>}
+            }} className="bg-brand-600 text-white px-3 py-2 rounded-lg font-semibold disabled:opacity-50">{publicationBusy ? 'Đang cập nhật...' : room.publicationStatus === 'PUBLISHED' ? 'Ẩn tin căn hộ' : 'Công khai căn hộ'}</button>{room.propertyApprovalStatus !== 'APPROVED' && <p>Cần tài sản được Admin duyệt trước khi công khai.</p>}{publicationError && <p role="alert" className="text-rose-700">{publicationError}</p>}</div>}
           </div>
 
           {/* Tenant Profile if occupied */}

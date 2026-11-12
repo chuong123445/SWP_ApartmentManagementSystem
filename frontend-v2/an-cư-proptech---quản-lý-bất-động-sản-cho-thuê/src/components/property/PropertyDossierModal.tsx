@@ -82,7 +82,7 @@ export function PropertyDossierModal({ propertyId, onClose, onSaved, selfService
           }} /></label>)}
           <ul className="space-y-2">{files.map(file => <li key={file.id} className="text-sm flex justify-between gap-2 min-w-0"><span className="break-all">{file.filename} · {evidenceLabels[file.purpose]}</span><button type="button" onClick={() => setFiles(prev => prev.filter(f => f.id !== file.id))} className="shrink-0 text-rose-700 underline">Bỏ khỏi hồ sơ</button></li>)}</ul>
           <OwnerPrecheckPanel propertyId={propertyId} draft={draft} selfService={selfService}/>
-          <button type="submit" className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold text-sm">{busy ? 'Đang xử lý...' : history.length ? 'Gửi lại hồ sơ' : 'Gửi hồ sơ kiểm duyệt'}</button>
+          <button type="submit" className="bg-brand-600 text-white px-4 py-2 rounded-lg font-semibold text-sm">{busy ? 'Đang xử lý...' : history.length ? 'Gửi lại hồ sơ' : 'Gửi hồ sơ kiểm duyệt'}</button>
         </fieldset></form>}
         {!editable && property?.approvalStatus === 'APPROVED' && <p className="text-sm text-emerald-700">Tài sản đã được duyệt. Bạn có thể công khai từng căn trong Quản lý căn hộ.</p>}
         {verification.loading&&<p role="status">Đang kiểm tra căn cước VNeID...</p>}{verification.error&&<p role="alert">{verification.error}<button onClick={verification.reload} className="ml-2 underline">Tải lại xác thực</button></p>}{!verification.loading&&!verification.error&&!verified&&<p className="text-amber-800">Cần căn cước VNeID đã xác thực để gửi hồ sơ. <Link to="/account/verification" className="underline" onClick={onClose}>Xác thực VNeID</Link></p>}

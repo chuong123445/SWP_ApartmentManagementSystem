@@ -7,7 +7,7 @@ export function AccountSettingsPage() {
   const verification = useAccountVerification();
   const location = useLocation();
   const linkClass = 'inline-block mt-4 border border-emerald-300 text-emerald-700 rounded-lg px-4 py-2 text-sm font-semibold';
-  return <AccountLayout><h1 className="text-2xl font-bold mb-5">Cài đặt tài khoản</h1>
+  return <AccountLayout><h1 className="app-page-title mb-5">Cài đặt tài khoản</h1>
     {loading && <p role="status">Đang tải cài đặt...</p>}
     {error && <p role="alert" className="text-rose-700">{error}<button onClick={reload} className="ml-3 underline">Tải lại thông tin</button></p>}
     {typeof location.state?.notice === 'string' && <p role="status" className="bg-emerald-50 p-3 rounded-lg mb-4">{location.state.notice}</p>}

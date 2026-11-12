@@ -87,7 +87,7 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
               Căn hộ thuộc tài sản của bạn
             </span>
           </div>
-          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+          <h1 className="app-page-title flex items-center gap-2">
             <span>Danh sách căn hộ</span>
             <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full font-semibold">
               {filteredRooms.length}/{rooms.length} căn hộ
@@ -101,7 +101,7 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
         <button
           onClick={onOpenAddRoomModal}
           id="btn-add-new-room"
-          className="flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
+          className="flex items-center justify-center gap-1.5 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
         >
           <Plus className="w-4 h-4" />
           <span>Thêm Căn Hộ Mới</span>
@@ -157,7 +157,7 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
           <select
             value={floorFilter}
             onChange={(e) => setFloorFilter(e.target.value)}
-            className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-700 font-medium focus:outline-none focus:border-emerald-500"
+            className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-700 font-medium focus:outline-none focus:border-brand-500"
           >
             <option value="all">Tất cả tầng</option>
             <option value="1">Tầng 1</option>
@@ -178,7 +178,7 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
               key={room.id}
               id={`room-card-${room.roomNumber.toLowerCase().replace('.', '')}`}
               onClick={() => onOpenRoomModal(room)}
-              className="bg-white rounded-xl border border-slate-200 hover:border-emerald-500 p-4 shadow-xs transition-all hover:shadow-md cursor-pointer flex flex-col justify-between group"
+              className="bg-white rounded-xl border border-slate-200 hover:border-brand-500 p-4 shadow-xs transition-all hover:shadow-md cursor-pointer flex flex-col justify-between group"
             >
               <div>
                 <ApartmentImage src={room.image} alt={`Ảnh căn hộ ${room.roomNumber}`} className="w-full aspect-[4/3] object-cover rounded-lg bg-slate-100 mb-3" />
@@ -186,7 +186,7 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <div>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-base font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                      <span className="text-base font-bold text-slate-900 group-hover:text-brand-700 transition-colors">
                         {room.roomNumber}
                       </span>
                       {room.propertyApprovalStatus === 'APPROVED' && <span title="Tài sản đã được duyệt"><ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /></span>}
@@ -251,7 +251,7 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
               </div>
 
               {/* Action hint */}
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 group-hover:text-emerald-600">
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 group-hover:text-brand-600">
                 <span className="font-medium text-[11px]">Chi tiết & Pháp lý Sổ hồng</span>
                 <ArrowRight className="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" />
               </div>

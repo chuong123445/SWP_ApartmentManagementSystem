@@ -184,7 +184,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ buildings, onClose, 
             <button
               type="submit"
               disabled={isSaving||!buildings.length}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold shadow-xs disabled:opacity-50"
+              className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-bold shadow-xs disabled:opacity-50"
             >
               {isSaving ? 'Đang lưu...' : 'Thêm Phòng'}
             </button>

@@ -79,7 +79,7 @@ export function AccountsPage() {
   }
 
   return <section aria-label="Quản lý tài khoản người dùng" className="space-y-5">
-    <h1 className="text-2xl font-bold">Tài khoản người dùng</h1>
+    <h1 className="app-page-title">Tài khoản người dùng</h1>
     <form className="flex flex-wrap gap-3 items-end" onSubmit={event => {
       event.preventDefault(); setQuery(search.trim()); setPage(0);
     }}>
@@ -100,7 +100,7 @@ export function AccountsPage() {
         {data?.items.map(account => <article key={account.id} aria-label={'Tài khoản ' + account.email}
           className="rounded-xl border bg-white p-4 flex flex-wrap items-center gap-3 min-w-0">
           <Link to={'/admin/accounts/' + encodeURIComponent(account.id)} aria-label={'Xem tài khoản ' + account.email}
-            className="flex-1 min-w-0 text-left space-y-1 rounded-lg focus-visible:outline-emerald-600">
+            className="flex-1 min-w-0 text-left space-y-1 rounded-lg focus-visible:outline-brand-600">
           <h2 className="font-semibold break-words text-emerald-800">{account.fullName}</h2>
           <p className="break-all">{account.email}</p>
           <p className="text-sm text-slate-600">#{account.id} · {account.roles.map(role => roles[role]).join(' · ')} · {account.deletedAt ? filters.DELETED : filters[account.status]}</p>
@@ -134,7 +134,7 @@ export function AccountsPage() {
           {actionError && <p role="alert" className="text-rose-700">{actionError}</p>}
           <div className="flex flex-wrap gap-2">
             <button disabled={busy || !reason.trim() || (selected.action === 'DELETE' && !confirmed)}
-              className={button + ' bg-emerald-700 text-white'}>{busy ? 'Đang xử lý...' : 'Xác nhận'}</button>
+              className={button + ' bg-brand-700 text-white'}>{busy ? 'Đang xử lý...' : 'Xác nhận'}</button>
             <button type="button" disabled={busy} className={button} onClick={() => setSelected(null)}>Hủy</button>
           </div>
         </form>
