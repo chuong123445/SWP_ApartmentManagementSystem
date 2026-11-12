@@ -2,9 +2,11 @@ package com.ancu.proptech.controller.messaging;
 
 import com.ancu.proptech.model.apartment.Apartment;
 import com.ancu.proptech.model.auth.AuthAccount;
+import com.ancu.proptech.model.contract.RentalContract;
 import com.ancu.proptech.model.property.Property;
 import com.ancu.proptech.repository.apartment.ApartmentRepository;
 import com.ancu.proptech.repository.auth.AuthAccountRepository;
+import com.ancu.proptech.repository.contract.RentalContractRepository;
 import com.ancu.proptech.repository.property.PropertyRepository;
 import com.ancu.proptech.service.auth.AuthService;
 import org.junit.jupiter.api.Test;
@@ -20,6 +22,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Map;
 import java.util.UUID;
 
@@ -35,6 +38,7 @@ class RentalMessagingIntegrationTests {
     @Autowired AuthAccountRepository accounts;
     @Autowired PropertyRepository properties;
     @Autowired ApartmentRepository apartments;
+    @Autowired RentalContractRepository contracts;
     @Autowired AuthService auth;
     @Autowired PasswordEncoder encoder;
 
@@ -80,6 +84,35 @@ class RentalMessagingIntegrationTests {
         apartments.saveAndFlush(room);
         mvc.perform(post(ROOT + "/apartments/" + room.getId())
             .header("Authorization", token(account(AuthAccount.Role.CUSTOMER)))).andExpect(status().isNotFound());
+    }
+
+    @Test void activeTenantCanStartConversationForOccupiedHiddenRoom() throws Exception {
+        var owner = account(AuthAccount.Role.OWNER);
+        var tenant = account(AuthAccount.Role.CUSTOMER);
+        var apartment = room(owner);
+        apartment.setAvailability(Apartment.Availability.OCCUPIED);
+        apartment.setPublicationStatus(Apartment.PublicationStatus.HIDDEN);
+        apartments.saveAndFlush(apartment);
+        var contract = new RentalContract();
+        contract.setApartment(apartment);
+        contract.setCustomer(tenant);
+        contract.setStatus(RentalContract.Status.ACTIVE);
+        contract.setStartDate(LocalDate.now().minusDays(1));
+        contract.setEndDate(LocalDate.now().plusMonths(1));
+        contract.setMonthlyRent(apartment.getAdvertisedMonthlyRent());
+        contract.setElectricityUnitPrice(BigDecimal.ZERO);
+        contract.setWaterUnitPrice(BigDecimal.ZERO);
+        contracts.saveAndFlush(contract);
+
+        String open = ROOT + "/apartments/" + apartment.getId();
+        mvc.perform(post(open).header("Authorization", token(account(AuthAccount.Role.CUSTOMER))))
+            .andExpect(status().isNotFound());
+        String tenantToken = token(tenant);
+        String conversation = id(mvc.perform(post(open).header("Authorization", tenantToken)).andExpect(status().isOk()));
+        mvc.perform(post(open).header("Authorization", tenantToken)).andExpect(jsonPath("$.id").value(conversation));
+        String thread = ROOT + "/" + conversation + "/messages";
+        send(thread, tenantToken, UUID.randomUUID(), "Em muốn hỏi về phòng đang thuê").andExpect(status().isOk());
+        send(thread, token(owner), UUID.randomUUID(), "Anh nghe đây").andExpect(status().isOk());
     }
 
     private ResultActions send(String url, String token, UUID key, String body) throws Exception {

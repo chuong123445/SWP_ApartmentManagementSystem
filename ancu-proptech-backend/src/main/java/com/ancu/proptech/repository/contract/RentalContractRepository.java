@@ -26,6 +26,7 @@ public interface RentalContractRepository extends JpaRepository<RentalContract,L
     @EntityGraph(attributePaths={"apartment","customer"})
     List<RentalContract> findByApartmentPropertyOwnerIdAndStatusOrderByStartDateDescIdAsc(Long ownerId,RentalContract.Status status);
     Optional<RentalContract> findByApartmentIdAndCustomerId(Long apartmentId,Long customerId);
+    boolean existsByApartmentIdAndCustomerIdAndStatus(Long apartmentId, Long customerId, RentalContract.Status status);
     Optional<RentalContract> findFirstByApartmentIdAndCustomerIdOrderByStartDateDescIdDesc(Long apartmentId,Long customerId);
     List<RentalContract> findByRenewalOfContractIdAndStatusNot(Long id,RentalContract.Status status);
     List<RentalContract> findByRenewalOfContractIdOrderByIdDesc(Long id);
