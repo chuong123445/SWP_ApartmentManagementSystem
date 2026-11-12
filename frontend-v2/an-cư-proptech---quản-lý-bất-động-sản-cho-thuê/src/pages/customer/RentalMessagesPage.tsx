@@ -185,18 +185,21 @@ function ConversationThread({ id }: { id: string }) {
     </div>}
     {!conversation && !loadError && <p role="status" className="p-5 text-slate-600">Đang tải cuộc trò chuyện…</p>}
     {conversation && <>
-      <header className="border-b border-slate-100 p-4 sm:px-6">
-        <h2 className="break-words font-bold">{conversation.otherName}</h2>
-        <Link to={`/apartments/${encodeURIComponent(conversation.apartmentId)}`} className={`${linkStyle} break-words text-sm`}>{conversation.apartmentTitle}</Link>
+      <header className="flex items-center gap-3 border-b border-brand-100 p-4 sm:px-6">
+        <span aria-hidden="true" className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-100 text-brand-800"><MessageCircle size={21} /></span>
+        <div className="min-w-0">
+          <h2 className="break-words font-bold text-brand-950">{conversation.otherName}</h2>
+          <Link to={`/apartments/${encodeURIComponent(conversation.apartmentId)}`} className={`${linkStyle} break-words text-sm`}>{conversation.apartmentTitle}</Link>
+        </div>
       </header>
-      <div ref={log} role="log" aria-label="Lịch sử tin nhắn" className="min-h-48 max-h-[50dvh] overflow-y-auto bg-brand-50 p-4 sm:p-6">
+      <div ref={log} role="log" aria-label="Lịch sử tin nhắn" className="min-h-44 max-h-[50dvh] overflow-y-auto overscroll-contain bg-[#f5f8fd] p-3 sm:p-6">
         {hasOlder && <button type="button" className={linkStyle} disabled={loadingOlder} onClick={() => void loadOlder()}>{loadingOlder ? 'Đang tải…' : 'Tải tin nhắn cũ'}</button>}
-        {!messages.length && <p className="text-sm text-slate-600">Bạn có thể hỏi về phòng hoặc hẹn thời gian xem phòng.</p>}
+        {!messages.length && <p className="py-8 text-center text-sm text-slate-600">Bạn có thể hỏi về phòng hoặc hẹn thời gian xem phòng.</p>}
         <ol className="space-y-3">
           {messages.map(message => <li key={message.id} className={`flex ${message.mine ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${message.mine ? 'bg-brand-700 text-white' : 'border border-slate-200 bg-white text-slate-900'}`}>
+            <div className={`min-w-0 max-w-[88%] rounded-2xl px-3 py-2.5 shadow-xs sm:max-w-[75%] sm:px-4 ${message.mine ? 'rounded-br-sm bg-brand-700 text-white' : 'rounded-bl-sm border border-slate-200 bg-white text-slate-900'}`}>
               <span className="sr-only">{message.mine ? 'Bạn' : conversation.otherName}</span>
-              <p className="whitespace-pre-wrap break-words text-sm">{message.body}</p>
+              <p className="whitespace-pre-wrap [overflow-wrap:anywhere] text-sm leading-relaxed">{message.body}</p>
               <time dateTime={message.sentAt} className="mt-1 block text-xs opacity-80">{messageDate.format(new Date(message.sentAt))}</time>
             </div>
           </li>)}
@@ -206,8 +209,8 @@ function ConversationThread({ id }: { id: string }) {
         {actionError && <p role="alert" className="mb-2 text-sm text-rose-700">{actionError}</p>}
         <div className="flex items-end gap-2">
           <textarea aria-label="Nội dung tin nhắn" placeholder="Nhập tin nhắn…" rows={2} maxLength={2000} value={text}
-            disabled={sending} onChange={event => setText(event.target.value)} className="min-w-0 flex-1 rounded-xl border border-slate-300 p-3 text-sm" />
-          <button type="submit" disabled={sending || !text.trim()} className="inline-flex items-center gap-2 rounded-xl bg-brand-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">
+            disabled={sending} onChange={event => setText(event.target.value)} className="min-w-0 flex-1 resize-y rounded-xl border border-brand-200 bg-brand-50 p-3 text-base sm:text-sm" />
+          <button type="submit" disabled={sending || !text.trim()} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-brand-700 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-50 sm:px-4">
             <Send size={16} aria-hidden="true" />{sending ? 'Đang gửi…' : 'Gửi'}
           </button>
         </div>
