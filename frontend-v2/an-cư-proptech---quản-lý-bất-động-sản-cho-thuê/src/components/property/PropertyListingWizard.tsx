@@ -1,3 +1,4 @@
+import { DescriptionSuggestion } from './DescriptionSuggestion';
 import { useEffect,useRef,useState,type FormEvent } from 'react';
 import { useNavigate,useSearchParams } from 'react-router';
 import { evidenceLabels,rightLabels,type Dossier,type EvidenceFile,type EvidencePurpose } from '@/types/dossier';
@@ -117,7 +118,7 @@ export function PropertyListingWizard({rightType}:{rightType:Dossier['rightType'
    {state.step===0&&<><h2 className="text-xl font-bold">Giấy tờ quyền cho thuê</h2><p>PDF/JPEG/PNG, tối đa 10 MB/tệp và 20 tệp. Giấy tờ được lưu riêng tư, không dùng làm ảnh quảng cáo.</p>
      {[...requiredEvidence(rightType),'SUPPORTING' as EvidencePurpose].map(p=><label key={p} className="block border rounded-lg p-3 text-sm">{evidenceLabels[p]}{p!=='SUPPORTING'?' *':''}<input className="block mt-2 w-full" type="file" multiple accept="application/pdf,image/png,image/jpeg" onChange={e=>{const chosen=Array.from(e.target.files??[]);e.target.value='';void run(()=>upload(p,chosen));}}/></label>)}
      <ul className="space-y-2">{files.map(f=><li key={f.id} className="flex justify-between gap-3 text-sm"><span className="break-all">{f.filename} · {evidenceLabels[f.purpose]}</span><button type="button" className="shrink-0 underline" onClick={()=>void run(async()=>{await persist({...state,excludedFiles:[...state.excludedFiles,f.id],suggestions:state.suggestions.filter(s=>s.fileId!==f.id),confirmed:false});})}>Bỏ</button></li>)}</ul>
-     <div className="rounded-xl bg-emerald-50 p-4 space-y-2"><p className="text-sm">Giấy tờ tải lên được tự động gửi đến Gemini để đọc và điền thông tin. Sau khi xử lý xong, tiếp tục để xem các ô đã điền.</p>{busy&&<p role="status">Đang tải và đọc giấy tờ…</p>}{scanIssues.map((issue,index)=><p key={index} className="text-sm text-amber-900 break-words">{issue}</p>)}</div>
+     {(busy||scanIssues.length>0)&&<div className="rounded-xl bg-emerald-50 p-4 space-y-2">{busy&&<p role="status">Đang tải và đọc giấy tờ…</p>}{scanIssues.map((issue,index)=><p key={index} className="text-sm text-amber-900 break-words">{issue}</p>)}</div>}
    </>}
    {state.step===1&&<><h2 className="text-xl font-bold">Xác nhận tài sản và quyền cho thuê</h2>
      {conflicts.length>0&&<p role="status" className="text-sm text-amber-900">Các tệp có giá trị khác nhau cho {conflicts.map(([,label])=>label).join(", ")}. Đối chiếu bản gốc trước khi chọn.</p>}
@@ -135,7 +136,14 @@ export function PropertyListingWizard({rightType}:{rightType:Dossier['rightType'
        {([['areaM2','Diện tích (m²)',true,'0.01'],['advertisedMonthlyRent','Giá thuê/tháng (đ)',true,'0.01'],['deposit','Cọc thỏa thuận (đ)',false,'0'],['electricityUnitPrice','Đơn giá điện (đ/kWh)',true,'0'],['waterUnitPrice','Đơn giá nước (đ/m³)',true,'0']] as const).map(([key,label,required,min])=><label key={key} className="text-sm">{label}{required?' *':''}<input className={field} type="number" step="0.01" min={min} max={key==='areaM2'?'9999999999.99':'9999999999999.99'} required={required} value={u[key]??''} onChange={e=>updateUnit(u.key,{[key]:e.target.value||null})}/></label>)}
        {([['floor','Tầng',0],['maxOccupants','Số người tối đa',1],['bedrooms','Phòng ngủ',0],['bathrooms','Phòng tắm',0]] as const).map(([key,label,min])=><label key={key} className="text-sm">{label}<input className={field} type="number" min={min} max={key==='floor'?200:100} step="1" required={key==='floor'} value={u[key]??''} onChange={e=>updateUnit(u.key,{[key]:e.target.value===''?null:Number(e.target.value)})}/></label>)}
        <label className="text-sm sm:col-span-2">Tiện ích (phân cách bằng dấu phẩy)<input className={field} value={u.amenitiesText??u.amenities.join(', ')} onChange={e=>updateUnit(u.key,{amenitiesText:e.target.value,amenities:e.target.value.split(',').map(x=>x.trim()).filter(Boolean)})}/></label>
-       <label className="text-sm sm:col-span-2">Mô tả phòng<textarea className={field} rows={3} maxLength={3000} value={u.description} onChange={e=>updateUnit(u.key,{description:e.target.value})}/></label>
+       <div className="sm:col-span-2">
+         <label className="block text-sm">Mô tả phòng<textarea className={field} rows={3} maxLength={3000} value={u.description} onChange={e=>updateUnit(u.key,{description:e.target.value})}/></label>
+         <DescriptionSuggestion facts={{
+           areaM2: u.areaM2, monthlyRent: u.advertisedMonthlyRent,
+           floor: u.floor, maxOccupants: u.maxOccupants, bedrooms: u.bedrooms,
+           bathrooms: u.bathrooms, amenities: u.amenities,
+         }} onApply={description => updateUnit(u.key, { description })} />
+       </div>
        </div></details>}
        {index===0&&state.rentalMode==='MULTI_UNIT'&&<button type="button" className={button} onClick={()=>change({units:state.units.map((target,i)=>i&&target.selected?copyCommonTerms(u,target):target)})}>Áp dụng điện, nước, cọc, số người và tiện ích cho phòng đã chọn</button>}
      </section>)}

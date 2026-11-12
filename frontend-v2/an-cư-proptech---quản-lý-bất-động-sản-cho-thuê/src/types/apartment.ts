@@ -4,6 +4,7 @@ export interface ApartmentSummary {
   lessorRelationship?: 'OWNERSHIP'|'AUTHORIZATION'|'SUBLEASE'|'UNSPECIFIED';
   id: string; title: string; address: string; city: string; district: string;
   areaM2: string; advertisedMonthlyRent: string; thumbnail: string;
+  maxOccupants?: number | null;
   availability: ApartmentAvailability; bedrooms: number; bathrooms: number;
 }
 export interface ApartmentDetail extends Omit<ApartmentSummary, 'thumbnail'> {

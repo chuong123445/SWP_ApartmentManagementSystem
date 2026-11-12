@@ -7,7 +7,7 @@ import { getDrafts } from '@/services/contract/contractService';
 import { formatRent } from '@/utils/format';
 import type { ContractDraft } from '@/types/contract';
 import { useAuth } from '@/hooks/useAuth';
-import { contractActionLabel, contractLifecycleActions, contractStatusLabel } from '@/utils/contractDisplay';
+import { contractActionLabel, contractLifecycleActions, contractStatusLabel, contractListTitle } from '@/utils/contractDisplay';
 import { ContractListActionModal } from '@/components/contract/ContractListActionModal';
 import { useTenancyContext } from '@/contexts/TenancyContext';
 export function ContractDraftList({ owner = false, propertyId, onLoaded }: { owner?: boolean; propertyId?: string; onLoaded?: (drafts: ContractDraft[]) => void }) {
@@ -26,12 +26,13 @@ export function ContractDraftList({ owner = false, propertyId, onLoaded }: { own
     {!loading && !error && <>{!items.length && (owner || (!tenancy.loading && !tenancy.error && !legacy.length)) && <p className="text-sm text-slate-500">Chưa có hợp đồng được tạo từ yêu cầu thuê của bạn.</p>}{!owner && tenancy.loading && <p role="status" className="text-sm text-slate-500">Đang tải lịch sử thuê...</p>}<div className="grid md:grid-cols-2 gap-4">{items.map(d => {
       const actions = contractLifecycleActions(d, user?.id);
       return <article key={d.id} id={`contract-${d.id}`} tabIndex={-1} data-testid="contract-draft-card" className={`bg-white border rounded-xl p-5 space-y-3 min-w-0 ${focusId === d.id ? 'border-emerald-600 ring-2 ring-emerald-100' : 'border-slate-200'}`}>
-        <span className="text-xs rounded-full px-3 py-1 bg-amber-50 text-amber-800">{signingLabel(d)}</span><h3 className="font-bold">{d.snapshot.asset.roomNumber} · {d.snapshot.asset.title}</h3><p className="text-sm text-slate-500 break-words">{owner ? d.snapshot.customer.fullName : d.snapshot.owner.fullName}</p><p className="text-sm">{d.startDate} → {d.endDate}</p><p className="font-semibold text-emerald-700">{formatRent(d.monthlyRent)} / tháng</p><p className="text-xs text-slate-500 break-all">{d.contractNumber}</p>
+        <span className="text-xs rounded-full px-3 py-1 bg-amber-50 text-amber-800">{signingLabel(d)}</span><h3 className="font-bold">{contractListTitle(d)}</h3><p className="text-sm text-slate-500 break-words">{owner ? d.snapshot.customer.fullName : d.snapshot.owner.fullName}</p><p className="text-sm">{d.startDate} → {d.endDate}</p><p className="font-semibold text-emerald-700">{formatRent(d.monthlyRent)} / tháng</p><p className="text-xs text-slate-500 break-all">{d.contractNumber}</p>
         <div className="flex flex-wrap items-center gap-3">{owner && d.status === 'DRAFT' && d.cancellationState !== 'PENDING' && !d.signing?.ownerSignedAt && !d.signing?.customerSignedAt ? <button onClick={() => setRequestId(d.rentalRequestId)} className="text-sm font-semibold text-emerald-700">{contractActionLabel(d, user?.id)}</button> : <Link to={`/contracts/${d.id}`} className="text-sm font-semibold text-emerald-700">{contractActionLabel(d, user?.id)} →</Link>}
           {!d.lifecycle?.previousContractId && (d.status==='DRAFT'||d.status==='CANCELLED') && <button className="text-sm text-red-700 underline" onClick={()=>setCancelRequest(d.rentalRequestId)}>Hủy / lịch sử làm hợp đồng</button>}
           {!owner && actions.canRequest && <button className="rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-semibold" onClick={() => setAction({ id: d.id, kind: 'renewal' })}>Gửi yêu cầu thuê tiếp</button>}
           {owner && actions.canHandover && <button className="rounded-lg bg-emerald-700 text-white px-4 py-2 text-sm font-semibold" onClick={() => setAction({ id: d.id, kind: 'handover' })}>Lập biên bản bàn giao</button>}
         </div>
+        {['ACTIVE','ENDED'].includes(d.status)&&<Link to={`/contracts/${d.id}/handover`} className="inline-block text-sm font-semibold text-emerald-800 underline">Biên bản bàn giao / ký</Link>}
         {d.lifecycle?.renewalRequest && <p className="text-sm text-slate-600">Thuê tiếp: {{ PENDING: 'Chờ chủ nhà xử lý', ACCEPTED: 'Đã chấp nhận', REJECTED: 'Đã từ chối', FULFILLED: 'Đã ký kỳ mới', CANCELLED: 'Đã hủy' }[d.lifecycle.renewalRequest.status]}</p>}
         {d.lifecycle?.handover?.status === 'PENDING' && <p className="text-sm text-slate-600">Bàn giao đang chờ người thuê xác nhận.</p>}
       </article>;

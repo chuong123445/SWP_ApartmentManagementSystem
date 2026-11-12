@@ -25,3 +25,17 @@ Chức năng mới độc lập với bảng contract_handovers cũ vốn chứa
 ## Giới hạn
 
 Chỉ contract có bản authoring/saved draft hỗ trợ luồng này; không tạo snapshot cho legacy fixture thiếu bản nội dung. Không tự tính báo trước từ ngôn ngữ tự nhiên, tiền thuê tháng lẻ, tranh chấp pháp lý, chi phí hư hỏng, quyết toán/hoàn cọc hoặc thanh toán khoản phạt. utilityAmount là đối chiếu theo chỉ số/đơn giá, chưa tạo chứng từ thu. Không chặn kết thúc vì hóa đơn SENT còn nợ; phải xử lý invoice DRAFT để khóa chuỗi trước khi trả phòng.
+
+
+## Cập nhật đã được người dùng chấp thuận ngày 09/11/2026
+
+Phần này thay thế cơ chế hoàn tất bàn giao một bước ở trên.
+
+- Chủ nhà nhập ngày dd/MM/yyyy, địa điểm, danh mục thiết bị/tài sản, số chìa khóa, hiện trạng và ghi chú. Thông tin hai bên và căn hộ lấy từ hợp đồng đã lưu.
+- Chốt công tơ là phụ lục tùy chọn. Khi không chọn, hồ sơ không đòi mốc đầu hoặc chỉ số cuối và không thay mốc công tơ căn hộ khi hoàn tất.
+- Lưu biên bản tạo nội dung bất biến và hash riêng. Hai bên mở PDF, vẽ chữ ký bằng tài khoản của mình, xác nhận nội dung. Cho phép ký theo cả hai thứ tự.
+- Chữ ký thứ nhất giữ ACTIVE/OCCUPIED. Chữ ký thứ hai mới chuyển ENDED/VACANT trong cùng transaction. Hóa đơn SENT và công nợ giữ nguyên. Publication không tự thay đổi.
+- Bất đồng hoặc lập lại làm mất hiệu lực chữ ký trên bản hiện tại. Sự kiện giữ nội dung và chữ ký trước/sau để truy vết. Bản cũ chưa có PDF yêu cầu chủ nhà lập lại, không dựng chữ ký lịch sử.
+- V63 bổ sung document_json/hash, hai chữ ký PNG và thời gian ký nullable vào contract_exit_cases. Hợp đồng thuê gốc và chữ ký thuê giữ nguyên.
+- Endpoint xác nhận cũ không còn kết thúc hợp đồng, trả HANDOVER_SIGNATURES_REQUIRED sau các kiểm tra quyền và trạng thái. Biên bản legacy còn đọc và hủy được.
+- PDF và ký chỉ dành đúng các bên, no-store. Chữ ký sử dụng bộ kiểm tra ảnh đang dùng cho hợp đồng, cùng hash/sourceVersion, parent lock và kiểm tra competing claim/invoice draft.

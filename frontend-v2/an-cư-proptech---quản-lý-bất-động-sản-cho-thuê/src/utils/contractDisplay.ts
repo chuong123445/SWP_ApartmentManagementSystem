@@ -25,3 +25,8 @@ export function contractActionLabel(draft: ContractDraft, accountId?: string) {
     accountId === draft.signing?.customerAccountId ? draft.signing?.customerSignedAt : null;
   return draft.status !== 'DRAFT' || draft.signing?.state === 'SIGNED' || signedAt ? 'Xem hợp đồng' : 'Xem / ký hợp đồng';
 }
+
+export function contractListTitle(draft: ContractDraft) {
+  if (/^\[MẪU\]/iu.test(draft.snapshot.asset.title)) return `Hợp đồng thuê · ${draft.contractNumber}`;
+  return `${draft.snapshot.asset.roomNumber} · ${draft.snapshot.asset.title}`;
+}

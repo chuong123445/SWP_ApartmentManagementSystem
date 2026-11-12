@@ -5,4 +5,4 @@ public record InvoiceResponse(@com.fasterxml.jackson.annotation.JsonFormat(shape
         String tenantName,String period,LocalDate dueDate,String monthlyRent,
         String electricityStartReading,String electricityEndReading,String electricityQuantity,String electricityUnitPrice,String electricityAmount,
         String waterStartReading,String waterEndReading,String waterQuantity,String waterUnitPrice,String waterAmount,
-        String totalAmount,String status,Instant createdAt,Instant sentAt,long version,String paymentStatus,Instant paidAt,String waterBillingMode,int occupantCount,String internetFee,String garbageFee,long billingVersion) {}
+        String totalAmount,String status,Instant createdAt,Instant sentAt,long version,String paymentStatus,Instant paidAt,String waterBillingMode,int occupantCount,String internetFee,String garbageFee,long billingVersion,String kind,LocalDate coverageStart,LocalDate coverageEnd,int rentMonths,String rentUnitPrice) {}

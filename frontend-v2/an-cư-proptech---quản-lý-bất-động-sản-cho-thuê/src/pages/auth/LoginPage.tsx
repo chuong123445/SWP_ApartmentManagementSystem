@@ -63,6 +63,7 @@ export function LoginPage() {
               {isSubmitting ? <><LoaderCircle className="w-4 h-4 animate-spin" />Đang đăng nhập...</> : <>Đăng nhập<ArrowRight className="w-4 h-4" /></>}
             </button>
           </form>
+          <Link to="/forgot-password" className="text-sm text-emerald-700 underline mt-4">Quên mật khẩu?</Link>
           <VneidButton intent="login" label="Đăng nhập bằng VNeID mô phỏng" />
           <GoogleSignInButton disabled={isSubmitting} onCredential={async credential => {
             setError('');

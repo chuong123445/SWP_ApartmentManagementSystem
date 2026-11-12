@@ -50,7 +50,7 @@ public class ContractRenewalActivationService {
         if(landlord.getStatus()!=AuthAccount.Status.ACTIVE||!landlord.hasRole(AuthAccount.Role.OWNER)||!verification.isVerified(landlord)||c.getCustomer().getStatus()!=AuthAccount.Status.ACTIVE||!verification.isRentalVerified(c.getCustomer()))throw blocked();
         rights.contract(a.getProperty(),c.getStartDate(),c.getEndDate());
         previous.setStatus(RentalContract.Status.ENDED);previous.setEndedAt(Instant.now());previous.setEndReason("RENEWED");contracts.saveAndFlush(previous);
-        var last=invoices.findFirstByContractIdAndStatusOrderByPeriodDesc(previous.getId(),RentalInvoice.Status.SENT);
+        var last=invoices.findFirstByContractIdAndKindNotAndStatusOrderByPeriodDesc(previous.getId(),RentalInvoice.Kind.RENT,RentalInvoice.Status.SENT);
         var electric=last.map(i->i.getElectricityEndReading()).orElse(previous.getElectricityBaseline());
         var water=last.map(i->i.getWaterEndReading()).orElse(previous.getWaterBaseline());
         if(electric!=null&&water!=null){c.setElectricityBaseline(electric);c.setWaterBaseline(water);c.setBaselineDate(c.getStartDate());}

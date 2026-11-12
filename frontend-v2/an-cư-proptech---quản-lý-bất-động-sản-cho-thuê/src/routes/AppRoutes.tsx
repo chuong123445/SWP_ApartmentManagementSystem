@@ -1,3 +1,4 @@
+import {HandoverPage} from '@/pages/customer/HandoverPage';
 import {SepayTestPaymentsPage} from '@/pages/account/SepayTestPaymentsPage';
 import { SettlementPage } from '@/pages/account/SettlementPage';
 import {AssetManagementPage} from '@/pages/customer/AssetManagementPage';
@@ -7,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { hasManagementRole } from '@/utils/auth';
 import { loginDestination } from '@/utils/navigation';
 import { SessionLoading } from '@/components/feedback/SessionLoading';
+import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
 import { AccountVerificationPage } from '@/pages/auth/AccountVerificationPage';
@@ -55,6 +57,7 @@ export function AppRoutes() {
     <Route path="/" element={<HomePage />} />
     <Route path="/apartments/:id" element={<ApartmentDetailPage />} />
     <Route path="/login" element={<LoginRoute />} />
+    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
     <Route path="/register" element={<RegisterPage />} />
     <Route path="/auth/vneid/callback" element={<VneidCallbackPage />} />
     <Route path="/app" element={<RequireAccount role="MANAGER"><WorkspacePage /></RequireAccount>} />
@@ -69,6 +72,7 @@ export function AppRoutes() {
     <Route path="/my/home" element={<RequireAccount><ResidentHomePage /></RequireAccount>} />
     <Route path="/my/contracts/:id" element={<RequireAccount role="CUSTOMER"><ContractDetailPage /></RequireAccount>} />
     <Route path="/my/invoices/additional/:id" element={<RequireAccount role="CUSTOMER"><InvoiceDetailPage additional /></RequireAccount>} />
+    <Route path="/contracts/:id/handover" element={<RequireAccount verified={false}><HandoverPage /></RequireAccount>} />
     <Route path="/contracts/:id" element={<RequireAccount verified={false}><ContractDetailPage /></RequireAccount>} />
     <Route path="/my/invoices/:id" element={<RequireAccount role="CUSTOMER"><InvoiceDetailPage /></RequireAccount>} />
     <Route path="/account/verification" element={<RequireAccount verified={false}><AccountVerificationPage /></RequireAccount>} />

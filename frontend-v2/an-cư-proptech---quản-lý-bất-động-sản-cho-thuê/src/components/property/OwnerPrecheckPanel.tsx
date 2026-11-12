@@ -20,7 +20,7 @@ export function OwnerPrecheckPanel({propertyId,draft,selfService=false,propertyF
  const acknowledge=async()=>{if(!base||busy||stale)return;const ticket=epoch.current;setBusy(true);setErrors([]);try{for(const r of reviews)if(r.runId){await acknowledgePrecheck(propertyId,r.runId,draft,base.sourceHash,selfService,propertyFields);if(ticket!==epoch.current)return;}if(ticket===epoch.current)setAcknowledged(true);}catch(e){if(ticket===epoch.current)setErrors([e instanceof Error?e.message:'Không ghi nhận được thao tác xem.']);}finally{if(ticket===epoch.current)setBusy(false);}};
  const complete=!!base&&base.files.length>0&&reviews.length===base.files.length&&!stale;
  return <section aria-label="AI kiểm tra trước khi nộp" className="border rounded-xl p-3 space-y-3 bg-slate-50">
-  <h3 className="font-semibold">Kiểm tra hồ sơ trước khi nộp</h3><p className="text-sm">{autoScan?"Hệ thống tự đối chiếu giấy tờ với thông tin hiện tại. Kết quả dành cho bạn xem trước khi gửi hồ sơ.":"Kiểm tra thông tin thực hiện tại hệ thống. Bạn có thể quét AI để xem nhận xét đối chiếu trước khi nộp."}</p>
+  <h3 className="font-semibold">Kiểm tra hồ sơ trước khi nộp</h3>
   {!autoScan&&<button type="button" className="border rounded-lg px-3 py-2 bg-white" disabled={busy} onClick={()=>void run(false)}>Kiểm tra thông tin bản nháp</button>}
   {!autoScan&&<button type="button" className="border rounded-lg px-3 py-2 bg-white" disabled={busy} onClick={()=>void run(true)}>{busy?'Đang kiểm tra...':'Quét chứng từ bằng AI'}</button>}
   {busy&&<p role="status" className="text-sm">Đã đọc {reviews.length}/{base?.files.length??0} tệp. Bạn có thể sửa form; kết quả quét cũ sẽ được bỏ.</p>}

@@ -123,6 +123,7 @@ export function ApartmentDetailPage() {
         <div className="bg-white border border-slate-200 rounded-2xl p-6"><span className="inline-block bg-emerald-50 text-emerald-700 text-xs px-3 py-1 rounded-full mb-3">{availabilityLabel[apartment.availability]}</span>
           <OwnerApartmentField key={`${apartment.id}-title`} apartment={apartment} field="title" onSaved={reloadApartment}><h1 className="text-2xl font-bold text-slate-900 break-words">{apartment.title}</h1></OwnerApartmentField><p className="flex gap-2 text-sm text-slate-500 mt-3"><MapPin className="w-4 h-4 shrink-0" />{apartment.address}</p>
           <div className="flex flex-wrap gap-5 mt-5 text-sm text-slate-600"><span>{apartment.areaM2} m²</span><span className="flex gap-1.5 items-center"><BedDouble className="w-4 h-4" />{apartment.bedrooms === 0 ? 'Studio' : `${apartment.bedrooms} phòng ngủ`}</span><span className="flex gap-1.5 items-center"><Bath className="w-4 h-4" />{apartment.bathrooms} phòng tắm</span></div>
+          {!apartment.management&&apartment.maxOccupants!=null&&<p className="mt-4 text-sm">Số người tối đa: {apartment.maxOccupants}</p>}
           {apartment.management&&<div className="mt-4"><OwnerApartmentField key={`${apartment.id}-occupants`} apartment={apartment} field="maxOccupants" onSaved={reloadApartment}><span className="text-sm">Số người tối đa: {apartment.management.maxOccupants??'Chưa có'}</span></OwnerApartmentField></div>}
         </div>
         <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-3">

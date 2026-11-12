@@ -5,6 +5,9 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import java.util.*;
 public interface RentalContractRepository extends JpaRepository<RentalContract,Long> {
+    @org.springframework.data.jpa.repository.Query("select c.id from RentalContract c where c.status=com.ancu.proptech.model.contract.RentalContract.Status.ACTIVE order by c.id")
+    java.util.List<Long> findActiveBillingIds();
+
     String CURRENT_OWNER=" from RentalContract c where c.apartment.property.owner.id=:ownerId "
         + "and (:propertyId is null or c.apartment.property.id=:propertyId) "
         + "and c.status=com.ancu.proptech.model.contract.RentalContract.Status.ACTIVE and c.startDate<=:today ";

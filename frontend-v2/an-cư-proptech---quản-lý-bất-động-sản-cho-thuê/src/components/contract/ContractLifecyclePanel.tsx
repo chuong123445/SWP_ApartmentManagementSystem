@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { useAuth } from '@/hooks/useAuth';
 import { ContractWizard } from '@/components/contract/ContractWizard';
-import { cancelHandover, cancelRenewal, confirmHandover, getContract, requestRenewal, decideRenewalRequest, cancelAcceptedRenewalRequest } from '@/services/contract/contractService';
+import { cancelHandover, cancelRenewal, getContract, requestRenewal, decideRenewalRequest, cancelAcceptedRenewalRequest } from '@/services/contract/contractService';
 import { billingMoney } from '@/services/billing/billingService';
 import type { ContractDraft } from '@/types/contract';
 import { contractLifecycleActions } from '@/utils/contractDisplay';
@@ -16,7 +16,7 @@ export function ContractLifecyclePanel({ draft, onUpdated }: { draft: ContractDr
   const { user } = useAuth();const life = draft.lifecycle;
   const { owner, customer, canRequest, canCreate } = contractLifecycleActions(draft, user?.id);
   const [renewing, setRenewing] = useState(false);
-  const [confirmConsent, setConfirmConsent] = useState(false);const [error, setError] = useState('');const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');const [busy, setBusy] = useState(false);
   const operating = useRef(false);
   const [requestMessage, setRequestMessage] = useState('');const [requestConsent, setRequestConsent] = useState(false);const [decisionReason, setDecisionReason] = useState('');
   if (!life) return null;
@@ -25,7 +25,7 @@ export function ContractLifecyclePanel({ draft, onUpdated }: { draft: ContractDr
   const renewal = life.renewalRequest;
   const perform = async (operation: () => Promise<ContractDraft>) => {
     if (operating.current) return;operating.current = true;setBusy(true);setError('');
-    try { onUpdated(await operation());setConfirmConsent(false);window.dispatchEvent(new Event('ancu:tenancy-changed')); }
+    try { onUpdated(await operation());window.dispatchEvent(new Event('ancu:tenancy-changed')); }
     catch (err) { setError(err instanceof Error ? err.message : 'Không thể cập nhật hợp đồng.'); }
     finally { operating.current = false;setBusy(false); }
   };
@@ -49,7 +49,7 @@ export function ContractLifecyclePanel({ draft, onUpdated }: { draft: ContractDr
       <label className="block text-sm">Lời nhắn thuê tiếp (không bắt buộc)<textarea className={input} value={requestMessage} onChange={e => setRequestMessage(e.target.value)} maxLength={1000} disabled={busy} /></label>
       <label className="flex gap-2 text-sm"><input type="checkbox" checked={requestConsent} onChange={e => setRequestConsent(e.target.checked)} disabled={busy} />Tôi muốn thuê tiếp và gửi yêu cầu cho chủ nhà xem xét. Đây chưa phải ký hợp đồng mới.</label>
       <button type="submit" className={primary} disabled={busy || !requestConsent}>Gửi yêu cầu thuê tiếp</button>
-      <p className="text-xs text-slate-500">Không có nhu cầu thuê tiếp thì không cần gửi. Đến hạn, chủ nhà lập biên bản để bạn kiểm tra và xác nhận bàn giao.</p>
+      <p className="text-xs text-slate-500">Không có nhu cầu thuê tiếp thì không cần gửi. Đến hạn, chủ nhà lập biên bản để bạn kiểm tra PDF và ký bàn giao.</p>
     </form>}
     {canCreate && <div className="flex flex-wrap gap-3">
       {canCreate && <button type="button" className={primary} disabled={busy} onClick={() => setRenewing(true)}>Tạo hợp đồng ký tiếp</button>}
@@ -72,8 +72,7 @@ export function ContractLifecyclePanel({ draft, onUpdated }: { draft: ContractDr
       {pending && owner && <button type="button" className={`${button} text-rose-700`} disabled={busy} onClick={() => {
         if (window.confirm('Hủy đề nghị bàn giao này để lập lại hoặc ký tiếp? Lịch sử biên bản vẫn được giữ.')) void perform(() => cancelHandover(draft.id, life.handover!.version));
       }}>Hủy đề nghị bàn giao</button>}
-      {pending && customer && <div className="space-y-3"><label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={confirmConsent} disabled={busy} onChange={e => setConfirmConsent(e.target.checked)} />Tôi đã kiểm tra chỉ số, tài sản và đồng ý xác nhận trả phòng, kết thúc cư trú. Xác nhận này không xác nhận thu, khấu trừ hoặc hoàn cọc.</label>
-        <button type="button" disabled={busy || !confirmConsent} className={primary} onClick={() => void perform(() => confirmHandover(draft.id, life.handover!.version))}>Xác nhận bàn giao và trả phòng</button></div>}
+      {pending && customer && <p className="text-sm text-amber-800">Chủ nhà cần hủy biên bản cũ và lập biên bản PDF để hai bên ký tại mục Kết thúc thuê / bàn giao cư trú.</p>}
     </section>}
     {error && <p role="alert" className="text-sm text-rose-700 bg-rose-50 p-3 rounded-lg">{error}</p>}
     {renewing && <ContractWizard renewalOf={draft} onClose={() => { setRenewing(false);void getContract(draft.id).then(onUpdated).catch(() => {}); }}

@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { Check, X, FileText, CheckCircle2, XCircle } from 'lucide-react';
 import type { RentalRequest, RentalRequestStatus } from '@/types/rental';
-import { formatRent, formatRequestDate, requestStatusLabel } from '@/utils/format';
+import { formatRent, formatRequestDate, requestStatusLabel, rentalRequestPresentation } from '@/utils/format';
 
 const statusBadgeClass: Record<RentalRequestStatus, string> = {
   PENDING: 'bg-amber-50 text-amber-800 border border-amber-200',
@@ -33,13 +33,15 @@ export function RequestList({
 }) {
   return (
     <div className="space-y-4">
-      {items.map(request => (
+      {items.map(request => {
+        const display = rentalRequestPresentation(request);
+        return (
         <article key={request.id} data-testid="rental-request" className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
           <div className="flex flex-wrap justify-between gap-3">
             <div>
               <h2 className="font-bold text-slate-900">
                 <Link to={!owner && request.contractId ? `/contracts/${request.contractId}` : `/apartments/${request.apartmentId}`} className="hover:text-emerald-700">
-                  {request.apartmentTitle}
+                  {display.title}
                 </Link>
               </h2>
               <p className="text-xs text-slate-500 mt-1">{request.address}</p>
@@ -62,10 +64,10 @@ export function RequestList({
           )}
 
           <p className="mt-3 whitespace-pre-wrap text-sm text-slate-600 bg-slate-50 p-3 rounded-lg">
-            {request.message || 'Không có lời nhắn.'}
+            {display.message || 'Không có lời nhắn.'}
           </p>
 
-          {request.decisionReason && <p className="mt-3 text-sm text-slate-700 whitespace-pre-wrap break-words"><span className="font-semibold">{request.status === 'REJECTED' ? 'Lý do từ chối: ' : 'Lý do xử lý: '}</span>{request.decisionReason}</p>}
+          {display.decisionReason && <p className="mt-3 text-sm text-slate-700 whitespace-pre-wrap break-words"><span className="font-semibold">{request.status === 'REJECTED' ? 'Lý do từ chối: ' : 'Lý do xử lý: '}</span>{display.decisionReason}</p>}
           {onOpenCancellation && (request.status==='ACCEPTED'&&!request.contractCompleted||request.status==='CANCELLED') && <button type="button" className="text-sm text-red-700 underline mt-3" onClick={()=>onOpenCancellation(request)}>Hủy / lịch sử làm hợp đồng</button>}
           {/* Owner actions */}
           {owner && request.status === 'PENDING' && (
@@ -147,7 +149,8 @@ export function RequestList({
             </div>
           )}
         </article>
-      ))}
+        );
+      })}
     </div>
   );
 }

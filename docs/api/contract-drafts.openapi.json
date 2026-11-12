@@ -1451,7 +1451,8 @@
           "409": {
             "description": "Stale version or lifecycle conflict"
           }
-        }
+        },
+        "description": " Requires a single-use email OTP bound to this actor, contract, document version/hash and drawn signature. Rejected OTP leaves signature unchanged."
       }
     },
     "/contracts/{id}/pdf": {
@@ -1564,6 +1565,71 @@
           }
         }
       }
+    },
+    "/contracts/{id}/signature-otp": {
+      "post": {
+        "summary": "Send email OTP for the exact drawn signature and document",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignatureOtpRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OtpChallenge"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input/consent/rejection reason"
+          },
+          "401": {
+            "description": "No current authenticated session"
+          },
+          "403": {
+            "description": "Account role/status/verification denied"
+          },
+          "404": {
+            "description": "No exact-party record"
+          },
+          "409": {
+            "description": "Stale version or lifecycle conflict"
+          },
+          "429": {
+            "description": "OTP request limit"
+          },
+          "503": {
+            "description": "SMTP/OTP unavailable"
+          }
+        },
+        "description": "No signature is stored by this operation. Email OTP expires in 10 minutes, max 5 wrong attempts, 60-second resend cooldown, max 3 requests per purpose/account in 15 minutes."
+      }
     }
   },
   "components": {
@@ -1658,6 +1724,16 @@
           "sourceVersion": {
             "type": "string",
             "pattern": "^[a-f0-9]{64}$"
+          },
+          "rentCycleMonths": {
+            "type": "integer",
+            "enum": [
+              1,
+              3,
+              6,
+              12
+            ],
+            "default": 1
           }
         },
         "required": [
@@ -1735,6 +1811,16 @@
             "type": "integer",
             "format": "int64",
             "minimum": 0
+          },
+          "rentCycleMonths": {
+            "type": "integer",
+            "enum": [
+              1,
+              3,
+              6,
+              12
+            ],
+            "default": 1
           }
         },
         "required": [
@@ -2114,6 +2200,20 @@
               "WITHDRAWN"
             ],
             "description": "PENDING pauses draft create/edit/sign; CANCELLED initial contract is read-only history, distinct from ENDED."
+          },
+          "rentCycleMonths": {
+            "type": "integer",
+            "enum": [
+              1,
+              3,
+              6,
+              12
+            ],
+            "default": 1
+          },
+          "separateBillingAgreed": {
+            "type": "boolean",
+            "description": "New signed billing terms are hash-bound. Legacy records receive monthly operational defaults without rewriting their signed content."
           }
         },
         "required": [
@@ -2590,13 +2690,23 @@
             "enum": [
               true
             ]
+          },
+          "challengeId": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[0-9]{6}$"
           }
         },
         "required": [
           "version",
           "contentHash",
           "signature",
-          "consent"
+          "consent",
+          "challengeId",
+          "code"
         ]
       },
       "RenewalInboxItem": {
@@ -2705,6 +2815,56 @@
           },
           "totalPages": {
             "type": "integer"
+          }
+        }
+      },
+      "SignatureOtpRequest": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "contentHash": {
+            "type": "string"
+          },
+          "signature": {
+            "type": "string",
+            "description": "PNG data URL normalized server-side."
+          },
+          "consent": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "version",
+          "contentHash",
+          "signature",
+          "consent"
+        ]
+      },
+      "OtpChallenge": {
+        "type": "object",
+        "required": [
+          "challengeId",
+          "maskedEmail",
+          "expiresAt"
+        ],
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "maxLength": 36
+          },
+          "maskedEmail": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       }

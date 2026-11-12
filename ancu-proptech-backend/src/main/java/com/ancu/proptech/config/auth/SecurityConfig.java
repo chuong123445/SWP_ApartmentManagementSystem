@@ -86,11 +86,12 @@ public class SecurityConfig {
                                 || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/property-source-consent")
                                 || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/owner-upgrade")))))
                 .authorizeHttpRequests(a -> a
-                        .requestMatchers("/api/v1/contracts/*/exit", "/api/v1/contracts/*/exit/actions", "/api/v1/contracts/*/exit/evidence", "/api/v1/contracts/*/exit/evidence/*").authenticated()
+                        .requestMatchers("/api/v1/contracts/*/exit", "/api/v1/contracts/*/exit/actions", "/api/v1/contracts/*/exit/pdf", "/api/v1/contracts/*/exit/sign", "/api/v1/contracts/*/exit/signature-otp", "/api/v1/contracts/*/exit/evidence", "/api/v1/contracts/*/exit/evidence/*").authenticated()
                         .requestMatchers("/api/v1/owner/contracts/*/renewal-context", "/api/v1/owner/contracts/*/renewals", "/api/v1/owner/contracts/*/cancel-renewal",
                             "/api/v1/owner/contracts/*/handover", "/api/v1/owner/contracts/*/handover/cancel", "/api/v1/contracts/*/handover/confirm").authenticated()
                         .requestMatchers("/api/v1/owner/renewal-requests", "/api/v1/contracts/*/renewal-request", "/api/v1/owner/contracts/*/renewal-request/decision", "/api/v1/owner/contracts/*/renewal-request/cancel").authenticated()
-                        .requestMatchers("/api/v1/contracts/*/pdf", "/api/v1/contracts/*/signatures").authenticated()
+                        .requestMatchers("/api/v1/contracts/*/pdf", "/api/v1/contracts/*/signatures", "/api/v1/contracts/*/signature-otp").authenticated()
+                        .requestMatchers("/api/v1/auth/password-recovery", "/api/v1/auth/password-recovery/verify", "/api/v1/auth/password-recovery/reset").permitAll()
                         .requestMatchers("/api/v1/auth/google").permitAll()
                         .requestMatchers("/api/v1/auth/csrf", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout", "/error").permitAll()
                         .requestMatchers("/api/v1/me/verifications", "/api/v1/me/verifications/vneid", "/api/v1/me/verifications/vneid/confirm", "/api/v1/me/verifications/vneid/cancel", "/api/v1/me/owner-upgrade").authenticated()
@@ -100,7 +101,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,"/api/v1/property-images/*").permitAll()
                         .requestMatchers("/api/v1/me").authenticated()
                         .requestMatchers("/api/v1/me/identity", "/api/v1/me/identity/documents/*").authenticated()
-                        .requestMatchers("/api/v1/me/listing-drafts", "/api/v1/me/listing-drafts/*", "/api/v1/me/listing-drafts/*/complete").authenticated()
+                        .requestMatchers("/api/v1/me/listing-description/suggest", "/api/v1/me/listing-drafts", "/api/v1/me/listing-drafts/*", "/api/v1/me/listing-drafts/*/complete").authenticated()
                         .requestMatchers("/api/v1/me/rental-properties", "/api/v1/me/rental-properties/*/evidence-files", "/api/v1/me/rental-properties/*/verification-dossiers", "/api/v1/me/property-notices").authenticated()
                          .requestMatchers("/api/v1/me/security", "/api/v1/me/reauthentications", "/api/v1/me/reauthentications/*/confirm").authenticated()
                         .requestMatchers("/api/v1/me/profile", "/api/v1/me/password", "/api/v1/me/phone", "/api/v1/me/email-change", "/api/v1/me/email-changes", "/api/v1/me/email-changes/*/confirm").authenticated()
@@ -120,7 +121,7 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/v1/owner/invoices/*/draft").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/owner/invoices/*/cancel").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/owner/invoices/*/history").authenticated()
-                        .requestMatchers("/api/v1/owner/tenancies", "/api/v1/me/tenancies", "/api/v1/owner/contracts/*/billing-context", "/api/v1/owner/contracts/*/meter-readings", "/api/v1/owner/contracts/*/invoices", "/api/v1/owner/invoices", "/api/v1/owner/invoices/*/send", "/api/v1/me/invoices", "/api/v1/invoices/*").authenticated()
+                        .requestMatchers("/api/v1/owner/tenancies", "/api/v1/me/tenancies", "/api/v1/owner/contracts/*/billing-context", "/api/v1/owner/contracts/*/rent-billing-context", "/api/v1/owner/contracts/*/rent-invoices", "/api/v1/owner/contracts/*/meter-readings", "/api/v1/owner/contracts/*/invoices", "/api/v1/owner/invoices", "/api/v1/owner/invoices/*/send", "/api/v1/me/invoices", "/api/v1/invoices/*").authenticated()
                         .requestMatchers("/api/v1/owner/rental-requests/*/contract-context", "/api/v1/owner/rental-requests/*/contract", "/api/v1/owner/contract-drafts", "/api/v1/me/contract-drafts", "/api/v1/contracts/*", "/api/v1/owner/contracts/*/draft").authenticated()
                         // API ký quỹ cũ chưa có ownership/provider hợp lệ: đóng mọi truy cập,
                         // kể cả Owner/Admin, thay vì chỉ kiểm tra role rồi cho đọc/sửa toàn bộ.
