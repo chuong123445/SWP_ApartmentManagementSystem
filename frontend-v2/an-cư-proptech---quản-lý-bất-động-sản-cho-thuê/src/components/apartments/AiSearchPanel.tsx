@@ -81,7 +81,9 @@ export function AiSearchPanel({ onApply, onViewResults }: {
       <header className="ai-chat-header"><span className="ai-chat-avatar"><Sparkles size={22} aria-hidden="true"/></span><div><h2 id="ai-chat-title">TOBA</h2><p>Hỏi đáp & tìm căn hộ</p></div><button type="button" aria-label="Đóng TOBA" onClick={close}><X size={20}/></button></header>
       <div className="ai-chat-messages" role="log" aria-label="Hội thoại với TOBA" aria-live="polite" ref={log}>
         {messages.length === 0 && <div className="ai-chat-bubble ai-chat-assistant">
-          <strong>Bạn cần tìm phòng hay có câu hỏi về thuê nhà?</strong>
+          <strong>Chào bạn, mình là TOBA!</strong>
+          <p>Mình là trợ lý AI của An Cư PropTech. Mình có thể tìm phòng và căn hộ theo khu vực, ngân sách và số người ở, rồi hiện các lựa chọn ngay trong chat.</p>
+          <p>Mình cũng có thể gợi ý những điều cần hỏi khi đi xem phòng và hướng dẫn bạn gửi yêu cầu thuê.</p>
           <div className="ai-chat-starters">{starterQuestions.map(([label, question]) =>
             <button key={label} type="button" onClick={() => { setText(question); input.current?.focus({ preventScroll: true }); }}>{label}</button>
           )}</div>
