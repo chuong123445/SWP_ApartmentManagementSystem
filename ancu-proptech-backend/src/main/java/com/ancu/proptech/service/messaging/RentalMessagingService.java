@@ -5,9 +5,11 @@ import com.ancu.proptech.dto.messaging.RentalMessagingDtos.*;
 import com.ancu.proptech.exception.common.ApiException;
 import com.ancu.proptech.model.apartment.Apartment;
 import com.ancu.proptech.model.auth.AuthAccount;
+import com.ancu.proptech.model.contract.RentalContract;
 import com.ancu.proptech.model.messaging.RentalConversation;
 import com.ancu.proptech.model.messaging.RentalMessage;
 import com.ancu.proptech.repository.apartment.ApartmentRepository;
+import com.ancu.proptech.repository.contract.RentalContractRepository;
 import com.ancu.proptech.repository.messaging.RentalConversationRepository;
 import com.ancu.proptech.repository.messaging.RentalMessageRepository;
 import com.ancu.proptech.service.apartment.ApartmentService;
@@ -30,6 +32,7 @@ public class RentalMessagingService {
     private final AccountAccessService access;
     private final AccountVerificationPolicy verification;
     private final ApartmentRepository apartments;
+    private final RentalContractRepository contracts;
     private final RentalConversationRepository conversations;
     private final RentalMessageRepository messages;
 
@@ -43,7 +46,7 @@ public class RentalMessagingService {
         }
         var existing = conversations.findByApartmentIdAndCustomerIdAndOwnerId(apartmentId, customer.getId(), owner.getId());
         if (existing.isPresent() && existing.get().getLastMessageAt() != null) return view(existing.get(), customer);
-        requireAvailable(apartment);
+        requireEligibleRoom(apartment, customer);
         if (existing.isPresent()) return view(existing.get(), customer);
         var conversation = new RentalConversation();
         conversation.setApartment(apartment);
@@ -100,7 +103,7 @@ public class RentalMessagingService {
         }
         if (conversation.getLastMessageAt() == null) {
             if (!conversation.getCustomer().getId().equals(account.getId())) throw missing();
-            requireAvailable(conversation.getApartment());
+            requireEligibleRoom(conversation.getApartment(), account);
         }
         var row = new RentalMessage();
         row.setConversation(conversation);
@@ -118,7 +121,11 @@ public class RentalMessagingService {
         throw missing();
     }
 
-    private void requireAvailable(Apartment apartment) {
+    private void requireEligibleRoom(Apartment apartment, AuthAccount customer) {
+        if (canLet(apartment.getProperty().getOwner()) &&
+            contracts.existsByApartmentIdAndCustomerIdAndStatus(apartment.getId(), customer.getId(), RentalContract.Status.ACTIVE)) {
+            return;
+        }
         if (apartment.getAvailability() != Apartment.Availability.VACANT ||
             !apartments.exists(ApartmentService.visible().and(ApartmentService.rightsEffective())
                 .and((root, query, cb) -> cb.equal(root.get("id"), apartment.getId())))) throw missing();
