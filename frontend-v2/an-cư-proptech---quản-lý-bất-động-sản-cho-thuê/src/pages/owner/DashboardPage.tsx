@@ -26,13 +26,13 @@ export function DashboardPage({ propertyName, report, counters, onNavigateTab }:
   const { data, month, setMonth } = report;
   const current = data?.months[month - 1];
 
-  return <div className="space-y-5 pb-10">
-    <header className="flex flex-wrap items-center justify-between gap-4 border-b border-brand-100 pb-5">
+  return <div className="space-y-4 pb-10">
+    <header className="app-panel flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5">
       <div className="min-w-0">
         <h1 className="app-page-title">Tổng quan vận hành</h1>
         <p className="mt-2 break-words text-sm text-slate-600">{propertyName}</p>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 [&_button]:min-h-10 [&_button]:py-2">
         {quickActions.map(({ tab, label, id, icon: Icon }) => <button key={tab} id={id} type="button" onClick={() => onNavigateTab(tab)}
           className={tab === 'invoices' ? 'home-primary text-sm' : 'app-action-secondary text-sm'}>
           <Icon size={16} aria-hidden="true" />{label}
@@ -40,19 +40,19 @@ export function DashboardPage({ propertyName, report, counters, onNavigateTab }:
       </div>
     </header>
 
-    <section aria-label="Kỳ thống kê" className="app-panel flex flex-wrap items-end gap-3 p-4">
+    <section aria-label="Kỳ thống kê" className="flex flex-wrap items-end gap-3 px-1">
       <FinancialFilters report={report} />
       <label className="grid gap-1 text-xs text-slate-600">Tháng thống kê
         <select value={month} onChange={event => setMonth(Number(event.target.value))} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
           {Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={index + 1}>Tháng {index + 1}</option>)}
         </select>
       </label>
-      {data && <p className="text-xs text-slate-600 sm:ml-auto">Ngày thống kê {data.asOf}</p>}
+      {data && <p className="pb-1 text-xs text-slate-600 sm:ml-auto">Ngày thống kê {data.asOf}</p>}
     </section>
     <FinancialState report={report} />
 
     {data && current && <>
-      <section aria-label="Chỉ số tổng quan" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-label="Chỉ số tổng quan" className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 xl:grid-cols-4">
         <FinancialCard label="Lấp đầy hiện tại" icon={<Building2 size={18} />}
           value={data.inventory.units ? `${Math.round(100 * data.inventory.occupied / data.inventory.units)}%` : '—'}
           note={`${data.inventory.occupied}/${data.inventory.units} căn đang ở · ${data.inventory.vacant} căn trống`} />
