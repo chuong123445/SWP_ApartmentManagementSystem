@@ -73,6 +73,38 @@ class OwnerFinancialSummaryIntegrationTests {
         assertEquals(1,JsonPath.<Number>read(json,"$.arrears.overdueInvoiceCount").intValue());money(json,"$.arrears.monthlyInvoiceAmount","30");money(json,"$.arrears.overdueInvoiceAmount","10");
         money(json,"$.months[0].receipts.monthlyInvoiceAmount","30");money(json,"$.months[11].receipts.monthlyInvoiceAmount","10");
     }
+    @Test void splitInvoicesCountSeparatelyAndMultiMonthRentIsBookedOnce() throws Exception {
+        var owner = account(AuthAccount.Role.OWNER);
+        var property = property(owner);
+        var contract = contract(property, account(AuthAccount.Role.CUSTOMER));
+        var rent = invoice(contract, "2026-11", "3000000", "0", LocalDate.of(2026, 11, 20), RentalInvoice.Status.SENT);
+        rent.setKind(RentalInvoice.Kind.RENT);
+        rent.setRentMonths(3);
+        rent.setRentUnitPrice(new BigDecimal("1000000"));
+        rent.setCoverageStart(LocalDate.of(2026, 11, 1));
+        rent.setCoverageEnd(LocalDate.of(2027, 1, 31));
+        invoices.saveAndFlush(rent);
+        var utility = invoice(contract, "2026-11", "0", "150000", LocalDate.of(2026, 11, 20), RentalInvoice.Status.SENT);
+        utility.setKind(RentalInvoice.Kind.UTILITY);
+        utility.setRentMonths(0);
+        utility.setCoverageStart(LocalDate.of(2026, 11, 1));
+        utility.setCoverageEnd(LocalDate.of(2026, 11, 30));
+        invoices.saveAndFlush(utility);
+        var cancelled = invoice(contract, "2026-12", "1000000", "0", LocalDate.of(2026, 12, 20), RentalInvoice.Status.CANCELLED);
+        assertNotNull(cancelled.getId());
+        paid(rent, "2026-12-01T00:00:00Z");
+
+        String auth = token(owner);
+        String json = read(auth, property, 2026);
+        assertEquals(2, JsonPath.<Number>read(json, "$.totals.invoiceCount").intValue());
+        money(json, "$.months[10].invoices.billedAmount", "3150000");
+        money(json, "$.totals.rentAmount", "3000000");
+        money(json, "$.totals.electricityAmount", "150000");
+        money(json, "$.totals.unpaidInvoiceAmount", "150000");
+        money(json, "$.months[11].receipts.totalAmount", "3000000");
+        money(read(auth, property, 2027), "$.totals.billedAmount", "0");
+    }
+
     @Test void yearAndOwnerPropertyAccessAreValidated()throws Exception{
         var owner=account(AuthAccount.Role.OWNER);var other=account(AuthAccount.Role.OWNER);var p=property(other);var t=token(owner);
         mvc.perform(get(URL)).andExpect(status().isUnauthorized());mvc.perform(get(URL).header("Authorization",token(account(AuthAccount.Role.CUSTOMER)))).andExpect(status().isForbidden());
