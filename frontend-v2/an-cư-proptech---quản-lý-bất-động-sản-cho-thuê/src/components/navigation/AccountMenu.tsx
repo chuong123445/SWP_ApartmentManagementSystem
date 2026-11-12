@@ -30,11 +30,11 @@ export function AccountMenu({ account, onLogout, isLoggingOut, authError, showAc
     document.addEventListener('pointerdown', outside);document.addEventListener('keydown', escape);
     return () => { document.removeEventListener('pointerdown', outside);document.removeEventListener('keydown', escape); };
   }, [open]);
-  const linkClass = 'flex items-center gap-2 px-3 py-2.5 rounded-lg text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 focus-visible:outline-emerald-600';
+  const linkClass = 'flex items-center gap-2 px-3 py-2.5 rounded-lg text-slate-700 hover:bg-brand-50 hover:text-brand-800 focus-visible:outline-brand-600';
   return <div ref={root} className="relative">
     <button ref={trigger} type="button" aria-label="Tài khoản" aria-expanded={open} aria-controls={menuId}
       onClick={() => setOpen(value => !value)} className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100">
-      <span className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center"><UserRound className="w-4 h-4" /></span>
+      <span className="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center"><UserRound className="w-4 h-4" /></span>
       <span className="text-left hidden sm:block"><span className="block text-xs font-bold text-slate-900 max-w-52 truncate" title={account.fullName}>{account.fullName}</span><span className={`block text-[11px] ${verificationColor}`}>{verificationLabel}</span></span>
       <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`} />
     </button>
