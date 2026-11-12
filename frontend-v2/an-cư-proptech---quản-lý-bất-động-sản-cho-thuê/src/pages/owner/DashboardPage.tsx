@@ -1,31 +1,98 @@
-import type {ActiveTab} from '@/types';
-import type {OwnerFinancialReport} from '@/hooks/useOwnerFinancialSummary';
-import type {OwnerWorkspaceSummary} from '@/types/owner';
-import {FinancialCard,FinancialChart,FinancialFilters,FinancialState,money} from '@/components/finance/FinancialReportParts';
+import { ArrowDownToLine, ArrowUpRight, Building2, Clock3, FileText, LayoutGrid, ReceiptText, Wallet, Wrench, Zap } from 'lucide-react';
+import type { ActiveTab } from '@/types';
+import type { OwnerFinancialReport } from '@/hooks/useOwnerFinancialSummary';
+import type { OwnerWorkspaceSummary } from '@/types/owner';
+import { FinancialCard, FinancialChart, FinancialFilters, FinancialState, money } from '@/components/finance/FinancialReportParts';
 
-export function DashboardPage({propertyName,report,counters,onNavigateTab}:{propertyName:string;report:OwnerFinancialReport;counters:OwnerWorkspaceSummary|null;onNavigateTab:(tab:ActiveTab)=>void}){
-  const {month,setMonth}=report;
-  const data=report.data;const current=data?.months[month-1];
-  return <div className="space-y-5 pb-12">
-    <header className="flex flex-wrap gap-5 justify-between items-center bg-brand-950 text-white rounded-2xl p-5 sm:p-7"><div><h1 className="text-xl font-bold">Bảng điều khiển vận hành — {propertyName}</h1><p className="text-xs text-brand-100 mt-2">Hóa đơn và thanh toán theo số liệu tổng hợp; quy mô căn hộ là hiện trạng.</p></div><div className="flex flex-wrap gap-2 items-center">{[['rooms','Xem Sơ Đồ Phòng','btn-quick-view-rooms'],['utilities','Ghi Điện Nước','btn-quick-record-meter'],['invoices','Thu Tiền Phòng','btn-quick-invoices']].map(([tab,label,id])=><button key={tab} id={id} onClick={()=>onNavigateTab(tab as ActiveTab)} className="px-3 py-2 text-xs border border-brand-400 bg-brand-900 hover:bg-brand-800 rounded-lg">{label}</button>)}</div></header>
-    <div className="bg-white p-4 border border-slate-200 rounded-xl flex flex-wrap items-end gap-3"><FinancialFilters report={report}/><label className="grid gap-1 text-xs text-slate-600">Tháng thống kê<select aria-label="Tháng thống kê" value={month} onChange={e=>setMonth(Number(e.target.value))} className="border border-slate-300 rounded-lg px-3 py-2 text-sm">{Array.from({length:12},(_,index)=><option key={index+1} value={index+1}>Tháng {index+1}</option>)}</select></label></div>
-    <FinancialState report={report}/>
-    {data&&current&&<>
-      <p className="text-xs text-slate-500">Đang xem tháng {month}/{data.year}. Ngày thống kê {data.asOf}; công nợ chưa thu bao gồm mọi kỳ.</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <FinancialCard label="Lấp đầy hiện tại" value={data.inventory.units?`${Math.round(100*data.inventory.occupied/data.inventory.units)}%`:'—'} note={`${data.inventory.occupied}/${data.inventory.units} căn đang ở, ${data.inventory.vacant} căn trống.`}/>
-        <FinancialCard label={`HĐ đã gửi kỳ ${current.period}`} value={money(current.invoices.billedAmount)} note={`${current.invoices.invoiceCount} hóa đơn, ${money(current.invoices.unpaidInvoiceAmount)} chưa thu theo kỳ.`}/>
-        <FinancialCard label={`Tiền nhận tháng ${current.period}`} value={money(current.receipts.totalAmount)} note="Theo ngày thu từ hóa đơn tháng và phiếu bổ sung."/>
-        <FinancialCard label="Hóa đơn tháng chưa thu — mọi kỳ" value={money(data.arrears.monthlyInvoiceAmount)} note={`${data.arrears.monthlyInvoiceCount} hóa đơn; ${money(data.arrears.overdueInvoiceAmount)} đã quá hạn.`}/>
+const quickActions = [
+  { tab: 'rooms', label: 'Xem sơ đồ phòng', id: 'btn-quick-view-rooms', icon: LayoutGrid },
+  { tab: 'utilities', label: 'Ghi điện nước', id: 'btn-quick-record-meter', icon: Zap },
+  { tab: 'invoices', label: 'Thu tiền phòng', id: 'btn-quick-invoices', icon: ReceiptText },
+] as const;
+
+const workspaceLinks = [
+  { tab: 'reports', label: 'Mở báo cáo năm', icon: FileText },
+  { tab: 'contracts', label: 'Xử lý hợp đồng', icon: Clock3 },
+  { tab: 'maintenance', label: 'Quản lý bảo trì', icon: Wrench },
+  { tab: 'finance', label: 'Mở sổ quỹ', icon: Wallet },
+] as const;
+
+export function DashboardPage({ propertyName, report, counters, onNavigateTab }: {
+  propertyName: string;
+  report: OwnerFinancialReport;
+  counters: OwnerWorkspaceSummary | null;
+  onNavigateTab: (tab: ActiveTab) => void;
+}) {
+  const { data, month, setMonth } = report;
+  const current = data?.months[month - 1];
+
+  return <div className="space-y-5 pb-10">
+    <header className="flex flex-wrap items-center justify-between gap-4 border-b border-brand-100 pb-5">
+      <div className="min-w-0">
+        <h1 className="app-page-title">Tổng quan vận hành</h1>
+        <p className="mt-2 break-words text-sm text-slate-600">{propertyName}</p>
       </div>
-      <FinancialChart months={data.months.slice(Math.max(0,month-6),month)}/>
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <FinancialCard label="Hợp đồng sắp hết trong 20 ngày" value={counters?String(counters.expiringContractCount):'—'} note="Theo ngày hiện tại, không theo năm báo cáo."/>
-        <FinancialCard label="Hợp đồng đã hết hạn chờ xử lý" value={counters?String(counters.expiredContractCount):'—'} note="Cần xem quy trình thuê tiếp hoặc bàn giao."/>
-        <FinancialCard label="Phiếu bổ sung chưa thu — mọi kỳ" value={money(data.arrears.additionalAmount)} note={`${data.arrears.additionalCount} phiếu gắn đúng người thuê.`}/>
+      <div className="flex flex-wrap gap-2">
+        {quickActions.map(({ tab, label, id, icon: Icon }) => <button key={tab} id={id} type="button" onClick={() => onNavigateTab(tab)}
+          className={tab === 'invoices' ? 'home-primary text-sm' : 'app-action-secondary text-sm'}>
+          <Icon size={16} aria-hidden="true" />{label}
+        </button>)}
+      </div>
+    </header>
+
+    <section aria-label="Kỳ thống kê" className="app-panel flex flex-wrap items-end gap-3 p-4">
+      <FinancialFilters report={report} />
+      <label className="grid gap-1 text-xs text-slate-600">Tháng thống kê
+        <select value={month} onChange={event => setMonth(Number(event.target.value))} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+          {Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={index + 1}>Tháng {index + 1}</option>)}
+        </select>
+      </label>
+      {data && <p className="text-xs text-slate-600 sm:ml-auto">Ngày thống kê {data.asOf}</p>}
+    </section>
+    <FinancialState report={report} />
+
+    {data && current && <>
+      <section aria-label="Chỉ số tổng quan" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <FinancialCard label="Lấp đầy hiện tại" icon={<Building2 size={18} />}
+          value={data.inventory.units ? `${Math.round(100 * data.inventory.occupied / data.inventory.units)}%` : '—'}
+          note={`${data.inventory.occupied}/${data.inventory.units} căn đang ở · ${data.inventory.vacant} căn trống`} />
+        <FinancialCard label={`Hóa đơn kỳ ${current.period}`} icon={<ReceiptText size={18} />}
+          value={money(current.invoices.billedAmount)}
+          note={`${current.invoices.invoiceCount} hóa đơn · ${money(current.invoices.unpaidInvoiceAmount)} chưa thu theo kỳ`} />
+        <FinancialCard label={`Tiền nhận tháng ${current.period}`} icon={<ArrowDownToLine size={18} />}
+          value={money(current.receipts.totalAmount)} note="Theo ngày thu từ hóa đơn và phiếu bổ sung." />
+        <FinancialCard label="Hóa đơn chưa thu · Mọi kỳ" icon={<Wallet size={18} />}
+          value={money(data.arrears.monthlyInvoiceAmount)}
+          note={`${data.arrears.monthlyInvoiceCount} hóa đơn · ${money(data.arrears.overdueInvoiceAmount)} quá hạn`} />
       </section>
-      <div className="flex flex-wrap gap-2">{[['reports','Mở báo cáo năm'],['contracts','Xử lý hợp đồng'],['maintenance','Quản lý bảo trì'],['finance','Mở sổ quỹ']].map(([tab,label])=><button key={tab} onClick={()=>onNavigateTab(tab as ActiveTab)} className="px-4 py-2 text-sm border border-slate-300 rounded-lg bg-white">{label}</button>)}</div>
-      <p className="text-xs text-slate-500">Tiền thu theo ngày thanh toán có thể thuộc hóa đơn kỳ khác. Cọc do hai bên tự quản lý ngoài hệ thống; sổ quỹ thủ công và rút ví được theo dõi riêng; chưa dùng số liệu này để tính lợi nhuận.</p>
+
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(245px,1fr)]">
+        <FinancialChart months={data.months.slice(Math.max(0, month - 6), month)} />
+        <section className="app-panel p-4 sm:p-5" aria-labelledby="dashboard-followup">
+          <h2 id="dashboard-followup" className="text-base font-bold">Cần theo dõi</h2>
+          <dl className="mt-2 divide-y divide-slate-100 text-sm">
+            <div className="flex items-center justify-between gap-3 py-3">
+              <dt>Hợp đồng sắp hết trong 20 ngày</dt>
+              <dd className="font-bold tabular-nums">{counters?.expiringContractCount ?? '—'}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-3 py-3">
+              <dt>Hợp đồng đã hết hạn chờ xử lý</dt>
+              <dd className="font-bold tabular-nums">{counters?.expiredContractCount ?? '—'}</dd>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 py-3">
+              <dt>Phiếu bổ sung chưa thu · Mọi kỳ</dt>
+              <dd className="font-bold tabular-nums">{money(data.arrears.additionalAmount)}</dd>
+            </div>
+          </dl>
+          <div className="mt-3 grid gap-1 border-t border-slate-100 pt-2">
+            {workspaceLinks.map(({ tab, label, icon: Icon }) => <button key={tab} type="button" onClick={() => onNavigateTab(tab)}
+              className="flex items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-semibold text-brand-800 hover:bg-brand-50">
+              <Icon size={16} aria-hidden="true" />{label}<ArrowUpRight size={14} className="ml-auto" aria-hidden="true" />
+            </button>)}
+          </div>
+        </section>
+      </div>
+      <p className="text-xs leading-relaxed text-slate-600">Tiền thu theo ngày thanh toán có thể thuộc kỳ khác. Số liệu chưa bao gồm tiền cọc và sổ quỹ thủ công.</p>
     </>}
   </div>;
 }

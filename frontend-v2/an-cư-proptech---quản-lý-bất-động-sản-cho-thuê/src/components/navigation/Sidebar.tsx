@@ -85,10 +85,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
 
   return (
-    <aside className="w-64 max-w-[85vw] xl:w-72 bg-brand-950 text-brand-100 flex flex-col shrink-0 border-r border-brand-900 select-none min-h-0 h-full overflow-y-auto">
+    <aside className="w-60 max-w-[85vw] xl:w-64 bg-white text-slate-700 flex flex-col shrink-0 border-r border-brand-100 select-none min-h-0 h-full overflow-y-auto">
       {/* Building Selector */}
-      <div className="p-4 border-b border-brand-800 bg-brand-900/50">
-        <label htmlFor="select-building-sidebar" className="text-xs font-bold text-brand-200 uppercase tracking-wider block mb-2">
+      <div className="p-4 border-b border-slate-100">
+        <label htmlFor="select-building-sidebar" className="text-xs font-semibold text-slate-600 block mb-2">
           Tài sản đang chọn
         </label>
         <select
@@ -96,7 +96,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           value={selectedBuildingId}
           disabled={propertiesLoading || propertiesError || properties.length === 0}
           onChange={(e) => onSelectBuilding(e.target.value)}
-          className="w-full bg-brand-900 border border-brand-700 rounded-xl px-3 py-2.5 text-sm text-white focus:border-brand-400 font-medium cursor-pointer disabled:opacity-60"
+          className="w-full bg-brand-50 border border-brand-100 rounded-xl px-3 py-2.5 text-sm text-brand-950 focus:border-brand-400 font-semibold cursor-pointer disabled:opacity-60"
         >
           <option value="all">{propertiesLoading ? 'Đang tải tài sản...' : propertiesError ? 'Không thể tải tài sản' : `Tất cả tài sản (${properties.length})`}</option>
           {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -105,11 +105,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Navigation Links */}
       <nav aria-label="Quản lý tòa nhà" className="flex-1 p-3 space-y-1.5 overflow-y-auto">
-        {canManage && counters.loading && <p role="status" className="px-3 py-2 text-xs text-slate-400">Đang tải số đếm…</p>}
-        {canManage && counters.error && <div role="alert" className="px-3 py-2 text-xs text-amber-200">Chưa tải được số đếm.<button type="button" title={counters.error} className="block underline mt-1" onClick={counters.reload}>Thử lại số đếm</button></div>}
+        {canManage && counters.loading && <p role="status" className="px-3 py-2 text-xs text-slate-600">Đang tải số đếm…</p>}
+        {canManage && counters.error && <div role="alert" className="px-3 py-2 text-xs text-amber-800">Chưa tải được số đếm.<button type="button" title={counters.error} className="block underline mt-1" onClick={counters.reload}>Thử lại số đếm</button></div>}
         {/* Admin Menu */}
-        {canManage && <div className="px-3 pt-3 pb-2 text-xs font-bold uppercase tracking-wider text-brand-300">
-          Vận Hành Quản Lý
+        {canManage && <div className="px-3 pt-3 pb-1 text-xs font-semibold text-slate-500">
+          Quản lý cho thuê
         </div>}
 
         {adminMenuItems.filter(item => canManage && (item.id !== 'rental_requests' || accountRole === 'OWNER')).map((item) => {
@@ -117,24 +117,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
           const isActive = activeTab === item.id;
 
           return (
+            <React.Fragment key={item.id}>
+            {item.id === 'invoices' && <div className="mx-2 mt-3 border-t border-slate-100 px-1 pt-3 pb-1 text-xs font-semibold text-slate-500">Vận hành và tài chính</div>}
             <button
-              key={item.id}
               id={`nav-${item.id}`}
               aria-current={isActive ? 'page' : undefined}
               title={item.title}
               onClick={() => {
                 onSelectTab(item.id);
               }}
-              className={`w-full flex items-center justify-between gap-1 px-3 py-2.5 rounded-xl text-left text-sm font-medium transition-colors group ${
+              className={`w-full flex items-center justify-between gap-1 px-3 py-2.5 rounded-lg text-left text-sm font-medium transition-colors group ${
                 isActive
-                  ? 'bg-brand-600 text-white font-bold ring-1 ring-brand-400'
-                  : 'text-brand-100 hover:bg-brand-800 hover:text-white'
+                  ? 'bg-brand-100 text-brand-800 font-bold'
+                  : 'text-slate-700 hover:bg-brand-50 hover:text-brand-800'
               }`}
             >
               <div className="flex min-w-0 items-center gap-2.5">
                 <Icon
                   className={`w-[18px] h-[18px] shrink-0 transition-colors ${
-                    isActive ? 'text-white' : 'text-brand-300 group-hover:text-white'
+                    isActive ? 'text-brand-700' : 'text-slate-500 group-hover:text-brand-700'
                   }`}
                 />
                 <span>{item.label}</span>
@@ -146,6 +147,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </span>
               )}
             </button>
+            </React.Fragment>
           );
         })}
       </nav>
