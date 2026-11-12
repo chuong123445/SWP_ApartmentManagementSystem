@@ -4,7 +4,7 @@ import { MessageCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { openConversation, type ConversationTarget } from '@/services/messaging/rentalMessagingService';
 
-const actionClass = 'mb-4 flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-sm font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50';
+const actionClass = 'mb-4 flex w-full items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-center text-sm font-semibold text-brand-800 hover:bg-brand-100 disabled:opacity-50';
 const landlordLabel = 'Nhắn tin cho chủ nhà';
 
 export function StartRentalConversation({ apartmentId, verified, checking }: {

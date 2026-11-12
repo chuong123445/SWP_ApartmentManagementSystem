@@ -121,20 +121,20 @@ export function ApartmentDetailPage() {
     {loadError && <p role="alert" className="p-6 bg-white border border-rose-200 rounded-xl text-rose-700">{loadError}</p>}
     {apartment && !loading && <div className="grid lg:grid-cols-[2fr_1fr] gap-8">
       <section className="space-y-6"><div className="space-y-3"><ApartmentGallery key={apartment.id} images={apartment.images} title={apartment.title}/>{apartment.management&&<div className="flex flex-col gap-3"><OwnerApartmentPhotos key={`${apartment.id}-photos`} apartment={apartment} onSaved={reloadApartment}/><OwnerApartmentPhotos unit key={`${apartment.id}-unit-photos`} apartment={apartment} onSaved={reloadApartment}/></div>}</div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-6"><span className="inline-block bg-emerald-50 text-emerald-700 text-xs px-3 py-1 rounded-full mb-3">{availabilityLabel[apartment.availability]}</span>
-          <OwnerApartmentField key={`${apartment.id}-title`} apartment={apartment} field="title" onSaved={reloadApartment}><h1 className="text-2xl font-bold text-slate-900 break-words">{apartment.title}</h1></OwnerApartmentField><p className="flex gap-2 text-sm text-slate-500 mt-3"><MapPin className="w-4 h-4 shrink-0" />{apartment.address}</p>
+        <div className="app-panel p-5 sm:p-6"><span className="inline-block bg-emerald-50 text-emerald-700 text-xs px-3 py-1 rounded-full mb-3">{availabilityLabel[apartment.availability]}</span>
+          <OwnerApartmentField key={`${apartment.id}-title`} apartment={apartment} field="title" onSaved={reloadApartment}><h1 className="app-page-title break-words">{apartment.title}</h1></OwnerApartmentField><p className="flex gap-2 text-sm text-slate-500 mt-3"><MapPin className="w-4 h-4 shrink-0" />{apartment.address}</p>
           <div className="flex flex-wrap gap-5 mt-5 text-sm text-slate-600"><span>{apartment.areaM2} m²</span><span className="flex gap-1.5 items-center"><BedDouble className="w-4 h-4" />{apartment.bedrooms === 0 ? 'Studio' : `${apartment.bedrooms} phòng ngủ`}</span><span className="flex gap-1.5 items-center"><Bath className="w-4 h-4" />{apartment.bathrooms} phòng tắm</span></div>
           {!apartment.management&&apartment.maxOccupants!=null&&<p className="mt-4 text-sm">Số người tối đa: {apartment.maxOccupants}</p>}
           {apartment.management&&<div className="mt-4"><OwnerApartmentField key={`${apartment.id}-occupants`} apartment={apartment} field="maxOccupants" onSaved={reloadApartment}><span className="text-sm">Số người tối đa: {apartment.management.maxOccupants??'Chưa có'}</span></OwnerApartmentField></div>}
         </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-3">
+        <div className="app-panel p-5 sm:p-6 space-y-3">
           <OwnerApartmentField key={`${apartment.id}-description`} apartment={apartment} field="description" onSaved={reloadApartment}><h2 className="font-bold">Thông tin căn hộ</h2></OwnerApartmentField>
           <p className="text-sm text-slate-600 whitespace-pre-wrap break-words leading-7">{apartment.description}</p>
           <OwnerApartmentField key={`${apartment.id}-amenities`} apartment={apartment} field="amenities" onSaved={reloadApartment}><h2 className="font-bold mt-3">Tiện ích</h2></OwnerApartmentField>
           <div className="flex flex-wrap gap-2">{apartment.amenities.map((amenity,index)=><span key={index} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs break-words">{amenity}</span>)}</div>
         </div>
       </section>
-      <aside className="space-y-5"><div className="bg-white border border-slate-200 rounded-2xl p-6 lg:sticky lg:top-24">
+      <aside className="space-y-5"><div className="app-panel p-5 sm:p-6 lg:sticky lg:top-24">
         <p className="text-sm text-slate-500">Giá niêm yết / tháng</p><OwnerApartmentField key={`${apartment.id}-rent`} apartment={apartment} field="monthlyRent" onSaved={reloadApartment}><p className="text-3xl font-bold text-emerald-700 mt-2">{formatRent(apartment.advertisedMonthlyRent)}</p></OwnerApartmentField>
         {apartment.lessorRelationship&&apartment.lessorRelationship!=='UNSPECIFIED'&&<p className="text-sm mt-2">Bên cho thuê: {rightLabels[apartment.lessorRelationship]}</p>}
         {apartment.rightsValidUntil&&<p className="text-sm mt-1">Quyền cho thuê đến hết: {apartment.rightsValidUntil}</p>}
@@ -154,15 +154,15 @@ export function ApartmentDetailPage() {
           : verificationError ? <div role="alert" className="text-sm text-rose-700"><p>{verificationError}</p><button type="button" onClick={() => setRevision(value => value + 1)} className="underline mt-2">Tải lại trạng thái xác thực</button></div>
           : checking ? <p role="status">Đang tải trạng thái yêu cầu...</p> : requestError ? <div role="alert"><p>{requestError}</p><button onClick={() => setRevision(value => value + 1)} className="underline mt-2">Thử lại</button></div> : submitted ? <div role="status" className="bg-emerald-50 border border-emerald-200 rounded-xl p-4"><CheckCircle2 className="w-6 h-6 text-emerald-600 mb-2" /><p className="font-semibold text-emerald-800">Đã gửi yêu cầu thuê</p><p className="text-sm text-emerald-700 mt-2">{submitted.status === 'ACCEPTED' ? 'Chủ nhà đã chấp nhận yêu cầu thuê.' : 'Yêu cầu đang chờ chủ nhà xử lý.'}</p>{activeRequests.map(request => <div key={request.id} className="mt-3"><p className="text-sm">{requestStatusLabel[request.status]}</p>{request.status === 'PENDING' && <button type="button" disabled={saving} onClick={() => cancel(request)} className="border border-rose-300 text-rose-700 rounded-lg px-4 py-2 mt-2 text-sm disabled:opacity-50">{saving ? 'Đang hủy...' : 'Hủy yêu cầu thuê'}</button>}</div>)}<Link to="/my/rental-requests" className="inline-block text-sm text-emerald-800 underline mt-3">Xem yêu cầu của tôi</Link></div>
           : apartment.availability !== 'VACANT' || apartment.rentalRightsAvailable===false ? <p className="text-sm text-amber-700 bg-amber-50 rounded-lg p-4">Căn hộ hiện không còn nhận yêu cầu thuê hoặc quyền cho thuê chưa có hiệu lực/đã hết hạn.</p>
-          : !user ? <Link to="/login" state={{ returnTo: `/apartments/${id}` }} className="block text-center bg-emerald-600 text-white rounded-lg px-4 py-3 text-sm font-semibold">Đăng nhập để gửi yêu cầu thuê</Link>
+          : !user ? <Link to="/login" state={{ returnTo: `/apartments/${id}` }} className="block text-center bg-brand-600 text-white rounded-lg px-4 py-3 text-sm font-semibold">Đăng nhập để gửi yêu cầu thuê</Link>
           : !user.roles.includes('CUSTOMER') ? <p className="text-sm text-slate-500">Gửi yêu cầu thuê bằng tài khoản người tìm thuê.</p>
           : <form onSubmit={send} className="space-y-3"><label htmlFor="rental-message" className="text-sm font-semibold block">Lời nhắn cho chủ nhà</label><textarea id="rental-message" rows={5} maxLength={2000} value={message} disabled={saving} onChange={e => setMessage(e.target.value)} placeholder="Giới thiệu nhu cầu thuê, thời gian dự kiến chuyển vào..." className="w-full border border-slate-300 rounded-lg p-3 text-sm" />
-            <button type="submit" disabled={saving} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg py-3 text-sm font-semibold disabled:opacity-50">{saving ? 'Đang gửi...' : 'Gửi yêu cầu thuê'}</button>
+            <button type="submit" disabled={saving} className="w-full bg-brand-600 hover:bg-brand-700 text-white rounded-lg py-3 text-sm font-semibold disabled:opacity-50">{saving ? 'Đang gửi...' : 'Gửi yêu cầu thuê'}</button>
             {needsVerification && !showVerificationModal && (
               <div role="alert" className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
                 <p>Bạn cần xác thực tài khoản trước khi gửi yêu cầu thuê.</p>
                 <div className="flex flex-wrap gap-2 pt-1 items-center">
-                  <Link to="/account/verification" state={{ returnTo: `/apartments/${id}` }} className="inline-block bg-emerald-600 text-white font-semibold rounded-lg px-3 py-1.5 text-xs">
+                  <Link to="/account/verification" state={{ returnTo: `/apartments/${id}` }} className="inline-block bg-brand-600 text-white font-semibold rounded-lg px-3 py-1.5 text-xs">
                     Xác thực tài khoản
                   </Link>
                   <button type="button" onClick={() => setShowVerificationModal(true)} className="text-xs text-slate-600 underline ml-auto">
@@ -182,7 +182,7 @@ export function ApartmentDetailPage() {
             <button type="button" aria-label="Đóng" onClick={() => setShowVerificationModal(false)} className="text-slate-500 p-1"><X className="w-5 h-5" /></button>
           </div>
           <p className="text-sm text-slate-600">Bạn cần xác thực tài khoản bằng email hoặc VNeID mô phỏng trước khi gửi yêu cầu thuê.</p>
-          <Link to="/account/verification" state={{ returnTo: `/apartments/${id}` }} className="block text-center bg-emerald-600 text-white rounded-lg px-4 py-3 text-sm font-semibold">Quản lý xác thực tài khoản</Link>
+          <Link to="/account/verification" state={{ returnTo: `/apartments/${id}` }} className="block text-center bg-brand-600 text-white rounded-lg px-4 py-3 text-sm font-semibold">Quản lý xác thực tài khoản</Link>
         </div>
       </div>
     )}
