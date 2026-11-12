@@ -40,17 +40,6 @@ export function HomePage({ embedded = false }: { embedded?: boolean }) {
   };
   const content = <div className="home-wrap">
       {!embedded && <TenantHomePanel />}
-      <section className="home-section" aria-labelledby="home-cities-title">
-        <div className="home-heading"><div><h2 id="home-cities-title">Tìm căn hộ theo khu vực</h2><p>Một nơi ở mới, bắt đầu từ khu vực bạn yêu thích.</p></div><span className="home-badge">Ảnh minh họa khu vực</span></div>
-        <div className="home-cities">{homeCities.map(city => {
-          const value = catalogCity(city, addresses.options.map(option => option.city));
-          return <button key={city.label} type="button" disabled={addresses.loading} className="home-city" aria-label={`Tìm căn hộ tại ${city.label}`} aria-pressed={filters.city === value}
-            onClick={() => { const next = { city: value, district: '', ward: '' }; setAddress(next); search(next); }}>
-            <img src={`https://images.unsplash.com/${city.photo}?auto=format&fit=crop&w=650&q=85`} alt={`Ảnh minh họa khu vực ${city.label}`} onError={event => { event.currentTarget.style.visibility = 'hidden'; }} />
-            <strong>{city.label}</strong><span>Tìm căn hộ cho thuê</span><span className="home-city-arrow" aria-hidden="true">↗</span>
-          </button>;
-        })}</div>
-      </section>
       <section className="home-hero">
         <div className="home-eyebrow">Căn hộ cho thuê · An Cư PropTech</div>
         <h1>Tìm căn hộ cho thuê{filters.city ? ` tại ${filters.city}` : ' phù hợp với bạn'}</h1>
@@ -69,6 +58,17 @@ export function HomePage({ embedded = false }: { embedded?: boolean }) {
             }}/>
           {validation && <p role="alert" className="home-filter-error">{validation}</p>}
         </form>
+      </section>
+      <section className="home-section" aria-labelledby="home-cities-title">
+        <div className="home-heading"><div><h2 id="home-cities-title">Tìm căn hộ theo khu vực</h2><p>Một nơi ở mới, bắt đầu từ khu vực bạn yêu thích.</p></div><span className="home-badge">Ảnh minh họa khu vực</span></div>
+        <div className="home-cities">{homeCities.map(city => {
+          const value = catalogCity(city, addresses.options.map(option => option.city));
+          return <button key={city.label} type="button" disabled={addresses.loading} className="home-city" aria-label={`Tìm căn hộ tại ${city.label}`} aria-pressed={filters.city === value}
+            onClick={() => { const next = { city: value, district: '', ward: '' }; setAddress(next); search(next); }}>
+            <img src={`https://images.unsplash.com/${city.photo}?auto=format&fit=crop&w=650&q=85`} alt={`Ảnh minh họa khu vực ${city.label}`} onError={event => { event.currentTarget.style.visibility = 'hidden'; }} />
+            <strong>{city.label}</strong><span>Tìm căn hộ cho thuê</span><span className="home-city-arrow" aria-hidden="true">↗</span>
+          </button>;
+        })}</div>
       </section>
       <section ref={results} tabIndex={-1} className="home-section home-results" aria-labelledby="home-results-title" aria-busy={loading}>
         <div className="home-heading"><div><h2 id="home-results-title">Căn hộ cho thuê</h2><p role="status">{loading ? 'Đang tải căn hộ...' : `${data?.totalElements ?? 0} tài sản có phòng phù hợp`}</p></div><button type="button" className="home-text-link" onClick={clear}>Xóa bộ lọc</button></div>

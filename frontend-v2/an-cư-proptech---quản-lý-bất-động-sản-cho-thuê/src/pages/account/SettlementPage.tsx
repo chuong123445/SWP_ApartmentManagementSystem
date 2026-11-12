@@ -28,7 +28,7 @@ const entryLabels: Record<SettlementWallet['entries'][number]['kind'], string> =
 
 const field = 'block w-full border rounded-lg px-3 py-2 mt-1 bg-white';
 const button = 'border rounded-lg px-3 py-2 disabled:opacity-50';
-const primary = `${button} bg-emerald-700 text-white`;
+const primary = `${button} bg-brand-700 text-white`;
 const card = 'bg-white rounded-xl border p-4 space-y-3 min-w-0';
 
 export function SettlementPage() {
@@ -123,7 +123,7 @@ export function SettlementPanel({ admin = false }: { admin?: boolean }) {
 
   return <div className="space-y-5">
       {!admin && <Link className="underline text-emerald-800" to="/app?tab=invoices">Hóa đơn & thu</Link>}
-      <h1 className="text-2xl font-bold">{admin ? 'Xử lý yêu cầu rút tiền' : 'Số dư và rút tiền'}</h1>
+      <h1 className="app-page-title">{admin ? 'Xử lý yêu cầu rút tiền' : 'Số dư và rút tiền'}</h1>
       {admin && connection && <section className={card} aria-label="Kết nối SePay dùng chung">
         <h2 className="font-semibold">Kết nối SePay dùng chung</h2>
         <p>{connection.configured && connection.enabled && connection.webhookUrl ? 'Đã cấu hình' : 'Chưa sẵn sàng nhận thanh toán'}</p>

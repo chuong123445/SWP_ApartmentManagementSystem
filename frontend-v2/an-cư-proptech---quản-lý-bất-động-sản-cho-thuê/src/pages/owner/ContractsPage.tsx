@@ -17,12 +17,12 @@ export function ContractsPage({ contracts, propertyId, onChooseRequest }: Contra
     `${contract.contractNumber} ${contract.tenantName} ${contract.roomNumber}`.toLocaleLowerCase('vi').includes(needle));
   return <div className="space-y-6 pb-12">
     <header className="flex flex-wrap justify-between items-start gap-4 bg-white border border-slate-200 rounded-2xl p-5">
-      <div><h1 className="text-xl font-bold flex items-center gap-2"><FileCheck2 className="text-emerald-700" />Hợp đồng thuê</h1>
+      <div><h1 className="app-page-title flex items-center gap-2"><FileCheck2 className="text-emerald-700" />Hợp đồng thuê</h1>
         <p className="text-sm text-slate-500 mt-2">Tạo hợp đồng từ yêu cầu đã chấp nhận, xem PDF và ký xác nhận bằng tài khoản của mỗi bên.</p>
         <p className="text-xs text-slate-500 mt-2">{contracts.length} hợp đồng trong tài sản đang chọn. Bản có chữ ký được khóa nội dung.</p>
       </div>
       <button type="button" id="btn-add-contract" onClick={onChooseRequest} disabled={!onChooseRequest}
-        className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 text-white px-4 py-3 font-semibold text-sm disabled:opacity-50">
+        className="inline-flex items-center gap-2 rounded-xl bg-brand-700 text-white px-4 py-3 font-semibold text-sm disabled:opacity-50">
         <Plus size={17} />Tạo hợp đồng mới
       </button>
     </header>
@@ -33,7 +33,7 @@ export function ContractsPage({ contracts, propertyId, onChooseRequest }: Contra
           <input value={search} onChange={event => setSearch(event.target.value)} className="block w-full mt-2 border border-slate-300 rounded-lg p-3" placeholder="Nhập thông tin cần tìm..." />
         </label>
       </div>
-      <div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead className="bg-slate-50 text-slate-600"><tr>
+      <div className="overflow-x-auto"><table className="app-data-table w-full text-sm text-left"><thead className="bg-slate-50 text-slate-600"><tr>
         {['Số hợp đồng', 'Phòng / căn', 'Khách thuê', 'Thời hạn', 'Tiền thuê / tháng', 'Trạng thái', 'Xem lại'].map(label => <th key={label} className="p-3 font-semibold">{label}</th>)}
       </tr></thead><tbody>{existing.map(contract => <tr key={contract.id} className="border-t border-slate-100">
         <td className="p-3 font-medium">{contract.contractNumber}</td><td className="p-3">{contract.roomNumber}</td><td className="p-3">{contract.tenantName}</td>

@@ -1,3 +1,4 @@
+import { BrandLogo } from '@/components/navigation/BrandLogo';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { useAuth0 } from '@auth0/auth0-react';
@@ -59,16 +60,17 @@ export function VneidCallbackPage() {
   const message = error || (accountChanged && !loading ? 'Phiên tài khoản cần xác thực đã thay đổi. Hãy đăng nhập và bắt đầu lại.' : '') || (auth0Error ? 'Đăng nhập VNeID bị hủy hoặc không thành công. Hãy bắt đầu lại.' : '') || configError
     || (!configLoading && !config?.enabled ? 'VNeID chưa được cấu hình.' : '')
     || (config?.enabled && !isLoading && !location.state?.intent ? 'Không còn thông tin thao tác VNeID. Hãy bắt đầu lại.' : '');
-  return <main className="min-h-screen bg-slate-50 flex items-center justify-center p-6"><section className="w-full max-w-md bg-white border rounded-2xl p-7">
+  return <main className="min-h-dvh bg-brand-50 flex items-center justify-center p-6"><section className="w-full max-w-md bg-white border rounded-2xl p-7">
+    <div className="mb-3"><BrandLogo /></div>
     <h1 className="text-xl font-bold">Hoàn tất xác thực VNeID</h1>
-    {message ? <><p role="alert" className="mt-4 text-rose-700">{message}</p><Link to={user ? '/account/verification' : '/login'} className="inline-block mt-5 text-emerald-700 underline">Quay lại để thử lại</Link></>
+    {message ? <><p role="alert" className="mt-4 text-rose-700">{message}</p><Link to={user ? '/account/verification' : '/login'} className="inline-block mt-5 text-brand-700 underline">Quay lại để thử lại</Link></>
       : pending ? <div className="mt-4 space-y-4">
         <h2 className="font-semibold">Họ tên khác với tên hiển thị</h2>
         <dl className="space-y-3 break-words"><div><dt className="text-sm text-slate-500">Tên hiển thị của tài khoản</dt><dd className="font-medium">{pending.displayName}</dd></div>
           <div><dt className="text-sm text-slate-500">Họ tên theo VNeID mô phỏng</dt><dd className="font-medium">{pending.legalName}</dd></div></dl>
         <p className="text-sm text-slate-700">Chưa có danh tính nào được liên kết từ lượt này. Nếu xác nhận, hồ sơ cho thuê và hợp đồng mới sẽ sử dụng họ tên theo VNeID. Tên hiển thị được giữ nguyên và vẫn có thể chỉnh sửa. Hợp đồng đã lưu không bị thay đổi.</p>
         <p className="text-sm text-slate-500">Chỉ xác nhận nếu đây là danh tính của bạn. Xác nhận có hiệu lực tối đa 5 phút.</p>
-        <div className="flex flex-wrap gap-3"><button type="button" disabled={busy || accountChanged} onClick={() => decide(true)} className="bg-emerald-700 text-white rounded-lg px-4 py-2 disabled:opacity-50">{busy ? 'Đang xử lý...' : 'Xác nhận liên kết'}</button>
+        <div className="flex flex-wrap gap-3"><button type="button" disabled={busy || accountChanged} onClick={() => decide(true)} className="bg-brand-700 text-white rounded-lg px-4 py-2 disabled:opacity-50">{busy ? 'Đang xử lý...' : 'Xác nhận liên kết'}</button>
           <button type="button" disabled={busy || accountChanged} onClick={() => decide(false)} className="border rounded-lg px-4 py-2 disabled:opacity-50">Hủy liên kết</button></div>
       </div> : <p role="status" className="mt-4">Đang kiểm tra và hoàn tất đăng nhập...</p>}
   </section></main>;

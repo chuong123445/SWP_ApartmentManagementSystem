@@ -41,7 +41,7 @@ export function CashEntryForm({ book, buildings, propertyId, onClose, onSaved }:
         <label className="grid gap-1">Mã tham chiếu (tùy chọn)<input className={control} maxLength={200} value={input.reference} onChange={e => change('reference', e.target.value)} /></label>
       </fieldset>
       {error && <><p role="alert" className="text-red-700">{error}</p><p className="text-xs text-slate-600">Nếu mất phản hồi, thử lại cùng nội dung để hệ thống trả phiếu đã tạo, tránh tạo trùng. Chọn sửa nội dung chỉ khi đã kiểm tra phiếu cũ chưa được lưu.</p><button type="button" className="underline text-left" onClick={() => setSubmitted(false)}>Sửa nội dung</button></>}
-      <div className="flex justify-end gap-2"><button type="button" className="px-3 py-2 border rounded-lg" disabled={busy} onClick={onClose}>Đóng</button><button type="submit" className="px-4 py-2 bg-emerald-700 text-white rounded-lg disabled:opacity-50" disabled={busy}>{busy ? 'Đang lưu…' : 'Lưu nháp'}</button></div>
+      <div className="flex justify-end gap-2"><button type="button" className="px-3 py-2 border rounded-lg" disabled={busy} onClick={onClose}>Đóng</button><button type="submit" className="px-4 py-2 bg-brand-700 text-white rounded-lg disabled:opacity-50" disabled={busy}>{busy ? 'Đang lưu…' : 'Lưu nháp'}</button></div>
     </form>
   </section></div>;
 }

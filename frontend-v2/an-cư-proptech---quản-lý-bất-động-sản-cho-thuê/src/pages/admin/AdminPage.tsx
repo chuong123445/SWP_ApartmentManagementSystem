@@ -19,7 +19,7 @@ export function AdminPage() {
         {tabs.map(tab => <Link key={tab.key} to={{ pathname: '/admin/property-dossiers', search: tab.search }}
           aria-current={active === tab.key ? 'page' : undefined}
           className={`rounded-lg px-4 py-2 text-sm font-semibold ${active === tab.key
-            ? 'bg-emerald-700 text-white' : 'bg-white border border-slate-200 hover:bg-emerald-50'}`}>
+            ? 'bg-brand-700 text-white' : 'bg-white border border-slate-200 hover:bg-brand-50'}`}>
           {tab.label}
         </Link>)}
       </nav>

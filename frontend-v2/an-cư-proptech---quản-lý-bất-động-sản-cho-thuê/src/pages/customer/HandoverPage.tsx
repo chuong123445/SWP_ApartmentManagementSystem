@@ -22,7 +22,7 @@ export function HandoverPage(){
    <Link to={owner?'/app?tab=contracts':'/my/contracts'}>← Danh sách hợp đồng</Link>
    <Link to={`/contracts/${id}`}>Xem hợp đồng thuê</Link>
   </nav>
-  <header><h1 className="text-2xl font-bold">Biên bản bàn giao · HD-{id}</h1><p className="text-sm text-slate-600 mt-2">Xem PDF, ký biên bản và theo dõi xác nhận của hai bên.</p></header>
+  <header><h1 className="app-page-title">Biên bản bàn giao · HD-{id}</h1><p className="text-sm text-slate-600 mt-2">Xem PDF, ký biên bản và theo dõi xác nhận của hai bên.</p></header>
   {error&&<div role="alert" className="rounded-xl bg-rose-50 p-4 text-rose-700"><p>{error}</p><button type="button" className="underline mt-2" onClick={()=>setRevision(value=>value+1)}>Tải lại hồ sơ bàn giao</button></div>}
   {!draft&&!error&&<p role="status">Đang tải hồ sơ bàn giao…</p>}
   {draft&&!['ACTIVE','ENDED'].includes(draft.status)&&<p>Hợp đồng chưa đến bước bàn giao.</p>}

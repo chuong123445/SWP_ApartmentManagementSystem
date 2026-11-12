@@ -92,7 +92,7 @@ export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice, initia
       {created && <p className="text-sm text-amber-700">Đã lưu bản nháp. Bạn có thể thử gửi lại hóa đơn này.</p>}
       <div className="flex justify-end gap-3 pt-4 border-t"><button type="button" onClick={onClose} disabled={saving}>Hủy</button>
         <button type="submit" id="btn-confirm-create-invoice" disabled={saving || (kind==='RENT'?rent?.contractId!==contractId||!rent.coverageStart||!!rent.existingDraftId:context?.contractId!==contractId)} className="border rounded-lg px-4 py-2 disabled:opacity-50">Lưu bản nháp</button>
-        <button type="button" id="btn-create-send-invoice" disabled={saving || (kind==='RENT'?rent?.contractId!==contractId||!rent.coverageStart||!!rent.existingDraftId:context?.contractId!==contractId)} onClick={() => void save(true)} className="bg-emerald-600 text-white rounded-lg px-4 py-2 disabled:opacity-50">{saving ? 'Đang xử lý...' : created ? 'Gửi lại' : 'Lập và gửi'}</button></div>
+        <button type="button" id="btn-create-send-invoice" disabled={saving || (kind==='RENT'?rent?.contractId!==contractId||!rent.coverageStart||!!rent.existingDraftId:context?.contractId!==contractId)} onClick={() => void save(true)} className="bg-brand-600 text-white rounded-lg px-4 py-2 disabled:opacity-50">{saving ? 'Đang xử lý...' : created ? 'Gửi lại' : 'Lập và gửi'}</button></div>
     </form>
   </section></div>;
 }

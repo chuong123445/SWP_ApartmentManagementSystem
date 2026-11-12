@@ -1,3 +1,4 @@
+import { ownerSummaryFixture } from './fixtures/ownerSummary';
 import { test, type Page } from '@playwright/test';
 
 export async function checkAccountWorkspaces(page: Page, width: number, scenario: string) {
@@ -31,7 +32,8 @@ export async function checkAccountWorkspaces(page: Page, width: number, scenario
     if(path==='/api/v1/me/tenancies')return json(scenario==='tenant'?[{id:'42',apartmentId:'5',roomNumber:'A.101',apartmentTitle:'Căn hộ kiểm thử',propertyName:'Tài sản bên cho thuê',customerId:'2',customerName:user().fullName,status:'ACTIVE',startDate:draft.startDate,endDate:draft.endDate,monthlyRent:draft.monthlyRent,version:0}]:[]);
     if(path==='/api/v1/contracts/42')return json(draft);
     if(path==='/api/v1/contracts/42/pdf')return route.fulfill({contentType:'application/pdf',body:pdf});
-    if(path==='/api/v1/apartments'||path==='/api/v1/admin/property-dossiers'||path.endsWith('/invoices')||path.endsWith('/rental-requests')||path.endsWith('/renewal-requests'))return json(empty);
+    if(path==='/api/v1/apartments'||path==='/api/v1/apartments/property-groups'||path==='/api/v1/admin/property-dossiers'||path.endsWith('/invoices')||path.endsWith('/rental-requests')||path.endsWith('/renewal-requests'))return json(empty);
+    const summary=ownerSummaryFixture(route);if(summary)return summary;
     if(path==='/api/v1/apartments/address-options'||path.endsWith('/address-options'))return json([]);
     if(['/api/v1/owner/properties','/api/v1/owner/apartments','/api/v1/owner/tenancies','/api/v1/owner/maintenance-tickets','/api/v1/me/contract-drafts','/api/v1/owner/contract-drafts','/api/v1/me/payments/sepay/test-payments','/api/v1/admin/property-dossiers'].includes(path))return json([]);
     unexpected.push(request.method()+' '+path);return route.fulfill({status:404,json:{message:'Unexpected fixture route'}});
@@ -53,6 +55,9 @@ export async function checkAccountWorkspaces(page: Page, width: number, scenario
   };
   const open=async()=>{await page.getByRole('button',{name:'Tài khoản'}).click();await menu().waitFor({state:'visible'});await assertIdentity();};
   await page.setViewportSize({width,height:950});await page.goto('/');await page.getByRole('button',{name:'Tài khoản'}).waitFor({state:'visible'});await open();
+  const logo=page.getByRole('link',{name:'An Cư PropTech',exact:true}).locator('img');
+  await logo.waitFor({state:'visible'});
+  ensure(await logo.evaluate(image=>image instanceof HTMLImageElement && image.complete && image.naturalWidth>0),'Brand image did not load');
   const spaces=menu().getByLabel('Không gian làm việc');
   ensure(await spaces.getByRole('link').count()===(scenario==='customer'||scenario==='pending'||scenario==='admin'?1:2),'Wrong workspace membership');
   ensure(await spaces.getByRole('link',{name:'Quản lý cho thuê',exact:true}).count()===(roles.includes('OWNER')?1:0),'Owner workspace mismatch');
@@ -90,4 +95,4 @@ export async function checkAccountWorkspaces(page: Page, width: number, scenario
   return {width,scenario,errors,network,unexpected,writes};
 }
 
-for(const width of [1440,390])for(const scenario of ['dual','reverse','tenant','customer','admin','revoked','pending'])test(`Account identity and workspaces ${scenario} ${width}`,async({page})=>{await checkAccountWorkspaces(page,width,scenario);});
+for(const width of [1440,768,390])for(const scenario of ['dual','reverse','tenant','customer','admin','revoked','pending'])test(`Account identity and workspaces ${scenario} ${width}`,async({page})=>{await checkAccountWorkspaces(page,width,scenario);});

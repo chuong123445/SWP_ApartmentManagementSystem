@@ -28,7 +28,7 @@ export function ManagementLayout({ account, canManage, navigation, counters, onL
   isLoggingOut, authError, children, overlays, properties, propertiesLoading, propertiesError }: ManagementLayoutProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
-    <div className="management-shell flex flex-col h-screen bg-[#f6f8fa] font-sans antialiased text-slate-800 overflow-hidden">
+    <div className="management-shell flex flex-col h-dvh bg-brand-50 font-sans antialiased text-slate-800 overflow-hidden">
       <SiteHeader account={account} onLogout={onLogout} isLoggingOut={isLoggingOut} authError={authError} />
       <div className="flex flex-1 min-h-0">
       {menuOpen && <button aria-label="Đóng menu quản lý" onClick={() => setMenuOpen(false)} className="fixed inset-0 z-30 bg-slate-900/50 md:hidden" />}
@@ -47,10 +47,10 @@ export function ManagementLayout({ account, canManage, navigation, counters, onL
         userRole={navigation.userRole}
       />
       </div>
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto overscroll-contain">
         <button type="button" aria-expanded={menuOpen} aria-controls="management-menu" onClick={() => setMenuOpen(value => !value)} className="md:hidden self-start inline-flex items-center gap-2 text-sm font-semibold m-3 mb-0 px-3 py-2 bg-white border border-slate-200 rounded-lg"><Menu className="w-4 h-4" />Menu quản lý</button>
 
-        <main className="flex-1 p-4 md:p-6 max-w-7xl w-full mx-auto">{children}</main>
+        <main className="flex-1 min-w-0 p-4 lg:p-7 max-w-7xl w-full mx-auto">{children}</main>
       </div>
       </div>
       {overlays}

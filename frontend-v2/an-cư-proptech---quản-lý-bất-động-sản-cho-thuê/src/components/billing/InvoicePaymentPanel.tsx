@@ -78,7 +78,7 @@ export function InvoicePaymentPanel({ invoiceId, additional = false, tenant = fa
           <img src={data.qrUrl} alt="QR chuyển khoản hóa đơn SePay" referrerPolicy="no-referrer" className="w-72 max-w-full mx-auto rounded-lg" />
           <p className="text-sm text-slate-600">Chuyển đúng số tiền và giữ nguyên nội dung. Trạng thái tự cập nhật khi hệ thống ghi nhận giao dịch.</p>
         </div>
-      : !additional && <button type="button" disabled={busy} onClick={() => void generate()} className="bg-emerald-700 text-white rounded-lg px-4 py-3 disabled:opacity-50">
+      : !additional && <button type="button" disabled={busy} onClick={() => void generate()} className="bg-brand-700 text-white rounded-lg px-4 py-3 disabled:opacity-50">
           {busy ? 'Đang tạo QR...' : 'Hiển thị QR thanh toán SePay'}
         </button>)}
     <button type="button" onClick={() => setRevision(value => value + 1)} className="block underline text-sm text-emerald-800">Kiểm tra trạng thái thanh toán</button>

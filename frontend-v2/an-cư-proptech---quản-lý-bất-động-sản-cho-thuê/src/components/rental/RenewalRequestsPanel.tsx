@@ -9,7 +9,7 @@ import { formatRent, formatRequestDate } from '@/utils/format';
 import { renewalInboxLabels } from '@/utils/rentalInbox';
 
 const action = 'rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold disabled:opacity-50';
-const primary = 'rounded-lg border border-emerald-700 bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50';
+const primary = 'rounded-lg border border-brand-700 bg-brand-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50';
 export function RenewalRequestsPanel({ propertyId, onDecision }: { propertyId?: string; onDecision: () => void }) {
   const [page, setPage] = useState(0);const [status, setStatus] = useState<RenewalInboxItem['status'] | 'ALL'>('PENDING');
   const { data, loading, error, reload } = useRenewalInbox(page, status === 'ALL' ? undefined : status, propertyId);

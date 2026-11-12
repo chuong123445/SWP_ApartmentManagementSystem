@@ -98,7 +98,7 @@ export const ApartmentListingPage: React.FC<ApartmentListingPageProps> = ({
                 onClick={() => setFilterStatus(tab.id as any)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                   filterStatus === tab.id
-                    ? 'bg-emerald-600 text-white shadow-xs'
+                    ? 'bg-brand-600 text-white shadow-xs'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
@@ -116,7 +116,7 @@ export const ApartmentListingPage: React.FC<ApartmentListingPageProps> = ({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Tìm số phòng, máy lạnh, ban công..."
-                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-emerald-600"
+                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-brand-600"
               />
             </div>
 
@@ -183,7 +183,7 @@ export const ApartmentListingPage: React.FC<ApartmentListingPageProps> = ({
           {filteredRooms.map((room) => (
             <div
               key={room.id}
-              className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md hover:border-emerald-500/80 transition-all flex flex-col justify-between group"
+              className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md hover:border-brand-500/80 transition-all flex flex-col justify-between group"
             >
               <div>
                 {/* Image & Badges */}
@@ -193,7 +193,7 @@ export const ApartmentListingPage: React.FC<ApartmentListingPageProps> = ({
                     alt={room.roomNumber}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  <div className="absolute top-3 left-3 bg-emerald-700/90 text-white px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 shadow-xs">
+                  <div className="absolute top-3 left-3 bg-brand-700/90 text-white px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 shadow-xs">
                     <ShieldCheck className="w-3 h-3 text-emerald-300" />
                     TrustGuard™ Verified
                   </div>
@@ -261,7 +261,7 @@ export const ApartmentListingPage: React.FC<ApartmentListingPageProps> = ({
               <div className="p-4 pt-0">
                 <button
                   onClick={() => onSelectRoom(room)}
-                  className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
+                  className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
                 >
                   <Eye className="w-4 h-4" />
                   <span>Xem chi tiết căn hộ</span>
@@ -321,7 +321,7 @@ export const ApartmentListingPage: React.FC<ApartmentListingPageProps> = ({
                     <td className="px-4 py-3 text-right">
                       <button
                         onClick={() => onSelectRoom(r)}
-                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] transition-colors"
+                        className="px-3 py-1 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-bold text-[11px] transition-colors"
                       >
                         Xem Chi Tiết
                       </button>

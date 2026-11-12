@@ -81,7 +81,7 @@ export function PropertyCreateForm({ onClose, onCreate }: {
         </fieldset>
         <p className="text-sm bg-amber-50 text-amber-900 rounded-lg p-3">Tài sản và các căn được lưu nháp, chưa xuất hiện trên Trang chủ. Sau khi lưu, chọn Chuẩn bị hồ sơ kiểm duyệt trong Tài sản cho thuê. Cần Admin duyệt tài sản trước khi công khai từng căn.</p>
         {error && <p role="alert" className="text-sm text-rose-700 bg-rose-50 p-3 rounded-lg">{error}</p>}
-        <div className="flex justify-end gap-2"><button type="button" disabled={saving} onClick={onClose} className="border rounded-lg px-4 py-2 text-sm">Hủy</button><button type="submit" disabled={saving} className="bg-emerald-600 text-white rounded-lg px-4 py-2 font-semibold text-sm disabled:opacity-50">{saving ? 'Đang lưu...' : 'Lưu tài sản nháp'}</button></div>
+        <div className="flex justify-end gap-2"><button type="button" disabled={saving} onClick={onClose} className="border rounded-lg px-4 py-2 text-sm">Hủy</button><button type="submit" disabled={saving} className="bg-brand-600 text-white rounded-lg px-4 py-2 font-semibold text-sm disabled:opacity-50">{saving ? 'Đang lưu...' : 'Lưu tài sản nháp'}</button></div>
       </form>
   </section>;
 }
