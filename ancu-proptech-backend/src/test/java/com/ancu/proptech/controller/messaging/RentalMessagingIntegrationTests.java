@@ -109,10 +109,20 @@ class RentalMessagingIntegrationTests {
             .andExpect(status().isNotFound());
         String tenantToken = token(tenant);
         String conversation = id(mvc.perform(post(open).header("Authorization", tenantToken)).andExpect(status().isOk()));
-        mvc.perform(post(open).header("Authorization", tenantToken)).andExpect(jsonPath("$.id").value(conversation));
+        String ownerOpen = ROOT + "/contracts/" + contract.getId();
+        String ownerToken = token(owner);
+        mvc.perform(post(ownerOpen).header("Authorization", token(account(AuthAccount.Role.OWNER))))
+            .andExpect(status().isNotFound());
+        mvc.perform(post(ownerOpen).header("Authorization", ownerToken))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(conversation));
         String thread = ROOT + "/" + conversation + "/messages";
+        send(thread, ownerToken, UUID.randomUUID(), "Chào em, anh cần hẹn kiểm tra đồng hồ điện").andExpect(status().isOk());
         send(thread, tenantToken, UUID.randomUUID(), "Em muốn hỏi về phòng đang thuê").andExpect(status().isOk());
-        send(thread, token(owner), UUID.randomUUID(), "Anh nghe đây").andExpect(status().isOk());
+        mvc.perform(get(thread).header("Authorization", tenantToken))
+            .andExpect(jsonPath("$.messages[0].mine").value(false));
+        contract.setStatus(RentalContract.Status.ENDED);
+        contracts.saveAndFlush(contract);
+        mvc.perform(post(ownerOpen).header("Authorization", ownerToken)).andExpect(status().isNotFound());
     }
 
     private ResultActions send(String url, String token, UUID key, String body) throws Exception {

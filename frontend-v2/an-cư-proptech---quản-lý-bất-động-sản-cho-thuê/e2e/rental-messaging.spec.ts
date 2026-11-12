@@ -20,6 +20,16 @@ test('Khách thuê và chủ nhà nhắn tin hai chiều trên máy tính và đ
       if (pathname.endsWith('/auth/refresh')) return json({ accessToken: 'fixture', tokenType: 'Bearer', expiresIn: 900, user });
       if (pathname.endsWith('/me/notifications')) return json({ items: [], totalElements: 0, totalPages: 0, unreadCount: 0 });
       if (pathname.endsWith('/me/verifications')) return json({ emailVerified: true, vneid: { status: 'UNVERIFIED' } });
+      if (pathname.endsWith('/owner/properties')) return json([{ id: '5', name: 'Tòa thử', approvalStatus: 'APPROVED' }]);
+      if (pathname.endsWith('/owner/apartments')) return json([{
+        id: '42', propertyId: '5', propertyName: 'Tòa thử', roomNumber: '101', title: 'Phòng 101',
+        availability: 'OCCUPIED', propertyApprovalStatus: 'APPROVED', advertisedMonthlyRent: '4000000', areaM2: '25',
+      }]);
+      if (pathname.endsWith('/owner/tenancies')) return json([{
+        id: '82', apartmentId: '42', roomNumber: '101', propertyName: 'Tòa thử', customerId: '12',
+        customerName: 'Khách thuê thử', customerEmail: 'test@example.invalid', status: 'ACTIVE',
+        startDate: '2026-01-01', endDate: '2027-01-01', monthlyRent: '4000000', version: 0,
+      }]);
       if (pathname === '/api/v1/apartments/42') return json({
         id: '42', title: 'Phòng 101', address: 'Hải Châu, Đà Nẵng', propertyName: 'Tòa thử',
         areaM2: '25', advertisedMonthlyRent: '4000000', images: [], amenities: [],
@@ -36,6 +46,7 @@ test('Khách thuê và chủ nhà nhắn tin hai chiều trên máy tính và đ
         id: message.id, body: message.body, sentAt: message.sentAt, mine: message.author === role,
       });
       if (pathname.endsWith('/conversations/apartments/42') && request.method() === 'POST') return json(conversation);
+      if (pathname.endsWith('/conversations/contracts/82') && request.method() === 'POST' && role === 'OWNER') return json(conversation);
       if (pathname.endsWith('/me/conversations')) {
         return json({ items: sent.length ? [conversation] : [], page: 0, size: 20, totalPages: 1, totalElements: sent.length ? 1 : 0 });
       }
@@ -89,6 +100,12 @@ test('Khách thuê và chủ nhà nhắn tin hai chiều trên máy tính và đ
     expect(await customer.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     await customer.reload();
     await expect(customer.getByRole('log')).toContainText('Chiều nay bạn qua xem được nhé');
+
+    await owner.goto('/app');
+    await owner.getByRole('button', { name: 'Khách thuê', exact: true }).click();
+    await owner.getByRole('button', { name: 'Nhắn tin cho Khách thuê thử · 101' }).click();
+    await expect(owner).toHaveURL(new RegExp(`/my/messages/${conversationId}$`));
+    await expect(owner.getByRole('log')).toContainText('Cho mình hẹn xem phòng ạ');
   } finally {
     await customerContext.close();
     await ownerContext.close();

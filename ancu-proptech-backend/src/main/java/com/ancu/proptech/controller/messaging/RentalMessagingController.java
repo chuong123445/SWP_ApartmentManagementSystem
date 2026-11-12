@@ -28,6 +28,11 @@ public class RentalMessagingController {
         return privateResponse(messaging.inbox(jwt, page, size));
     }
 
+    @PostMapping("/contracts/{id}")
+    public ResponseEntity<Conversation> openForOwner(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
+        return privateResponse(messaging.openForOwner(jwt, id));
+    }
+
     @GetMapping("/{id}/messages")
     public ResponseEntity<ThreadView> thread(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id,
         @RequestParam(required = false) Long before, @RequestParam(required = false) Long after) {
