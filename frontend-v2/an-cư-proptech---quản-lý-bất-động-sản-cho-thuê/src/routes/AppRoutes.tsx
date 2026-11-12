@@ -18,6 +18,7 @@ import { HomePage } from '@/pages/customer/HomePage';
 import { ApartmentDetailPage } from '@/pages/customer/ApartmentDetailPage';
 import { MyRentalRequestsPage } from '@/pages/customer/MyRentalRequestsPage';
 import { MyInvoicesPage } from '@/pages/customer/MyInvoicesPage';
+import { RentalMessagesPage } from '@/pages/customer/RentalMessagesPage';
 import { InvoiceDetailPage } from '@/pages/customer/InvoiceDetailPage';
 import { ProfilePage } from '@/pages/account/ProfilePage';
 import { AccountActionPage } from '@/pages/account/AccountActionPage';
@@ -67,6 +68,7 @@ export function AppRoutes() {
     <Route path="/my/rental-requests" element={<RequireAccount role="CUSTOMER"><MyRentalRequestsPage /></RequireAccount>} />
     <Route path="/my/test-payments" element={<RequireAccount role="CUSTOMER"><SepayTestPaymentsPage tenant /></RequireAccount>} />
     <Route path="/my/invoices" element={<RequireAccount role="CUSTOMER"><MyInvoicesPage /></RequireAccount>} />
+    <Route path="/my/messages/:id?" element={<RequireAccount><RentalMessagesPage /></RequireAccount>} />
     <Route path="/my/contracts" element={<RequireAccount role="CUSTOMER"><MyContractsPage /></RequireAccount>} />
     <Route path="/my/maintenance" element={<RequireAccount role="CUSTOMER"><MyMaintenancePage /></RequireAccount>} />
     <Route path="/my/home" element={<RequireAccount><ResidentHomePage /></RequireAccount>} />
