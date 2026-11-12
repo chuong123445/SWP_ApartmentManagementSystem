@@ -9,6 +9,30 @@ import java.util.List;
 import java.util.stream.Stream;
 
 public interface FinancialReportRepository extends Repository<RentalInvoice,Long> {
+    @Query("""
+        select new com.ancu.proptech.dto.finance.TenantInvoiceTotals(
+            count(case when p.paidAt is not null then 1 else null end),
+            coalesce(sum(case when p.paidAt is not null then i.totalAmount else 0 end), 0),
+            count(case when p.paidAt is null then 1 else null end),
+            coalesce(sum(case when p.paidAt is null then i.totalAmount else 0 end), 0))
+        from RentalInvoice i left join InvoicePayment p on p.invoiceId = i.id
+        where i.contract.customer.id = :customerId and i.status = :status and i.kind = :kind
+        """)
+    TenantInvoiceTotals tenantInvoices(@Param("customerId") Long customerId,
+        @Param("status") RentalInvoice.Status status, @Param("kind") RentalInvoice.Kind kind);
+
+    @Query("""
+        select new com.ancu.proptech.dto.finance.TenantInvoiceTotals(
+            count(case when p.paidAt is not null then 1 else null end),
+            coalesce(sum(case when p.paidAt is not null then p.amount else 0 end), 0),
+            count(case when p.paidAt is null then 1 else null end),
+            coalesce(sum(case when p.paidAt is null then p.amount else 0 end), 0))
+        from TestPayment p, RentalContract c
+        where p.customerId = :customerId and p.contractId = c.id
+          and c.customer.id = :customerId and p.ownerId = c.apartment.property.owner.id
+        """)
+    TenantInvoiceTotals tenantAdditionalInvoices(@Param("customerId") Long customerId);
+
     @Query("select new com.ancu.proptech.dto.finance.FinancialInvoiceRow(i.contract.apartment.property.id,i.period,i.dueDate,i.monthlyRent,i.electricityAmount,i.waterAmount,i.internetFee,i.garbageFee,i.totalAmount,p.amount,p.paidAt) from RentalInvoice i left join InvoicePayment p on p.invoiceId=i.id where i.contract.apartment.property.owner.id=:ownerId and (:propertyId is null or i.contract.apartment.property.id=:propertyId) and i.status=com.ancu.proptech.model.billing.RentalInvoice.Status.SENT")
     @QueryHints(@jakarta.persistence.QueryHint(name="org.hibernate.fetchSize",value="100"))
     Stream<FinancialInvoiceRow> invoices(@Param("ownerId") Long ownerId,@Param("propertyId") Long propertyId);
