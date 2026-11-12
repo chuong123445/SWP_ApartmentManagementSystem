@@ -114,7 +114,7 @@
   overflow-wrap: anywhere;
 }
 
-.home-hero h1 span { color: var(--app-primary); }
+.home-hero h1 span { display: block; color: var(--app-primary); }
 
 .home-intro-copy p {
   max-width: 42ch;
@@ -285,7 +285,15 @@
 @media (max-width: 500px) {
   .site-header .customer-header-inner { gap: 10px; }
   .site-header .customer-nav { flex: 1 1 auto; gap: 8px; }
+  .site-header .customer-header-inner:has(nav[aria-label="Điều hướng chính"]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    row-gap: 6px;
+  }
+  .site-header .customer-nav:has(nav[aria-label="Điều hướng chính"]) { display: contents; }
+  .site-header .customer-nav:has(nav[aria-label="Điều hướng chính"]) > div { grid-row: 1; }
   .site-header nav[aria-label="Điều hướng chính"] { width: 100%; justify-content: space-between; gap: 4px; }
+  .site-header .customer-header-inner nav[aria-label="Điều hướng chính"] { grid-column: 1 / -1; grid-row: 2; }
   .site-header nav[aria-label="Điều hướng chính"] a { padding: 5px 3px; font-size: 10px; }
   .home-hero { margin-top: 14px; }
   .home-listings { grid-template-columns: minmax(0, 1fr); }

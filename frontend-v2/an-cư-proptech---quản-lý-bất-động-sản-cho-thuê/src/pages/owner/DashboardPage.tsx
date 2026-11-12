@@ -52,7 +52,7 @@ export function DashboardPage({ propertyName, report, counters, onNavigateTab }:
     <FinancialState report={report} />
 
     {data && current && <>
-      <section aria-label="Chỉ số tổng quan" className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+      <section aria-label="Chỉ số tổng quan" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <FinancialCard label="Lấp đầy hiện tại" icon={<Building2 size={18} />}
           value={data.inventory.units ? `${Math.round(100 * data.inventory.occupied / data.inventory.units)}%` : '—'}
           note={`${data.inventory.occupied}/${data.inventory.units} căn đang ở · ${data.inventory.vacant} căn trống`} />
