@@ -115,6 +115,11 @@ async function exerciseSourceAndGroups(page, outputPath, origin) {
     if(path.endsWith('/me/property-source-consent'))return json({consented:true,assetServiceAvailable:true,version:1});
     if(path.endsWith('/properties/vneid-assets'))return json([{asset:{externalAssetId:'asset1',name:'Tòa có 10 phòng',address:'12 Đường Nguồn',rentalMode:'MULTI_UNIT',units:Array.from({length:10},(_,i)=>({externalUnitId:'u'+i,code:'P'+(101+i),areaM2:24+i,bedrooms:1,bathrooms:1}))},sourceVersion:'a'.repeat(64),imported:false}]);
     if(path==='/api/v1/me/property-images')return json([{id:String(++uploads)}]);
+    if(path.endsWith('/listing-description/suggest')){
+     const facts=r.request().postDataJSON();
+     if(Number(facts.areaM2)!==24||Number(facts.monthlyRent)!==4000000||facts.maxOccupants!==2||facts.address)throw Error('Unexpected source description facts');
+     return json({description:'Phòng 24 m², phù hợp cho 2 người.'});
+    }
     if(path.endsWith('/properties/vneid-imports')){imported=r.request().postDataJSON();return json({property:{id:'5'}});}
     if(path.includes('/payments/'))return json([]);
     if(path.includes('/invoices'))return json({items:[],page:0,size:20,totalElements:0,totalPages:0});
@@ -139,9 +144,14 @@ async function exerciseSourceAndGroups(page, outputPath, origin) {
    await p.locator('input[type=file]').nth(0).setInputFiles(png);
    await p.locator('input[type=file]').nth(1).setInputFiles(png);
    for(const [label,value] of [['Tỉnh/Thành phố *','TP. Hồ Chí Minh'],['Quận/Huyện/Khu vực *','Thủ Đức'],['Giá thuê/tháng (đ) *','4000000'],['Tiền cọc (đ) *','0'],['Đơn giá điện (đ/kWh) *','3500'],['Đơn giá nước (đ/m³) *','15000'],['Tầng *','1'],['Số người tối đa *','2']])await p.getByLabel(label,{exact:true}).fill(value);
+   await p.getByRole('button',{name:'AI gợi ý mô tả',exact:true}).click();
+   await p.getByRole('button',{name:'Dùng gợi ý',exact:true}).click();
+   const sourceDescription=p.getByRole('textbox',{name:'Mô tả cho thuê',exact:true});
+   if(await sourceDescription.inputValue()!=='Phòng 24 m², phù hợp cho 2 người.')throw Error('Source AI description was not applied');
+   await sourceDescription.fill('Phòng 24 m², phù hợp cho 2 người. Hẹn xem phòng trước.');
    await p.getByRole('button',{name:'Thêm và cho thuê 1 phòng',exact:true}).click();
    await p.waitForURL('**/account/properties');
-   if(imported.units.length!==1||!imported.units[0].imageIds.length||imported.units[0].electricityIndex!==null||imported.units[0].waterIndex!==null)throw Error('Source selection/photo/baseline payload incorrect');
+   if(imported.units.length!==1||imported.units[0].description!=='Phòng 24 m², phù hợp cho 2 người. Hẹn xem phòng trước.'||!imported.units[0].imageIds.length||imported.units[0].electricityIndex!==null||imported.units[0].waterIndex!==null)throw Error('Source selection/photo/baseline payload incorrect');
    await p.goto(`${origin}/`);
    await p.getByText('10 căn/phòng phù hợp',{exact:false}).waitFor();
    if(await p.getByTestId('property-listing-card').count()!==1)throw Error('Property duplicated');
