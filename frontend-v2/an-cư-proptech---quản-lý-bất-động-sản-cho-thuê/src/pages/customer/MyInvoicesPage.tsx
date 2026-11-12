@@ -6,14 +6,16 @@ import { CustomerLayout } from '@/layouts/CustomerLayout';
 import { useTenantInvoices } from '@/hooks/useTenantInvoices';
 import { billingMoney, type InvoicePaymentFilter } from '@/services/billing/billingService';
 import { Pagination } from '@/components/common/Pagination';
+import { TenantFinancialTable } from '@/components/billing/TenantFinancialTable';
 export function MyInvoicesPage() {
   const [paymentStatus, setPaymentStatus] = useState<InvoicePaymentFilter>('UNPAID');
   const { data, error, loading, page, setPage, reload } = useTenantInvoices(true, paymentStatus);
-  const [testRevision,setTestRevision]=useState(0);
-  const extra=useReceivedTestPayments(testRevision,paymentStatus);
+  const [revision,setRevision]=useState(0);
+  const extra=useReceivedTestPayments(revision,paymentStatus);
   const receipts = extra.items.filter(i => paymentStatus === 'ALL' || (i.payment.status === 'PAID' ? 'PAID' : 'UNPAID') === paymentStatus);
-  const refresh=()=>{reload();setTestRevision(v=>v+1);};
+  const refresh=()=>{reload();setRevision(v=>v+1);};
   return <CustomerLayout><main className="max-w-7xl mx-auto p-5 py-8"><div className="flex justify-between mb-6"><h1 className="text-2xl font-bold">Hóa đơn của tôi</h1><button onClick={refresh} className="text-emerald-700">Làm mới</button></div>
+    <TenantFinancialTable revision={revision} />
     <div className="mb-6 flex flex-wrap items-center gap-3"><label htmlFor="invoice-payment-filter" className="font-medium">Trạng thái thanh toán</label><select id="invoice-payment-filter" value={paymentStatus} onChange={e=>{setPaymentStatus(e.target.value as InvoicePaymentFilter);setPage(0);}} className="max-w-full rounded-xl border bg-white px-4 py-2"><option value="UNPAID">Chưa thanh toán</option><option value="PAID">Đã thanh toán</option><option value="ALL">Tất cả hóa đơn</option></select></div>
     {extra.error&&<p role="alert" className="p-4 bg-rose-50 text-rose-700 rounded-xl">{extra.error} Bấm Làm mới để thử lại.</p>}
     {extra.loading&&<p role="status">Đang tải hóa đơn bổ sung...</p>}
