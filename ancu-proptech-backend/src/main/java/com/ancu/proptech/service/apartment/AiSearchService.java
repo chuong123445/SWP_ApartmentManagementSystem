@@ -27,7 +27,7 @@ public class AiSearchService {
   catch(ApiException e){throw e;}catch(Exception e){throw invalid();}
  }
  private ChatResult generate(Request input,List<Message> history){
-  boolean chat=history!=null;String prompt=chat?"apartment-chat-v1":PROMPT;
+  boolean chat=history!=null;String prompt=chat?"apartment-chat-v2":PROMPT;
   var run=audit.start("APARTMENT_SEARCH",null,null,chat?json.writeValueAsString(List.of(input.text(),history)):input.text(),prompt);
   try{
    var addresses=apartments.addressOptions();
