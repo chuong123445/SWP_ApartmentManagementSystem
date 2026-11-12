@@ -27,6 +27,23 @@ async function fixture(page:Page,hasLease=true,withBank=true){
   });
   return {created};
 }
+test('Khách đang thuê mở hội thoại với chủ nhà của phòng đã chọn', async ({page}) => {
+  await page.setViewportSize({width:390,height:900});
+  await fixture(page);
+  const conversation={id:'81',apartmentId:'22',apartmentTitle:'Studio ban công',otherName:'Chủ nhà Tòa B',lastMessageAt:null};
+  await page.route('**/api/v1/me/conversations/apartments/22', route=>{
+    expect(route.request().method()).toBe('POST');
+    return route.fulfill({json:conversation});
+  });
+  await page.route('**/api/v1/me/conversations/81/messages', route=>route.fulfill({json:{conversation,messages:[],hasMore:false}}));
+  await page.goto('/my/home');
+  await page.getByRole('combobox',{name:'Chọn nơi ở'}).selectOption('22');
+  await page.getByRole('button',{name:'Nhắn tin cho chủ nhà'}).click();
+  await expect(page).toHaveURL(/\/my\/messages\/81$/);
+  await expect(page.getByRole('heading',{name:'Chủ nhà Tòa B'})).toBeVisible();
+  await expect(page.getByRole('textbox',{name:'Nội dung tin nhắn'})).toBeVisible();
+});
+
 test('Khách thuê xem thống kê toàn bộ hóa đơn trên điện thoại', async ({page}) => {
   await page.setViewportSize({width:390,height:900});
   await fixture(page);
