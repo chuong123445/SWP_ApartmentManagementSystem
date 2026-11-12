@@ -20,6 +20,6 @@ function UnpaidInvoiceNotice() {
   return <section className="bg-white rounded-xl border border-amber-200 p-5 mb-6 flex flex-wrap justify-between items-center gap-4" aria-label="Hóa đơn chưa thanh toán">
     <div><h2 className="font-bold flex gap-2 items-center"><ReceiptText className="w-5 h-5 text-amber-600 shrink-0" />Bạn có hóa đơn chưa thanh toán</h2>
       <p className="text-sm text-slate-600 mt-1">{count > 1 ? 'Chọn hóa đơn để kiểm tra và thanh toán.' : 'Kiểm tra thông tin hóa đơn và thanh toán khi sẵn sàng.'}</p></div>
-    <Link to={destination} className="rounded-lg bg-emerald-700 px-5 py-3 text-sm font-semibold text-white whitespace-nowrap">Thanh toán ngay</Link>
+    <Link to={destination} className="rounded-lg bg-brand-700 px-5 py-3 text-sm font-semibold text-white whitespace-nowrap">Thanh toán ngay</Link>
   </section>;
 }
