@@ -43,19 +43,22 @@ function ResidentHomeContent(){
   const openTickets=tickets.filter(t=>!['RESOLVED','CANCELLED','REJECTED'].includes(t.apiStatus??'')).length;
   const places=selected&&canReport?[{value:selected.apartmentId,label:`${selected.propertyName} — ${selected.roomNumber}`,apartmentId:selected.apartmentId}]:[];
   return <main className="resident-hub operations-page home-wrap py-8">
-    <header className="op-heading"><div className="op-title-group"><span className="op-heading-icon"><Home size={23}/></span><div><div className="op-eyebrow">Không gian của bạn</div><h1>Nhà đang thuê</h1><p>Thông tin nơi ở, hóa đơn và hỗ trợ sửa chữa trong một nơi.</p></div></div><button className="op-button" onClick={()=>{reloadLeases();reload();}} disabled={leasesLoading||loading}><RefreshCw size={14}/>Làm mới</button></header>
+    <header className="resident-heading">
+      <h1 className="app-page-title">Nhà đang thuê</h1>
+      <button type="button" className="op-button" onClick={()=>{reloadLeases();reload();}} disabled={leasesLoading||loading}><RefreshCw size={14} aria-hidden="true"/>Làm mới</button>
+    </header>
     {leaseError&&<p role="alert" className="op-error">{leaseError}</p>}
     {leasesLoading&&!selected&&<p role="status" className="op-empty">Đang tải nơi ở của bạn...</p>}
     {!leasesLoading&&!leaseError&&!selected&&<section className="op-panel op-empty"><Building2 size={34}/><strong>Bạn chưa có nhà đang thuê.</strong><p>Nhà sẽ xuất hiện khi hợp đồng được hai bên ký và kích hoạt.</p><div className="op-buttons justify-center mt-5"><Link className="op-button op-button-primary" to="/">Tìm nhà để thuê</Link><Link className="op-button" to="/my/rental-requests">Yêu cầu & hợp đồng</Link></div></section>}
     {selected&&<>
       <section className="resident-home-card" aria-label="Nơi ở được chọn">
         <div className="resident-home-icon"><Building2 size={32}/></div>
-        <div className="min-w-0 flex-1"><span className="op-badge green">{canReport?'Đang thuê':'Sắp đến ngày thuê'}</span><h2>{selected.roomNumber} · {selected.apartmentTitle}</h2><p>{selected.propertyName}</p><div className="resident-home-meta"><span><CalendarDays size={13}/>{selected.startDate} → {selected.endDate}</span><span>{billingMoney(selected.monthlyRent)} / tháng</span></div></div>
+        <div className="resident-lease"><span className={`op-badge ${canReport ? 'green' : 'blue'}`}>{canReport?'Đang thuê':'Sắp đến ngày thuê'}</span><h2>{selected.roomNumber} · {selected.apartmentTitle}</h2><p>{selected.propertyName}</p><div className="resident-home-meta"><span><CalendarDays size={15} aria-hidden="true"/>{selected.startDate} → {selected.endDate}</span><strong>{billingMoney(selected.monthlyRent)} / tháng</strong></div></div>
+        <div className="resident-lease-actions">
         {leases.length>1&&<label className="text-sm">Chọn nơi ở<select aria-label="Chọn nơi ở" value={selected.apartmentId} onChange={e=>setParams(p=>{p.set('room',e.target.value);p.delete('report');return p;})} className="block mt-2">{leases.map(c=><option key={c.id} value={c.apartmentId}>{c.propertyName} — {c.roomNumber}</option>)}</select></label>}
-      </section>
-      <div className="sm:max-w-xs">
         <StartRentalConversation key={selected.apartmentId} apartmentId={selected.apartmentId} verified checking={false} />
-      </div>
+        </div>
+      </section>
       <nav className="resident-tabs" aria-label="Quản lý nhà đang thuê">{tabs.map(([value,label,Icon])=><button key={value} aria-pressed={tab===value} onClick={()=>selectTab(value)}><Icon size={16}/>{label}</button>)}</nav>
       {tab==='overview'&&<>
         <div className="resident-actions">
