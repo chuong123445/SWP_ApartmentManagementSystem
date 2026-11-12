@@ -130,6 +130,29 @@
   font-size:12px;
   color:#536e60
 }
+.ai-chat-room {
+  display:grid;
+  margin-top:8px;
+  padding:9px 10px;
+  border:1px solid #dce8e1;
+  border-radius:10px;
+  color:#20372e;
+  text-decoration:none;
+}
+.ai-chat-room:hover,.ai-chat-room:focus-visible {
+  background:#edf6f0;
+}
+.ai-chat-room span {
+  font-size:12px;
+}
+.ai-chat-action {
+  margin-top:8px;
+  padding:6px 0;
+  color:#176b4f;
+  font-weight:600;
+  text-decoration:underline;
+  cursor:pointer;
+}
 .ai-chat-compose {
   padding:12px 14px 14px;
   border-top:1px solid #e3ebe6;
