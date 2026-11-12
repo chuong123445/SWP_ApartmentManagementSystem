@@ -62,11 +62,15 @@ export function HomePage({ embedded = false }: { embedded?: boolean }) {
           <div><label htmlFor="apartment-bedrooms" className="home-filter-label"><HomeIcon name="bed" />Số phòng ngủ</label><select id="apartment-bedrooms" value={bedrooms} onChange={e => setBedrooms(e.target.value)}><option value="">Không giới hạn</option><option value="0">Studio (0 phòng ngủ)</option>{[1,2,3,4,5].map(n => <option key={n} value={n}>{n} phòng ngủ</option>)}</select></div>
           <div><label htmlFor="apartment-occupants" className="home-filter-label">Số người cần ở</label><input id="apartment-occupants" type="number" min="1" max="100" step="1" value={occupants} onChange={e=>setOccupants(e.target.value)}/></div>
           <button type="submit" className="home-primary home-search"><Search aria-hidden="true" size={18} />Tìm kiếm</button>
+          <AiSearchPanel onApply={next=>{setAddress({city:next.city??'',district:next.district??'',ward:next.ward??''});setMinRent(next.minRent??'');setMaxRent(next.maxRent??'');setBedrooms(next.bedrooms??'');setOccupants(next.occupants??'');setValidation('');setFilters({...next,page:0,size:6});}}
+            onViewResults={() => {
+              results.current?.focus({ preventScroll: true });
+              results.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}/>
           {validation && <p role="alert" className="home-filter-error">{validation}</p>}
         </form>
       </section>
-      <AiSearchPanel onApply={next=>{setAddress({city:next.city??'',district:next.district??'',ward:next.ward??''});setMinRent(next.minRent??'');setMaxRent(next.maxRent??'');setBedrooms(next.bedrooms??'');setOccupants(next.occupants??'');setValidation('');setFilters({...next,page:0,size:6});results.current?.scrollIntoView({behavior:'smooth',block:'start'});}}/>
-      <section ref={results} className="home-section home-results" aria-labelledby="home-results-title" aria-busy={loading}>
+      <section ref={results} tabIndex={-1} className="home-section home-results" aria-labelledby="home-results-title" aria-busy={loading}>
         <div className="home-heading"><div><h2 id="home-results-title">Căn hộ cho thuê</h2><p role="status">{loading ? 'Đang tải căn hộ...' : `${data?.totalElements ?? 0} tài sản có phòng phù hợp`}</p></div><button type="button" className="home-text-link" onClick={clear}>Xóa bộ lọc</button></div>
         {error && <div role="alert" className="home-error">{error}<button type="button" onClick={reload}>Thử lại</button></div>}
         {!loading && !error && <>

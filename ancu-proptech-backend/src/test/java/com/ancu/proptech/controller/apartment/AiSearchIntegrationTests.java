@@ -65,8 +65,8 @@ class AiSearchIntegrationTests {
   var fields=new ArrayList<String>();node.path("filters").propertyNames().forEach(fields::add);for(var field:fields)((tools.jackson.databind.node.ObjectNode)node.path("filters")).putNull(field);
   when(client.generate(anyString(),any(),any())).thenReturn(node);
   var history=List.of(Map.of("role","user","text","Xin chào"),Map.of("role","assistant","text","Chào bạn"));
-  chat("Bạn giúp được gì? "+UUID.randomUUID(),history).andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store")).andExpect(jsonPath("$.reply").value("Bạn có thể hỏi về thuê nhà hoặc nhờ mình tìm căn hộ.")).andExpect(jsonPath("$.search.canApply").value(false));
-  verify(client).generate(contains("chat assistant"),any(),argThat(value->value instanceof Map<?,?> map&&json.valueToTree(history).equals(json.valueToTree(map.get("history")))));
+  chat("Bạn giúp được gì? "+UUID.randomUUID(),history).andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store")).andExpect(jsonPath("$.reply").value("Bạn có thể hỏi về thuê nhà hoặc nhờ mình tìm căn hộ.")).andExpect(jsonPath("$.search.canApply").value(false)).andExpect(jsonPath("$.search.promptVersion").value("apartment-chat-v2"));
+  verify(client).generate(contains("Nhà đang thuê"),any(),argThat(value->value instanceof Map<?,?> map&&json.valueToTree(history).equals(json.valueToTree(map.get("history")))));
  }
  @Test void chatSearchUsesExistingValidatedCapabilityAndRejectsInvalidReplies()throws Exception{
   var node=(tools.jackson.databind.node.ObjectNode)json.readTree(output());node.put("reply","Mình sẽ tìm theo nhu cầu của bạn.");when(client.generate(anyString(),any(),any())).thenReturn(node);
