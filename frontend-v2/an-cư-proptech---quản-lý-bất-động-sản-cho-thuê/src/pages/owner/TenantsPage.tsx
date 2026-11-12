@@ -28,7 +28,7 @@ export function TenantsPage({ tenants, loading = false, error = '', onReload }: 
   return <div className="space-y-5 pb-12">
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
       <div>
-        <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2"><Users className="w-5 h-5 shrink-0" />Khách thuê theo hợp đồng</h1>
+        <h1 className="app-page-title flex items-center gap-2"><Users className="w-5 h-5 shrink-0" />Khách thuê theo hợp đồng</h1>
         <p className="text-sm text-slate-600 mt-2">{loading || error ? '—' : `${active.length} hợp đồng đang thuê · ${new Set(active.map(t => t.id)).size} tài khoản`}</p>
         <p className="text-xs text-slate-500 mt-1">Mỗi dòng là một hợp đồng đang hiệu lực. Một tài khoản có thể thuê nhiều căn hộ.</p>
       </div>
@@ -40,14 +40,14 @@ export function TenantsPage({ tenants, loading = false, error = '', onReload }: 
       <div className="relative"><Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" /><input id="input-search-tenants" type="search" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Tìm theo tên, email, tài sản, số căn hộ…" className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm" /></div>
     </div>
     {error && <p role="alert" className="text-red-700 text-sm">{error}</p>}
-    {loading ? <p role="status" className="text-sm">Đang tải khách thuê…</p> : !error && <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-      <div className="overflow-x-auto"><table className="w-full text-left text-xs min-w-[1050px]">
+    {loading ? <p role="status" className="text-sm">Đang tải khách thuê…</p> : !error && <div className="app-panel overflow-hidden">
+      <div className="overflow-x-auto"><table className="app-data-table w-full text-left text-xs min-w-[1050px]">
         <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[11px]"><tr>{['Người thuê', 'Căn hộ / Tài sản', 'Xác thực email', 'Định danh tài khoản', 'Ký trong ứng dụng', 'Cọc theo hợp đồng', 'Quản lý cọc', 'Trạng thái'].map(label => <th key={label} className="px-4 py-3">{label}</th>)}</tr></thead>
         <tbody className="divide-y divide-slate-100">{filtered.map(tenant => <tr key={tenant.contractId ?? `${tenant.id}-${tenant.roomId}`} className="hover:bg-slate-50/80">
           <td className="px-4 py-3"><div className="font-semibold text-slate-900">{tenant.name}</div><div className="text-slate-500 break-all mt-1">{tenant.email || 'Chưa có email'}</div>
             {tenant.contractId && <OpenConversationButton target={{ contractId: tenant.contractId }} label="Nhắn tin"
               accessibleName={`Nhắn tin cho ${tenant.name} · ${tenant.roomNumber}`}
-              className="mt-2 inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-emerald-50 px-2.5 py-1.5 font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50" />}
+              className="mt-2 inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-emerald-50 px-2.5 py-1.5 font-semibold text-emerald-800 hover:bg-brand-100 disabled:opacity-50" />}
           </td>
           <td className="px-4 py-3"><div className="font-bold text-emerald-700">{tenant.roomNumber}</div><div className="text-slate-500 mt-1">{tenant.buildingName}</div><div className="text-slate-500 mt-1">{tenant.contractId ? `HĐ #${tenant.contractId}` : 'Chưa có mã hợp đồng'}</div></td>
           <td className="px-4 py-3">{tenant.emailVerified === true ? 'Đã xác thực email' : tenant.emailVerified === false ? 'Chưa xác thực email' : 'Chưa có dữ liệu xác thực email'}</td>

@@ -31,7 +31,7 @@ export function ContractDetailPage() {
     void load().catch(error => { if (active) setError(error instanceof Error ? error.message : 'Không thể tải hợp đồng.'); });
     return () => { active = false; };
   }, [id, canManage, user?.id]);
-  return <CustomerLayout><main className="max-w-4xl mx-auto p-4 sm:p-6 py-8 space-y-5"><Link to={owner ? '/app' : '/my/contracts'} className="text-sm text-emerald-700">← {owner ? 'Về quản lý' : 'Hợp đồng của tôi'}</Link><h1 className="text-2xl font-bold">Chi tiết hợp đồng</h1>{error ? <p role="alert" className="text-rose-700">{error}</p> : draft ? <ContractDocument draft={draft} onUpdated={setDraft} /> : legacy ? <section aria-label="Hồ sơ quan hệ thuê cũ" className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
+  return <CustomerLayout><main className="max-w-4xl mx-auto p-4 sm:p-6 py-8 space-y-5"><Link to={owner ? '/app' : '/my/contracts'} className="text-sm text-emerald-700">← {owner ? 'Về quản lý' : 'Hợp đồng của tôi'}</Link><h1 className="app-page-title">Chi tiết hợp đồng</h1>{error ? <p role="alert" className="text-rose-700">{error}</p> : draft ? <ContractDocument draft={draft} onUpdated={setDraft} /> : legacy ? <section aria-label="Hồ sơ quan hệ thuê cũ" className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
     <h2 className="text-xl font-bold">HD-{legacy.id} · {legacy.roomNumber}</h2>
     <p className="font-semibold text-amber-800">{contractStatusLabel(legacy.status, legacy.endDate)}</p>
     <dl className="grid sm:grid-cols-2 gap-4 text-sm">

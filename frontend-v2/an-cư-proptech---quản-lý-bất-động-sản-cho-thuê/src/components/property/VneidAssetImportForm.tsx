@@ -89,7 +89,7 @@ export function VneidAssetImportForm({ onClose, onBack, onImported, propertyId }
             </details>
           </fieldset>)}
           <p className="text-sm text-emerald-900 bg-emerald-50 p-3 rounded-lg">Xác nhận sẽ thêm và công khai {selectedUnits.length} phòng đã chọn. Thông tin sở hữu, mã phòng và diện tích được kiểm tra lại từ nguồn VNeID mô phỏng.</p>
-          <button type="submit" disabled={saving || stale || !selectedUnits.length} className="bg-emerald-600 text-white rounded-lg px-4 py-2 disabled:opacity-50">{saving ? 'Đang thêm phòng...' : `${appending?'Bổ sung':'Thêm'} và cho thuê ${selectedUnits.length} phòng`}</button>
+          <button type="submit" disabled={saving || stale || !selectedUnits.length} className="bg-brand-600 text-white rounded-lg px-4 py-2 disabled:opacity-50">{saving ? 'Đang thêm phòng...' : `${appending?'Bổ sung':'Thêm'} và cho thuê ${selectedUnits.length} phòng`}</button>
         </fieldset>
       </form>}
       {error && <p role="alert" className="text-rose-700 break-words">{error}</p>}

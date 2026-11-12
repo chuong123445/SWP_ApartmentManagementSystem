@@ -66,7 +66,7 @@ function AccountDetails({ accountId }: { accountId: string }) {
 
   return <div className="space-y-5 min-w-0">
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Chi tiết tài khoản</h1>
+        <h1 className="app-page-title">Chi tiết tài khoản</h1>
           <button className="border rounded-lg px-3 py-2 text-sm" onClick={() => setRevision(value => value + 1)}>Tải lại</button>
       </header>
       {profileError ? <p role="alert" className="text-rose-700">{profileError}</p> : profile ? <section aria-label="Thông tin tài khoản" className="space-y-3 bg-white border rounded-xl p-4 sm:p-6">

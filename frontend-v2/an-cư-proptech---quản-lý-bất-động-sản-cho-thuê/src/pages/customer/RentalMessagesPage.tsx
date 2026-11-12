@@ -12,8 +12,8 @@ import type { PageResult } from '@/types/apartment';
 const messageDate = new Intl.DateTimeFormat('vi-VN', {
   dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Ho_Chi_Minh',
 });
-const linkStyle = 'inline-flex items-center gap-2 font-semibold text-emerald-800 hover:underline';
-const surface = 'rounded-2xl border border-slate-200 bg-white';
+const linkStyle = 'inline-flex items-center gap-2 font-semibold text-brand-700 hover:underline';
+const surface = 'app-panel';
 
 function Inbox() {
   const [page, setPage] = useState(0);
@@ -58,8 +58,8 @@ function Inbox() {
       </div>}
       <ul className="divide-y divide-slate-100">
         {data.items.map(item => <li key={item.id}>
-          <Link to={`/my/messages/${encodeURIComponent(item.id)}`} className="flex flex-wrap items-center gap-3 p-4 hover:bg-emerald-50 sm:px-6">
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><MessageCircle size={19} aria-hidden="true" /></span>
+          <Link to={`/my/messages/${encodeURIComponent(item.id)}`} className="flex flex-wrap items-center gap-3 p-4 hover:bg-brand-50 sm:px-6">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-100 text-brand-700"><MessageCircle size={19} aria-hidden="true" /></span>
             <span className="min-w-0 flex-1 break-words">
               <strong className="block text-slate-900">{item.otherName}</strong>
               <span className="text-sm text-slate-600">{item.apartmentTitle}</span>
@@ -189,12 +189,12 @@ function ConversationThread({ id }: { id: string }) {
         <h2 className="break-words font-bold">{conversation.otherName}</h2>
         <Link to={`/apartments/${encodeURIComponent(conversation.apartmentId)}`} className={`${linkStyle} break-words text-sm`}>{conversation.apartmentTitle}</Link>
       </header>
-      <div ref={log} role="log" aria-label="Lịch sử tin nhắn" className="min-h-48 max-h-[50dvh] overflow-y-auto bg-slate-50 p-4 sm:p-6">
+      <div ref={log} role="log" aria-label="Lịch sử tin nhắn" className="min-h-48 max-h-[50dvh] overflow-y-auto bg-brand-50 p-4 sm:p-6">
         {hasOlder && <button type="button" className={linkStyle} disabled={loadingOlder} onClick={() => void loadOlder()}>{loadingOlder ? 'Đang tải…' : 'Tải tin nhắn cũ'}</button>}
         {!messages.length && <p className="text-sm text-slate-600">Bạn có thể hỏi về phòng hoặc hẹn thời gian xem phòng.</p>}
         <ol className="space-y-3">
           {messages.map(message => <li key={message.id} className={`flex ${message.mine ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${message.mine ? 'bg-emerald-700 text-white' : 'border border-slate-200 bg-white text-slate-900'}`}>
+            <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${message.mine ? 'bg-brand-700 text-white' : 'border border-slate-200 bg-white text-slate-900'}`}>
               <span className="sr-only">{message.mine ? 'Bạn' : conversation.otherName}</span>
               <p className="whitespace-pre-wrap break-words text-sm">{message.body}</p>
               <time dateTime={message.sentAt} className="mt-1 block text-xs opacity-80">{messageDate.format(new Date(message.sentAt))}</time>
@@ -207,7 +207,7 @@ function ConversationThread({ id }: { id: string }) {
         <div className="flex items-end gap-2">
           <textarea aria-label="Nội dung tin nhắn" placeholder="Nhập tin nhắn…" rows={2} maxLength={2000} value={text}
             disabled={sending} onChange={event => setText(event.target.value)} className="min-w-0 flex-1 rounded-xl border border-slate-300 p-3 text-sm" />
-          <button type="submit" disabled={sending || !text.trim()} className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">
+          <button type="submit" disabled={sending || !text.trim()} className="inline-flex items-center gap-2 rounded-xl bg-brand-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">
             <Send size={16} aria-hidden="true" />{sending ? 'Đang gửi…' : 'Gửi'}
           </button>
         </div>
@@ -220,7 +220,7 @@ export function RentalMessagesPage() {
   const { id } = useParams();
   return <CustomerLayout><main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
     {id && <Link to="/my/messages" className={`${linkStyle} mb-3 text-sm`}><ArrowLeft size={16} aria-hidden="true" /> Về hộp thư</Link>}
-    <h1 className="text-2xl font-bold">Tin nhắn</h1>
+    <h1 className="app-page-title">Tin nhắn</h1>
     {id ? <ConversationThread key={id} id={id} /> : <Inbox />}
   </main></CustomerLayout>;
 }

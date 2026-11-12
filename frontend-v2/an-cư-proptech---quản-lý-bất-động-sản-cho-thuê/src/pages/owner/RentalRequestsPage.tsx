@@ -20,7 +20,7 @@ export function RentalRequestsPage({ onDecision, propertyId }: { onDecision: () 
     <div role="tablist" aria-label="Loại yêu cầu thuê" className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
       {(['new', 'renewal'] as const).map(value => <button key={value} type="button" id={`request-tab-${value}`} role="tab" aria-selected={tab === value} aria-controls={`request-panel-${value}`} tabIndex={tab === value ? 0 : -1}
         onClick={() => setTab(value)} onKeyDown={event => { if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) { event.preventDefault();selectTab(event.key === 'Home' ? 'new' : event.key === 'End' ? 'renewal' : tab === 'new' ? 'renewal' : 'new'); } }}
-        className={`rounded-lg px-5 py-3 text-sm font-semibold ${tab === value ? 'bg-emerald-700 text-white' : 'bg-white border border-slate-300 text-slate-600'}`}>{value === 'new' ? 'Thuê mới' : 'Thuê tiếp'}</button>)}
+        className={`rounded-lg px-5 py-3 text-sm font-semibold ${tab === value ? 'bg-brand-700 text-white' : 'bg-white border border-slate-300 text-slate-600'}`}>{value === 'new' ? 'Thuê mới' : 'Thuê tiếp'}</button>)}
     </div>
     <div role="tabpanel" id="request-panel-new" aria-labelledby="request-tab-new" hidden={tab !== 'new'}>{tab === 'new' && <NewRentalRequestsPage key={propertyId ?? 'all'} onDecision={onDecision} propertyId={propertyId} />}</div>
     <div role="tabpanel" id="request-panel-renewal" aria-labelledby="request-tab-renewal" hidden={tab !== 'renewal'}>{tab === 'renewal' && <RenewalRequestsPanel key={propertyId ?? 'all'} onDecision={onDecision} propertyId={propertyId} />}</div>
@@ -92,14 +92,14 @@ function NewRentalRequestsPage({ onDecision, propertyId }: { onDecision: () => v
     <section className="space-y-6">
       {cancelRequest && <SelectionCancellationModal requestId={cancelRequest} onClose={()=>setCancelRequest(null)} onChanged={()=>{reload();onDecision();}}/>}
       {contractRequestId && <ContractWizard key={contractRequestId} requestId={contractRequestId} onClose={() => { setContractRequestId(null);reload(); }} onSaved={() => { reload();onDecision(); }} />}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-wrap justify-between items-center gap-4">
+      <div className="app-panel p-5 flex flex-wrap justify-between items-center gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Yêu cầu thuê căn hộ</h1>
+          <h1 className="app-page-title">Yêu cầu thuê căn hộ</h1>
           <p className="text-sm text-slate-500 mt-2">Mặc định hiển thị yêu cầu chờ xử lý, sắp xếp theo thời gian gửi. Đồng ý sẽ chuyển sang bước làm hợp đồng, chưa phải đã thuê.</p>
         </div>
         <button
           onClick={reload}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 text-sm font-semibold cursor-pointer transition-colors"
+          className="bg-brand-600 hover:bg-brand-700 text-white rounded-lg px-4 py-2 text-sm font-semibold cursor-pointer transition-colors"
         >
           Làm mới
         </button>
@@ -167,7 +167,7 @@ function NewRentalRequestsPage({ onDecision, propertyId }: { onDecision: () => v
               onCreateContract={request => setContractRequestId(request.id)}
             />
           ) : (
-            <p className="bg-white border border-slate-200 rounded-xl p-10 text-center text-slate-500">
+            <p className="app-panel p-10 text-center text-slate-500">
               Chưa có yêu cầu thuê phù hợp.
             </p>
           )}

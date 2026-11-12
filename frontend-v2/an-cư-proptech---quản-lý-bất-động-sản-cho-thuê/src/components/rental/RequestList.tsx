@@ -40,7 +40,7 @@ export function RequestList({
           <div className="flex flex-wrap justify-between gap-3">
             <div>
               <h2 className="font-bold text-slate-900">
-                <Link to={!owner && request.contractId ? `/contracts/${request.contractId}` : `/apartments/${request.apartmentId}`} className="hover:text-emerald-700">
+                <Link to={!owner && request.contractId ? `/contracts/${request.contractId}` : `/apartments/${request.apartmentId}`} className="hover:text-brand-700">
                   {display.title}
                 </Link>
               </h2>
@@ -76,7 +76,7 @@ export function RequestList({
                 type="button"
                 disabled={!!decidingId}
                 onClick={() => onAccept?.(request)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-50 transition-colors shadow-sm cursor-pointer"
+                className="bg-brand-600 hover:bg-brand-700 text-white rounded-lg px-4 py-2 text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-50 transition-colors shadow-sm cursor-pointer"
               >
                 <Check className="w-4 h-4" />
                 {decidingId === request.id ? 'Đang xử lý...' : 'Đồng ý làm hợp đồng'}
@@ -103,7 +103,7 @@ export function RequestList({
                 type="button"
                 disabled={!onCreateContract}
                 onClick={() => onCreateContract?.(request)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-50"
+                className="bg-brand-600 hover:bg-brand-700 text-white rounded-lg px-4 py-2 text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-50"
               >
                 <FileText className="w-4 h-4" />
                 {request.contractId ? 'Xem / ký hợp đồng' : 'Tạo hợp đồng'}

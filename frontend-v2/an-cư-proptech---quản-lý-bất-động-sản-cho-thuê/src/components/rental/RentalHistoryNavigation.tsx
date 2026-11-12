@@ -7,6 +7,6 @@ export function RentalHistoryNavigation({ active, onChange }: { active: RentalHi
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
         event.preventDefault(); const next = event.key === 'Home' ? 'requests' : event.key === 'End' ? 'contracts' : tab === 'requests' ? 'contracts' : 'requests';
         onChange(next); document.getElementById(`rental-tab-${next}`)?.focus();
-      }} className={`rounded-lg border px-4 py-2 text-sm font-semibold ${active === tab ? 'bg-emerald-700 border-emerald-700 text-white' : 'bg-white border-slate-300 text-slate-700'}`}>{tab === 'requests' ? 'Yêu cầu thuê đã gửi' : 'Hợp đồng'}</button>)}
+      }} className={`rounded-lg border px-4 py-2 text-sm font-semibold ${active === tab ? 'bg-brand-700 border-brand-700 text-white' : 'bg-white border-slate-300 text-slate-700'}`}>{tab === 'requests' ? 'Yêu cầu thuê đã gửi' : 'Hợp đồng'}</button>)}
   </div>;
 }
