@@ -1,3 +1,4 @@
+import { ownerSummaryFixture } from './fixtures/ownerSummary';
 import { test, expect } from '@playwright/test';
 
 for (const width of [1440, 390]) for (const scenario of ['history', 'pagination', 'monthly-error', 'receipt-error', 'refresh', 'scope']) {
@@ -18,6 +19,7 @@ for (const width of [1440, 390]) for (const scenario of ['history', 'pagination'
       if (path.endsWith('/refresh')) return json({ accessToken: 'fixture', user: { id: '3', fullName: 'Chủ nhà mẫu', roles: ['OWNER'], accountStatus: 'ACTIVE', contactVerificationStatus: 'VERIFIED', version: 0 } });
       if (req.method() !== 'GET') writes.push(`${req.method()} ${path}`);
       if (path.endsWith('/me/notifications')) return json({ ...paged([]), unreadCount: 0 });
+      const summary = ownerSummaryFixture(route); if (summary) return summary;
       if (path.endsWith('/owner/properties')) return json([{ id: '2', name: 'Tài sản A', approvalStatus: 'APPROVED' }, { id: '3', name: 'Tài sản B', approvalStatus: 'APPROVED' }]);
       if (path.endsWith('/owner/apartments')) return json([{ id: '17', propertyId: '2', propertyName: 'Tài sản A', roomNumber: 'B.101', title: 'Căn mẫu', availability: 'OCCUPIED', areaM2: '45', advertisedMonthlyRent: '5000000', amenities: [], version: 0 }]);
       if (path.endsWith('/owner/tenancies') || path.endsWith('/owner/maintenance-tickets')) return json([]);
