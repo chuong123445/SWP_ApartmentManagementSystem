@@ -5,7 +5,7 @@ import { dossierStatusLabels, evidenceLabels, rightLabels, type Dossier } from '
 export function DossierDetails({ dossier }: { dossier: Dossier }) {
   const [error, setError] = useState('');
   return <div className="space-y-3 text-sm min-w-0">
-    {dossier.localFixture && <p className="bg-amber-50 text-amber-900 p-3 rounded-lg font-semibold">Hồ sơ mẫu — thông tin và ảnh minh họa, không phải giấy tờ pháp lý đã được kiểm tra.</p>}
+    {dossier.localFixture && <p className="bg-amber-50 text-amber-900 p-3 rounded-lg font-semibold">Hồ sơ mẫu. Giấy tờ chưa được xác minh.</p>}
     <p><strong>{dossierStatusLabels[dossier.status]}</strong> · Gửi lúc {new Date(dossier.submittedAt).toLocaleString('vi-VN')}</p>
     <p>Người nộp: <strong>{dossier.applicantName}</strong></p>
     <p>Quyền cho thuê: {rightLabels[dossier.rightType]}</p>

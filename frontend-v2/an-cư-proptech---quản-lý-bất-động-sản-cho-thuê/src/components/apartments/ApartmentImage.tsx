@@ -1,6 +1,20 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/services/http/client';
 const placeholder = '/images/apartment-placeholder.svg';
+const interiorPhotos = [
+  '/home/apartment-interior.webp',
+  '/home/living-room.webp',
+  '/home/bedroom.webp',
+  '/home/kitchen.webp',
+  '/home/lounge.webp',
+];
+
+function interiorPhoto(key: string) {
+  // Keep the same fallback across reloads without storing it as listing data.
+  let hash = 0;
+  for (const character of key) hash = (Math.imul(hash, 31) + character.codePointAt(0)!) >>> 0;
+  return interiorPhotos[hash % interiorPhotos.length];
+}
 
 export function ApartmentImage({ src, alt, className, illustrate = false }: {
   src?: string; alt: string; className?: string; illustrate?: boolean;
@@ -15,7 +29,7 @@ export function ApartmentImage({ src, alt, className, illustrate = false }: {
   const resolved=protectedSource?(privateImage && privateImage.source===src?privateImage.url:placeholder):src;
   const source = resolved || placeholder;
   const fallback = illustrate && (source === placeholder || failed === source);
-  const image = <img src={fallback ? '/home/apartment-interior.webp' : source} alt={fallback ? '' : alt} className={className} loading="lazy" onError={event => {
+  return <img src={fallback ? interiorPhoto(alt) : source} alt={fallback ? '' : alt} className={className} loading="lazy" onError={event => {
     if (illustrate && !fallback) {
       setFailed(source);
       return;
@@ -23,8 +37,4 @@ export function ApartmentImage({ src, alt, className, illustrate = false }: {
     const element = event.currentTarget;
     if (!element.src.endsWith(placeholder)) element.src = placeholder;
   }} />;
-  return illustrate ? <div className="relative size-full">
-    {image}
-    {fallback && <span className="pointer-events-none absolute bottom-2 right-2 rounded bg-brand-950/85 px-2 py-1 text-[10px] font-medium text-white">Ảnh minh họa</span>}
-  </div> : image;
 }
