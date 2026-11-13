@@ -20,6 +20,11 @@ export function AiSearchPanel({ onApply, onViewResults }: {
   onViewResults: () => void;
 }) {
   const [open,setOpen]=useState(false);
+  useEffect(() => {
+    const hide = () => setOpen(false);
+    window.addEventListener('ancu:messages-open', hide);
+    return () => window.removeEventListener('ancu:messages-open', hide);
+  }, []);
   const [text,setText]=useState('');
   const [messages,setMessages]=useState<Bubble[]>([]);
   const [busy,setBusy]=useState(false);
@@ -38,6 +43,7 @@ export function AiSearchPanel({ onApply, onViewResults }: {
       return;
     }
     launcher.current = button;
+    window.dispatchEvent(new Event('ancu:toba-open'));
     setOpen(true);
   };
   const send=async()=>{

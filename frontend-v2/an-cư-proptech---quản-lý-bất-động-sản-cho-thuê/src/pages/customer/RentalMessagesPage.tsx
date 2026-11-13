@@ -15,7 +15,7 @@ const messageDate = new Intl.DateTimeFormat('vi-VN', {
 const linkStyle = 'inline-flex items-center gap-2 font-semibold text-brand-700 hover:underline';
 const surface = 'app-panel';
 
-function Inbox() {
+export function Inbox({ onSelect }: { onSelect?: (id: string) => void }) {
   const [page, setPage] = useState(0);
   const [data, setData] = useState<PageResult<Conversation>>();
   const [error, setError] = useState('');
@@ -58,7 +58,12 @@ function Inbox() {
       </div>}
       <ul className="divide-y divide-slate-100">
         {data.items.map(item => <li key={item.id}>
-          <Link to={`/my/messages/${encodeURIComponent(item.id)}`} className="flex flex-wrap items-center gap-3 p-4 hover:bg-brand-50 sm:px-6">
+          <Link to={`/my/messages/${encodeURIComponent(item.id)}`} onClick={event => {
+            if (onSelect && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+              event.preventDefault();
+              onSelect(item.id);
+            }
+          }} className="flex flex-wrap items-center gap-3 p-4 hover:bg-brand-50 sm:px-6">
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-100 text-brand-700"><MessageCircle size={19} aria-hidden="true" /></span>
             <span className="min-w-0 flex-1 break-words">
               <strong className="block text-slate-900">{item.otherName}</strong>
@@ -78,7 +83,7 @@ function mergeMessages(previous: RentalMessage[], added: RentalMessage[]) {
   return [...unique.values()].sort((a, b) => BigInt(a.id) < BigInt(b.id) ? -1 : 1);
 }
 
-function ConversationThread({ id }: { id: string }) {
+export function ConversationThread({ id }: { id: string }) {
   const [conversation, setConversation] = useState<Conversation>();
   const [messages, setMessages] = useState<RentalMessage[]>([]);
   const [hasOlder, setHasOlder] = useState(false);

@@ -39,7 +39,7 @@ test('Khách đang thuê mở hội thoại với chủ nhà của phòng đã c
   await page.goto('/my/home');
   await page.getByRole('combobox',{name:'Chọn nơi ở'}).selectOption('22');
   await page.getByRole('button',{name:'Nhắn tin cho chủ nhà'}).click();
-  await expect(page).toHaveURL(/\/my\/messages\/81$/);
+  await expect(page).toHaveURL(/\/my\/home\?room=22$/);
   await expect(page.getByRole('heading',{name:'Chủ nhà Tòa B'})).toBeVisible();
   await expect(page.getByRole('textbox',{name:'Nội dung tin nhắn'})).toBeVisible();
 });
