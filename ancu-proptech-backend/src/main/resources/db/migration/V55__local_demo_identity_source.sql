@@ -6,5 +6,7 @@ ALTER TABLE dbo.auth_external_identities WITH CHECK ADD CONSTRAINT CK_external_s
     source = 'AUTH0_VNEID_SIMULATION'
     OR (source = 'LOCAL_DEMO' AND issuer = 'urn:ancu:local-demo'
         AND subject = CONVERT(varchar(20), account_id))
+    OR (source = 'ADMIN_REVIEW' AND issuer = 'urn:ancu:admin-review'
+        AND subject = CONVERT(varchar(20), account_id))
 );
 GO

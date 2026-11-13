@@ -90,4 +90,59 @@ class IdentityProfileIntegrationTests {
         save(token,input(Long.toString(profile.getVersion())),png,null).andExpect(status().isOk()).andExpect(jsonPath("$.localFixture").value(true));
         save(token,input(Long.toString(profile.getVersion())),png,png).andExpect(status().isOk()).andExpect(jsonPath("$.localFixture").value(false)).andExpect(jsonPath("$.verificationStatus").value("NOT_VERIFIED"));
     }
+
+    @Autowired IdentitySubmissionRepository submissions;
+    @Autowired IdentitySubmissionImagesRepository submittedImages;
+    @Autowired com.ancu.proptech.repository.auth.ExternalIdentityRepository verified;
+    private ResultActions submit(String actor,long version)throws Exception{return mvc.perform(post("/api/v1/me/identity-submissions").header("Authorization","Bearer "+actor).contentType("application/json").content("{\"profileVersion\":"+version+",\"consent\":true}"));}
+    private String submitMine()throws Exception{
+        save(token,input("null"),png,png).andExpect(status().isOk());
+        return JsonPath.read(submit(token,profiles.findById(customer.getId()).orElseThrow().getVersion()).andExpect(status().isOk()).andReturn().getResponse().getContentAsString(),"$.id");
+    }
+    private ResultActions decision(String actor,String id,long version,String action,String reason)throws Exception{return mvc.perform(post("/api/v1/admin/identity-submissions/"+id+"/decision").header("Authorization","Bearer "+actor).contentType("application/json").content("{\"version\":"+version+",\"action\":\""+action+"\",\"reason\":\""+reason+"\"}"));}
+    @Test void manualApprovalQualifiesWithoutChangingEmailRoleDisplayOrProperty()throws Exception{
+        String id=submitMine();assertFalse(policy.isVerified(customer));
+        String adminToken=token(account(AuthAccount.Role.ADMIN,true));
+        decision(adminToken,id,0,"APPROVE","").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("APPROVED"));
+        assertTrue(policy.isVerified(customer));assertTrue(customer.isIdentityVerified());assertFalse(customer.isEmailVerified());assertFalse(customer.isPhoneVerified());
+        assertEquals(AuthAccount.Status.ACTIVE,customer.getStatus());assertEquals("Tên hồ sơ hiển thị",customer.getFullName());assertTrue(customer.hasRole(AuthAccount.Role.CUSTOMER));assertFalse(customer.hasRole(AuthAccount.Role.OWNER));
+        assertEquals("ADMIN_REVIEW",verified.findById(customer.getId()).orElseThrow().getSource());
+        mvc.perform(get("/api/v1/me/verifications").header("Authorization","Bearer "+token)).andExpect(status().isOk()).andExpect(jsonPath("$.vneid.source").value("ADMIN_REVIEW"));
+        decision(adminToken,id,0,"APPROVE","").andExpect(status().isConflict());
+    }
+    @Test void submittedSnapshotsAndImagesStayFrozenAndOnlyAdminCanReadThem()throws Exception{
+        String id=submitMine();long version=profiles.findById(customer.getId()).orElseThrow().getVersion();
+        submit(token,version).andExpect(status().isConflict());
+        save(token,input(Long.toString(version)).replace("Nguyễn Văn Thử","Tên tự sửa sau gửi"),null,null).andExpect(status().isOk());
+        String admin=token(account(AuthAccount.Role.ADMIN,true));
+        mvc.perform(get("/api/v1/admin/identity-submissions/"+id).header("Authorization","Bearer "+admin)).andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store")).andExpect(jsonPath("$.profile.legalName").value("Nguyễn Văn Thử"));
+        assertArrayEquals(png,submittedImages.findById(Long.valueOf(id)).orElseThrow().getFrontContent());
+        for(String actor:List.of(token,token(other),token(account(AuthAccount.Role.OWNER,true)))){
+            mvc.perform(get("/api/v1/admin/identity-submissions/"+id).header("Authorization","Bearer "+actor)).andExpect(status().isForbidden());
+            mvc.perform(get("/api/v1/admin/identity-submissions/"+id+"/documents/front").header("Authorization","Bearer "+actor)).andExpect(status().isForbidden());
+        }
+        mvc.perform(get("/api/v1/admin/identity-submissions/"+id+"/documents/front").header("Authorization","Bearer "+admin)).andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store"));
+        mvc.perform(get("/api/v1/me/identity-submissions").header("Authorization","Bearer "+token(other))).andExpect(status().isNoContent());
+    }
+    @Test void rejectionRequiresReasonAndAllowsNewSubmissionWithRetainedHistory()throws Exception{
+        String id=submitMine(),admin=token(account(AuthAccount.Role.ADMIN,true));
+        decision(admin,id,0,"REJECT","").andExpect(status().isBadRequest());
+        decision(admin,id,0,"REJECT","Ảnh mặt sau bị mờ").andExpect(status().isOk());assertFalse(policy.isVerified(customer));
+        decision(admin,id,0,"APPROVE","").andExpect(status().isConflict());
+        String next=JsonPath.read(submit(token,profiles.findById(customer.getId()).orElseThrow().getVersion()).andExpect(status().isOk()).andReturn().getResponse().getContentAsString(),"$.id");assertNotEquals(id,next);assertTrue(submissions.existsById(Long.valueOf(id)));
+        mvc.perform(get("/api/v1/admin/identity-submissions?status=REJECTED").header("Authorization","Bearer "+admin)).andExpect(status().isOk());
+    }
+    @Test void approvalDoesNotUnlockAndCannotClaimAnotherVerifiedDocument()throws Exception{
+        String id=submitMine(),admin=token(account(AuthAccount.Role.ADMIN,true));customer.setStatus(AuthAccount.Status.LOCKED);accounts.saveAndFlush(customer);
+        decision(admin,id,0,"APPROVE","").andExpect(status().isConflict());assertFalse(verified.existsById(customer.getId()));
+        customer.setStatus(AuthAccount.Status.PENDING_VERIFICATION);accounts.saveAndFlush(customer);
+        var evidence=new com.ancu.proptech.model.auth.ExternalIdentity();evidence.setAccountId(other.getId());evidence.setIssuer("test");evidence.setSubject("manual-conflict");evidence.setDocumentNumber("001095000123");evidence.setLegalName("Một người khác");evidence.setDateOfBirth(java.time.LocalDate.of(1995,6,15));evidence.setGender("Không khai báo");evidence.setAddress("Địa chỉ");evidence.setSource("AUTH0_VNEID_SIMULATION");evidence.setVerificationStatus("VERIFIED");evidence.setVerifiedAt(java.time.Instant.now());verified.saveAndFlush(evidence);
+        decision(admin,id,0,"APPROVE","").andExpect(status().isConflict());assertFalse(verified.existsById(customer.getId()));
+    }
+    @Test void rejectsStaleProfileMissingConsentAndSampleEvidence()throws Exception{
+        save(token,input("null"),png,png).andExpect(status().isOk());long version=profiles.findById(customer.getId()).orElseThrow().getVersion();
+        submit(token,version+1).andExpect(status().isConflict());
+        mvc.perform(post("/api/v1/me/identity-submissions").header("Authorization","Bearer "+token).contentType("application/json").content("{\"profileVersion\":"+version+",\"consent\":false}")).andExpect(status().isBadRequest());
+        var p=profiles.findById(customer.getId()).orElseThrow();p.setLocalFixture(true);profiles.saveAndFlush(p);submit(token,p.getVersion()).andExpect(status().isBadRequest());
+    }
 }

@@ -12,7 +12,7 @@ export function AccountVerificationPage() {
     <div className="w-full bg-white rounded-2xl border border-slate-200 p-5 sm:p-8 max-w-2xl">
       <div className="mb-3"><BrandLogo /></div>
       <h1 className="text-xl font-bold text-slate-900">Xác thực tài khoản</h1>
-      <p className="mt-3 text-sm text-slate-600">Xin chào {user!.fullName}. {user!.contactVerificationStatus === 'VERIFIED' ? 'Tài khoản đã xác thực.' : 'Bạn có thể xác thực bằng email hoặc VNeID mô phỏng trước khi gửi yêu cầu thuê hoặc sử dụng các chức năng quản lý.'}</p>
+      <p className="mt-3 text-sm text-slate-600">Xin chào {user!.fullName}. {user!.contactVerificationStatus === 'VERIFIED' ? 'Tài khoản đã xác thực.' : 'Bạn có thể xác thực bằng email, hồ sơ được Admin duyệt hoặc VNeID mô phỏng trước khi gửi yêu cầu thuê hoặc sử dụng các chức năng quản lý.'}</p>
       <div className="flex flex-wrap gap-4 mt-3"><Link to="/" className="text-sm text-brand-700 underline">Tiếp tục xem căn hộ</Link><Link to="/account/settings" className="text-sm text-brand-700 underline">Cài đặt tài khoản</Link></div>
       {loading && <p role="status" className="mt-5 text-slate-600">Đang tải trạng thái xác thực...</p>}
       {error && <p role="alert" className="mt-5 text-rose-700">{error}<button type="button" onClick={reload} className="ml-2 underline">Thử lại</button></p>}
@@ -22,6 +22,7 @@ export function AccountVerificationPage() {
           <p className="text-sm text-slate-600 mt-2 break-all">{user!.email}</p>
           {!data.emailVerified && <Link to="/account/settings/email" className="inline-block mt-3 text-sm text-brand-700 underline">Xác thực email</Link>}
         </section>
+        <section className="border border-slate-200 rounded-xl p-4"><h2 className="font-semibold">Xác thực bằng hồ sơ nhập tay</h2><p className="text-sm text-slate-600 mt-2">Nhập thông tin và ảnh hai mặt căn cước để Admin kiểm tra.</p><Link to="/account/settings/identity" className="inline-block mt-3 underline text-brand-700">Nhập hồ sơ / theo dõi kết quả duyệt</Link></section>
         <section id="vneid" aria-label="Xác thực VNeID" className="border border-slate-200 rounded-xl p-4">
           <div className="flex flex-wrap justify-between gap-2"><h2 className="font-semibold">{data.vneid.source === 'LOCAL_DEMO' ? 'Căn cước công dân' : 'VNeID'}</h2><span className={data.vneid.status === 'VERIFIED' ? 'text-sm font-semibold text-emerald-700' : 'text-sm text-slate-500'}>{data.vneid.status === 'VERIFIED' ? 'Đã xác thực' : 'Chưa xác thực'}</span></div>
           {data.vneid.status === 'VERIFIED' ? <VerifiedCitizenDetails verification={data.vneid} /> : <VneidButton intent="verify" label="Xác thực bằng VNeID mô phỏng" />}
