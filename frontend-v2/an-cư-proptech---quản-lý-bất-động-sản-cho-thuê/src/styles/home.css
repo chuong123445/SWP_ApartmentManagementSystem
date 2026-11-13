@@ -138,16 +138,6 @@
   object-fit: cover;
 }
 
-.home-intro-photo figcaption {
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: #102956db;
-  color: white;
-  font-size: 10px;
-}
 
 .home-filters {
   display: grid;

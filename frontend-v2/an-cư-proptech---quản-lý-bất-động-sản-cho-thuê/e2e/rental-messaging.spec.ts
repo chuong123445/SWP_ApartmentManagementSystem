@@ -78,7 +78,7 @@ test('Khách thuê và chủ nhà nhắn tin hai chiều trên máy tính và đ
     await fixture(owner, 'OWNER');
     await customer.goto('/apartments/42');
     await customer.getByRole('button', { name: 'Nhắn tin cho chủ nhà' }).click();
-    await expect(customer).toHaveURL(new RegExp(`/my/messages/${conversationId}$`));
+    await expect(customer).toHaveURL(/apartments\/42$/);
     const input = customer.getByRole('textbox', { name: 'Nội dung tin nhắn' });
     await input.fill('Cho mình hẹn xem phòng ạ');
     await customer.getByRole('button', { name: 'Gửi', exact: true }).click();
@@ -89,8 +89,7 @@ test('Khách thuê và chủ nhà nhắn tin hai chiều trên máy tính và đ
     expect(sent).toHaveLength(1);
 
     await owner.goto('/apartments/42');
-    await owner.getByRole('button', { name: 'Tài khoản' }).click();
-    await owner.getByRole('navigation', { name: 'Điều hướng tài khoản' }).getByRole('link', { name: 'Tin nhắn', exact: true }).click();
+    await owner.getByRole('button', { name: 'Mở hộp thư' }).click();
     await owner.getByRole('link', { name: /Khách thuê thử.*Phòng 101/ }).click();
     await expect(owner.getByRole('log')).toContainText('Cho mình hẹn xem phòng ạ');
     await owner.getByRole('textbox', { name: 'Nội dung tin nhắn' }).fill('Chiều nay bạn qua xem được nhé');
@@ -99,12 +98,14 @@ test('Khách thuê và chủ nhà nhắn tin hai chiều trên máy tính và đ
     await expect(customer.getByRole('log')).toContainText('Chiều nay bạn qua xem được nhé', { timeout: 12000 });
     expect(await customer.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     await customer.reload();
+    await customer.getByRole('button', { name: 'Mở hộp thư' }).click();
+    await customer.getByRole('link', { name: /Chủ nhà thử.*Phòng 101/ }).click();
     await expect(customer.getByRole('log')).toContainText('Chiều nay bạn qua xem được nhé');
 
     await owner.goto('/app');
     await owner.getByRole('button', { name: 'Khách thuê', exact: true }).click();
     await owner.getByRole('button', { name: 'Nhắn tin cho Khách thuê thử · 101' }).click();
-    await expect(owner).toHaveURL(new RegExp(`/my/messages/${conversationId}$`));
+    await expect(owner).toHaveURL(/\/app$/);
     await expect(owner.getByRole('log')).toContainText('Cho mình hẹn xem phòng ạ');
   } finally {
     await customerContext.close();

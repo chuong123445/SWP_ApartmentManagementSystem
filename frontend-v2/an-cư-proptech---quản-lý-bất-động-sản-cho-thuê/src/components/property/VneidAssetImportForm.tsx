@@ -59,11 +59,11 @@ export function VneidAssetImportForm({ onClose, onBack, onImported, propertyId }
             {sourceAppendMessage(selected)&&<p role="alert" className="text-amber-800 text-sm">{sourceAppendMessage(selected)}</p>}
             <div className="flex flex-wrap gap-4 text-sm"><button type="button" disabled={!available.length} onClick={()=>setSelectedIds(available.map(unit=>unit.externalUnitId))} className="underline">Chọn tất cả phòng chưa thêm</button><button type="button" onClick={()=>setSelectedIds([])} className="underline">Bỏ chọn tất cả</button></div>
             {selected.asset.units.map(unit=>{const imported=selected.unitStates?.find(state=>state.externalUnitId===unit.externalUnitId);return <label key={unit.externalUnitId} className="flex items-start gap-3 border rounded-lg p-3 break-words"><input type="checkbox" disabled={!!imported||!available.some(u=>u.externalUnitId===unit.externalUnitId)} checked={selectedIds.includes(unit.externalUnitId)} onChange={e=>setSelectedIds(ids=>e.target.checked?[...ids,unit.externalUnitId]:ids.filter(id=>id!==unit.externalUnitId))} className="mt-1 shrink-0"/><span>{unit.code} · {unit.areaM2} m²<span className="block text-sm text-slate-500">{imported?`Đã thêm — ${imported.publicationStatus==='PUBLISHED'?'đang công khai':imported.publicationStatus==='HIDDEN'?'đang ẩn':'bản nháp'}`:'Chưa đưa vào cho thuê'}</span></span></label>;})}
-            <p role="status" className="text-sm text-emerald-800">Đã chọn {selectedUnits.length}/{available.length} phòng chưa thêm.</p>
+            <p role="status" className="text-sm text-brand-800">Đã chọn {selectedUnits.length}/{available.length} phòng chưa thêm.</p>
             {!available.length&&!sourceAppendMessage(selected)&&<p className="text-sm">Tất cả phòng nguồn đã có trong hệ thống. Bạn có thể quản lý hoặc công khai phòng đã ẩn tại trang tài sản.</p>}
           </div>
           {!appending&&selectedUnits.length>0&&<><PropertyImagesField files={photos} onChange={setPhotos} disabled={saving||stale}/>
-          <div className="bg-emerald-50 p-3 rounded-lg text-sm break-words">Địa chỉ theo VNeID: <strong>{selected.asset.address}</strong></div>
+          <div className="bg-brand-50 p-3 rounded-lg text-sm break-words">Địa chỉ theo VNeID: <strong>{selected.asset.address}</strong></div>
           <p className="text-sm text-slate-600">Bổ sung địa phương để căn hộ xuất hiện đúng bộ lọc tìm kiếm.</p>
           <div className="grid sm:grid-cols-2 gap-3">
             <label className="text-sm">Tỉnh/Thành phố *<input required maxLength={80} value={city} onChange={e => setCity(e.target.value)} className={inputClass} /></label>
@@ -72,7 +72,7 @@ export function VneidAssetImportForm({ onClose, onBack, onImported, propertyId }
           </div></>}
           {appending&&<p className="text-sm text-slate-600">Các phòng mới sẽ được thêm vào tài sản hiện có, dùng ảnh chung và địa phương đã lưu, kèm ảnh riêng từng phòng mới. Phòng đã thêm giữ nguyên thông tin.</p>}
           {selectedUnits.map((unit,index) => <fieldset key={unit.externalUnitId} className="border rounded-xl p-4 min-w-0" data-testid="vneid-unit-terms"><legend className="font-semibold px-1">{unit.code} · {unit.areaM2} m²</legend>
-            <details open={index===0}><summary className="cursor-pointer text-sm text-emerald-800">Điều kiện thuê và ảnh riêng phòng {unit.code}</summary><div className="grid sm:grid-cols-2 gap-3">{([
+            <details open={index===0}><summary className="cursor-pointer text-sm text-brand-800">Điều kiện thuê và ảnh riêng phòng {unit.code}</summary><div className="grid sm:grid-cols-2 gap-3">{([
               ['monthlyRent','Giá thuê/tháng (đ)', '0.01', '0.01'],['deposit','Tiền cọc (đ)', '0', '0.01'],['electricityUnitPrice','Đơn giá điện (đ/kWh)', '0', '0.01'],['waterUnitPrice','Đơn giá nước (đ/m³)', '0', '0.01'],
               ['floor','Tầng', '0', '1'],['maxOccupants','Số người tối đa', '1', '1'],
             ] as const).map(([key,label,min,step]) => <label key={key} className="text-sm">{label} *<input required type="number" min={min} step={step} max={key==='floor'?200:key==='maxOccupants'?1000:key.endsWith('Index')?2147483647:'9999999999999.99'} value={terms[unit.externalUnitId]?.[key] ?? ''} onChange={e => change(unit.externalUnitId,key,e.target.value)} className={inputClass} /></label>)}</div>
@@ -88,11 +88,11 @@ export function VneidAssetImportForm({ onClose, onBack, onImported, propertyId }
             }} onApply={description => change(unit.externalUnitId, 'description', description)} />
             </details>
           </fieldset>)}
-          <p className="text-sm text-emerald-900 bg-emerald-50 p-3 rounded-lg">Xác nhận sẽ thêm và công khai {selectedUnits.length} phòng đã chọn. Thông tin sở hữu, mã phòng và diện tích được kiểm tra lại từ nguồn VNeID mô phỏng.</p>
+          <p className="text-sm text-brand-900 bg-brand-50 p-3 rounded-lg">Xác nhận sẽ thêm và công khai {selectedUnits.length} phòng đã chọn. Thông tin sở hữu, mã phòng và diện tích được kiểm tra lại từ nguồn VNeID mô phỏng.</p>
           <button type="submit" disabled={saving || stale || !selectedUnits.length} className="bg-brand-600 text-white rounded-lg px-4 py-2 disabled:opacity-50">{saving ? 'Đang thêm phòng...' : `${appending?'Bổ sung':'Thêm'} và cho thuê ${selectedUnits.length} phòng`}</button>
         </fieldset>
       </form>}
       {error && <p role="alert" className="text-rose-700 break-words">{error}</p>}
-      <div className="flex flex-wrap gap-4"><button type="button" disabled={saving || loading} onClick={() => setRevision(v => v+1)} className="text-emerald-700 underline">Tải lại danh sách</button><button type="button" disabled={saving} onClick={onBack} className="underline">{propertyId?'Quay lại quản lý tài sản':'Quay lại chọn hình thức'}</button></div>
+      <div className="flex flex-wrap gap-4"><button type="button" disabled={saving || loading} onClick={() => setRevision(v => v+1)} className="text-brand-700 underline">Tải lại danh sách</button><button type="button" disabled={saving} onClick={onBack} className="underline">{propertyId?'Quay lại quản lý tài sản':'Quay lại chọn hình thức'}</button></div>
   </section>;
 }

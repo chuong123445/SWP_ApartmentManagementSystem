@@ -19,7 +19,7 @@ export function MyRentalRequestsPage({ initialTab = 'requests' }: { initialTab?:
   return <CustomerLayout><main className="max-w-5xl mx-auto px-5 py-8 space-y-6">
     <header><h1 className="app-page-title">Yêu cầu & hợp đồng</h1><p className="text-sm text-slate-500 mt-2">Theo dõi yêu cầu thuê và hợp đồng trong hai tab riêng. Nhắc hạn được gửi qua chuông thông báo.</p></header>
     <RentalHistoryNavigation active={active} onChange={tab => { const next = new URLSearchParams(params); next.set('tab', tab); if (tab === 'requests') next.delete('contractId'); setParams(next); }} />
-    <div className="flex flex-wrap gap-4 text-sm"><Link to="/my/invoices" className="text-emerald-700 underline">Lịch sử hóa đơn</Link><Link to="/my/maintenance" className="text-emerald-700 underline">Lịch sử sự cố</Link><Link to="/my/home" className="text-emerald-700 underline">Nhà đang thuê →</Link></div>
+    <div className="flex flex-wrap gap-4 text-sm"><Link to="/my/invoices" className="text-brand-700 underline">Lịch sử hóa đơn</Link><Link to="/my/maintenance" className="text-brand-700 underline">Lịch sử sự cố</Link><Link to="/my/home" className="text-brand-700 underline">Nhà đang thuê →</Link></div>
     <section role="tabpanel" id={`rental-panel-${active}`} aria-labelledby={`rental-tab-${active}`} tabIndex={0}>
       {active === 'contracts' ? <ContractDraftList /> : <RentalRequestsPanel page={page} onPageChange={setPage} />}
     </section>

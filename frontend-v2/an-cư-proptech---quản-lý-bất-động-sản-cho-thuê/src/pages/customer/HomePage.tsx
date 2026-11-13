@@ -48,7 +48,6 @@ export function HomePage({ embedded = false }: { embedded?: boolean }) {
           </div>
           <figure className="home-intro-photo">
             <img src="/home/apartment-interior.webp" alt="" width={1000} height={650} fetchPriority="high" />
-            <figcaption>Ảnh minh họa</figcaption>
           </figure>
         </div>
         <form className="home-filters" aria-label="Bộ lọc căn hộ" onSubmit={event => { event.preventDefault(); search(); }}>
