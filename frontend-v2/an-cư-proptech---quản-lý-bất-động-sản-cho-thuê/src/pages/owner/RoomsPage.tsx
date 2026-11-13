@@ -207,7 +207,7 @@ export const RoomsPage: React.FC<RoomsPageProps> = ({
 
                 {/* Price */}
                 <div className="mt-3 flex items-baseline justify-between">
-                  <div className="text-base font-bold text-emerald-700">
+                  <div className="text-base font-bold text-brand-800">
                     {room.price.toLocaleString('vi-VN')} đ
                     <span className="text-xs font-normal text-slate-400">/tháng</span>
                   </div>

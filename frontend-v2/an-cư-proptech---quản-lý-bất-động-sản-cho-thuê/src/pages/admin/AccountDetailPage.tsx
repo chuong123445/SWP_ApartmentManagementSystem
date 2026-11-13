@@ -19,7 +19,7 @@ const present = (value?: string | null) => value?.trim() || 'Chưa cập nhật'
 export function AccountDetailPage() {
   const { id } = useParams();
   return <AdminLayout>
-    <Link to="/admin/property-dossiers?tab=accounts" className="inline-block text-emerald-700 font-semibold">
+    <Link to="/admin/property-dossiers?tab=accounts" className="inline-block text-brand-700 font-semibold">
       ← Danh sách tài khoản
     </Link>
     {id && <AccountDetails key={id} accountId={id} />}

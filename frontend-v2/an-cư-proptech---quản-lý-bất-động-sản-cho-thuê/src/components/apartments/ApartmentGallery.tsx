@@ -17,7 +17,7 @@ function GallerySlides({images,title}:{images:string[];title:string}){
       if(event.key==='ArrowLeft'||event.key==='ArrowRight'){event.preventDefault();move(event.key==='ArrowLeft'?-1:1);}
     }} className="min-w-0 rounded-2xl focus-visible:outline-2 focus-visible:outline-brand-600">
     <div className="relative overflow-hidden rounded-2xl bg-slate-100 aspect-[4/3] sm:aspect-[16/10]">
-      <ApartmentImage key={sources[index]} src={sources[index]} alt={`${title} - ảnh ${index+1}`} className="w-full h-full object-contain"/>
+      <ApartmentImage key={sources[index]} src={sources[index]} alt={`${title} - ảnh ${index+1}`} className="w-full h-full object-contain" illustrate={!images.length}/>
       {multiple&&<>
         <button type="button" aria-label="Ảnh trước" onClick={()=>move(-1)} className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-slate-900/75 hover:bg-slate-900 text-white flex items-center justify-center shadow focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"><ChevronLeft aria-hidden="true" className="w-6 h-6"/></button>
         <button type="button" aria-label="Ảnh tiếp theo" onClick={()=>move(1)} className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-slate-900/75 hover:bg-slate-900 text-white flex items-center justify-center shadow focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"><ChevronRight aria-hidden="true" className="w-6 h-6"/></button>

@@ -18,7 +18,7 @@ export function HandoverPage(){
  },[id,revision]);
  const owner=draft?.snapshot.owner.id===user?.id;
  return <CustomerLayout><main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-5">
-  <nav aria-label="Điều hướng bàn giao" className="flex flex-wrap gap-4 text-sm text-emerald-800">
+  <nav aria-label="Điều hướng bàn giao" className="flex flex-wrap gap-4 text-sm text-brand-800">
    <Link to={owner?'/app?tab=contracts':'/my/contracts'}>← Danh sách hợp đồng</Link>
    <Link to={`/contracts/${id}`}>Xem hợp đồng thuê</Link>
   </nav>
