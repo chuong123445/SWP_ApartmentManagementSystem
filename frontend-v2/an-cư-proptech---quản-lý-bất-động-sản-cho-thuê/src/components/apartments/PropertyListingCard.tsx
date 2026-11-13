@@ -28,7 +28,7 @@ export function PropertyListingCard({listing,filters}:{listing:PropertyListingSu
  const area=listing.minArea===listing.maxArea?listing.minArea:`${listing.minArea}–${listing.maxArea}`;
  return <article className="app-panel listing-card" data-testid="property-listing-card">
   <div className="listing-cover">
-   <ApartmentImage src={listing.thumbnail} alt={`Ảnh đại diện ${listing.name}`} className="size-full object-cover"/>
+   <ApartmentImage src={listing.thumbnail} alt={`Ảnh đại diện ${listing.name}`} className="size-full object-cover" illustrate/>
    <span className="listing-match">{listing.matchingRooms} căn/phòng phù hợp</span>
   </div>
   <div className="listing-body">
