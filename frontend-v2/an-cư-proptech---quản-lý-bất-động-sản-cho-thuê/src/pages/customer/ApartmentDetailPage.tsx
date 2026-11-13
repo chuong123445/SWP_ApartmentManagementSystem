@@ -141,7 +141,12 @@ export function ApartmentDetailPage() {
         {(apartment.electricityUnitPrice != null||apartment.management?.canEdit)&&<OwnerApartmentField key={`${apartment.id}-electricity`} apartment={apartment} field="electricityUnitPrice" onSaved={reloadApartment}><p className="text-sm mt-2">Điện: {apartment.electricityUnitPrice!=null?formatRent(apartment.electricityUnitPrice):'Chưa có giá'}/kWh</p></OwnerApartmentField>}
         {(apartment.waterUnitPrice != null||apartment.management?.canEdit)&&<OwnerApartmentField key={`${apartment.id}-water`} apartment={apartment} field="waterUnitPrice" onSaved={reloadApartment}><p className="text-sm mt-2">Nước: {apartment.waterUnitPrice!=null?formatRent(apartment.waterUnitPrice):'Chưa có giá'}/m³</p></OwnerApartmentField>}
         {apartment.management&&!apartment.management.pricesEditable&&<p className="text-sm text-amber-800 mt-3">{apartment.management.priceLockReason??'Giá thuê, điện và nước đang được khóa, không thể chỉnh sửa.'}</p>}
-        <div className="my-5 border-y border-slate-100 py-4"><p className="text-xs text-slate-500 mb-1">Chủ nhà</p><p className="font-semibold">{apartment.publicOwner.displayName}</p><p className="text-xs text-slate-500 mt-1">{apartment.propertyName}</p></div>
+        <div className="my-5 border-y border-slate-100 py-4">
+          <p className="mb-1 text-xs text-slate-500">Chủ nhà</p>
+          <p className="font-semibold">{apartment.publicOwner.displayName}</p>
+          <p className="mt-1 text-xs text-slate-500">{apartment.propertyName}</p>
+          <p className="mt-2 text-sm text-slate-600">Chưa có số điện thoại công khai</p>
+        </div>
         {!apartment.management && apartment.availability === 'VACANT' && apartment.rentalRightsAvailable !== false &&
           <StartRentalConversation key={`${apartment.id}:${user?.id ?? 'guest'}`} apartmentId={apartment.id}
             verified={customer} checking={checkingVerification || Boolean(verificationError)} />}
