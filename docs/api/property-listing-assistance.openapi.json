@@ -246,6 +246,131 @@
           }
         ]
       }
+    },
+    "/api/v1/me/listing-description/suggest": {
+      "post": {
+        "summary": "Suggest a Vietnamese room description using supplied facts and optional owned room photos",
+        "description": "ACTIVE authorized Owner/Customer. Maximum four image IDs, each uploaded by this account. Raster images are re-encoded and bounded before Gemini. No private dossier images or caller-selected external URLs. User explicitly applies the suggestion.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "areaM2",
+                  "monthlyRent"
+                ],
+                "properties": {
+                  "areaM2": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "monthlyRent": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "floor": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 200
+                  },
+                  "maxOccupants": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 1,
+                    "maximum": 1000
+                  },
+                  "bedrooms": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "bathrooms": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "amenities": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "maxItems": 20,
+                    "items": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "imageIds": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "maxItems": 4,
+                    "items": {
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Description suggestion",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "description"
+                  ],
+                  "properties": {
+                    "description": {
+                      "type": "string",
+                      "maxLength": 3000
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid facts/photo"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Account cannot use this feature"
+          },
+          "404": {
+            "description": "Image does not belong to this account"
+          },
+          "429": {
+            "description": "Request limit"
+          },
+          "503": {
+            "description": "Provider not configured/unavailable or invalid response"
+          }
+        }
+      }
     }
   },
   "components": {
