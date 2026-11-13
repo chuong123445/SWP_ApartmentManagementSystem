@@ -91,6 +91,7 @@ class IdentityProfileIntegrationTests {
         save(token,input(Long.toString(profile.getVersion())),png,png).andExpect(status().isOk()).andExpect(jsonPath("$.localFixture").value(false)).andExpect(jsonPath("$.verificationStatus").value("NOT_VERIFIED"));
     }
 
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired IdentitySubmissionRepository submissions;
     @Autowired IdentitySubmissionImagesRepository submittedImages;
     @Autowired com.ancu.proptech.repository.auth.ExternalIdentityRepository verified;
@@ -107,6 +108,10 @@ class IdentityProfileIntegrationTests {
         assertTrue(policy.isVerified(customer));assertTrue(customer.isIdentityVerified());assertFalse(customer.isEmailVerified());assertFalse(customer.isPhoneVerified());
         assertEquals(AuthAccount.Status.ACTIVE,customer.getStatus());assertEquals("Tên hồ sơ hiển thị",customer.getFullName());assertTrue(customer.hasRole(AuthAccount.Role.CUSTOMER));assertFalse(customer.hasRole(AuthAccount.Role.OWNER));
         assertEquals("ADMIN_REVIEW",verified.findById(customer.getId()).orElseThrow().getSource());
+        var script=new org.springframework.core.io.ClassPathResource("db/migration/V55__local_demo_identity_source.sql").getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        for(var batch:script.split("(?im)^GO\s*$"))if(!batch.isBlank())jdbc.execute(batch);
+        assertEquals("ADMIN_REVIEW",verified.findById(customer.getId()).orElseThrow().getSource());
+
         mvc.perform(get("/api/v1/me/verifications").header("Authorization","Bearer "+token)).andExpect(status().isOk()).andExpect(jsonPath("$.vneid.source").value("ADMIN_REVIEW"));
         decision(adminToken,id,0,"APPROVE","").andExpect(status().isConflict());
     }

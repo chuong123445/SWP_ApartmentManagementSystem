@@ -1150,7 +1150,7 @@
               "string",
               "null"
             ],
-            "description": "Accepted evidence source only. AUTH0_VNEID_SIMULATION remains simulation; LOCAL_DEMO is accepted only in local/non-prod. No provider subject, citizen data or documents included."
+            "description": "Accepted evidence source only. AUTH0_VNEID_SIMULATION remains simulation; LOCAL_DEMO is accepted only in local/non-prod. ADMIN_REVIEW indicates an account identity submission approved by an active Admin. No provider subject, citizen data or documents included."
           },
           "inAppSigningStatus": {
             "type": "string",

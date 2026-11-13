@@ -24,7 +24,7 @@ export function AccountVerificationPage() {
         </section>
         <section className="border border-slate-200 rounded-xl p-4"><h2 className="font-semibold">Xác thực bằng hồ sơ nhập tay</h2><p className="text-sm text-slate-600 mt-2">Nhập thông tin và ảnh hai mặt căn cước để Admin kiểm tra.</p><Link to="/account/settings/identity" className="inline-block mt-3 underline text-brand-700">Nhập hồ sơ / theo dõi kết quả duyệt</Link></section>
         <section id="vneid" aria-label="Xác thực VNeID" className="border border-slate-200 rounded-xl p-4">
-          <div className="flex flex-wrap justify-between gap-2"><h2 className="font-semibold">{data.vneid.source === 'LOCAL_DEMO' ? 'Căn cước công dân' : 'VNeID'}</h2><span className={data.vneid.status === 'VERIFIED' ? 'text-sm font-semibold text-emerald-700' : 'text-sm text-slate-500'}>{data.vneid.status === 'VERIFIED' ? 'Đã xác thực' : 'Chưa xác thực'}</span></div>
+          <div className="flex flex-wrap justify-between gap-2"><h2 className="font-semibold">{['LOCAL_DEMO','ADMIN_REVIEW'].includes(data.vneid.source??'') ? 'Căn cước công dân' : 'VNeID'}</h2><span className={data.vneid.status === 'VERIFIED' ? 'text-sm font-semibold text-emerald-700' : 'text-sm text-slate-500'}>{data.vneid.status === 'VERIFIED' ? 'Đã xác thực' : 'Chưa xác thực'}</span></div>
           {data.vneid.status === 'VERIFIED' ? <VerifiedCitizenDetails verification={data.vneid} /> : <VneidButton intent="verify" label="Xác thực bằng VNeID mô phỏng" />}
         </section>
       </div>}
