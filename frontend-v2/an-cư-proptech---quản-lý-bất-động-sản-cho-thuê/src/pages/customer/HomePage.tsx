@@ -44,14 +44,15 @@ export function HomePage({ embedded = false }: { embedded?: boolean }) {
         <div className="home-intro">
           <div className="home-intro-copy">
             <h1>Tìm căn hộ cho thuê{filters.city ? ` tại ${filters.city}` : <> <span>phù hợp với bạn</span></>}</h1>
-            <p>Chọn khu vực và mức giá để xem những căn đang cho thuê, hoặc hỏi TOBA để tìm theo nhu cầu của bạn.</p>
+            <p>Lọc theo khu vực, ngân sách và số người ở để tìm căn phù hợp.</p>
           </div>
           <figure className="home-intro-photo">
             <img src="/home/apartment-interior.webp" alt="" width={1000} height={650} fetchPriority="high" />
             <figcaption>Ảnh minh họa</figcaption>
           </figure>
         </div>
-        <form className="home-filters" aria-label="Bộ lọc căn hộ" onSubmit={event => { event.preventDefault(); search(); }}>
+        <form className="home-filters" aria-labelledby="home-filter-title" onSubmit={event => { event.preventDefault(); search(); }}>
+          <h2 id="home-filter-title">Bộ lọc căn hộ</h2>
           <AddressFilter {...address} onChange={setAddress} {...addresses} />
           <div><label htmlFor="apartment-min-rent" className="home-filter-label"><HomeIcon name="money" />Giá tối thiểu / tháng</label><input id="apartment-min-rent" type="number" min="0" step="0.01" value={minRent} onChange={e => setMinRent(e.target.value)} placeholder="Không giới hạn" /></div>
           <div><label htmlFor="apartment-max-rent" className="home-filter-label"><HomeIcon name="money" />Giá tối đa / tháng</label><input id="apartment-max-rent" type="number" min="0" step="0.01" value={maxRent} onChange={e => setMaxRent(e.target.value)} placeholder="Không giới hạn" /></div>
@@ -68,6 +69,15 @@ export function HomePage({ embedded = false }: { embedded?: boolean }) {
           </div>
         </form>
       </section>
+      <section ref={results} tabIndex={-1} className="home-section home-results" aria-labelledby="home-results-title" aria-busy={loading}>
+        <div className="home-heading"><div><h2 id="home-results-title">Căn hộ cho thuê</h2><p role="status">{loading ? 'Đang tải căn hộ...' : `${data?.totalElements ?? 0} tài sản có phòng phù hợp`}</p></div><button type="button" className="home-text-link" onClick={clear}>Xóa bộ lọc</button></div>
+        {error && <div role="alert" className="home-error">{error}<button type="button" onClick={reload}>Thử lại</button></div>}
+        {!loading && !error && <>
+          {data?.items.length ? <div className="home-listings">{data.items.map(a => <PropertyListingCard key={`${a.propertyId}:${JSON.stringify(filters)}`} listing={a} filters={filters} />)}</div>
+            : <div className="home-empty"><HomeIcon name="apartment" /><h3>Chưa có căn hộ phù hợp</h3><p>Chưa có căn hộ phù hợp với bộ lọc này. Hãy thử đổi khu vực, ngân sách hoặc số phòng ngủ.</p><button type="button" className="home-pill" onClick={clear}>Xóa bộ lọc</button></div>}
+          {data && <Pagination page={data.page} totalPages={data.totalPages} onChange={page => setFilters(value => ({ ...value, page }))} />}
+        </>}
+      </section>
       <section className="home-section" aria-labelledby="home-cities-title">
         <div className="home-heading"><h2 id="home-cities-title">Khám phá theo khu vực</h2></div>
         <div className="home-cities">{homeCities.map(city => {
@@ -78,15 +88,6 @@ export function HomePage({ embedded = false }: { embedded?: boolean }) {
             <strong>{city.label}</strong><span className="home-city-arrow" aria-hidden="true">↗</span>
           </button>;
         })}</div>
-      </section>
-      <section ref={results} tabIndex={-1} className="home-section home-results" aria-labelledby="home-results-title" aria-busy={loading}>
-        <div className="home-heading"><div><h2 id="home-results-title">Căn hộ cho thuê</h2><p role="status">{loading ? 'Đang tải căn hộ...' : `${data?.totalElements ?? 0} tài sản có phòng phù hợp`}</p></div><button type="button" className="home-text-link" onClick={clear}>Xóa bộ lọc</button></div>
-        {error && <div role="alert" className="home-error">{error}<button type="button" onClick={reload}>Thử lại</button></div>}
-        {!loading && !error && <>
-          {data?.items.length ? <div className="home-listings">{data.items.map(a => <PropertyListingCard key={`${a.propertyId}:${JSON.stringify(filters)}`} listing={a} filters={filters} />)}</div>
-            : <div className="home-empty"><HomeIcon name="apartment" /><h3>Chưa có căn hộ phù hợp</h3><p>Chưa có căn hộ phù hợp với bộ lọc này. Hãy thử đổi khu vực, ngân sách hoặc số phòng ngủ.</p><button type="button" className="home-pill" onClick={clear}>Xóa bộ lọc</button></div>}
-          {data && <Pagination page={data.page} totalPages={data.totalPages} onChange={page => setFilters(value => ({ ...value, page }))} />}
-        </>}
       </section>
     </div>;
   return embedded
