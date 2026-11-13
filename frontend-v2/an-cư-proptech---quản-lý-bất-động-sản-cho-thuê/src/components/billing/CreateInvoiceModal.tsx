@@ -3,6 +3,7 @@ import {dossierDateDisplay} from '@/utils/dossierDates';
 import { useEffect, useRef, useState } from 'react';
 import {Link} from 'react-router';
 import { X } from 'lucide-react';
+import { UtilityInvoiceAssistant } from './UtilityInvoiceAssistant';
 import type { Invoice } from '@/types';
 import type { Tenancy, BillingContext, BillingInvoice, RentBillingContext } from '@/types/billing';
 import { getRentBillingContext, createRentInvoice, getBillingContext, createInvoice, sendInvoice, saveMeterReadings, invoiceView, billingMoney } from '@/services/billing/billingService';
@@ -77,6 +78,7 @@ export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice, initia
           {rent.coverageStart&&!rent.existingDraftId&&<label className="block font-semibold">Hạn đóng<DossierDateInput required className={cls} min={rent.dueDate??rent.coverageStart} value={due} onChange={setDue}/></label>}
         </div>}
         {context && <><div className="bg-slate-50 rounded-lg p-3 text-sm"><p>Kỳ: <strong>{context.period}</strong> · Điện nước và dịch vụ</p><p>Internet: {billingMoney(context.internetFee??'0')} · Vệ sinh/rác: {billingMoney(context.garbageFee??'0')} mỗi tháng</p></div>
+          <UtilityInvoiceAssistant context={context} onApply={(electricity,water)=>{setElectricity(electricity);setWater(water);}}/>
           <p className="text-sm text-slate-600">Chỉ số đầu kỳ và đơn giá được lấy từ dữ liệu đã lưu. Nhập chỉ số công tơ cuối kỳ bên dưới.</p>
           {context.savedReading&&<p className="text-sm text-emerald-700">Đã lấy chỉ số đã chốt. Bạn có thể sửa trực tiếp; đơn giá đã chốt được giữ nguyên.</p>}
           <div className="grid sm:grid-cols-2 gap-4">

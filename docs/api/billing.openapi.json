@@ -641,6 +641,115 @@
           }
         }
       }
+    },
+    "/api/v1/owner/contracts/{id}/utility-invoice-suggestion": {
+      "post": {
+        "summary": "Read an Owner command into a reviewed utility-invoice suggestion; never creates or sends an invoice",
+        "description": "Requires exact ACTIVE-contract Owner, current period/baselineVersion, explicit room code and end meter readings. Missing/ambiguous input returns 422. PER_PERSON water keeps its existing baseline. Server remains the source of prices and totals.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "message",
+                  "period",
+                  "baselineVersion"
+                ],
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "period": {
+                    "type": "string"
+                  },
+                  "baselineVersion": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Validated suggestion; explicit Apply and Save/Send remain separate UI actions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "contractId",
+                    "roomNumber",
+                    "period",
+                    "baselineVersion",
+                    "electricityEndReading",
+                    "waterEndReading"
+                  ],
+                  "properties": {
+                    "contractId": {
+                      "type": "string"
+                    },
+                    "roomNumber": {
+                      "type": "string"
+                    },
+                    "period": {
+                      "type": "string"
+                    },
+                    "electricityEndReading": {
+                      "type": "string"
+                    },
+                    "waterEndReading": {
+                      "type": "string"
+                    },
+                    "baselineVersion": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Owner required"
+          },
+          "404": {
+            "description": "Contract outside Owner scope"
+          },
+          "409": {
+            "description": "Inactive contract or stale billing period/version"
+          },
+          "422": {
+            "description": "INVOICE_INPUT_REQUIRED: missing/wrong room, missing, invented or decreasing end readings"
+          },
+          "429": {
+            "description": "Local request limit"
+          },
+          "503": {
+            "description": "AI unavailable/configuration/provider failure"
+          }
+        }
+      }
     }
   },
   "components": {

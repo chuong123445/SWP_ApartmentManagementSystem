@@ -1,0 +1,7 @@
+# AI điền hóa đơn điện nước — 13/11/2026
+
+Trong hộp Lập hóa đơn → Điện nước, Owner nhập yêu cầu có mã/tên phòng và chỉ số công tơ cuối tháng. Thiếu tên phòng hoặc chỉ số điện/nước (với nước theo công tơ) thì báo cần bổ sung; không dùng số trong mã phòng làm chỉ số và không tự đoán. Nước theo người tiếp tục dùng cách tính đã lưu trong hợp đồng.
+
+POST `/api/v1/owner/contracts/{id}/utility-invoice-suggestion` nhận `message`, `period`, `baselineVersion`. Existing InvoiceService.context kiểm tra đúng Owner, hợp đồng ACTIVE và baseline trước khi gọi provider. Server xác minh phòng, kỳ/version, kiểu/số chữ số, chỉ số không giảm và số thực sự xuất hiện trong yêu cầu. Chỉ trả gợi ý hai chỉ số; không nhận đơn giá, số tiền hoặc tenant ID. Bước Áp dụng đưa vào form hiện hành; Lưu nháp/Lập và gửi vẫn là command riêng, tính tiền bằng BigDecimal phía server. Gợi ý cũ bị ẩn khi sửa câu yêu cầu hoặc thay context.
+
+Validation: TypeScript, 162 frontend unit và production build PASS (cảnh báo chunk lớn sẵn có). Playwright MCP 1440/390 PASS: thiếu nước không tạo hóa đơn, gợi ý không tự ghi đè form, sửa câu yêu cầu làm ẩn nút áp dụng, chỉ lưu khi Owner xác nhận. Backend tests cover missing/wrong room, missing/malformed/decreasing/invented readings, PER_PERSON, authorization and stale context. Actual final counts in session handoff; no live Gemini claim. Không gọi payment/email/provider thật hoặc thay đổi database ứng dụng.
