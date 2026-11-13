@@ -3,12 +3,12 @@ import {dossierDateDisplay} from '@/utils/dossierDates';
 import { useEffect, useRef, useState } from 'react';
 import {Link} from 'react-router';
 import { X } from 'lucide-react';
-import { UtilityInvoiceAssistant } from './UtilityInvoiceAssistant';
 import type { Invoice } from '@/types';
 import type { Tenancy, BillingContext, BillingInvoice, RentBillingContext } from '@/types/billing';
 import { getRentBillingContext, createRentInvoice, getBillingContext, createInvoice, sendInvoice, saveMeterReadings, invoiceView, billingMoney } from '@/services/billing/billingService';
-export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice, initialContractId }: {
+export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice, initialContractId, initialSuggestion }: {
   initialContractId?:string;
+  initialSuggestion?: {context: BillingContext; electricity: string; water: string};
   tenancies: Tenancy[]; onClose: () => void; onCreateInvoice: (invoice: Invoice) => void;
 }) {
   const [kind,setKind]=useState<'RENT'|'UTILITY'>('UTILITY');
@@ -31,9 +31,9 @@ export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice, initia
     let active = true;setContext(null);setRent(null);setError('');
     if (!contractId) return;
     if(kind==='RENT'){getRentBillingContext(contractId).then(value=>{if(active){setRent(value);setDue(value.dueDate??'');}}).catch(e=>{if(active)setError(e.message);});return()=>{active=false;};}
-    getBillingContext(contractId).then(c => { if (active) { setContext(c);setDue(`${c.period}-28`);setElectricity(c.savedReading?.electricityEndReading??'');setWater(c.savedReading?.waterEndReading??''); } })
+    getBillingContext(contractId).then(c => { if (active) { setContext(c);setDue(`${c.period}-28`);const matches=initialSuggestion?.context.contractId===c.contractId&&initialSuggestion.context.period===c.period&&initialSuggestion.context.baselineVersion===c.baselineVersion;setElectricity(matches?initialSuggestion.electricity:c.savedReading?.electricityEndReading??'');setWater(matches?initialSuggestion.water:c.savedReading?.waterEndReading??'');if(initialSuggestion&&!matches)setError('Kỳ hóa đơn hoặc chỉ số đầu kỳ đã thay đổi. Vui lòng nhập lại chỉ số mới.'); } })
       .catch(e => { if (active) setError(e.message); });return () => { active = false; };
-  }, [contractId, revision, kind]);
+  }, [contractId, revision, kind, initialSuggestion]);
   const save = async (send: boolean) => {
     if(submitting.current||!form.current?.reportValidity())return;
     if(kind==='RENT'){
@@ -78,7 +78,6 @@ export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice, initia
           {rent.coverageStart&&!rent.existingDraftId&&<label className="block font-semibold">Hạn đóng<DossierDateInput required className={cls} min={rent.dueDate??rent.coverageStart} value={due} onChange={setDue}/></label>}
         </div>}
         {context && <><div className="bg-slate-50 rounded-lg p-3 text-sm"><p>Kỳ: <strong>{context.period}</strong> · Điện nước và dịch vụ</p><p>Internet: {billingMoney(context.internetFee??'0')} · Vệ sinh/rác: {billingMoney(context.garbageFee??'0')} mỗi tháng</p></div>
-          <UtilityInvoiceAssistant context={context} onApply={(electricity,water)=>{setElectricity(electricity);setWater(water);}}/>
           <p className="text-sm text-slate-600">Chỉ số đầu kỳ và đơn giá được lấy từ dữ liệu đã lưu. Nhập chỉ số công tơ cuối kỳ bên dưới.</p>
           {context.savedReading&&<p className="text-sm text-emerald-700">Đã lấy chỉ số đã chốt. Bạn có thể sửa trực tiếp; đơn giá đã chốt được giữ nguyên.</p>}
           <div className="grid sm:grid-cols-2 gap-4">
