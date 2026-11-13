@@ -40,10 +40,10 @@ export function FloatingMessages({ children }: { children: ReactNode }) {
 
   return <MessagesContext.Provider value={open}>
     {children}
-    {visible && createPortal(<div className="fixed bottom-[max(1.5rem,env(safe-area-inset-bottom))] right-24 z-[81] max-sm:bottom-4 max-sm:right-20">
+    {visible && createPortal(<div className="floating-messages-widget">
       {view && <section id="floating-messages" role="dialog" aria-labelledby="floating-messages-title"
         onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); close(); } }}
-        className="fixed bottom-24 right-4 flex max-h-[calc(100dvh-7rem)] w-[min(25rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-xl sm:right-6">
+        className="floating-messages-panel flex w-[min(25rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-xl">
         <header className="flex shrink-0 items-center gap-2 bg-brand-800 px-3 py-2 text-white">
           {view.id && <button type="button" aria-label="Về hộp thư" onClick={() => setActive({ accountId: view.accountId })} className="rounded-lg p-2 hover:bg-white/15"><ArrowLeft size={19} /></button>}
           <h2 id="floating-messages-title" className="flex-1 font-bold">Tin nhắn</h2>
@@ -54,7 +54,7 @@ export function FloatingMessages({ children }: { children: ReactNode }) {
         </div>
       </section>}
       <button type="button" aria-label="Mở hộp thư" title="Tin nhắn" aria-expanded={!!view} aria-controls={view ? 'floating-messages' : undefined}
-        onClick={() => view ? close() : open()} className="grid size-14 place-items-center rounded-full border border-brand-200 bg-white text-brand-800 shadow-lg hover:bg-brand-50">
+        onClick={() => view ? close() : open()} className="grid size-[var(--chat-launcher-size)] place-items-center rounded-full border border-brand-200 bg-white text-brand-800 shadow-lg hover:bg-brand-50">
         <MessagesSquare size={24} aria-hidden="true" />
       </button>
     </div>, document.body)}
