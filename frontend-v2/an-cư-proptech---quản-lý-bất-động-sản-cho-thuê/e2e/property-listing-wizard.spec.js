@@ -23,7 +23,7 @@ async function exerciseWizard(page, outputPath, origin) {
     if(path.endsWith('/me/verifications'))return respond(r,{emailVerified:true,vneid:{status:'VERIFIED',verifiedAt:'2026-11-01T00:00:00Z',identity:null}});
     if(path==='/api/v1/me/listing-drafts'){
      if(req.method()==='GET')return respond(r,current&&!current.completed?[current]:[]);
-     current={propertyId:'5',version:0,propertyVersion:0,rightType:body().rightType,completed:false,payload:{},files:[]};return respond(r,current);
+     current={propertyId:'5',version:0,propertyVersion:0,rightType:body().rightType,completed:false,payload:{},files:[],acceptedFileIds:[]};return respond(r,current);
     }
     if(path==='/api/v1/me/listing-drafts/5'){
      if(req.method()==='PUT'){const input=body();if(input.version!==current.version)throw Error('Version mismatch');current={...current,payload:input.payload,version:current.version+1};}
@@ -36,7 +36,8 @@ async function exerciseWizard(page, outputPath, origin) {
     if(path.endsWith('/rental-properties/5/ai-precheck')){declared=body().propertyFields;return respond(r,{sourceHash:'fixture-hash',propertyVersion:0,files:current.files,checklist:[],review:body().fileId?{fileId:body().fileId,readable:true,findings:[],extractedFields:[]}:null});}
     if(path.endsWith('/rental-properties/5/ai-extract')){
      if(failAI)return r.fulfill({status:503,json:{message:'AI tạm thời không khả dụng'}});
-     return respond(r,{sourceHash:'fixture-hash',propertyVersion:0,files:[],checklist:[],review:{fileId:body().fileId,readable:true,findings:[],extractedFields:[{field:'principalName',value:'Lê Minh Khoa',page:1},{field:'principalDocumentNumber',value:'999000000101',page:1},{field:'propertyName',value:'Nhà tự điền',page:1},{field:'propertyAddress',value:'12 Đường Kiểm Thử, Phường Linh Trung, Thành phố Thủ Đức, TP. Hồ Chí Minh',page:1},{field:'certificateNumber',value:'GCN-001',page:1},{field:'certificateIssueDate',value:'15/12/2025',page:1},{field:'certificateIssuePlace',value:'Văn phòng đăng ký đất đai TP. Hồ Chí Minh',page:1},{field:'rightsValidFrom',value:'05/06/2026',page:1},{field:'rightsValidUntil',value:'31/12/2028',page:1}]}});
+     if(!current.acceptedFileIds.includes(body().fileId))current.acceptedFileIds.push(body().fileId);
+     return respond(r,{sourceHash:'fixture-hash',propertyVersion:0,files:[],checklist:[],review:{fileId:body().fileId,readable:true,purposeMatch:true,documentType:current.files.find(f=>f.id===body().fileId).purpose,findings:[],extractedFields:[{field:'principalName',value:'Lê Minh Khoa',page:1},{field:'principalDocumentNumber',value:'999000000101',page:1},{field:'propertyName',value:'Nhà tự điền',page:1},{field:'propertyAddress',value:'12 Đường Kiểm Thử, Phường Linh Trung, Thành phố Thủ Đức, TP. Hồ Chí Minh',page:1},{field:'certificateNumber',value:'GCN-001',page:1},{field:'certificateIssueDate',value:'15/12/2025',page:1},{field:'certificateIssuePlace',value:'Văn phòng đăng ký đất đai TP. Hồ Chí Minh',page:1},{field:'rightsValidFrom',value:'05/06/2026',page:1},{field:'rightsValidUntil',value:'31/12/2028',page:1}]}});
     }
     if(path==='/api/v1/me/listing-description/suggest'){
      if(body().areaM2!=='24'||body().monthlyRent!=='4000000'||body().imageIds?.length!==1||'address' in body()||'legal' in body())throw Error('Unexpected listing facts');
@@ -177,6 +178,6 @@ async function exerciseSourceAndGroups(page, outputPath, origin) {
  return results;
 }
 
-test('private listing wizard resumes and tolerates AI failures', async ({page}, info)=>{ await exerciseWizard(page, name=>info.outputPath(name), process.env.E2E_BASE_URL||'http://localhost:3000'); });
+test('private listing wizard requires successful scans and resumes', async ({page}, info)=>{ await exerciseWizard(page, name=>info.outputPath(name), process.env.E2E_BASE_URL||'http://localhost:3000'); });
 
 test('source room photos and property-group filters', async ({page}, info)=>{ await exerciseSourceAndGroups(page, name=>info.outputPath(name), process.env.E2E_BASE_URL||'http://localhost:3000'); });

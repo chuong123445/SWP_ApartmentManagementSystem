@@ -60,6 +60,7 @@ class PropertyListingIntegrationTests {
                 .andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store"))
                 .andReturn().getResponse().getContentAsString();
     }
+    @Autowired com.ancu.proptech.repository.property.PropertyDocumentCheckRepository checks;
     @Test void createsOnceResumesPrivatelyAndRejectsStaleSave()throws Exception{
         String key=UUID.randomUUID().toString();var created=json.readTree(start(key));String id=created.path("propertyId").asString();
         assertEquals(id,json.readTree(start(key)).path("propertyId").asString());
@@ -67,7 +68,7 @@ class PropertyListingIntegrationTests {
         String route="/api/v1/me/listing-drafts/"+id;
         mvc.perform(get(route).header("Authorization","Bearer "+otherToken)).andExpect(status().isNotFound());
         var saved=mvc.perform(put(route).header("Authorization","Bearer "+token).contentType("application/json")
-                .content("{\"version\":0,\"payload\":{\"step\":1,\"name\":\"Nhà đã lưu\"}}"))
+                .content("{\"version\":0,\"payload\":{\"step\":0,\"name\":\"Nhà đã lưu\"}}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1)).andReturn();
         mvc.perform(get(route).header("Authorization","Bearer "+token)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.payload.name").value("Nhà đã lưu"));
@@ -98,6 +99,7 @@ class PropertyListingIntegrationTests {
         file.setPurpose(com.ancu.proptech.model.property.PropertyEvidenceFile.Purpose.RIGHT_DOCUMENT);
         file.setFilename("fixture.png");file.setContentType("image/png");file.setSizeBytes(3);file.setCreatedAt(java.time.Instant.now());evidence.saveAndFlush(file);
         var content=new com.ancu.proptech.model.property.PropertyEvidenceContent();content.setId(file.getId());content.setContent(new byte[]{1,2,3});contents.saveAndFlush(content);
+        var approvedScan=new com.ancu.proptech.model.property.PropertyDocumentCheck();approvedScan.setFileId(file.getId());approvedScan.setPropertyId(id);approvedScan.setPurpose("RIGHT_DOCUMENT");approvedScan.setAccepted(true);approvedScan.setScanToken(UUID.randomUUID().toString());approvedScan.setCheckedAt(java.time.Instant.now());checks.saveAndFlush(approvedScan);
         Long common=com.ancu.proptech.support.PropertyImageFixtures.stage(images,actor.getId());
         Long room=com.ancu.proptech.support.PropertyImageFixtures.stage(images,actor.getId());
         var unit=new com.ancu.proptech.dto.property.OwnerPropertyCreate.Unit();unit.setRoomNumber("P101");unit.setTitle("Phòng 101");unit.setFloor(1);
@@ -106,7 +108,7 @@ class PropertyListingIntegrationTests {
         var property=new com.ancu.proptech.dto.property.OwnerPropertyCreate();property.setName("Nhà kiểm thử");property.setAddress("12 Đường A");property.setCity("Test City");property.setDistrict("Test District");
         property.setRentalMode(com.ancu.proptech.model.property.Property.RentalMode.SINGLE_UNIT);property.setImageIds(List.of(common));property.setApartments(List.of(unit));
         var dossier=new com.ancu.proptech.dto.property.PropertyDossierSubmit();dossier.setPropertyVersion(0L);dossier.setRightType(com.ancu.proptech.model.property.PropertyDossier.RightType.OWNERSHIP);dossier.setDocumentFileIds(List.of(file.getId()));
-        String body=json.writeValueAsString(new com.ancu.proptech.dto.property.PropertyListingDtos.Finish(0L,property,dossier,true));
+        var command=json.valueToTree(new com.ancu.proptech.dto.property.PropertyListingDtos.Finish(0L,property,dossier,true));((tools.jackson.databind.node.ObjectNode)command.path("dossier")).remove("certificateComplete");String body=json.writeValueAsString(command);
         String route="/api/v1/me/listing-drafts/"+id+"/complete";
         for(int attempt=0;attempt<2;attempt++)mvc.perform(post(route).header("Authorization","Bearer "+token).contentType("application/json").content(body))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.completed").value(true));

@@ -2,7 +2,7 @@ import { apiFetch, readApiError } from '@/services/http/client';
 import type { Dossier, DossierSubmit, EvidenceFile } from '@/types/dossier';
 import type { PropertyCreateInput } from '@/types/property';
 import type { PrecheckView } from './ownerPrecheckService';
-export interface ListingDraft { propertyId:string;version:number;propertyVersion:number;rightType:Dossier['rightType'];completed:boolean;payload:unknown;files:EvidenceFile[] }
+export interface ListingDraft { propertyId:string;version:number;propertyVersion:number;rightType:Dossier['rightType'];completed:boolean;payload:unknown;files:EvidenceFile[];acceptedFileIds?:string[] }
 async function request<T>(path:string,method='GET',body?:unknown):Promise<T>{
  const response=await apiFetch(`/api/v1/me/listing-drafts${path}`,{method,cache:'no-store',...(body===undefined?{}:{headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})});
  if(!response.ok)throw await readApiError(response);return response.json();

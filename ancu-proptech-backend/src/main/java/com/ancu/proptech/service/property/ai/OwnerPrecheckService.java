@@ -23,6 +23,7 @@ import java.util.*;
 @Service @RequiredArgsConstructor
 public class OwnerPrecheckService {
  public static final String PROMPT="owner-precheck-v1";
+ private final com.ancu.proptech.service.property.PropertyDocumentGate documentGate;
  private final PropertyApplicantAccess access;private final PropertyEvidenceFileRepository files;private final PropertyEvidenceContentRepository contents;
  private final PropertyDossierRepository dossiers;private final DossierAiClient client;private final AssistanceAudit audit;private final AssistanceLimit limit;private final ObjectMapper json;private final PlatformTransactionManager manager;private final VerifiedIdentityPolicy identities;private final AssistanceRunRepository runs;
  @Value("${app.assistance-ai.enabled:false}") private boolean enabled;
@@ -35,17 +36,19 @@ public class OwnerPrecheckService {
   if(input.fileId()==null)return view(snapshot,null,null,null);
   if(!Boolean.TRUE.equals(input.consent()))throw bad("Cần đồng ý gửi thông tin và tệp đã chọn đến Gemini.");
   if(!snapshot.hash().equals(input.sourceHash()))throw stale();
+  String scanToken=extract?documentGate.begin(jwt,propertyId,snapshot.version(),input.fileId()):null;
   try(var slot=limit.acquire("precheck:"+snapshot.actor(),40)){
-   var run=audit.startHashed("OWNER_PRECHECK",snapshot.actor(),propertyId,snapshot.hash(),extract?"property-extraction-v1":PROMPT);
+   var run=audit.startHashed("OWNER_PRECHECK",snapshot.actor(),propertyId,snapshot.hash(),extract?"property-extraction-v2":PROMPT);
    try{
     if(!enabled)throw GeminiAssistanceClient.failure("AI_NOT_CONFIGURED");
     var response=extract?client.extract(json.valueToTree(Map.of("rightType",input.draft().getRightType())),snapshot.document()):client.analyzeOwner(snapshot.fields(),snapshot.document());
     var review=DossierAiReport.parse(json.valueToTree(response),snapshot.document().id());
     // Revalidate after network I/O, without holding property/database locks while waiting.
     var current=read(()->snapshot(jwt,propertyId,input.draft(),null,input.propertyFields()));if(!snapshot.hash().equals(current.hash()))throw stale();
+    if(extract&&!documentGate.complete(jwt,propertyId,snapshot.version(),input.fileId(),scanToken,review))throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY,"DOCUMENT_INAPPROPRIATE","Giấy tờ không phù hợp với mục đã chọn hoặc không đọc được. Vui lòng gửi lại giấy tờ đúng loại, rõ nét và quét lại.");
     var result=view(snapshot,run.getId(),run.getModel(),review);
-    if(extract)result=new View(result.sourceHash(),result.propertyVersion(),List.of(),result.files(),result.runId(),result.model(),"property-extraction-v1",result.finishedAt(),result.review());audit.finish(run.getId(),json.writeValueAsString(result),null);return result;
-   }catch(DossierAiClient.Failure e){audit.finish(run.getId(),null,e.code);throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,"AI_"+e.code,"Quét tệp chưa thành công. Bạn vẫn có thể kiểm tra và nộp hồ sơ theo cách thông thường.");}
+    if(extract)result=new View(result.sourceHash(),result.propertyVersion(),List.of(),result.files(),result.runId(),result.model(),"property-extraction-v2",result.finishedAt(),result.review());audit.finish(run.getId(),json.writeValueAsString(result),null);return result;
+   }catch(DossierAiClient.Failure e){audit.finish(run.getId(),null,e.code);throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,"AI_"+e.code,extract?"Quét tệp chưa thành công. Hãy thử quét lại; chưa thể sang bước thông tin.":"Quét tệp chưa thành công. Bạn vẫn có thể kiểm tra và nộp hồ sơ theo cách thông thường.");}
    catch(ApiException e){audit.finish(run.getId(),null,e.code);throw e;}catch(RuntimeException e){audit.finish(run.getId(),null,"AI_PROCESSING_FAILED");throw GeminiAssistanceClient.failure("AI_PROCESSING_FAILED");}
   }catch(ApiException e){throw e;}catch(Exception e){throw GeminiAssistanceClient.failure("AI_UNAVAILABLE");}
  }

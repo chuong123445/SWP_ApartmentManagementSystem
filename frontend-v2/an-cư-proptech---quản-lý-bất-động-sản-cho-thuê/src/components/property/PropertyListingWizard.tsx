@@ -22,8 +22,8 @@ export function PropertyListingWizard({rightType}:{rightType:Dossier['rightType'
  const [requestKey]=useState(()=>crypto.randomUUID());const form=useRef<HTMLFormElement>(null);const mounted=useRef(true);
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
  useEffect(()=>{let active=true;setLoading(true);setError('');(draftId?getListingDraft(draftId):listListingDrafts()).then(async result=>{
-   if(!active)return;if(Array.isArray(result)){setSaved(result.filter(d=>d.rightType===rightType));setDraft(null);}else{if(result.rightType!==rightType)throw new Error('Loại quyền không khớp bản nháp.');if(result.completed){navigate('/account/rental-properties',{replace:true});return;}setDraft(result);const restored=restoreListing(result.payload);setState(restored);
-     if(result.files.some(file=>!restored.excludedFiles.includes(file.id)&&(restored.extractionVersion!==2||!restored.extractedFileIds?.includes(file.id)))){
+   if(!active)return;if(Array.isArray(result)){setSaved(result.filter(d=>d.rightType===rightType));setDraft(null);}else{if(result.rightType!==rightType)throw new Error('Loại quyền không khớp bản nháp.');if(result.completed){navigate('/account/rental-properties',{replace:true});return;}setDraft(result);const restored=restoreListing(result.payload);if(result.files.some(f=>!restored.excludedFiles.includes(f.id)&&!result.acceptedFileIds?.includes(f.id)))restored.step=0;setState(restored);
+     if(result.files.some(file=>!restored.excludedFiles.includes(file.id)&&(restored.extractionVersion!==3||!result.acceptedFileIds?.includes(file.id)||!restored.extractedFileIds?.includes(file.id)))){
       setBusy(true);
       try{await scanDocuments(result,restored,result.files.filter(file=>!restored.excludedFiles.includes(file.id)));}
       finally{if(active)setBusy(false);}
@@ -45,9 +45,11 @@ export function PropertyListingWizard({rightType}:{rightType:Dossier['rightType'
    const suggestions=next.suggestions.filter(item=>!selected.some(file=>file.id===item.fileId));
    const issues:string[]=[];
    for(const file of selected){
+    extracted.delete(file.id);
     try{
      const result=await extractListingDocument(current.propertyId,input,file.id,base.sourceHash);
      if(!mounted.current)return;
+     if(!result.review?.readable||result.review.purposeMatch!==true||result.review.documentType!==file.purpose)throw new Error('Giấy tờ không phù hợp hoặc chưa đọc rõ. Hãy gửi lại đúng loại giấy tờ.');
      extracted.add(file.id);
      if(result.review?.readable){
       for(const item of result.review.extractedFields){
@@ -60,9 +62,9 @@ export function PropertyListingWizard({rightType}:{rightType:Dossier['rightType'
    }
    if(!mounted.current)return;
    setScanIssues(issues);
-   const filled={...applyExtractedFields(next,suggestions),extractionVersion:2,extractedFileIds:[...extracted]};
+   const filled={...applyExtractedFields(next,suggestions),step:current.files.some(f=>!next.excludedFiles.includes(f.id)&&!extracted.has(f.id))?0:next.step,extractionVersion:3,extractedFileIds:[...extracted]};
    await persist(filled,current);
-   setNotice(issues.length?'Đã tự điền phần đọc được. Một số tệp cần kiểm tra hoặc bổ sung.':'Đã đọc giấy tờ và tự điền thông tin.');
+   setNotice(current.files.some(f=>!next.excludedFiles.includes(f.id)&&!extracted.has(f.id))?'Chưa thể tiếp tục. Bỏ tệp không phù hợp, gửi lại giấy tờ đúng loại và quét lại.':'Đã đọc giấy tờ phù hợp và tự điền thông tin.');
  };
  const upload=async(purpose:EvidencePurpose,chosen:File[])=>{
    if(!draft||!chosen.length)return;
@@ -83,7 +85,7 @@ export function PropertyListingWizard({rightType}:{rightType:Dossier['rightType'
    if(!saved||!mounted.current)return;
    setNotice('Đang tự đọc giấy tờ và điền thông tin…');
    try{await scanDocuments(saved,next,added);}
-   catch(error){setScanIssues([error instanceof Error?error.message:'Chưa đọc được giấy tờ.']);setNotice('Giấy tờ đã lưu. Bạn có thể tiếp tục bổ sung thông tin.');}
+   catch(error){setScanIssues([error instanceof Error?error.message:'Chưa đọc được giấy tờ.']);setNotice('Chưa quét thành công. Cần quét lại trước khi sang bước thông tin.');}
    if(uploadErrors.length)setError(uploadErrors.join(' '));
  };
  const photos=async(chosen:File[],key?:string)=>{
@@ -96,6 +98,7 @@ export function PropertyListingWizard({rightType}:{rightType:Dossier['rightType'
  const validate=()=>{
    if(!form.current?.reportValidity())return false;
    if(state.step===0&&requiredEvidence(rightType).some(p=>!files.some(f=>f.purpose===p)))throw new Error('Cần đủ loại giấy tờ bắt buộc trước khi tiếp tục. Có thể lưu nháp để bổ sung sau.');
+   if(state.step===0&&(state.extractionVersion!==3||files.some(f=>!draft?.acceptedFileIds?.includes(f.id))))throw new Error('Giấy tờ chưa được AI xác nhận phù hợp. Hãy bỏ tệp sai, gửi lại đúng giấy tờ và quét lại trước khi tiếp tục.');
    if(state.step===1){const l=state.legal;
      if(rightType!=='OWNERSHIP'&&(l.rightsValidUntil<l.rightsValidFrom||!l.rightsValidFrom||!l.rightsValidUntil))throw new Error('Thời hạn quyền cho thuê không hợp lệ.');
      if(rightType==='SUBLEASE'&&(l.rightsValidFrom<l.originalLeaseFrom||l.rightsValidUntil>l.originalLeaseUntil||!l.originalLeaseFrom||!l.originalLeaseUntil))throw new Error('Thời hạn cho thuê lại phải nằm trong hợp đồng gốc.');
@@ -118,8 +121,10 @@ export function PropertyListingWizard({rightType}:{rightType:Dossier['rightType'
    <form ref={form} onInvalidCapture={event=>{(event.target as HTMLElement).closest("details")?.setAttribute("open","");}} onSubmit={next} className="space-y-5"><fieldset disabled={busy} className="space-y-5 min-w-0">
    {state.step===0&&<><h2 className="text-xl font-bold">Giấy tờ quyền cho thuê</h2><p>PDF/JPEG/PNG, tối đa 10 MB/tệp và 20 tệp. Giấy tờ được lưu riêng tư, không dùng làm ảnh quảng cáo.</p>
      {[...requiredEvidence(rightType),'SUPPORTING' as EvidencePurpose].map(p=><label key={p} className="block border rounded-lg p-3 text-sm">{evidenceLabels[p]}{p!=='SUPPORTING'?' *':''}<input className="block mt-2 w-full" type="file" multiple accept="application/pdf,image/png,image/jpeg" onChange={e=>{const chosen=Array.from(e.target.files??[]);e.target.value='';void run(()=>upload(p,chosen));}}/></label>)}
+     <p className="text-sm text-slate-600">Giấy tờ phải được AI đọc rõ và nhận đúng loại trước khi sang phần thông tin. Nếu tệp sai, hãy bỏ tệp đó rồi tải giấy tờ phù hợp.</p>
+     {files.length>0&&<button type="button" className={button} onClick={()=>void run(()=>scanDocuments(draft,{...state,step:0},files))}>Quét lại giấy tờ</button>}
      <ul className="space-y-2">{files.map(f=><li key={f.id} className="flex justify-between gap-3 text-sm"><span className="break-all">{f.filename} · {evidenceLabels[f.purpose]}</span><button type="button" className="shrink-0 underline" onClick={()=>void run(async()=>{await persist({...state,excludedFiles:[...state.excludedFiles,f.id],suggestions:state.suggestions.filter(s=>s.fileId!==f.id),confirmed:false});})}>Bỏ</button></li>)}</ul>
-     {(busy||scanIssues.length>0)&&<div className="rounded-xl bg-emerald-50 p-4 space-y-2">{busy&&<p role="status">Đang tải và đọc giấy tờ…</p>}{scanIssues.map((issue,index)=><p key={index} className="text-sm text-amber-900 break-words">{issue}</p>)}</div>}
+     {(busy||scanIssues.length>0)&&<div role={scanIssues.length?'alert':undefined} className={`rounded-xl p-4 space-y-2 ${scanIssues.length?'bg-amber-50':'bg-emerald-50'}`}>{busy&&<p role="status">Đang tải và đọc giấy tờ…</p>}{scanIssues.map((issue,index)=><p key={index} className="text-sm text-amber-900 break-words">{issue}</p>)}</div>}
    </>}
    {state.step===1&&<><h2 className="text-xl font-bold">Thông tin, quyền cho thuê và ảnh tài sản</h2>
      {conflicts.length>0&&<p role="status" className="text-sm text-amber-900">Các tệp có giá trị khác nhau cho {conflicts.map(([,label])=>label).join(", ")}. Đối chiếu bản gốc trước khi chọn.</p>}
