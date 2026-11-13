@@ -11,3 +11,7 @@ Chỉ thêm apartment/request/contract/draft. Tái sử dụng nội dung/ảnh 
 Preview PASS, Validate/rollback PASS (ID identity16/27/55 bị tiêu thụ nhưng không có hàng lưu), Apply PASS (17/28/56), readback PASS, Apply lại created=false/marker_count1 PASS. Tổng contracts4→5; bốn hợp đồng cũ nguyên vẹn. Bản sao riêng ngoài Git: `F:/2026/Fa26/DTD/tmp/renewal-demo-before-20261113-164757-358.xml` và bản trước lần Apply idempotent164825136. Readback xác nhận renewal_request_available=1, snapshot parties/room match, no copied signature hash. Node chạy trực tiếp `contractLifecycleActions` PASS cho Customer request và Owner create sau acceptance; chưa xác minh bằng đăng nhập live UI/API. Không sửa code giao diện nên không mở test server hay chạy lại frontend/backend suites. git diff --check PASS.
 
 Mở `/contracts/17` hoặc chọn HD-17 trong Hợp đồng của Hữu Hà. Không cần restart backend để đọc fixture mới; tải lại trang. Source commit và handoff tại WORK_PROGRESS.md.
+
+## Removed at user request — 13 November 2026
+
+HD17 and its draft, request56, dedicated hidden apartment28 (HH205.RENEW), and two generated expiry notices were deleted. No renewal, invoice, payment or exit activity existed. Exact fixture/party/marker guards and a serializable transaction protected the operation. A private XML backup outside Git was reopened and verified. Every unrelated row and column in contracts, drafts, requests, apartments, notices and accounts remained unchanged. No application business code or UI behavior changed. Backup: tmp/renewal-demo-before-removal-20261113-180235-501.xml.
