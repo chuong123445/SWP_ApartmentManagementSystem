@@ -101,7 +101,7 @@ export function AccountsPage() {
           className="rounded-xl border bg-white p-4 flex flex-wrap items-center gap-3 min-w-0">
           <Link to={'/admin/accounts/' + encodeURIComponent(account.id)} aria-label={'Xem tài khoản ' + account.email}
             className="flex-1 min-w-0 text-left space-y-1 rounded-lg focus-visible:outline-brand-600">
-          <h2 className="font-semibold break-words text-emerald-800">{account.fullName}</h2>
+          <h2 className="font-semibold break-words text-brand-900">{account.fullName}</h2>
           <p className="break-all">{account.email}</p>
           <p className="text-sm text-slate-600">#{account.id} · {account.roles.map(role => roles[role]).join(' · ')} · {account.deletedAt ? filters.DELETED : filters[account.status]}</p>
           </Link>
