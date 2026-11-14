@@ -14,6 +14,11 @@ public class PropertyDuplicateRepository {
     @Transactional(propagation=Propagation.MANDATORY)
     public boolean lockApproval() {
         Integer result=jdbc.queryForObject("""
+            -- EXEC alone does not start SQL Server's implicit JDBC transaction.
+            -- Read an empty indexed range first, using the same Spring-bound
+            -- connection. Do not create nested transactions or session locks.
+            DECLARE @probe bigint;
+            SELECT @probe=COUNT_BIG(*) FROM dbo.rental_properties WHERE id=-1;
             DECLARE @result int;
             EXEC @result = sys.sp_getapplock @Resource=N'ancu-property-certificate-approval',
                 @LockMode='Exclusive', @LockOwner='Transaction', @LockTimeout=10000;
