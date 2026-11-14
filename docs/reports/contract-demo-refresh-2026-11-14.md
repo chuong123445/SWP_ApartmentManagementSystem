@@ -19,13 +19,22 @@ the old accepted-renewal sample with one near expiry and a new request.
 - Contract 4 / HH205.TEST remains ENDED, end date 2026-10-31, with all original
   exit history and draft bytes unchanged.
 
-## A.101 awaiting separate user choice
+## A.101 removed after explicit financial-history consent
 
-Contract 14 has SENT invoices 8 and 9. Invoice 9 has payment row 6 with non-null
-paid_at and a MATCHED SePay event 3 (19,000 VND). Invoice 8 has unpaid payment
-row 5. A.101 and all invoice/payment/provider rows remain unchanged pending
-explicit confirmation to remove the financial history. No partial A.101
-deletion was attempted.
+User explicitly selected “Xóa cả hợp đồng và dữ liệu thanh toán liên quan”.
+The second serializable operation removed contract 14 / draft 12, invoices 8/9,
+invoice payments 5/6, matched SePay event 3, four invoice events and two invoice
+notifications. Rental request 53 is retained as CANCELLED; apartment 4 is now
+VACANT/PUBLISHED. No cash or settlement entries referenced these invoices.
+Conversations and generic read markers remain historical; notification source
+rows are removed. This deletes local records only and does not reverse a bank transfer.
+
+Second helper: `tools/remove-a101-contract-20261114.{ps1,sql}`. Backup:
+`F:/2026/Fa26/DTD/tmp/a101-contract-cleanup-before-20261114-110839-703.xml`,
+verified by re-opening. Rollback validation and Apply passed exact row deltas and
+all-column comparison outside scope across 25 tables. Independent post-commit
+read confirms only contracts 4 and 21 remain, paid row 6 is absent, both A.101 and
+T.101 are VACANT/PUBLISHED and no orphan contract drafts exist.
 
 ## Verification and recovery
 
@@ -43,6 +52,6 @@ deletion was attempted.
   settlement, cash, account and existing exit/cancellation/conversation history.
 - Independent post-commit SQL read confirms contracts 5/15/18 absent, no orphan
   contract drafts, contract 21 D-7 / renewal 5 PENDING, contract 4 unchanged,
-  T.101 VACANT and A.101 still OCCUPIED with paid invoice intact.
+  T.101 VACANT and A.101 still OCCUPIED with paid invoice intact at that first checkpoint; the separately authorized second operation is documented above.
 - Database-only work: no browser/UI or live provider verification claimed.
   No push. Three pre-existing VNeID diagnostic files remain untracked and untouched.
