@@ -1,5 +1,11 @@
 # Bộ 10 tài khoản Auth0 và tài sản
 
+## Cập nhật thông tin chi tiết 03/11/2026
+
+Đã bổ sung document_issue_date, document_issue_place và permanent_address cho đủ10citizen; nơi cấp giấy chứng nhận dùng tên cơ quan cụ thể. Theo xác nhận tiếp theo của user, phone_number được loại khỏi citizen/claim; số điện thoại chỉ ở hồ sơ tài khoản thông thường. Bộ vẫn là dữ liệu hư cấu, không phải danh tính/giấy tờ thật. Email, CCCD và21asset/43unit IDs giữ nguyên.
+
+Nếu10user đã tồn tại trên Auth0, dùng hướng dẫn [nhập metadata bổ sung](IMPORT-PROFILE-DETAILS.md) và công cụ `node tools/prepare-auth0-metadata-import.cjs` từ Backend. File users-upsert.json chỉ chứa email+toàn bộ app_metadata, không chứa password hoặc cờ xác thực; không dùng bộ Create User/password cũ để cập nhật. Cần Deploy Action mới, cập nhật Backend/V45 và đăng nhập lại qua VNeID để bổ sung trường còn trống. Hợp đồng đã lưu không tự thay snapshot.
+
 Ngày chuẩn bị: 28/10/2026. **Toàn bộ tên, CCCD, giấy chứng nhận và thông tin sở hữu là dữ liệu hư cấu để test SWP**, không xác nhận quyền sở hữu thực tế. Dùng miền `example.com` dành cho tài liệu; không gửi email/OTP tới các địa chỉ này.
 
 Email dùng họ tên không dấu viết liền + `@example.com`, không chứa vai trò tài khoản.
@@ -43,6 +49,20 @@ Cả nhóm dùng chung tenant thì chỉ cần một người thêm một lần.
 
 Nếu đã import bộ email "ownerNN@example.com" trước đó, sửa email trên các user Auth0 đã có và giữ user_id/metadata; không import thêm bản thứ hai cùng CCCD. Task này chỉ cập nhật file local, chưa đổi tài khoản trên Auth0.
 
+## Đã tạo user nhưng Auth0 báo sai tài khoản/mật khẩu
+
+`users.json` không chứa mật khẩu. Dùng file này hoặc JSON tự chỉnh không gán các mật khẩu trong `TAI-KHOAN-VA-MAT-KHAU.md` lên Auth0. Mỗi tài khoản trong bộ private có mật khẩu riêng; mật khẩu đã tự đặt trên Auth0 cũng có thể khác bộ private.
+
+Với tài khoản đã tồn tại, giữ nguyên user và metadata, không xóa/import lại:
+
+1. Auth0 Dashboard → User Management → Users → chọn đúng email.
+2. Tab Details → kéo xuống Danger Zone → Change Password → Change.
+3. Đặt mật khẩu bằng giá trị tương ứng trong file private `TAI-KHOAN-VA-MAT-KHAU.md`, hoặc mật khẩu mới do bạn chọn; Save. Không chép hai dấu backtick bao quanh mật khẩu trong Markdown.
+4. Nếu tự chọn mật khẩu mới, dùng mật khẩu mới đó khi đăng nhập; file local không tự cập nhật.
+5. Thử lại qua nút VNeID của ứng dụng. Việc đổi mật khẩu không yêu cầu tạo lại tài sản/CCCD hoặc thay user_id.
+
+Email `example.com` của bộ này không nhận thư: dùng thao tác đặt mật khẩu trực tiếp trong Dashboard, không dùng chức năng gửi email quên mật khẩu. Hướng dẫn chính thức: [Change Users' Passwords](https://auth0.com/docs/authenticate/database-connections/password-change).
+
 ## Test trong ứng dụng
 
 1. Giữ Action `docs/setup/vneid-post-login.js` đã Deploy trong Post Login; đọc `app_metadata.vneid.citizen`.
@@ -68,6 +88,10 @@ Generator sinh password ngẫu nhiên riêng cho mỗi user, kiểm tra bcrypt h
 
 Schema tham khảo: [Auth0 bulk user import](https://auth0.com/docs/manage-users/user-migration/bulk-user-import-schema). Code đọc nguồn hiện tại: `Auth0AssetReader`, Action PostLogin và `VneidService` của project.
 
-## Kiểm chứng đã thực hiện
+## Kiểm chứng bộ gốc ngày 28/10/2026
 
-19unit test đạt:2test dữ liệu mới,6test Auth0AssetReader,11test token verifier. Adapter đọc đủ10profile/21tài sản/43căn, không loại nhầm tài sản. Action PostLogin hiện tại tạo đủ8claim ID/access token cho cả10profile. Generator kiểm tra bcrypt10 khớp password, từ chối ghi đè bộ đã tồn tại; kiểm tra10file Create,10record Bulk,14file ZIP và JSON UTF-8 đạt. Không gọi provider thật hoặc nhập user vào tenant trong task này.
+19unit test đạt:2test dữ liệu mới,6test Auth0AssetReader,11test token verifier. Adapter đọc đủ10profile/21tài sản/43căn, không loại nhầm tài sản. Action PostLogin lúc đó tạo8claim ID/access token cho cả10profile. Generator kiểm tra bcrypt10 khớp password, từ chối ghi đè bộ đã tồn tại; kiểm tra10file Create,10record Bulk,14file ZIP và JSON UTF-8 đạt. Không gọi provider thật hoặc nhập user vào tenant trong task này.
+
+Kiểm chứng bản mở rộng đầu tiên03/11/2026: Action tạo12claim cho cả10profile;98backend/source tests và100frontend unit tests PASS,4callback Playwright MCP desktop/mobile PASS. Bộ metadata-only có13file, không có password/hash, giữ nguyên credential của user đã tồn tại. Xem [report chi tiết](../../reports/contract-party-details-2026-11-03.md).
+
+Bản v2 sau khi tách số điện thoại: Action còn11claim; citizen chỉ có3trường bổ sung ngày/nơi cấp và thường trú. Bộ cập nhật dùng thư mục/ZIP `auth0-profile-details-2026-11-03-v2`; số điện thoại lấy ở tài khoản thông thường.99backend/source tests,101frontend unit và4callback trình duyệt PASS; [report tách số điện thoại và thao tác local](../../reports/account-phone-separation-and-local-reset-2026-11-03.md).

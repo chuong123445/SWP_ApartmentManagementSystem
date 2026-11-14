@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "An Cu Tenant Billing",
-    "version": "1.0.0",
-    "description": "Implemented Owner monthly draft/send and Customer-as-Tenant private invoice receipt. Contract activation/signing/payment are not implemented. Local ACTIVE contracts are fixtures only. Billing rules are in docs/decisions/billing-v1.md."
+    "version": "1.1.0",
+    "description": "Implemented private monthly billing, Owner draft/send/edit/cancel with audit history, and exact Customer-as-Tenant receipt. Contract and payment flows are documented separately. See docs/decisions/invoice-draft-changes-v1.md."
   },
   "servers": [
     {
@@ -95,7 +95,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Next full-month period, source readings and agreed prices. Missing baseline/draft predecessor/ended contract return 409; this GET never changes readings.",
+            "description": "Next calendar-month period, source readings and agreed prices. Start readings come from the last SENT invoice, then the contract baseline, then zero when absent. Initial partial month charges full monthly rent. Draft predecessor/ended contract return 409; this GET never changes readings.",
             "content": {
               "application/json": {
                 "schema": {
@@ -116,7 +116,8 @@
           "409": {
             "$ref": "#/components/responses/Error"
           }
-        }
+        },
+        "description": "Read the next utility/services monthly meter period. Rent invoices do not advance this chain."
       }
     },
     "/api/v1/owner/contracts/{id}/invoices": {
@@ -168,7 +169,8 @@
           "409": {
             "$ref": "#/components/responses/Error"
           }
-        }
+        },
+        "summary": "Create utility/services-only draft from meter readings"
       }
     },
     "/api/v1/owner/invoices/{id}/send": {
@@ -254,6 +256,23 @@
               "pattern": "^[1-9][0-9]*$"
             },
             "description": "Intersect exact property with current Owner scope before count/pagination; another Owner or absent property yields empty page."
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ALL",
+                "DRAFT",
+                "UNPAID",
+                "PAID",
+                "CANCELLED"
+              ],
+              "default": "ALL"
+            },
+            "description": "Owner/property scoped status filter before paging/count. SENT and payment status remain separate; UNPAID and PAID include sent invoices only."
           }
         ],
         "responses": {
@@ -302,6 +321,21 @@
               "minimum": 1,
               "maximum": 100,
               "default": 20
+            }
+          },
+          {
+            "name": "paymentStatus",
+            "in": "query",
+            "required": false,
+            "description": "Filter before pagination. ALL preserves existing API behavior; tenant UI defaults to UNPAID. PAID requires a server-confirmed payment receipt.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ALL",
+                "UNPAID",
+                "PAID"
+              ],
+              "default": "ALL"
             }
           }
         ],
@@ -369,6 +403,244 @@
           }
         }
       }
+    },
+    "/api/v1/owner/invoices/{id}/draft": {
+      "patch": {
+        "description": "Owner-only DRAFT update with frozen prices/fees and server recomputation. Both version tokens required. Saves same-period readings and before/after audit atomically.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current invoice or event history.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceDraftChange"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/owner/invoices/{id}/cancel": {
+      "post": {
+        "description": "Owner-only DRAFT cancellation retained as CANCELLED. Same actor/reason retry is idempotent. A new invoice may be created for this period; SENT alone advances baseline/month. No refund or payment effect.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current invoice or event history.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceCancel"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/owner/invoices/{id}/history": {
+      "get": {
+        "description": "Owner-only append-only history of create/update/cancel/send; older documents only have events since feature deployment. Payment audit is separate.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current invoice or event history.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InvoiceHistoryEntry"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/owner/contracts/{id}/rent-billing-context": {
+      "get": {
+        "summary": "Read next whole-month rent cycle and existing draft",
+        "description": "Exact owner only. RENT and UTILITY have independent coverage and meter chains. Uncancelled LEGACY coverage prevents double charging. Partial calendar-month days require separate manual agreement. Due date cannot precede the agreed payment day.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RentBillingContext"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid dates or fields"
+          },
+          "404": {
+            "description": "Contract outside owner scope"
+          },
+          "409": {
+            "description": "Stale billing version, pending rent/legacy draft, overlapping or exhausted coverage"
+          }
+        }
+      }
+    },
+    "/api/v1/owner/contracts/{id}/rent-invoices": {
+      "post": {
+        "summary": "Create rent-only draft from signed contract cycle",
+        "description": "Exact owner only. RENT and UTILITY have independent coverage and meter chains. Uncancelled LEGACY coverage prevents double charging. Partial calendar-month days require separate manual agreement. Due date cannot precede the agreed payment day.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid dates or fields"
+          },
+          "404": {
+            "description": "Contract outside owner scope"
+          },
+          "409": {
+            "description": "Stale billing version, pending rent/legacy draft, overlapping or exhausted coverage"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RentInvoiceCreate"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -431,7 +703,8 @@
           "status",
           "createdAt",
           "sentAt",
-          "version"
+          "version",
+          "billingVersion"
         ],
         "properties": {
           "id": {
@@ -518,7 +791,8 @@
             "type": "string",
             "enum": [
               "DRAFT",
-              "SENT"
+              "SENT",
+              "CANCELLED"
             ]
           },
           "createdAt": {
@@ -535,6 +809,52 @@
           "version": {
             "type": "integer",
             "minimum": 0
+          },
+          "paymentStatus": {
+            "type": "string",
+            "enum": [
+              "UNPAID",
+              "PAID"
+            ]
+          },
+          "paidAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "billingVersion": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Current contract billing-chain token; required together with invoice version for draft changes."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "LEGACY",
+              "RENT",
+              "UTILITY"
+            ]
+          },
+          "coverageStart": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "coverageEnd": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "rentMonths": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 12
+          },
+          "rentUnitPrice": {
+            "type": "string",
+            "description": "Agreed monthly rent unit price. The existing monthlyRent invoice field is the aggregate rent charge on this document."
           }
         }
       },
@@ -630,6 +950,7 @@
       },
       "Tenancy": {
         "type": "object",
+        "description": "Owner-scoped or exact-Self contract relationship. Contract deposit is the saved agreement, not proof of receipt. Verification summaries are separate from in-app signing; no identity documents or signature images are returned. Responses are no-store.",
         "required": [
           "id",
           "apartmentId",
@@ -678,7 +999,8 @@
             "enum": [
               "DRAFT",
               "ACTIVE",
-              "ENDED"
+              "ENDED",
+              "CANCELLED"
             ]
           },
           "startDate": {
@@ -695,6 +1017,56 @@
           },
           "version": {
             "type": "integer"
+          },
+          "contractDeposit": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Exact decimal saved on this contract's authoring terms, including a genuine zero. Null when legacy terms are missing; never inferred from current apartment deposit or treated as actual money received."
+          },
+          "customerEmailVerified": {
+            "type": "boolean"
+          },
+          "customerIdentityStatus": {
+            "type": "string",
+            "enum": [
+              "VERIFIED",
+              "NOT_VERIFIED"
+            ],
+            "description": "Accepted persisted evidence under VerifiedIdentityPolicy; independent of email or the account identityVerified summary flag."
+          },
+          "customerIdentitySource": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Accepted evidence source only. AUTH0_VNEID_SIMULATION remains simulation; LOCAL_DEMO is accepted only in local/non-prod. No provider subject, citizen data or documents included."
+          },
+          "inAppSigningStatus": {
+            "type": "string",
+            "enum": [
+              "NO_DATA",
+              "UNSIGNED",
+              "OWNER_SIGNED",
+              "CUSTOMER_SIGNED",
+              "BOTH_SIGNED"
+            ],
+            "description": "Persisted signing timestamps on existing authoring terms, not a certified digital-signature provider result. Missing legacy terms are NO_DATA, not BOTH_SIGNED just because the contract is ACTIVE."
+          },
+          "localFixture": {
+            "type": "boolean",
+            "description": "Marks illustrative contract data, not actual party consent."
+          },
+          "rentCycleMonths": {
+            "type": "integer",
+            "enum": [
+              1,
+              3,
+              6,
+              12
+            ],
+            "default": 1
           }
         }
       },
@@ -741,6 +1113,206 @@
           "version": {
             "type": "integer",
             "minimum": 0
+          }
+        }
+      },
+      "InvoiceCancel": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "billingVersion",
+          "reason"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "billingVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "Required nonblank reason; trimmed by server."
+          }
+        }
+      },
+      "InvoiceDraftChange": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "billingVersion",
+          "reason",
+          "dueDate"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "billingVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "Required nonblank reason; trimmed by server."
+          },
+          "electricityEndReading": {
+            "type": "string",
+            "description": "Nonnegative decimal(15,2), >= frozen start."
+          },
+          "waterEndReading": {
+            "type": "string",
+            "description": "Required for METERED, >= frozen start. Ignored for PER_PERSON; occupants and start remain frozen."
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Not before first day of the invoice period."
+          }
+        },
+        "description": "RENT permits due-date adjustment and reason/version only, keeping the agreed covered months and amount. UTILITY and LEGACY require electricity end reading and water end reading when metered."
+      },
+      "InvoiceHistoryEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "actorId",
+          "action",
+          "occurredAt",
+          "reason",
+          "before",
+          "after"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "actorId": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "CREATED",
+              "UPDATED",
+              "CANCELLED",
+              "SENT"
+            ]
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "before": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Invoice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "after": {
+            "$ref": "#/components/schemas/Invoice"
+          }
+        }
+      },
+      "RentBillingContext": {
+        "type": "object",
+        "properties": {
+          "contractId": {
+            "type": "string"
+          },
+          "cycleMonths": {
+            "type": "integer",
+            "enum": [
+              1,
+              3,
+              6,
+              12
+            ]
+          },
+          "coverageStart": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "coverageEnd": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "months": {
+            "type": "integer"
+          },
+          "monthlyRent": {
+            "type": "string"
+          },
+          "totalAmount": {
+            "type": "string"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "billingVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "existingDraftId": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasPartialDays": {
+            "type": "boolean"
+          },
+          "automationMode": {
+            "type": "string",
+            "enum": [
+              "MANUAL",
+              "DRAFT",
+              "SEND"
+            ]
+          }
+        }
+      },
+      "RentInvoiceCreate": {
+        "type": "object",
+        "required": [
+          "billingVersion",
+          "coverageStart",
+          "dueDate"
+        ],
+        "properties": {
+          "billingVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "coverageStart": {
+            "type": "string",
+            "format": "date"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
           }
         }
       }

@@ -18,12 +18,10 @@ import { HomePage } from '@/pages/customer/HomePage';
 
 export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWorkspace; navigation: WorkspaceNavigation }) {
   const { activeTab, selectTab: setActiveTab, setIsAddRoomOpen, setIsCreateInvoiceOpen } = navigation;
-  const { rooms, tenants, contracts, invoices, tickets, transactions, config,
+  const { rooms, tenants, contracts, invoices, tickets, config,
     buildings: initialBuildings, setSelectedRoom, setSelectedInvoice, currentResidentRoom, currentResidentTenant,
-    currentResidentContract, residentInvoices, residentTickets, handleMarkPaid, handleAddTenant, handleAddContract,
-    handleUpdateIndices,
-    handleReserveEscrow,
-    handleAddTransaction } = workspace;
+    currentResidentContract, residentInvoices, residentTickets, handleMarkPaid, handleAddContract,
+    } = workspace;
   return <>
           {activeTab === 'home' && <HomePage embedded />}
           {activeTab === 'properties' && <PropertiesPage properties={initialBuildings} onReload={workspace.reloadInventory} onDossier={navigation.setPropertyForDossierId} onAdd={() => navigation.setIsAddPropertyOpen(true)} onSelect={id => { navigation.setSelectedBuildingId(id);setActiveTab('rooms'); }} />}
@@ -49,20 +47,15 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
               buildings={initialBuildings}
               config={config}
               onSelectRoom={(rm) => setSelectedRoom(rm)}
-              onReserveRoom={handleReserveEscrow}
             />
           )}
 
           {activeTab === 'dashboard' && (
             <DashboardPage
               propertyName={navigation.selectedBuildingId === 'all' ? 'Tất cả tài sản' : initialBuildings.find(p => p.id === navigation.selectedBuildingId)?.name ?? 'Tài sản'}
-              rooms={rooms}
-              invoices={invoices}
-              tickets={tickets}
-              contracts={contracts}
+              report={workspace.financialReport}
+              counters={workspace.ownerCounters.data}
               onNavigateTab={setActiveTab}
-              onOpenInvoiceModal={(inv) => setSelectedInvoice(inv)}
-              onOpenRoomModal={(rm) => setSelectedRoom(rm)}
             />
           )}
 
@@ -77,10 +70,10 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
 
           {activeTab === 'tenants' && (
             <TenantsPage
-              readOnly
               tenants={tenants}
-              rooms={rooms}
-              onAddTenant={handleAddTenant}
+              loading={workspace.inventoryLoading}
+              error={workspace.inventoryError}
+              onReload={workspace.reloadInventory}
             />
           )}
 
@@ -94,21 +87,21 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
 
           {activeTab === 'invoices' && (
             <InvoicesPage
-              invoices={invoices}
+              invoices={workspace.invoiceHistory.invoices}
+              history={workspace.invoiceHistory}
               onOpenInvoiceModal={(inv) => setSelectedInvoice(inv)}
               onOpenCreateInvoiceModal={() => setIsCreateInvoiceOpen(true)}
               onSendInvoice={workspace.handleSendInvoice}
-              error={workspace.billingError} loading={workspace.billingLoading} onReload={workspace.reloadBilling}
-              page={workspace.invoicePage} totalPages={workspace.invoiceTotalPages} onPageChange={workspace.setInvoicePage}
+              error={workspace.invoiceHistory.monthlyError} loading={workspace.invoiceHistory.loading} onReload={workspace.reloadBilling}
+              page={workspace.invoiceHistory.page} totalPages={workspace.invoiceHistory.monthly?.totalPages ?? 0} onPageChange={workspace.invoiceHistory.setPage}
             />
           )}
 
           {activeTab === 'utilities' && (
             <UtilitiesPage
-              rooms={rooms}
-              tenants={tenants}
-              config={config}
-              onUpdateIndices={handleUpdateIndices}
+              tenancies={workspace.tenancies}
+              onSettings={()=>setActiveTab('settings')}
+              onInvoice={id=>{navigation.setInvoiceContractId(id);setIsCreateInvoiceOpen(true);}}
             />
           )}
 
@@ -125,12 +118,16 @@ export function WorkspaceRoutes({ workspace, navigation }: { workspace: RentalWo
 
           {activeTab === 'finance' && (
             <FinancePage
-              transactions={transactions}
-              onAddTransaction={handleAddTransaction}
+              key={navigation.selectedBuildingId}
+              cashbook={workspace.cashbook}
+              properties={initialBuildings}
+              propertyId={navigation.selectedBuildingId}
+              inventoryError={workspace.inventoryError}
+              inventoryLoading={workspace.inventoryLoading}
             />
           )}
 
-          {activeTab === 'reports' && <ReportsPage />}
+          {activeTab === 'reports' && <ReportsPage report={workspace.financialReport} propertyName={navigation.selectedBuildingId === 'all' ? 'Tất cả tài sản' : initialBuildings.find(p => p.id === navigation.selectedBuildingId)?.name ?? 'Tài sản'} />}
 
           {activeTab === 'settings' && (
             <SettingsPage key={navigation.selectedBuildingId} propertyId={navigation.selectedBuildingId} />

@@ -109,6 +109,7 @@ DELETE FROM rental_properties WHERE id=@property AND owner_id=@owner;
 DELETE FROM email_change_challenges WHERE account_id IN(@owner,@customer);
 DELETE FROM auth_refresh_tokens WHERE session_id IN(SELECT id FROM auth_sessions WHERE account_id IN(@owner,@customer));
 DELETE FROM auth_sessions WHERE account_id IN(@owner,@customer);
+DELETE FROM auth_account_roles WHERE account_id IN(@owner,@customer);
 DELETE FROM auth_accounts WHERE id IN(@owner,@customer);
 SELECT (SELECT COUNT(*) FROM auth_accounts WHERE id IN(@owner,@customer)) AS accountsRemaining,
  (SELECT COUNT(*) FROM rental_properties WHERE id=@property) AS propertiesRemaining;

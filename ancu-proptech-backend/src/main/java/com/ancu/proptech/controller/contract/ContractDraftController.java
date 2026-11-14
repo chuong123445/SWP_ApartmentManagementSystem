@@ -34,12 +34,22 @@ public class ContractDraftController {
             .header("Content-Disposition","inline; filename=\""+contract.contractNumber()+".pdf\"")
             .body(pdf.render(contract));
     }
+    @PostMapping("/contracts/{id}/signature-otp")
+    public org.springframework.http.ResponseEntity<com.ancu.proptech.dto.auth.ActionOtpDtos.Challenge> signatureOtp(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody ContractSignatureRequest input){
+        return org.springframework.http.ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(drafts.requestSignatureOtp(jwt,id,input));
+    }
     @PostMapping("/contracts/{id}/signatures")
     public ContractDraftResponse sign(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody ContractSignatureRequest input) {
         return drafts.sign(jwt,id,input);
     }
     @GetMapping("/owner/contracts/{id}/renewal-context")
     public ContractContextResponse renewalContext(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id){return lifecycle.renewalContext(jwt,id);}
+    @PostMapping("/contracts/{id}/renewal-request")
+    public ContractDraftResponse requestRenewal(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody RenewalRequestCreate input){return lifecycle.requestRenewal(jwt,id,input);}
+    @PostMapping("/owner/contracts/{id}/renewal-request/decision")
+    public ContractDraftResponse decideRenewal(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody RenewalRequestDecision input){return lifecycle.decideRenewal(jwt,id,input);}
+    @PostMapping("/owner/contracts/{id}/renewal-request/cancel")
+    public ContractDraftResponse cancelAcceptedRequest(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody LifecycleConfirm input){return lifecycle.cancelAcceptedRequest(jwt,id,input);}
     @PostMapping("/owner/contracts/{id}/renewals")
     public ResponseEntity<ContractDraftResponse> renew(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody ContractDraftCreate input){
         var result=lifecycle.renew(jwt,id,input);return ResponseEntity.created(URI.create("/api/v1/contracts/"+result.id())).body(result);

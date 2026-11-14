@@ -1,18 +1,40 @@
+import { SelectionCancellationModal } from '@/components/rental/SelectionCancellationModal';
 import { useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { RequestList } from '@/components/rental/RequestList';
 import { Pagination } from '@/components/common/Pagination';
 import { useRentalRequests } from '@/hooks/useRentalRequests';
 import { decideRentalRequest } from '@/services/rental/rentalService';
 import { ApiError } from '@/services/http/client';
-import type { RentalRequest, RentalRequestStatus } from '@/types/rental';
+import type { RentalRequest } from '@/types/rental';
 import { ContractWizard } from '@/components/contract/ContractWizard';
+import { RenewalRequestsPanel } from '@/components/rental/RenewalRequestsPanel';
+import { ordinaryInboxOptions, ordinaryInboxQuery, type OrdinaryInboxFilter } from '@/utils/rentalInbox';
 
 export function RentalRequestsPage({ onDecision, propertyId }: { onDecision: () => void; propertyId?: string }) {
+  const [params, setParams] = useSearchParams();
+  const tab = params.get('requestType') === 'renewal' ? 'renewal' : 'new';
+  const setTab = (value: 'new' | 'renewal') => setParams(previous => { const next = new URLSearchParams(previous);next.set('tab', 'rental_requests');if (propertyId) next.set('propertyId', propertyId);else next.delete('propertyId');if (value === 'renewal') next.set('requestType', 'renewal');else next.delete('requestType');return next; }, { replace: true });
+  const selectTab = (value: 'new' | 'renewal') => { setTab(value);document.getElementById(`request-tab-${value}`)?.focus(); };
+  return <section className="space-y-5">
+    <div role="tablist" aria-label="Loại yêu cầu thuê" className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+      {(['new', 'renewal'] as const).map(value => <button key={value} type="button" id={`request-tab-${value}`} role="tab" aria-selected={tab === value} aria-controls={`request-panel-${value}`} tabIndex={tab === value ? 0 : -1}
+        onClick={() => setTab(value)} onKeyDown={event => { if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) { event.preventDefault();selectTab(event.key === 'Home' ? 'new' : event.key === 'End' ? 'renewal' : tab === 'new' ? 'renewal' : 'new'); } }}
+        className={`rounded-lg px-5 py-3 text-sm font-semibold ${tab === value ? 'bg-brand-700 text-white' : 'bg-white border border-slate-300 text-slate-600'}`}>{value === 'new' ? 'Thuê mới' : 'Thuê tiếp'}</button>)}
+    </div>
+    <div role="tabpanel" id="request-panel-new" aria-labelledby="request-tab-new" hidden={tab !== 'new'}>{tab === 'new' && <NewRentalRequestsPage key={propertyId ?? 'all'} onDecision={onDecision} propertyId={propertyId} />}</div>
+    <div role="tabpanel" id="request-panel-renewal" aria-labelledby="request-tab-renewal" hidden={tab !== 'renewal'}>{tab === 'renewal' && <RenewalRequestsPanel key={propertyId ?? 'all'} onDecision={onDecision} propertyId={propertyId} />}</div>
+  </section>;
+}
+
+function NewRentalRequestsPage({ onDecision, propertyId }: { onDecision: () => void; propertyId?: string }) {
   const [page, setPage] = useState(0);
-  const [status, setStatus] = useState<RentalRequestStatus | ''>('');
-  const { data, loading, error, reload } = useRentalRequests(true, page, status || undefined, propertyId);
+  const [status, setStatus] = useState<OrdinaryInboxFilter>('PENDING');
+  const query = ordinaryInboxQuery(status);
+  const { data, loading, error, reload } = useRentalRequests(true, page, query.status, propertyId, query.contractCompleted);
   const [rejecting, setRejecting] = useState<RentalRequest | null>(null);
   const [contractRequestId, setContractRequestId] = useState<string | null>(null);
+  const [cancelRequest,setCancelRequest] = useState<string|null>(null);
   const [reason, setReason] = useState('');
   const [decidingId, setDecidingId] = useState('');
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -25,7 +47,7 @@ export function RentalRequestsPage({ onDecision, propertyId }: { onDecision: () 
       await decideRentalRequest(request.id, 'ACCEPT', request.version);
       setActionNotice({
         type: 'success',
-        text: `Đã chấp nhận yêu cầu thuê của ${request.customerName}. Trạng thái căn hộ chuyển sang "Đang làm hợp đồng".`,
+        text: `Đã chuyển yêu cầu của ${request.customerName} sang "Đang làm hợp đồng". Căn hộ được giữ để soạn hợp đồng; hai bên chưa ký.`,
       });
       reload();
       onDecision();
@@ -68,15 +90,16 @@ export function RentalRequestsPage({ onDecision, propertyId }: { onDecision: () 
 
   return (
     <section className="space-y-6">
+      {cancelRequest && <SelectionCancellationModal requestId={cancelRequest} onClose={()=>setCancelRequest(null)} onChanged={()=>{reload();onDecision();}}/>}
       {contractRequestId && <ContractWizard key={contractRequestId} requestId={contractRequestId} onClose={() => { setContractRequestId(null);reload(); }} onSaved={() => { reload();onDecision(); }} />}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-wrap justify-between items-center gap-4">
+      <div className="app-panel p-5 flex flex-wrap justify-between items-center gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Yêu cầu thuê căn hộ</h1>
-          <p className="text-sm text-slate-500 mt-2">Ưu tiên yêu cầu chờ xử lý trước, sau đó sắp xếp theo thời gian gửi.</p>
+          <h1 className="app-page-title">Yêu cầu thuê căn hộ</h1>
+          <p className="text-sm text-slate-500 mt-2">Mặc định hiển thị yêu cầu chờ xử lý, sắp xếp theo thời gian gửi. Đồng ý sẽ chuyển sang bước làm hợp đồng, chưa phải đã thuê.</p>
         </div>
         <button
           onClick={reload}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 text-sm font-semibold cursor-pointer transition-colors"
+          className="bg-brand-600 hover:bg-brand-700 text-white rounded-lg px-4 py-2 text-sm font-semibold cursor-pointer transition-colors"
         >
           Làm mới
         </button>
@@ -111,23 +134,20 @@ export function RentalRequestsPage({ onDecision, propertyId }: { onDecision: () 
       )}
 
       <div className="flex justify-between items-center">
-        <label className="text-sm text-slate-600">
-          Trạng thái{' '}
+        <div className="text-sm text-slate-600">
+          <label htmlFor="ordinary-request-status">Trạng thái</label>{' '}
           <select
+            id="ordinary-request-status"
             value={status}
             onChange={e => {
-              setStatus(e.target.value as RentalRequestStatus | '');
+              setStatus(e.target.value as OrdinaryInboxFilter);
               setPage(0);
             }}
             className="ml-2 border border-slate-300 rounded-lg px-3 py-2 bg-white"
           >
-            <option value="">Tất cả</option>
-            <option value="PENDING">Chờ xử lý</option>
-            <option value="ACCEPTED">Đã chấp nhận</option>
-            <option value="REJECTED">Đã từ chối</option>
-            <option value="CANCELLED">Đã hủy</option>
+            {ordinaryInboxOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
-        </label>
+        </div>
         <span className="text-sm text-slate-500">{data?.totalElements ?? 0} yêu cầu</span>
       </div>
 
@@ -138,7 +158,7 @@ export function RentalRequestsPage({ onDecision, propertyId }: { onDecision: () 
       ) : !error && (
         <>
           {data?.items.length ? (
-            <RequestList
+            <RequestList onOpenCancellation={request=>setCancelRequest(request.id)}
               items={data.items}
               owner
               onAccept={handleAccept}
@@ -147,7 +167,7 @@ export function RentalRequestsPage({ onDecision, propertyId }: { onDecision: () 
               onCreateContract={request => setContractRequestId(request.id)}
             />
           ) : (
-            <p className="bg-white border border-slate-200 rounded-xl p-10 text-center text-slate-500">
+            <p className="app-panel p-10 text-center text-slate-500">
               Chưa có yêu cầu thuê phù hợp.
             </p>
           )}

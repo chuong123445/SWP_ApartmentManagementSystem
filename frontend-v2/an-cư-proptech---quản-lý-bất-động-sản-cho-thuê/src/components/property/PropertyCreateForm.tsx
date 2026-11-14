@@ -46,7 +46,7 @@ export function PropertyCreateForm({ onClose, onCreate }: {
         <fieldset disabled={saving} className="space-y-5 disabled:opacity-60">
           <fieldset className="grid sm:grid-cols-2 gap-3">
             <legend className="font-semibold mb-2">Cách cho thuê</legend>
-            {([['SINGLE_UNIT', 'Một căn/nhà cho thuê nguyên căn'], ['MULTI_UNIT', 'Tài sản gồm nhiều căn/phòng']] as const).map(([value, label]) => <label key={value} className={`flex gap-2 border rounded-xl p-3 text-sm cursor-pointer ${mode === value ? 'border-emerald-600 bg-emerald-50' : 'border-slate-200'}`}>
+            {([['SINGLE_UNIT', 'Một căn/nhà cho thuê nguyên căn'], ['MULTI_UNIT', 'Tài sản gồm nhiều căn/phòng']] as const).map(([value, label]) => <label key={value} className={`flex gap-2 border rounded-xl p-3 text-sm cursor-pointer ${mode === value ? 'border-brand-600 bg-brand-50' : 'border-slate-200'}`}>
               <input type="radio" name="rental-mode" value={value} checked={mode === value} onChange={() => { setMode(value);setError(''); }} />{label}
             </label>)}
           </fieldset>
@@ -77,11 +77,11 @@ export function PropertyCreateForm({ onClose, onCreate }: {
             </div>
             {mode === 'MULTI_UNIT' && units.length > 1 && <button type="button" onClick={() => setUnits(prev => prev.filter(item => item.key !== u.key))} className="text-sm text-rose-700 inline-flex items-center gap-1"><Trash2 className="w-4 h-4" />Xóa căn/phòng {index + 1}</button>}
           </fieldset>)}
-          {mode === 'MULTI_UNIT' && <button type="button" disabled={units.length >= 50} onClick={() => setUnits(prev => [...prev, blankUnit()])} className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 disabled:opacity-50"><Plus className="w-4 h-4" />Thêm căn/phòng</button>}
+          {mode === 'MULTI_UNIT' && <button type="button" disabled={units.length >= 50} onClick={() => setUnits(prev => [...prev, blankUnit()])} className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 disabled:opacity-50"><Plus className="w-4 h-4" />Thêm căn/phòng</button>}
         </fieldset>
         <p className="text-sm bg-amber-50 text-amber-900 rounded-lg p-3">Tài sản và các căn được lưu nháp, chưa xuất hiện trên Trang chủ. Sau khi lưu, chọn Chuẩn bị hồ sơ kiểm duyệt trong Tài sản cho thuê. Cần Admin duyệt tài sản trước khi công khai từng căn.</p>
         {error && <p role="alert" className="text-sm text-rose-700 bg-rose-50 p-3 rounded-lg">{error}</p>}
-        <div className="flex justify-end gap-2"><button type="button" disabled={saving} onClick={onClose} className="border rounded-lg px-4 py-2 text-sm">Hủy</button><button type="submit" disabled={saving} className="bg-emerald-600 text-white rounded-lg px-4 py-2 font-semibold text-sm disabled:opacity-50">{saving ? 'Đang lưu...' : 'Lưu tài sản nháp'}</button></div>
+        <div className="flex justify-end gap-2"><button type="button" disabled={saving} onClick={onClose} className="border rounded-lg px-4 py-2 text-sm">Hủy</button><button type="submit" disabled={saving} className="bg-brand-600 text-white rounded-lg px-4 py-2 font-semibold text-sm disabled:opacity-50">{saving ? 'Đang lưu...' : 'Lưu tài sản nháp'}</button></div>
       </form>
   </section>;
 }

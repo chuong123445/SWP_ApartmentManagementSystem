@@ -1,0 +1,11 @@
+# AI-04 — Kết quả triển khai
+
+Nhánh `feat/maintenance-ai-search-precheck`, sau TECH01 `a0ac59e` và AI01 `0c3fb09`.
+
+Đã triển khai checklist thiếu thông tin không dùng provider, quét từng tệp có đồng ý rõ ràng, prompt Owner riêng, validation/source/version trước-sau network, audit và xác nhận đã xem riêng; kết quả không thay trạng thái hồ sơ. Parent dùng cùng payload cho kiểm tra và nộp, tự vô hiệu kết quả khi thay form/tệp. Hỗ trợ đúng namespace Owner và Customer onboarding của chính mình.
+
+Backend kiểm tra 42 ca khác nhau qua các lượt SQL Server test + HTTP loopback: OwnerPrecheck4, PropertyDossier15, DossierAiClient13, GeminiAssistanceClient4, AiSearch3, Maintenance2, PaymentQrNameReader1. Logs ngoài Git `tmp/ai04-final-backend.log`, `ai04-final-followup.log`, `ai04-dto-validation.log`. Các trường hợp gồm partial draft/local checklist không gọi AI; foreign Owner/file; ID lặp; consent/hash/version; provider incomplete; tài sản đổi khi đang gọi provider; audit không tạo submission/Admin review; acknowledgement đúng chủ; Customer onboarding không nhận OWNER; prompt Owner/Admin tách biệt và QR giữ đường cũ. Lượt đầu sai tên bảng trong test assertion, đã sửa, các lượt sau đạt; không sửa dữ liệu ứng dụng để làm test qua.
+
+Frontend 133 unit tests PASS; TypeScript/build PASS, cảnh báo chunk >500kB có sẵn. Playwright MCP API fixtures 1440/390 PASS: upload/chọn chứng từ, local checklist, consent, lỗi một trong2tệp báo1/2, tệp khó đọc, mã giấy chứng nhận khác nhau giữa tệp, ghi đã xem, đổi form bỏ kết quả/consent, response về muộn bị bỏ, không gọi Admin API hoặc tự nộp. Không tràn ngang/pageerror/console/network ngoài 503 đã mô phỏng. Đã xem ảnh mobile kết quả trong root `tmp/ai04-reviewed-${width}.png` (tên literal của helper, ảnh cuối là390); các ảnh `ai04-{1440,390}.png` và scenario e2e cũng được lưu. Browser dùng API fixtures, không tuyên bố UI nối DB ứng dụng thật.
+
+Chưa gọi Gemini thật hoặc gửi giấy tờ người dùng ra ngoài trong task. V58/schema chỉ chạy trên DB test; chưa áp dụng thủ công DB ứng dụng. Chạy backend nhánh mới để nạp API/schema và dùng cấu hình Gemini hiện có. Thiếu cấu hình/provider lỗi phải hiện lỗi thật, không kết luận quét thành công. Không push/PR/merge. Ba file VNeID diagnostics có sẵn giữ nguyên.

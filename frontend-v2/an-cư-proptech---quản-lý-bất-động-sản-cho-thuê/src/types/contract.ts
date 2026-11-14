@@ -3,19 +3,23 @@ export interface ContractParty { id: string; fullName: string; email: string; ph
   documentNumber?: string | null; documentIssueDate?: string | null; documentIssuePlace?: string | null; permanentAddress?: string | null; identityVerificationStatus?: string | null; localFixture?: boolean | null }
 export interface ContractSnapshot {
   ownerPaymentQrId?:string|null;
+  evidence?: {source: string; reference: string; sourceHash: string; recordedAt: string; receivingAccountVersion: number | null} | null;
   owner: ContractParty; customer: ContractParty;
   asset: { apartmentId: string; propertyId: string; propertyName: string; title: string; roomNumber: string | null; address: string; city: string; district: string; ward: string | null; areaM2: string; floor: number | null; bedrooms: number | null; bathrooms: number | null; amenities: string[]; approvalStatus: string; approvedDossierId: string | null; exploitationRight: string | null;
     certificateNumber?: string | null; certificateIssueDate?: string | null; certificateIssuePlace?: string | null; exploitationRightDescription?: string | null; localFixture?: boolean | null };
   receivingAccount: { bank: string; accountNumber: string; accountHolderName: string } | null;
 }
 export interface ContractTerms {
+  rentCycleMonths?: 1 | 3 | 6 | 12;
   waterBillingMode?: 'METERED'|'PER_PERSON';occupantCount?:number;internetFee?:string;garbageFee?:string;
   templateType?: 'APARTMENT' | 'HOUSE' | 'ROOM' | 'BUSINESS' | 'SHARED';
   startDate: string; endDate: string; monthlyRent: string; electricityUnitPrice: string; waterUnitPrice: string; deposit: string;
   paymentDay: number; paymentMethod: string; usagePurpose: string; clauses: ContractClause[];
 }
 export interface ContractDraft extends ContractTerms {
-  id: string; rentalRequestId: string; contractNumber: string; status: 'DRAFT' | 'ACTIVE' | 'ENDED'; version: number; snapshot: ContractSnapshot; createdAt: string;
+  separateBillingAgreed?:boolean;
+  id: string; rentalRequestId: string; contractNumber: string; status: 'DRAFT' | 'ACTIVE' | 'ENDED' | 'CANCELLED'; version: number; snapshot: ContractSnapshot; createdAt: string;
+  cancellationState?: 'NONE'|'PENDING'|'CANCELLED'|'REJECTED'|'WITHDRAWN';
   signing?: ContractSigning;
   lifecycle?: ContractLifecycle;
 }
@@ -29,6 +33,16 @@ export interface ContractHandover {
 export interface ContractLifecycle {
   version: number; expired: boolean; previousContractId: string | null; renewalContractId: string | null;
   endReason: string | null; handover: ContractHandover | null;
+  handoverAvailable?: boolean;
+  renewalRequestAvailable?: boolean;
+  renewalRequestOpensOn?: string;
+  renewalRequest?: { id: string; status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'FULFILLED' | 'CANCELLED'; message: string; decision: 'ACCEPT' | 'REJECT' | null; decisionReason: string | null; createdAt: string; decidedAt: string | null; version: number } | null;
+}
+export interface RenewalInboxItem {
+  id: string; contractId: string; contractNumber: string; apartmentId: string; apartmentTitle: string; roomNumber: string;
+  propertyId: string; propertyName: string; customerName: string; customerEmail: string; startDate: string; endDate: string; monthlyRent: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'FULFILLED' | 'CANCELLED'; message: string; decisionReason: string | null;
+  createdAt: string; decidedAt: string | null; version: number; nextContractId: string | null; nextContractStatus: string | null;
 }
 export interface HandoverInput {
   version: number; returnDate: string; electricityReading: string; waterReading: string;

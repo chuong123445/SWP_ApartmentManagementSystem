@@ -1,0 +1,45 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "Owner workspace counters", "version": "1.0.0", "description": "Read-only implemented sidebar counts. Full owner/property scope, independent of list pagination. No payment/state mutation." },
+  "servers": [{ "url": "/" }],
+  "security": [{ "BearerAuth": [] }],
+  "paths": {
+    "/api/v1/owner/workspace-summary": {
+      "get": {
+        "summary": "Read authenticated eligible Owner's scoped counters",
+        "parameters": [{ "in": "query", "name": "propertyId", "required": false, "schema": { "type": "string", "pattern": "^[1-9][0-9]*$" }, "description": "Omit for all properties owned by the caller. Foreign or nonexistent ID returns 404." }],
+        "responses": {
+          "200": {
+            "description": "Counts over all matching records. SENT monthly invoices without a paidAt payment; additional receipts require exact contract owner and customer and no paidAt. ACTIVE contracts must have started; expiration is inclusive today..today+20; expired is endDate<today. Pending renewal does not replace an ACTIVE predecessor until activation. No changes to D-10 renewal command policy.",
+            "headers": { "Cache-Control": { "schema": { "type": "string", "const": "no-store" } } },
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Summary" } } }
+          },
+          "400": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "403": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "BearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" } },
+    "responses": { "Error": { "description": "Invalid input, unauthenticated, ineligible/non-Owner or property outside scope; errors are never a valid zero count.", "content": { "application/json": { "schema": { "type": "object", "properties": { "code": { "type": "string" }, "message": { "type": "string" } } } } } } },
+    "schemas": {
+      "Summary": {
+        "type": "object",
+        "required": ["propertyId", "asOf", "expiringThrough", "unpaidMonthlyInvoiceCount", "unpaidAdditionalReceiptCount", "unpaidCount", "expiringContractCount", "expiredContractCount"],
+        "properties": {
+          "propertyId": { "type": ["string", "null"], "description": "Selected ID, null for all owned properties." },
+          "asOf": { "type": "string", "format": "date", "description": "Server today in Asia/Ho_Chi_Minh." },
+          "expiringThrough": { "type": "string", "format": "date", "description": "asOf plus 20 days, matching existing expiry reminder window." },
+          "unpaidMonthlyInvoiceCount": { "type": "integer", "minimum": 0 },
+          "unpaidAdditionalReceiptCount": { "type": "integer", "minimum": 0 },
+          "unpaidCount": { "type": "integer", "minimum": 0, "description": "Sum of monthly and exact-party additional counts. Unpaid is not necessarily overdue; excludes drafts, paid records and legacy owner-only receipts." },
+          "expiringContractCount": { "type": "integer", "minimum": 0 },
+          "expiredContractCount": { "type": "integer", "minimum": 0, "description": "Still ACTIVE and already past end date; requires lifecycle handling, not auto release/termination." }
+        }
+      }
+    }
+  }
+}

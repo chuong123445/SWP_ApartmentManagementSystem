@@ -1,6 +1,7 @@
+import {allowPropertySource} from '../src/services/property/assetManagementService.ts';
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { vneidLogin, verifyVneid, getVneidConfig, getAccountVerification, upgradeOwner } from '../src/services/auth/vneidService.ts';
+import { vneidLogin, verifyVneid, confirmVneid, cancelVneid, getVneidConfig, getAccountVerification } from '../src/services/auth/vneidService.ts';
 import { setAccessToken, setRefreshHandler, ApiError } from '../src/services/http/client.ts';
 const original = globalThis.fetch;
 afterEach(() => { globalThis.fetch = original; setAccessToken(null); setRefreshHandler(null); });
@@ -25,7 +26,37 @@ test('Self verification uses internal bearer and only external token in strict b
     assert.deepEqual(JSON.parse(init?.body as string), { auth0AccessToken: 'external' });
     return Response.json({ contactVerificationStatus: 'VERIFIED' });
   };
-  assert.equal((await verifyVneid('external')).contactVerificationStatus, 'VERIFIED');
+  const result = await verifyVneid('external');
+  assert.ok(!('confirmationId' in result));
+  assert.equal(result.contactVerificationStatus, 'VERIFIED');
+});
+
+test('Mismatch preview stays pending; explicit decision sends only the opaque confirmation with session and CSRF', async () => {
+  setAccessToken('internal');
+  const commands: string[] = [];
+  globalThis.fetch = async (url, init) => {
+    if (url === '/api/v1/auth/csrf') return Response.json({ token: 'csrf', headerName: 'X-XSRF-TOKEN' });
+    commands.push(String(url));
+    assert.equal(new Headers(init?.headers).get('Authorization'), 'Bearer internal');
+    assert.equal(new Headers(init?.headers).get('X-XSRF-TOKEN'), 'csrf');
+    if (url === '/api/v1/me/verifications/vneid') return Response.json({ status: 'CONFIRMATION_REQUIRED', confirmationId: 'opaque', displayName: 'Nickname', legalName: 'Legal name', expiresAt: '2026-11-02T00:05:00Z' }, { status: 202 });
+    assert.deepEqual(JSON.parse(init?.body as string), { confirmationId: 'opaque' });
+    if (String(url).endsWith('/cancel')) return new Response(null, { status: 204 });
+    return Response.json({ contactVerificationStatus: 'VERIFIED' });
+  };
+  const preview = await verifyVneid('external');assert.ok('confirmationId' in preview);
+  assert.deepEqual(commands, ['/api/v1/me/verifications/vneid']);
+  await cancelVneid(preview.confirmationId);
+  assert.equal((await confirmVneid('opaque')).contactVerificationStatus, 'VERIFIED');
+  assert.deepEqual(commands, ['/api/v1/me/verifications/vneid', '/api/v1/me/verifications/vneid/cancel', '/api/v1/me/verifications/vneid/confirm']);
+});
+
+test('Expired confirmation stays an error instead of silently retrying the external login', async () => {
+  setAccessToken('internal');
+  globalThis.fetch = async url => url === '/api/v1/auth/csrf'
+    ? Response.json({ token: 'csrf', headerName: 'X-XSRF-TOKEN' })
+    : Response.json({ code: 'VNEID_CONFIRMATION_INVALID', message: 'Hãy bắt đầu lại.' }, { status: 409 });
+  await assert.rejects(confirmVneid('expired'), (e: ApiError) => e.code === 'VNEID_CONFIRMATION_INVALID');
 });
 test('Duplicate external account remains an error and does not fall back to registration', async () => {
   globalThis.fetch = async url => url === '/api/v1/auth/csrf'
@@ -46,13 +77,13 @@ test('Citizen status is a private no-store Self read, not a caller-selected acco
   };
   const result = await getAccountVerification();assert.equal(result.emailVerified, true);assert.equal(result.vneid.identity, null);
 });
-test('Owner upgrade sends only explicit consent and server version with internal bearer and CSRF', async () => {
+test('Source consent sends only explicit consent/version and never returns Owner authority', async () => {
   setAccessToken('internal');
   globalThis.fetch = async (url, init) => {
     if (url === '/api/v1/auth/csrf') return Response.json({ token: 'csrf', headerName: 'X-XSRF-TOKEN' });
-    assert.equal(url, '/api/v1/me/owner-upgrade');assert.equal(init?.method, 'POST');
+    assert.equal(url, '/api/v1/me/property-source-consent');assert.equal(init?.method, 'POST');
     assert.equal(new Headers(init?.headers).get('Authorization'), 'Bearer internal');assert.equal(new Headers(init?.headers).get('X-XSRF-TOKEN'), 'csrf');
-    assert.deepEqual(JSON.parse(init?.body as string), { consent: true, version: 3 });return Response.json({ roles: ['OWNER'] });
+    assert.deepEqual(JSON.parse(init?.body as string), { consent: true, version: 3 });return Response.json({consented:true,assetServiceAvailable:true,version:3});
   };
-  assert.deepEqual((await upgradeOwner(3)).roles, ['OWNER']);
+  const result=await allowPropertySource(3);assert.equal(result.consented,true);assert.equal('roles' in result,false);
 });

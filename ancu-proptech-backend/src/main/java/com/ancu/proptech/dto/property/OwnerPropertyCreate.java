@@ -28,6 +28,7 @@ public class OwnerPropertyCreate {
 
     @Getter @Setter @NoArgsConstructor
     public static class Unit {
+        @NotNull @Size(max=4) private List<@NotNull Long> imageIds=new ArrayList<>();
         @NotBlank @Size(max = 20) private String roomNumber;
         @NotBlank @Size(max = 150) private String title;
         @NotNull @Size(max = 3000) private String description = "";

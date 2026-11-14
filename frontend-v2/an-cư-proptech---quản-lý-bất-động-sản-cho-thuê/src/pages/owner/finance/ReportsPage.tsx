@@ -1,209 +1,35 @@
-import React from 'react';
-import {
-  TrendingUp,
-  PieChart as PieIcon,
-  Building2,
-  Calendar,
-  Percent,
-  DollarSign,
-  Download,
-} from 'lucide-react';
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  Legend,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
-import { monthlyRevenueData } from '@/data/mockData';
+import type {OwnerFinancialReport} from '@/hooks/useOwnerFinancialSummary';
+import {useEffect,useState} from 'react';
+import {downloadFinancialCsv} from '@/utils/financialCsv';
+import {FinancialCard,FinancialChart,FinancialFilters,FinancialState,money} from '@/components/finance/FinancialReportParts';
 
-export const ReportsPage: React.FC = () => {
-  const revenueStructure = [
-    { name: 'Tiền thuê phòng', value: 82, color: '#059669' },
-    { name: 'Tiền điện', value: 10, color: '#f59e0b' },
-    { name: 'Tiền nước', value: 5, color: '#0284c7' },
-    { name: 'Internet & Vệ sinh', value: 3, color: '#8b5cf6' },
-  ];
-
-  const buildingOccupancy = [
-    { name: 'Tòa A - Lê Văn Sỹ (Q.3)', occupancy: 85, rooms: 24, revenue: 115 },
-    { name: 'Tòa B - Điện Biên Phủ (Bình Thạnh)', occupancy: 92, rooms: 16, revenue: 84 },
-    { name: 'Tòa C - Cầu Giấy (HN)', occupancy: 78, rooms: 18, revenue: 76 },
-  ];
-
-  return (
-    <div className="space-y-6 pb-12">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <span>Báo Cáo Hoạt Động & Hiệu Quả Kinh Doanh</span>
-            <span className="text-xs bg-emerald-100 text-emerald-800 font-semibold px-2.5 py-0.5 rounded-full">
-              Năm 2026
-            </span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Phân tích tỷ lệ lấp đầy, cơ cấu dòng thu, biên độ lợi nhuận ròng toàn bộ chuỗi tòa nhà.
-          </p>
-        </div>
-
-        <button
-          onClick={() => alert('Đã xuất báo cáo tài chính định dạng Excel (.xlsx)!')}
-          className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
-        >
-          <Download className="w-4 h-4" />
-          <span>Xuất Báo Cáo Excel</span>
-        </button>
+export function ReportsPage({report,propertyName}:{report:OwnerFinancialReport;propertyName:string}){
+  const data=report.data;
+  const [exportError,setExportError]=useState('');
+  useEffect(()=>setExportError(''),[data?.year,data?.propertyId]);
+  const exportCsv=()=>{if(!data)return;setExportError('');try{downloadFinancialCsv(data);}catch{setExportError('Không thể bắt đầu tải tệp CSV. Vui lòng thử lại.');}};
+  return <div className="space-y-5 pb-12">
+    <header className="bg-white p-5 rounded-xl border border-slate-200 space-y-3"><div className="flex flex-wrap justify-between items-center gap-3"><h1 className="app-page-title">Báo cáo tài chính — {propertyName}</h1><button type="button" onClick={exportCsv} disabled={!data||report.loading} className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm disabled:opacity-50">Xuất CSV</button></div><FinancialFilters report={report}/><p className="text-xs text-slate-500">Hóa đơn tiền thuê nhiều tháng được tính một lần vào tháng bắt đầu kỳ thuê. Tiền nhận được tính theo ngày thanh toán. Số liệu tổng hợp toàn bộ tài sản đang chọn.</p></header>
+    <FinancialState report={report}/>
+    {exportError&&<p role="alert" className="text-sm text-red-700">{exportError}</p>}
+    {data&&<>
+      <p className="text-xs text-slate-500">Ngày thống kê: {data.asOf}. Công nợ phản ánh trạng thái hiện tại trên tất cả kỳ; quy mô và lấp đầy là hiện trạng, không phải lịch sử của năm báo cáo.</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <FinancialCard label={`Hóa đơn đã gửi năm ${data.year}`} value={money(data.totals.billedAmount)} note={`${data.totals.invoiceCount} hóa đơn tiền thuê, điện nước hoặc tổng hợp.`}/>
+        <FinancialCard label="Đã thanh toán theo kỳ hóa đơn" value={money(data.totals.paidInvoiceAmount)} note={`${data.totals.paidInvoiceCount} hóa đơn thuộc năm ${data.year}; tiền có thể được nhận ở năm khác.`}/>
+        <FinancialCard label="Chưa thu theo kỳ hóa đơn" value={money(data.totals.unpaidInvoiceAmount)} note={`Hóa đơn năm ${data.year} chưa ghi nhận thanh toán.`}/>
+        <FinancialCard label={`Tiền nhận trong năm ${data.year}`} value={money(data.receipts.totalAmount)} note="Theo ngày ghi nhận thanh toán của hóa đơn thuê và tiện ích và phiếu bổ sung gắn đúng người thuê."/>
       </div>
-
-      {/* 3 Key Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-          <span className="text-xs font-semibold text-slate-500">Doanh Thu Lũy Kế 9 Tháng 2026</span>
-          <div className="text-2xl font-bold text-slate-900 mt-2">428.5 Triệu VNĐ</div>
-          <span className="text-xs text-emerald-600 font-medium mt-1 block">
-            ↑ Đạt 82% chỉ tiêu kế hoạch năm
-          </span>
-        </div>
-
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-          <span className="text-xs font-semibold text-slate-500">Doanh Thu Trung Bình / Phòng</span>
-          <div className="text-2xl font-bold text-slate-900 mt-2">5.280.000 đ</div>
-          <span className="text-xs text-slate-400 mt-1 block">Bao gồm tiền phòng & phụ phí dịch vụ</span>
-        </div>
-
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-          <span className="text-xs font-semibold text-slate-500">Tỷ Lệ Thu Hồi Công Nợ Đúng Hạn</span>
-          <div className="text-2xl font-bold text-emerald-600 mt-2">94.2%</div>
-          <span className="text-xs text-slate-400 mt-1 block">Nhờ tích hợp tự động mã VietQR</span>
-        </div>
+        <FinancialCard label="Đúng hạn trong số hóa đơn đã thanh toán" value={data.totals.paidInvoiceCount?`${(100*data.totals.onTimePaidInvoiceCount/data.totals.paidInvoiceCount).toLocaleString('vi-VN',{maximumFractionDigits:1})}%`:'—'} note={`${data.totals.onTimePaidInvoiceCount}/${data.totals.paidInvoiceCount} hóa đơn thuộc năm ${data.year}, nhận trước hoặc đúng ngày đến hạn theo giờ Việt Nam.`}/>
+        <FinancialCard label="Hóa đơn quá hạn — tất cả kỳ" value={money(data.arrears.overdueInvoiceAmount)} note={`${data.arrears.overdueInvoiceCount} hóa đơn chưa thu có hạn trước ${data.asOf}.`}/>
+        <FinancialCard label="Lấp đầy hiện tại" value={data.inventory.units?`${Math.round(100*data.inventory.occupied/data.inventory.units)}%`:'—'} note={`${data.inventory.occupied}/${data.inventory.units} căn đang ở, ${data.inventory.vacant} căn trống.`}/>
       </div>
-
-      {/* Main Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Chart 1: Revenue vs Expenses 6 months */}
-        <div className="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-          <h2 className="text-sm font-bold text-slate-900 mb-1">
-            Doanh Thu & Lợi Nhuận Thuần Hàng Tháng (Triệu VNĐ)
-          </h2>
-          <p className="text-xs text-slate-400 mb-4">
-            So sánh doanh thu thực tế và chi phí quản lý vận hành
-          </p>
-
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyRevenueData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#64748b' }} />
-                <YAxis tick={{ fontSize: 12, fill: '#64748b' }} />
-                <Tooltip
-                  formatter={(value: any) => [`${value} Tr VNĐ`]}
-                  contentStyle={{
-                    backgroundColor: '#0f172a',
-                    border: 'none',
-                    borderRadius: '8px',
-                    color: '#fff',
-                    fontSize: '12px',
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: '12px' }} />
-                <Bar dataKey="revenue" name="Tổng thu" fill="#059669" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="profit" name="Lợi nhuận ròng" fill="#0284c7" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Chart 2: Revenue breakdown */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
-          <div>
-            <h2 className="text-sm font-bold text-slate-900 mb-1">Cơ Cấu Nguồn Thu Tòa Nhà</h2>
-            <p className="text-xs text-slate-400 mb-4">Tỷ trọng đóng góp vào tổng dòng tiền</p>
-
-            <div className="h-44 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={revenueStructure}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={45}
-                    outerRadius={70}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {revenueStructure.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(val: any) => [`${val}%`]}
-                    contentStyle={{
-                      backgroundColor: '#0f172a',
-                      borderRadius: '8px',
-                      color: '#fff',
-                      fontSize: '12px',
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="space-y-1.5 pt-2 border-t border-slate-100 text-xs">
-            {revenueStructure.map((item, idx) => (
-              <div key={idx} className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-slate-600">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                  {item.name}
-                </span>
-                <span className="font-bold text-slate-900">{item.value}%</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Buildings Occupancy Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5">
-        <h2 className="text-sm font-bold text-slate-900 mb-4">
-          Hiệu Suất Khai Thác Từng Tòa Nhà Trong Hệ Thống
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {buildingOccupancy.map((b, i) => (
-            <div key={i} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-xs text-slate-900">{b.name}</span>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="text-slate-500">Tỷ lệ lấp đầy:</span>
-                  <span className="font-bold text-emerald-700">{b.occupancy}%</span>
-                </div>
-                <div className="w-full bg-slate-200 rounded-full h-2">
-                  <div
-                    className="bg-emerald-600 h-2 rounded-full"
-                    style={{ width: `${b.occupancy}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between text-xs text-slate-600 pt-1 border-t border-slate-200">
-                <span>Quy mô: <strong>{b.rooms} phòng</strong></span>
-                <span>Doanh thu: <strong>{b.revenue} tr/tháng</strong></span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
+      <FinancialChart months={data.months}/>
+      <section className="bg-white p-5 rounded-xl border border-slate-200"><h2 className="font-bold text-sm mb-3">Thành phần hóa đơn đã gửi năm {data.year}</h2><dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">{[['Tiền thuê',data.totals.rentAmount],['Tiền điện',data.totals.electricityAmount],['Tiền nước',data.totals.waterAmount],['Internet và vệ sinh',data.totals.serviceAmount]].map(([label,value])=><div key={label}><dt className="text-slate-500">{label}</dt><dd className="font-semibold break-words mt-1">{money(value)}</dd></div>)}</dl></section>
+      <section className="bg-white rounded-xl border border-slate-200 overflow-hidden"><h2 className="p-4 font-bold text-sm">Số liệu từng tháng năm {data.year}</h2><div className="overflow-x-auto"><table className="app-data-table w-full text-xs text-left"><thead className="bg-slate-50"><tr>{['Kỳ','Số HĐ','HĐ đã gửi','Đã thu theo kỳ HĐ','Chưa thu theo kỳ HĐ','Nhận từ hóa đơn','Nhận từ phiếu bổ sung','Tổng tiền nhận'].map(label=><th key={label} className="p-3 whitespace-nowrap">{label}</th>)}</tr></thead><tbody>{data.months.map(month=><tr key={month.period} className="border-t"><td className="p-3 whitespace-nowrap">{month.period}</td><td className="p-3">{month.invoices.invoiceCount}</td>{[month.invoices.billedAmount,month.invoices.paidInvoiceAmount,month.invoices.unpaidInvoiceAmount,month.receipts.monthlyInvoiceAmount,month.receipts.additionalAmount,month.receipts.totalAmount].map((value,index)=><td className="p-3 whitespace-nowrap" key={index}>{money(value)}</td>)}</tr>)}</tbody></table></div></section>
+      <section className="bg-white rounded-xl border border-slate-200 overflow-hidden"><h2 className="p-4 font-bold text-sm">Theo tài sản — hóa đơn và tiền nhận năm {data.year}</h2><div className="overflow-x-auto"><table className="app-data-table w-full text-xs text-left"><thead className="bg-slate-50"><tr>{['Tài sản','Đang ở / Tổng căn hiện tại','HĐ đã gửi','Đã thu theo kỳ HĐ','Tiền nhận theo ngày thu'].map(label=><th key={label} className="p-3 whitespace-nowrap">{label}</th>)}</tr></thead><tbody>{data.properties.map(property=><tr key={property.id} className="border-t"><td className="p-3 min-w-36">{property.name}</td><td className="p-3">{property.inventory.occupied}/{property.inventory.units}</td><td className="p-3 whitespace-nowrap">{money(property.invoices.billedAmount)}</td><td className="p-3 whitespace-nowrap">{money(property.invoices.paidInvoiceAmount)}</td><td className="p-3 whitespace-nowrap">{money(property.receipts.totalAmount)}</td></tr>)}{!data.properties.length&&<tr><td colSpan={5} className="p-5 text-slate-500">Chưa có tài sản trong phạm vi này.</td></tr>}</tbody></table></div></section>
+      <section className="text-xs text-slate-600 space-y-2"><p>Công nợ mọi kỳ: {money(data.arrears.monthlyInvoiceAmount)} từ {data.arrears.monthlyInvoiceCount} hóa đơn thuê và tiện ích; {money(data.arrears.additionalAmount)} từ {data.arrears.additionalCount} phiếu bổ sung chưa thu. Phiếu bổ sung chưa có quy tắc ngày đến hạn nên được theo dõi riêng.</p><p>Tiền nhận từ hóa đơn thuê và tiện ích: {money(data.receipts.monthlyInvoiceAmount)}; từ phiếu bổ sung: {money(data.receipts.additionalAmount)}. Tiền thanh toán có thể do nền tảng thu hộ; đây không phải số dư ví hoặc số tiền đã rút về ngân hàng. Tiền cọc do hai bên tự quản lý ngoài hệ thống, không tính vào báo cáo này. Sổ quỹ thủ công và rút ví được theo dõi riêng.</p><p>Chưa tính lợi nhuận vì chưa có nguồn chi phí đầy đủ và liên kết đối soát. Các khoản điện/nước trên hóa đơn là khoản phải thu, không được dùng thay chi phí thực chi.</p></section>
+    </>}
+  </div>;
+}

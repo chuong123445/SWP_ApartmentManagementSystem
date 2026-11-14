@@ -16,17 +16,21 @@ import java.time.Instant;
 import java.util.*;
 @Service @RequiredArgsConstructor
 public class PropertyDossierService {
+    private final com.ancu.proptech.service.auth.VerifiedIdentityPolicy identityPolicy;
     private final PropertyRepository properties;
+    private final PropertyListingDraftRepository listingDrafts;
     private final PropertyDossierRepository dossiers;
     private final PropertyEvidenceFileRepository files;
     private final AccountAccessService access;
     private final PropertyApplicantAccess applicants;
     private final PropertyRightsPolicy rights;
+    private final PropertyDuplicatePolicy duplicates;
     private final com.ancu.proptech.repository.auth.AuthAccountRepository accounts;
-    private final com.ancu.proptech.repository.auth.ExternalIdentityRepository identities;
     private final com.ancu.proptech.service.property.ai.DossierAiReviewService aiReviews;
     @Transactional public PropertyDossierResponse submit(Jwt jwt,Long propertyId,PropertyDossierSubmit input){
         var p=applicants.write(jwt,propertyId);var owner=p.getOwner();
+        if(listingDrafts.existsByPropertyIdAndCompletedFalse(propertyId))
+            throw conflict("LISTING_INCOMPLETE","Hãy hoàn tất các bước đăng tải trước khi gửi hồ sơ.");
         if(p.getVersion()!=input.getPropertyVersion())throw conflict("STALE_VERSION","Tài sản đã thay đổi. Hãy tải lại trước khi gửi hồ sơ.");
         boolean renewal=p.getApprovalStatus()==Property.ApprovalStatus.APPROVED&&rights.limited(p);
         if(dossiers.existsByPropertyIdAndStatus(propertyId,PropertyDossier.Status.PENDING_APPROVAL)||
@@ -45,13 +49,13 @@ public class PropertyDossierService {
         collect(p,input.getOriginalLeaseFileIds(),PropertyEvidenceFile.Purpose.ORIGINAL_LEASE,seen,all);
         collect(p,input.getSubleaseConsentFileIds(),PropertyEvidenceFile.Purpose.SUBLEASE_CONSENT,seen,all);
         if(all.size()>20)throw bad("Hồ sơ tối đa 20 chứng từ.");
-        var identity=identities.findById(owner.getId()).orElseThrow();
+        duplicates.check(propertyId,input.getCertificateNumber(),all);
+        var identity=identityPolicy.verified(owner.getId()).orElseThrow();
         var d=new PropertyDossier();d.setProperty(p);d.setRightType(input.getRightType());d.setApplicantName(identity.getLegalName());d.setApplicantDocumentNumber(identity.getDocumentNumber());d.setRenewal(renewal);
         d.setRightsValidFrom(input.getRightsValidFrom());d.setRightsValidUntil(input.getRightsValidUntil());d.setOriginalLeaseFrom(input.getOriginalLeaseFrom());d.setOriginalLeaseUntil(input.getOriginalLeaseUntil());
         d.setPrincipalName(clean(input.getPrincipalName()));d.setPrincipalDocumentNumber(input.getPrincipalDocumentNumber());
         d.setCertificateNumber(clean(input.getCertificateNumber()));d.setCertificateIssueDate(input.getCertificateIssueDate());
         d.setCertificateIssuePlace(clean(input.getCertificateIssuePlace()));d.setExploitationRightDescription(clean(input.getExploitationRightDescription()));
-        var bank=input.getReceivingAccount();d.setBank(bank.getBank().strip());d.setAccountNumber(bank.getAccountNumber());d.setAccountHolderName(bank.getAccountHolderName().strip());
         d.setStatus(PropertyDossier.Status.PENDING_APPROVAL);d.setSubmittedAt(Instant.now());d.setFiles(all);
         if(!renewal)p.setApprovalStatus(Property.ApprovalStatus.PENDING_APPROVAL);dossiers.saveAndFlush(d);aiReviews.enqueue(d);return response(d);
     }
@@ -69,7 +73,7 @@ public class PropertyDossierService {
     }
     @Transactional(readOnly=true) public PropertyDossierResponse detail(Jwt jwt,Long id){access.admin(jwt);return response(dossiers.findById(id).orElseThrow(PropertyDossierService::missing));}
     @Transactional public PropertyDossierResponse decide(Jwt jwt,Long id,PropertyDossierDecision input){
-        var reviewer=access.admin(jwt);var propertyId=dossiers.findPropertyId(id).orElseThrow(PropertyDossierService::missing);
+        var reviewer=access.admin(jwt);duplicates.lockApproval();var propertyId=dossiers.findPropertyId(id).orElseThrow(PropertyDossierService::missing);
         var applicantId=properties.findById(propertyId).orElseThrow(PropertyDossierService::missing).getOwner().getId();
         var applicant=accounts.findForIdentityUpdate(applicantId).orElseThrow(PropertyDossierService::missing);
         var p=properties.lockById(propertyId).orElseThrow(PropertyDossierService::missing);var d=dossiers.lockById(id).orElseThrow(PropertyDossierService::missing);
@@ -80,12 +84,13 @@ public class PropertyDossierService {
         if(input.getDecision()!=PropertyDossierDecision.Decision.APPROVE&&(reason==null||reason.isBlank()))throw bad("Vui lòng nhập lý do từ chối hoặc yêu cầu bổ sung.");
         switch(input.getDecision()){
             case APPROVE->{
-                if(applicant.getStatus()!=com.ancu.proptech.model.auth.AuthAccount.Status.ACTIVE||!identities.existsByAccountIdAndVerificationStatus(applicantId,"VERIFIED"))throw conflict("APPLICANT_NOT_ELIGIBLE","Người nộp cần tài khoản hoạt động và căn cước VNeID đã xác thực.");
+                duplicates.check(propertyId,d.getCertificateNumber(),d.getFiles());
+                if(applicant.getStatus()!=com.ancu.proptech.model.auth.AuthAccount.Status.ACTIVE||!identityPolicy.isVerified(applicantId))throw conflict("APPLICANT_NOT_ELIGIBLE","Người nộp cần tài khoản hoạt động và căn cước VNeID đã xác thực.");
                 validateRights(d.getRightType(),d.getRightsValidFrom(),d.getRightsValidUntil(),d.getOriginalLeaseFrom(),d.getOriginalLeaseUntil());
                 if(d.getRightType()!=PropertyDossier.RightType.OWNERSHIP&&!input.isRightsConfirmed())throw bad("Admin cần xác nhận đã đối chiếu quyền và thời hạn trên giấy tờ.");
                 if(p.isOnboardingApplication()){
-                    if(applicant.getRole()==com.ancu.proptech.model.auth.AuthAccount.Role.CUSTOMER)applicant.setRole(com.ancu.proptech.model.auth.AuthAccount.Role.OWNER);
-                    else if(applicant.getRole()!=com.ancu.proptech.model.auth.AuthAccount.Role.OWNER)throw conflict("APPLICANT_NOT_ELIGIBLE","Tài khoản không phù hợp để nâng cấp.");
+                    if(applicant.hasRole(com.ancu.proptech.model.auth.AuthAccount.Role.CUSTOMER))applicant.grantRole(com.ancu.proptech.model.auth.AuthAccount.Role.OWNER);
+                    else if(!applicant.hasRole(com.ancu.proptech.model.auth.AuthAccount.Role.OWNER))throw conflict("APPLICANT_NOT_ELIGIBLE","Tài khoản không phù hợp để nâng cấp.");
                 }
                 d.setStatus(PropertyDossier.Status.APPROVED);p.setApprovalStatus(Property.ApprovalStatus.APPROVED);
                 p.setRightType(d.getRightType());p.setRightsValidFrom(d.getRightsValidFrom());p.setRightsValidUntil(d.getRightsValidUntil());p.setApprovedRightsDossierId(d.getId());

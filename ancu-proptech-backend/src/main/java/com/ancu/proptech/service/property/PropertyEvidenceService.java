@@ -62,7 +62,7 @@ public class PropertyEvidenceService {
     }
     @Transactional(readOnly=true) public Download download(Jwt jwt,Long id){
         var account=access.account(jwt);var file=files.findById(id).orElseThrow(PropertyEvidenceService::missing);
-        if(account.getRole()==AuthAccount.Role.ADMIN){access.admin(jwt);if(dossiers.countSubmittedFile(id)==0)throw missing();}
+        if(account.hasRole(AuthAccount.Role.ADMIN)){access.admin(jwt);if(dossiers.countSubmittedFile(id)==0)throw missing();}
         else applicants.read(jwt,file.getProperty().getId());
         return new Download(file.getFilename(),file.getContentType(),contents.findById(id).orElseThrow(PropertyEvidenceService::missing).getContent());
     }

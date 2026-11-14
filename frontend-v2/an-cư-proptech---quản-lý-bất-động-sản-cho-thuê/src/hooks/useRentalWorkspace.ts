@@ -1,16 +1,20 @@
 import { updateApartmentPrices } from '@/services/apartments/ownerApartmentService';
 import type { PriceInput } from '@/components/rooms/ApartmentPriceForm';
 import { useCallback, useEffect, useState } from 'react';
-import type { Building, Room, NewRoom, Tenant, Contract, Invoice, MaintenanceTicket, Transaction, SystemConfig, EscrowDeposit } from '@/types';
-import { initialTransactions, initialConfig, initialEscrows } from '@/data/mockData';
+import type { Building, Room, NewRoom, Tenant, Contract, Invoice, MaintenanceTicket, SystemConfig } from '@/types';
+import { initialConfig } from '@/data/mockData';
 import { ownerMaintenance } from '@/services/maintenance/maintenanceService';
 import { createOwnerApartment, getOwnerApartments, getOwnerProperties, setApartmentPublication } from '@/services/apartments/ownerApartmentService';
 import { ownerTenancies, ownerInvoices, tenancyViews, invoiceView, sendInvoice } from '@/services/billing/billingService';
 import type { Tenancy } from '@/types/billing';
 import { createOwnerProperty } from '@/services/property/ownerPropertyService';
 import type { PropertyCreateInput } from '@/types/property';
+import { useOwnerInvoiceHistory } from '@/hooks/useOwnerInvoiceHistory';
+import { useCashbook } from '@/hooks/useCashbook';
+import { useOwnerWorkspaceSummary } from '@/hooks/useOwnerWorkspaceSummary';
+import { useOwnerFinancialSummary } from '@/hooks/useOwnerFinancialSummary';
 
-export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all') {
+export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all', invoiceHistoryEnabled = false, cashbookEnabled = false, financialSummaryEnabled = false) {
   // Global Data States
   const [rooms, setRooms] = useState<Room[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
@@ -24,6 +28,10 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
   const [billingError, setBillingError] = useState('');
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingRevision, setBillingRevision] = useState(0);
+  const ownerCounters = useOwnerWorkspaceSummary(canManage, selectedPropertyId, `${inventoryRevision}:${billingRevision}`);
+  const financialReport = useOwnerFinancialSummary(canManage && financialSummaryEnabled, selectedPropertyId, `${inventoryRevision}:${billingRevision}`);
+  const invoiceHistory = useOwnerInvoiceHistory(canManage && invoiceHistoryEnabled, selectedPropertyId, billingRevision);
+  const cashbook = useCashbook(canManage && cashbookEnabled, selectedPropertyId);
   const [invoicePage, setInvoicePage] = useState(0);
   const [invoiceTotalPages, setInvoiceTotalPages] = useState(0);
   const [tickets, setTickets] = useState<MaintenanceTicket[]>([]);
@@ -44,9 +52,7 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
     void load();const timer=window.setInterval(()=>{if(document.visibilityState==='visible')void load();},10000);
     return () => { active = false;window.clearInterval(timer); };
   }, [canManage, selectedPropertyId, inventoryRevision]);
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [config, setConfig] = useState<SystemConfig>(initialConfig);
-  const [escrows, setEscrows] = useState<EscrowDeposit[]>(initialEscrows);
 
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -67,7 +73,7 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
       if (!active) return;
       setTenancies(leases);
       const views = tenancyViews(leases);setTenants(views.tenants);setContracts(views.contracts);
-      const inventory = apartments.map(a => ({ ...a, currentTenantId: leases.find(c => c.apartmentId === a.id && c.status === 'ACTIVE')?.customerId }));
+      const inventory = apartments.filter(a=>a.propertyApprovalStatus==='APPROVED').map(a => ({ ...a, currentTenantId: leases.find(c => c.apartmentId === a.id && c.status === 'ACTIVE')?.customerId }));
       setRooms(inventory);setSelectedRoom(prev => prev ? inventory.find(a => a.id === prev.id) ?? null : null);
       setBuildings(properties.map(p => ({ id: p.id, name: p.name, address: p.address,
         rentalMode: p.rentalMode, verificationSource: p.verificationSource, rightType:p.rightType,rightsValidFrom:p.rightsValidFrom,rightsValidUntil:p.rightsValidUntil,totalRooms: apartments.filter(a => a.buildingId === p.id).length, pcccCertified: false, legalStatus: p.approvalStatus })));
@@ -127,82 +133,38 @@ export function useRentalWorkspace(canManage: boolean, selectedPropertyId = 'all
   // Do not release a real Apartment through a preview action.
   const handleCheckOut = (_roomId: string) => setInventoryError('Chưa hỗ trợ kết thúc hợp đồng và bàn giao qua màn hình này.');
 
-  // Update meter indices
-  const handleUpdateIndices = (updates: { roomId: string; electric: number; water: number }[]) => {
-    setRooms((prev) =>
-      prev.map((r) => {
-        const u = updates.find((item) => item.roomId === r.id);
-        if (u) {
-          return {
-            ...r,
-            electricityIndex: u.electric,
-            waterIndex: u.water,
-          };
-        }
-        return r;
-      })
-    );
-  };
 
-  // Reserve room with escrow deposit
-  const handleReserveEscrow = (roomId: string) => {
-    const room = rooms.find((r) => r.id === roomId);
-    if (!room) return;
-
-    const newEscrow: EscrowDeposit = {
-      id: `esc-${Date.now()}`,
-      code: `ESC-2026-${room.roomNumber.replace('.', '')}-HOLD`,
-      roomNumber: room.roomNumber,
-      tenantName: 'Khách Đặt Giữ Chỗ Online',
-      landlordName: 'Lê Văn Tuấn (Chủ sở hữu)',
-      amount: room.deposit || room.price,
-      createdAt: new Date().toLocaleDateString('vi-VN'),
-      releaseConditions: 'Bảo chứng giữ chỗ 48h. Tự động chuyển thành tiền cọc hợp đồng khi ký số.',
-      status: 'locked',
-      bankHoldReference: `MB-ESCROW-HOLD-${Math.floor(100000 + Math.random() * 900000)}`,
-    };
-
-    setEscrows((prev) => [newEscrow, ...prev]);
-    alert(`Đã tạo hồ sơ Ký Quỹ Giữ Chỗ Escrow cho căn hộ ${room.roomNumber} thành công!`);
-  };
 
   // Resident Portal specific data
   const currentResidentTenant = tenants.find((t) => t.roomNumber === 'P.101') || tenants[0];
   const currentResidentRoom = rooms.find((r) => r.id === currentResidentTenant?.roomId) || rooms[0];
-  const currentResidentContract = contracts.find((c) => c.tenantId === currentResidentTenant?.id) || contracts[0];
+  const currentResidentContract = contracts.find((c) => c.id === currentResidentTenant?.contractId) || contracts.find((c) => c.tenantId === currentResidentTenant?.id && c.roomId === currentResidentTenant?.roomId);
   const residentInvoices = invoices.filter((i) => i.roomId === currentResidentRoom?.id && i.apiInvoice?.status === 'SENT');
   const residentTickets = tickets.filter((t) => t.roomNumber === currentResidentRoom?.roomNumber);
 
   // Counters for sidebar badges
-  const unpaidCount = invoices.filter((i) => i.apiInvoice?.status === 'SENT').length;
   const maintenanceCount = tickets.filter((t) => t.status !== 'resolved').length;
-  const expiringCount = contracts.filter((c) => c.status === 'expiring').length;
 
 
   const handleCreateInvoice = (_invoice: Invoice) => setBillingRevision(value => value + 1);
   const handleSendInvoice = async (id: string) => {
-    const source = invoices.find(i => i.id === id)?.apiInvoice;
+    const source = invoiceHistory.monthly?.items.find(i => i.id === id) ?? invoices.find(i => i.id === id)?.apiInvoice;
     if (!source) throw new Error('Không tìm thấy hóa đơn để gửi.');
     const sent = invoiceView(await sendInvoice(id, source.version));
     setInvoices(prev => prev.map(i => i.id === id ? sent : i));
     setSelectedInvoice(prev => prev?.id === id ? sent : prev);
     setBillingRevision(value => value + 1);
   };
-  const handleAddTransaction = (tx: Omit<Transaction, 'id' | 'code'>) => setTransactions(prev => [{
-    ...tx, id: `tx-${Date.now()}`, code: `${tx.type === 'income' ? 'THU' : 'CHI'}-0926-${Math.floor(100 + Math.random() * 900)}`,
-  }, ...prev]);
   return {
-    rooms, tenants, contracts, invoices, tickets, transactions, config, escrows, maintenanceError, maintenanceLoading,
-    tenancies, billingError, billingLoading, invoicePage, setInvoicePage, invoiceTotalPages,
+    rooms, tenants, contracts, invoices, tickets, cashbook, config, maintenanceError, maintenanceLoading,
+    tenancies, billingError, billingLoading, invoicePage, setInvoicePage, invoiceTotalPages, invoiceHistory,
     reloadBilling: () => setBillingRevision(value => value + 1), handleSendInvoice,
     buildings, inventoryError, inventoryLoading, reloadInventory,
     selectedRoom, setSelectedRoom, selectedInvoice, setSelectedInvoice,
     handleMarkPaid, handleAddTenant, handleAddContract, handleAddRoom, handleAddProperty, handlePrices, handlePublication, handleCheckOut,
-    handleUpdateIndices,
-    handleReserveEscrow,
-    handleCreateInvoice, handleAddTransaction, handleSaveConfig: setConfig,
+    handleCreateInvoice, handleSaveConfig: setConfig,
     currentResidentTenant, currentResidentRoom, currentResidentContract, residentInvoices, residentTickets,
-    unpaidCount, maintenanceCount, expiringCount,
+    ownerCounters, financialReport, maintenanceCount,
   };
 }
 

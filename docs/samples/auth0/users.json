@@ -11,7 +11,10 @@
           "full_name": "NGUYỄN MINH KHANG",
           "dob": "12/03/1988",
           "gender": "Nam",
-          "address": "28 Nguyễn Văn Linh, Hải Châu, Đà Nẵng"
+          "address": "28 Nguyễn Văn Linh, Hải Châu, Đà Nẵng",
+          "document_issue_date": "18/05/2021",
+          "document_issue_place": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+          "permanent_address": "28 Nguyễn Văn Linh, phường Nam Dương, quận Hải Châu, thành phố Đà Nẵng"
         },
         "assets": [
           {
@@ -24,7 +27,7 @@
             "certificate": {
               "number": "SWP-GCN-03-01-2024",
               "issued_date": "2024-03-15",
-              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 03"
+              "issued_place": "Sở Tài nguyên và Môi trường thành phố Đà Nẵng"
             },
             "units": [
               {
@@ -52,7 +55,10 @@
           "full_name": "TRẦN THỊ THU HÀ",
           "dob": "21/09/1992",
           "gender": "Nữ",
-          "address": "54 Hoàng Diệu, Hải Châu, Đà Nẵng"
+          "address": "54 Hoàng Diệu, Hải Châu, Đà Nẵng",
+          "document_issue_date": "16/06/2021",
+          "document_issue_place": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+          "permanent_address": "54 Hoàng Diệu, phường Phước Ninh, quận Hải Châu, thành phố Đà Nẵng"
         },
         "assets": [
           {
@@ -65,7 +71,7 @@
             "certificate": {
               "number": "SWP-GCN-04-01-2024",
               "issued_date": "2024-04-15",
-              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 04"
+              "issued_place": "Sở Tài nguyên và Môi trường thành phố Đà Nẵng"
             },
             "units": [
               {
@@ -114,7 +120,10 @@
           "full_name": "LÊ QUỐC BẢO",
           "dob": "15/05/1985",
           "gender": "Nam",
-          "address": "17 Trần Phú, Nha Trang, Khánh Hòa"
+          "address": "17 Trần Phú, Nha Trang, Khánh Hòa",
+          "document_issue_date": "09/08/2021",
+          "document_issue_place": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+          "permanent_address": "17 Trần Phú, phường Vĩnh Nguyên, thành phố Nha Trang, tỉnh Khánh Hòa"
         },
         "assets": [
           {
@@ -127,7 +136,7 @@
             "certificate": {
               "number": "SWP-GCN-05-01-2024",
               "issued_date": "2024-05-15",
-              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 05"
+              "issued_place": "Sở Tài nguyên và Môi trường tỉnh Khánh Hòa"
             },
             "units": [
               {
@@ -149,7 +158,7 @@
             "certificate": {
               "number": "SWP-GCN-05-02-2024",
               "issued_date": "2024-05-15",
-              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 05"
+              "issued_place": "Sở Tài nguyên và Môi trường tỉnh Khánh Hòa"
             },
             "units": [
               {
@@ -177,7 +186,10 @@
           "full_name": "PHẠM NGỌC ANH",
           "dob": "08/11/1994",
           "gender": "Nữ",
-          "address": "36 Nguyễn Trãi, Thanh Xuân, Hà Nội"
+          "address": "36 Nguyễn Trãi, Thanh Xuân, Hà Nội",
+          "document_issue_date": "22/09/2021",
+          "document_issue_place": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+          "permanent_address": "36 Nguyễn Trãi, phường Thượng Đình, quận Thanh Xuân, thành phố Hà Nội"
         },
         "assets": [
           {
@@ -190,7 +202,7 @@
             "certificate": {
               "number": "SWP-GCN-06-01-2024",
               "issued_date": "2024-06-15",
-              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 06"
+              "issued_place": "Sở Tài nguyên và Môi trường thành phố Hà Nội"
             },
             "units": [
               {
@@ -212,7 +224,7 @@
             "certificate": {
               "number": "SWP-GCN-06-02-2024",
               "issued_date": "2024-06-15",
-              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 06"
+              "issued_place": "Sở Tài nguyên và Môi trường thành phố Hà Nội"
             },
             "units": [
               {
@@ -254,7 +266,10 @@
           "full_name": "VÕ HOÀNG NAM",
           "dob": "26/02/1980",
           "gender": "Nam",
-          "address": "102 Lê Văn Việt, Thủ Đức, TP. Hồ Chí Minh"
+          "address": "102 Lê Văn Việt, Thủ Đức, TP. Hồ Chí Minh",
+          "document_issue_date": "12/11/2021",
+          "document_issue_place": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+          "permanent_address": "102 Lê Văn Việt, phường Hiệp Phú, thành phố Thủ Đức, Thành phố Hồ Chí Minh"
         },
         "assets": [
           {
@@ -267,7 +282,7 @@
             "certificate": {
               "number": "SWP-GCN-07-01-2024",
               "issued_date": "2024-07-15",
-              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 07"
+              "issued_place": "Sở Tài nguyên và Môi trường Thành phố Hồ Chí Minh"
             },
             "units": [
               {
@@ -289,7 +304,7 @@
             "certificate": {
               "number": "SWP-GCN-07-02-2024",
               "issued_date": "2024-07-15",
-              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 07"
+              "issued_place": "Sở Tài nguyên và Môi trường Thành phố Hồ Chí Minh"
             },
             "units": [
               {
@@ -311,7 +326,7 @@
             "certificate": {
               "number": "SWP-GCN-07-03-2024",
               "issued_date": "2024-07-15",
-              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 07"
+              "issued_place": "Sở Tài nguyên và Môi trường tỉnh Bình Dương"
             },
             "units": [
               {
@@ -367,7 +382,10 @@
           "full_name": "ĐẶNG THỊ MAI LAN",
           "dob": "19/07/1990",
           "gender": "Nữ",
-          "address": "24 Phan Đình Phùng, Đà Lạt, Lâm Đồng"
+          "address": "24 Phan Đình Phùng, Đà Lạt, Lâm Đồng",
+          "document_issue_date": "14/03/2022",
+          "document_issue_place": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+          "permanent_address": "24 Phan Đình Phùng, Phường 2, thành phố Đà Lạt, tỉnh Lâm Đồng"
         },
         "assets": [
           {
@@ -380,7 +398,7 @@
             "certificate": {
               "number": "SWP-GCN-08-01-2024",
               "issued_date": "2024-08-15",
-              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 08"
+              "issued_place": "Sở Tài nguyên và Môi trường tỉnh Lâm Đồng"
             },
             "units": [
               {
@@ -408,7 +426,10 @@
           "full_name": "BÙI GIA HUY",
           "dob": "03/12/1987",
           "gender": "Nam",
-          "address": "65 Đống Đa, Hải Châu, Đà Nẵng"
+          "address": "65 Đống Đa, Hải Châu, Đà Nẵng",
+          "document_issue_date": "07/04/2022",
+          "document_issue_place": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+          "permanent_address": "65 Đống Đa, phường Thạch Thang, quận Hải Châu, thành phố Đà Nẵng"
         },
         "assets": [
           {
@@ -421,7 +442,7 @@
             "certificate": {
               "number": "SWP-GCN-09-01-2024",
               "issued_date": "2024-09-15",
-              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 09"
+              "issued_place": "Sở Tài nguyên và Môi trường thành phố Đà Nẵng"
             },
             "units": [
               {
@@ -443,7 +464,7 @@
             "certificate": {
               "number": "SWP-GCN-09-02-2024",
               "issued_date": "2024-09-15",
-              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 09"
+              "issued_place": "Sở Tài nguyên và Môi trường thành phố Đà Nẵng"
             },
             "units": [
               {
@@ -506,7 +527,10 @@
           "full_name": "ĐỖ THỊ KHÁNH LINH",
           "dob": "30/04/1995",
           "gender": "Nữ",
-          "address": "41 Tố Hữu, An Cựu, Huế"
+          "address": "41 Tố Hữu, An Cựu, Huế",
+          "document_issue_date": "19/05/2022",
+          "document_issue_place": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+          "permanent_address": "41 Tố Hữu, phường Xuân Phú, thành phố Huế, tỉnh Thừa Thiên Huế"
         },
         "assets": [
           {
@@ -519,7 +543,7 @@
             "certificate": {
               "number": "SWP-GCN-10-01-2024",
               "issued_date": "2024-10-15",
-              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 10"
+              "issued_place": "Sở Tài nguyên và Môi trường tỉnh Thừa Thiên Huế"
             },
             "units": [
               {
@@ -541,7 +565,7 @@
             "certificate": {
               "number": "SWP-GCN-10-02-2024",
               "issued_date": "2024-10-15",
-              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 10"
+              "issued_place": "Sở Tài nguyên và Môi trường tỉnh Thừa Thiên Huế"
             },
             "units": [
               {
@@ -584,7 +608,7 @@
             "certificate": {
               "number": "SWP-GCN-10-03-2024",
               "issued_date": "2024-10-15",
-              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 10"
+              "issued_place": "Sở Tài nguyên và Môi trường tỉnh Thừa Thiên Huế"
             },
             "units": [
               {
@@ -612,7 +636,10 @@
           "full_name": "HUỲNH THANH TÙNG",
           "dob": "17/10/1983",
           "gender": "Nam",
-          "address": "72 Nguyễn Huệ, Quy Nhơn, Gia Lai"
+          "address": "72 Nguyễn Huệ, Quy Nhơn, Gia Lai",
+          "document_issue_date": "24/06/2022",
+          "document_issue_place": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+          "permanent_address": "72 Nguyễn Huệ, phường Lê Lợi, thành phố Quy Nhơn, tỉnh Bình Định"
         },
         "assets": [
           {
@@ -625,7 +652,7 @@
             "certificate": {
               "number": "SWP-GCN-11-01-2024",
               "issued_date": "2024-11-15",
-              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 11"
+              "issued_place": "Sở Tài nguyên và Môi trường tỉnh Bình Định"
             },
             "units": [
               {
@@ -647,7 +674,7 @@
             "certificate": {
               "number": "SWP-GCN-11-02-2024",
               "issued_date": "2024-11-15",
-              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 11"
+              "issued_place": "Sở Tài nguyên và Môi trường tỉnh Bình Định"
             },
             "units": [
               {
@@ -675,7 +702,10 @@
           "full_name": "PHAN THỊ NGỌC DIỆP",
           "dob": "06/06/1989",
           "gender": "Nữ",
-          "address": "88 Nguyễn Văn Cừ, Ninh Kiều, Cần Thơ"
+          "address": "88 Nguyễn Văn Cừ, Ninh Kiều, Cần Thơ",
+          "document_issue_date": "11/07/2022",
+          "document_issue_place": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+          "permanent_address": "88 Nguyễn Văn Cừ, phường An Hòa, quận Ninh Kiều, thành phố Cần Thơ"
         },
         "assets": [
           {
@@ -688,7 +718,7 @@
             "certificate": {
               "number": "SWP-GCN-12-01-2024",
               "issued_date": "2024-12-15",
-              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 12"
+              "issued_place": "Sở Tài nguyên và Môi trường thành phố Cần Thơ"
             },
             "units": [
               {
@@ -710,7 +740,7 @@
             "certificate": {
               "number": "SWP-GCN-12-02-2024",
               "issued_date": "2024-12-15",
-              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 12"
+              "issued_place": "Sở Tài nguyên và Môi trường thành phố Cần Thơ"
             },
             "units": [
               {
@@ -746,7 +776,7 @@
             "certificate": {
               "number": "SWP-GCN-12-03-2024",
               "issued_date": "2024-12-15",
-              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 12"
+              "issued_place": "Sở Tài nguyên và Môi trường thành phố Cần Thơ"
             },
             "units": [
               {
@@ -768,7 +798,7 @@
             "certificate": {
               "number": "SWP-GCN-12-04-2024",
               "issued_date": "2024-12-15",
-              "issued_place": "Văn phòng đăng ký đất đai - bộ dữ liệu SWP 12"
+              "issued_place": "Sở Tài nguyên và Môi trường thành phố Cần Thơ"
             },
             "units": [
               {

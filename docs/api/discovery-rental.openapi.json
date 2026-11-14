@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "An Cu Discovery and Rental Requests",
-    "version": "1.2.0",
-    "description": "Implemented public discovery, verified-Customer submission/cancellation/history, and Owner inbox with accept/reject decisions. Property approval UI and apartment update/delete are not implemented. Owner list/create is documented separately."
+    "version": "1.3.0",
+    "description": "Implemented public discovery, verified renter submission/cancellation/history, and Owner inbox with accept/reject decisions. CUSTOMER and OWNER acting as renter use the same server verification policy. Property dossier and Owner inventory endpoints are documented separately. Private owner detail extension28October: authenticated exact Property owner may read own unpublished draft and receive management capability metadata; others still require public visibility. Detail no-store, JWT remains Bearer, source/legal data and saved contracts not editable through marketing commands."
   },
   "servers": [
     {
@@ -85,6 +85,37 @@
               "type": "integer",
               "minimum": 0
             }
+          },
+          {
+            "name": "minArea",
+            "in": "query",
+            "required": false,
+            "description": "Area boundary in m², applied on the same apartment.",
+            "schema": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "maxArea",
+            "in": "query",
+            "required": false,
+            "description": "Area boundary in m², applied on the same apartment.",
+            "schema": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "occupants",
+            "in": "query",
+            "required": false,
+            "description": "Minimum unit capacity required; applied with all other filters on the same public VACANT apartment.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
           }
         ],
         "responses": {
@@ -127,7 +158,13 @@
           "404": {
             "$ref": "#/components/responses/Error"
           }
-        }
+        },
+        "security": [
+          {},
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/apartments/{id}/rental-requests": {
@@ -143,7 +180,7 @@
             "BearerAuth": []
           }
         ],
-        "description": "Serializes submission on apartment lock; rejects same Customer/Apartment PENDING or ACCEPTED with 409 RENTAL_REQUEST_EXISTS. CANCELLED/REJECTED history does not block a new request. Never reserves apartment. Customer must be ACTIVE with verified email evidence through AccountVerificationPolicy; legacy summary or phone flag alone cannot grant access.",
+        "description": "Serializes submission on apartment lock; rejects same Customer/Apartment PENDING or ACCEPTED with 409 RENTAL_REQUEST_EXISTS. CANCELLED/REJECTED history does not block a new request. Never reserves apartment. Renter must be ACTIVE and satisfy AccountVerificationPolicy through verified email OR persisted VERIFIED Auth0 VNeID evidence. No manual CCCD dossier is required. Summary flags, phone alone or self-declared identity cannot grant access. OWNER may rent another owner's apartment but cannot rent their own.",
         "requestBody": {
           "required": true,
           "content": {
@@ -226,7 +263,8 @@
           "403": {
             "$ref": "#/components/responses/Error"
           }
-        }
+        },
+        "description": "Exact authenticated renter request inbox. Requests already linked to a saved contract document are excluded in SQL before paging/count; documents and original selection records remain available through private contract APIs. ACCEPTED requests awaiting document creation remain here. Ended/cancelled documents are not moved back into this inbox."
       }
     },
     "/api/v1/owner/rental-requests": {
@@ -268,6 +306,15 @@
               "pattern": "^[1-9][0-9]*$"
             },
             "description": "Intersect exact property with current Owner scope before count/pagination; another Owner or absent property yields empty page."
+          },
+          {
+            "name": "contractCompleted",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Only with status=ACCEPTED. false=contract preparation/not both signatures; true=both signed. Filter and count occur in SQL before pagination. Omit for all accepted requests. Internally generated successor selections are excluded from this ordinary-rental inbox."
           }
         ],
         "responses": {
@@ -287,7 +334,8 @@
           "403": {
             "$ref": "#/components/responses/Error"
           }
-        }
+        },
+        "description": " Owner new-rental inbox excludes selections created by renewal authoring; these belong to /api/v1/owner/renewal-requests. Persisted ACCEPTED remains unchanged; UI says Đang làm hợp đồng until both signatures, then Đã ký hợp đồng. UI defaults PENDING; API omitted status retains all-status compatibility."
       }
     },
     "/api/v1/owner/rental-requests/{id}/decisions": {
@@ -703,6 +751,11 @@
                 "type": "boolean"
               }
             }
+          },
+          "management": {
+            "type": "object",
+            "nullable": true,
+            "description": "Owner-only management metadata; see asset-management.openapi.json Management. Null for everyone else."
           }
         }
       },
@@ -756,6 +809,14 @@
             ],
             "maxLength": 2000,
             "readOnly": true
+          },
+          "contractId": {
+            "type": "string",
+            "nullable": true
+          },
+          "contractCompleted": {
+            "type": "boolean",
+            "description": "True only when both signature timestamps are stored, never implied by ACCEPTED."
           }
         }
       },

@@ -19,6 +19,28 @@ public class NotificationService {
  public record Feed(List<Item> items,int page,int size,long totalElements,int totalPages,long unreadCount,Instant snapshotAt){}
  private static final String FEED="""
  WITH feed AS (
+ SELECT CONCAT('contract-exit:',e.id) notification_key,N'Cập nhật kết thúc thuê / bàn giao' title,
+ CONCAT(N'HD-',c.id,N' — ',e.reason) message,CONCAT('/contracts/',c.id) url,e.created_at
+ FROM contract_exit_events e JOIN rental_contracts c ON c.id=e.contract_id JOIN rental_apartments a ON a.id=c.apartment_id JOIN rental_properties p ON p.id=a.property_id
+ WHERE e.actor_id<>:account AND (p.owner_id=:account OR c.customer_id=:account)
+ UNION ALL
+ SELECT CONCAT('contract-expiry:',n.id) notification_key,N'Hợp đồng sắp hết hạn' title,
+ CONCAT(N'HD-',c.id,N' hết hạn ngày ',CONVERT(varchar(10),n.expires_on,23),N'. Xem hợp đồng để yêu cầu thuê tiếp hoặc theo dõi bàn giao.') message,
+ CASE WHEN p.owner_id=:account THEN CONCAT('/app?tab=contracts&propertyId=',p.id,'&contractId=',c.id)
+      ELSE CONCAT('/my/rental-requests?tab=contracts&contractId=',c.id) END url,n.created_at
+ FROM contract_expiry_notices n JOIN rental_contracts c ON c.id=n.contract_id JOIN rental_apartments a ON a.id=c.apartment_id JOIN rental_properties p ON p.id=a.property_id
+ WHERE n.recipient_id=:account AND (c.customer_id=:account OR p.owner_id=:account)
+ UNION ALL
+ SELECT CONCAT('renewal-request:',r.id),N'Khách yêu cầu thuê tiếp',CONCAT(N'Yêu cầu thuê tiếp HD-',c.id),CONCAT('/app?tab=rental_requests&requestType=renewal&propertyId=',p.id),r.created_at
+ FROM contract_renewal_requests r JOIN rental_contracts c ON c.id=r.contract_id JOIN rental_apartments a ON a.id=c.apartment_id JOIN rental_properties p ON p.id=a.property_id WHERE p.owner_id=:account
+ UNION ALL
+ SELECT CONCAT('renewal-decision:',r.id),N'Yêu cầu thuê tiếp đã được xử lý',
+ CONCAT(N'HD-',c.id,CASE r.decision WHEN 'ACCEPT' THEN N': Chủ nhà đã chấp nhận, chờ soạn và ký hợp đồng mới.' ELSE N': Chủ nhà từ chối cho thuê tiếp.' END),CONCAT('/contracts/',c.id),r.decided_at
+ FROM contract_renewal_requests r JOIN rental_contracts c ON c.id=r.contract_id WHERE c.customer_id=:account AND r.decided_at IS NOT NULL
+ UNION ALL
+ SELECT CONCAT('renewal-cancelled:',r.id),N'Ký tiếp đã được hủy',CONCAT(N'HD-',c.id,N': Chủ nhà đã hủy ký tiếp; đến hạn sẽ đối soát bàn giao.'),CONCAT('/contracts/',c.id),r.cancelled_at
+ FROM contract_renewal_requests r JOIN rental_contracts c ON c.id=r.contract_id WHERE c.customer_id=:account AND r.cancelled_at IS NOT NULL
+ UNION ALL
  SELECT CONCAT('request-new:',r.id) notification_key,N'Có yêu cầu thuê mới' title,
  CONCAT(N'Yêu cầu thuê ',a.title,N' — ',COALESCE(a.room_number,N'')) message,
  CONCAT('/app?tab=rental_requests&propertyId=',p.id) url,r.created_at
@@ -32,7 +54,16 @@ public class NotificationService {
  UNION ALL
  SELECT CONCAT('request-cancelled:',r.id),N'Khách đã hủy yêu cầu thuê',a.title,CONCAT('/app?tab=rental_requests&propertyId=',p.id),r.decided_at
  FROM rental_requests r JOIN rental_apartments a ON a.id=r.apartment_id JOIN rental_properties p ON p.id=a.property_id
- WHERE p.owner_id=:account AND r.customer_id<>:account AND r.status='CANCELLED' AND r.decided_at IS NOT NULL
+ WHERE p.owner_id=:account AND r.customer_id<>:account AND r.status='CANCELLED' AND r.decided_at IS NOT NULL AND NOT EXISTS(SELECT 1 FROM selection_cancellations sc WHERE sc.request_id=r.id)
+ UNION ALL
+ SELECT CONCAT('selection-cancel:',e.id),
+ CASE e.action WHEN 'PROPOSED' THEN N'Có đề nghị hủy quá trình làm hợp đồng' WHEN 'REJECTED' THEN N'Đề nghị hủy đã bị từ chối' WHEN 'WITHDRAWN' THEN N'Đề nghị hủy đã được rút' ELSE N'Quá trình làm hợp đồng đã hủy' END,
+ CONCAT(a.title,N' — ',COALESCE(e.reason,N'Đã ghi nhận phản hồi')),
+ CASE WHEN JSON_VALUE(e.after_json,'$.contractId') IS NOT NULL THEN CONCAT('/contracts/',JSON_VALUE(e.after_json,'$.contractId'))
+      WHEN p.owner_id=:account THEN CONCAT('/app?tab=rental_requests&propertyId=',p.id)
+      ELSE '/my/rental-requests' END,e.created_at
+ FROM selection_cancellation_events e JOIN rental_requests r ON r.id=e.request_id JOIN rental_apartments a ON a.id=r.apartment_id JOIN rental_properties p ON p.id=a.property_id
+ WHERE e.actor_id<>:account AND (p.owner_id=:account OR r.customer_id=:account)
  UNION ALL
  SELECT CONCAT('invoice:',n.id),N'Bạn có hóa đơn mới',CONCAT(N'Hóa đơn kỳ ',i.period,N' — ',COALESCE(a.room_number,a.title)),CONCAT('/my/invoices/',i.id),n.created_at
  FROM invoice_notifications n JOIN rental_invoices i ON i.id=n.invoice_id JOIN rental_contracts c ON c.id=i.contract_id JOIN rental_apartments a ON a.id=c.apartment_id
@@ -66,7 +97,7 @@ public class NotificationService {
  FROM property_dossiers d JOIN rental_properties p ON p.id=d.property_id WHERE :role='ADMIN'
  )
  """;
- private Map<String,Object> params(Jwt jwt){var a=access.account(jwt);return new HashMap<>(Map.of("account",a.getId(),"role",a.getRole().name()));}
+ private Map<String,Object> params(Jwt jwt){var a=access.account(jwt);return new HashMap<>(Map.of("account",a.getId(),"role",a.hasRole(com.ancu.proptech.model.auth.AuthAccount.Role.ADMIN)?"ADMIN":"USER"));}
  @Transactional(readOnly=true) public Feed list(Jwt jwt,int page,int size){
   ApartmentService.validatePage(page,size);var params=params(jwt);var at=Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
   params.put("through",LocalDateTime.ofInstant(at,ZoneOffset.UTC).toString());params.put("offset",Math.multiplyExact((long)page,size));params.put("size",size);

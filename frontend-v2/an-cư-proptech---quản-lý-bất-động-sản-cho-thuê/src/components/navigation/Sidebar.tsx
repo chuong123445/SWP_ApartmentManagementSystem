@@ -16,6 +16,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { ActiveTab, UserRole, Building } from '@/types';
+import type { OwnerWorkspaceCounters } from '@/types/owner';
 
 interface SidebarProps {
   properties: Building[];
@@ -27,9 +28,7 @@ interface SidebarProps {
   onSelectTab: (tab: ActiveTab) => void;
   selectedBuildingId: string;
   onSelectBuilding: (id: string) => void;
-  unpaidCount: number;
-  maintenanceCount: number;
-  expiringCount: number;
+  counters: OwnerWorkspaceCounters;
   userRole: UserRole;
 }
 
@@ -41,29 +40,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTab,
   selectedBuildingId,
   onSelectBuilding,
-  unpaidCount,
-  maintenanceCount,
-  expiringCount,
+  counters,
   userRole,
 }) => {
+  const unpaidCount = counters.data?.unpaidCount;
+  const expiringCount = counters.data?.expiringContractCount;
+  const expiredCount = counters.data?.expiredContractCount;
+  const maintenanceCount = counters.maintenanceCount;
   const adminMenuItems = [
     { id: 'dashboard' as ActiveTab, label: 'Tổng quan', icon: LayoutDashboard },
     { id: 'properties' as ActiveTab, label: 'Tài sản cho thuê', icon: Building2 },
     { id: 'rooms' as ActiveTab, label: 'Quản lý căn hộ', icon: Home },
     { id: 'rental_requests' as ActiveTab, label: 'Yêu cầu thuê', icon: MessageSquare },
-    { id: 'tenants' as ActiveTab, label: 'Khách thuê & eKYC', icon: Users },
+    { id: 'tenants' as ActiveTab, label: 'Khách thuê', icon: Users },
     {
       id: 'contracts' as ActiveTab,
       label: 'Hợp đồng & Ký số',
       icon: FileCheck2,
-      badge: expiringCount > 0 ? `${expiringCount} sắp hết` : undefined,
+      badge: (expiringCount ?? 0) > 0 ? `${expiringCount} sắp hết` : undefined,
+      secondaryBadge: (expiredCount ?? 0) > 0 ? `${expiredCount} hết hạn` : undefined,
+      title: counters.data ? `Sắp hết: hợp đồng ACTIVE đã bắt đầu, hết hạn từ ${counters.data.asOf} đến ${counters.data.expiringThrough}. Đã hết hạn: ACTIVE trước ngày ${counters.data.asOf}, đang chờ xử lý.` : 'Số đếm thời hạn chưa có dữ liệu.',
       badgeColor: 'bg-amber-500 text-slate-950 font-bold',
     },
     {
       id: 'invoices' as ActiveTab,
       label: 'Hóa đơn & Thu',
       icon: ReceiptText,
-      badge: unpaidCount > 0 ? `${unpaidCount} nợ` : undefined,
+      badge: (unpaidCount ?? 0) > 0 ? `${unpaidCount} chưa thu` : undefined,
+      title: counters.data ? `${counters.data.unpaidMonthlyInvoiceCount} hóa đơn tháng đã gửi và ${counters.data.unpaidAdditionalReceiptCount} phiếu bổ sung gắn đúng người thuê chưa thu; toàn bộ dữ liệu tài sản đang chọn, không chỉ trang hiện tại. Chưa thu không đồng nghĩa quá hạn.` : 'Số đếm chưa thu chưa có dữ liệu.',
       badgeColor: 'bg-rose-600 text-white font-bold',
     },
     { id: 'utilities' as ActiveTab, label: 'Chỉ số Điện Nước', icon: Zap },
@@ -81,23 +85,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
 
   return (
-    <aside className="w-64 bg-[#111827] text-slate-300 flex flex-col shrink-0 border-r border-slate-800 select-none min-h-screen">
-      {/* Brand Logo */}
-      <div className="p-4 border-b border-slate-800 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-emerald-950/60">
-          <Building2 className="w-5 h-5" />
-        </div>
-        <div className="overflow-hidden">
-          <div className="font-bold text-white text-sm tracking-tight flex items-center gap-1.5">
-            <span>An Cư PropTech</span>
-          </div>
-          <p className="text-[11px] text-slate-400 truncate">Bất Động Sản Minh Bạch Pháp Lý</p>
-        </div>
-      </div>
-
+    <aside className="w-60 max-w-[85vw] xl:w-64 bg-white text-slate-700 flex flex-col shrink-0 border-r border-brand-100 select-none min-h-0 h-full overflow-y-auto">
       {/* Building Selector */}
-      <div className="p-3 border-b border-slate-800 bg-slate-900/50">
-        <label htmlFor="select-building-sidebar" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+      <div className="p-4 border-b border-slate-100">
+        <label htmlFor="select-building-sidebar" className="text-xs font-semibold text-slate-600 block mb-2">
           Tài sản đang chọn
         </label>
         <select
@@ -105,31 +96,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
           value={selectedBuildingId}
           disabled={propertiesLoading || propertiesError || properties.length === 0}
           onChange={(e) => onSelectBuilding(e.target.value)}
-          className="w-full bg-[#1e293b] border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-medium cursor-pointer"
+          className="w-full bg-brand-50 border border-brand-100 rounded-xl px-3 py-2.5 text-sm text-brand-950 focus:border-brand-400 font-semibold cursor-pointer disabled:opacity-60"
         >
           <option value="all">{propertiesLoading ? 'Đang tải tài sản...' : propertiesError ? 'Không thể tải tài sản' : `Tất cả tài sản (${properties.length})`}</option>
           {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
-        <button type="button" onClick={() => onSelectTab('properties')} className="mt-2 text-xs text-emerald-300 underline">Quản lý / thêm tài sản</button>
       </div>
 
       {/* Navigation Links */}
-      <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-        <div className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-          <span>{userRole === 'admin' ? 'Menu Quản Lý Tòa Nhà' : 'Cổng Dịch Vụ Cư Dân'}</span>
-          <span className="text-[10px] text-emerald-400 font-mono">
-            {userRole === 'admin' ? accountRole : 'USER'}
-          </span>
-        </div>
-
-        {canManage ? <button type="button" id="nav-home" onClick={() => onSelectTab('home')}
-          aria-current={activeTab === 'home' ? 'page' : undefined}
-          className={`w-full flex items-center gap-2.5 px-3 py-2 mb-2 text-xs rounded-lg transition-colors ${activeTab === 'home' ? 'bg-[#065f46] text-white font-bold ring-1 ring-emerald-500' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>
-          <Home className="w-4 h-4" />Trang chủ
-        </button> : <Link to="/" className="flex items-center gap-2.5 px-3 py-2 mb-2 text-xs text-slate-300 rounded-lg hover:bg-slate-800 hover:text-white"><Home className="w-4 h-4" />Trang chủ</Link>}
+      <nav aria-label="Quản lý tòa nhà" className="flex-1 p-3 space-y-1.5 overflow-y-auto">
+        {canManage && counters.loading && <p role="status" className="px-3 py-2 text-xs text-slate-600">Đang tải số đếm…</p>}
+        {canManage && counters.error && <div role="alert" className="px-3 py-2 text-xs text-amber-800">Chưa tải được số đếm.<button type="button" title={counters.error} className="block underline mt-1" onClick={counters.reload}>Thử lại số đếm</button></div>}
         {/* Admin Menu */}
-        {canManage && <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-          Vận Hành Quản Lý
+        {canManage && <div className="px-3 pt-3 pb-1 text-xs font-semibold text-slate-500">
+          Quản lý cho thuê
         </div>}
 
         {adminMenuItems.filter(item => canManage && (item.id !== 'rental_requests' || accountRole === 'OWNER')).map((item) => {
@@ -137,32 +117,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
           const isActive = activeTab === item.id;
 
           return (
+            <React.Fragment key={item.id}>
+            {item.id === 'invoices' && <div className="mx-2 mt-3 border-t border-slate-100 px-1 pt-3 pb-1 text-xs font-semibold text-slate-500">Vận hành và tài chính</div>}
             <button
-              key={item.id}
               id={`nav-${item.id}`}
+              aria-current={isActive ? 'page' : undefined}
+              title={item.title}
               onClick={() => {
                 onSelectTab(item.id);
               }}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all group ${
+              className={`w-full flex items-center justify-between gap-1 px-3 py-2.5 rounded-lg text-left text-sm font-medium transition-colors group ${
                 isActive
-                  ? 'bg-[#065f46] text-white shadow-xs font-bold ring-1 ring-emerald-500'
-                  : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                  ? 'bg-brand-100 text-brand-800 font-bold'
+                  : 'text-slate-700 hover:bg-brand-50 hover:text-brand-800'
               }`}
             >
-              <div className="flex items-center gap-2.5">
+              <div className="flex min-w-0 items-center gap-2.5">
                 <Icon
-                  className={`w-4 h-4 transition-colors ${
-                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-emerald-400'
+                  className={`w-[18px] h-[18px] shrink-0 transition-colors ${
+                    isActive ? 'text-brand-700' : 'text-slate-500 group-hover:text-brand-700'
                   }`}
                 />
                 <span>{item.label}</span>
               </div>
-              {item.badge && (
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${item.badgeColor}`}>
-                  {item.badge}
+              {(item.badge || item.secondaryBadge) && (
+                <span className="flex flex-col items-end gap-1 shrink-0 ml-1">
+                  {item.badge && <span className={`text-[10px] px-1.5 rounded-full ${item.badgeColor}`}>{item.badge}</span>}
+                  {item.secondaryBadge && <span className="text-[10px] px-1.5 rounded-full bg-rose-600 text-white">{item.secondaryBadge}</span>}
                 </span>
               )}
             </button>
+            </React.Fragment>
           );
         })}
       </nav>

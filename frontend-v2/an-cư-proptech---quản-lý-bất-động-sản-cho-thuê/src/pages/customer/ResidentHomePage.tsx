@@ -2,6 +2,7 @@ import { useEffect,useState } from 'react';
 import { Link,useSearchParams } from 'react-router';
 import { Building2,Home,ReceiptText,Wrench,FileText,ArrowUpRight,RefreshCw,CalendarDays } from 'lucide-react';
 import { CustomerLayout } from '@/layouts/CustomerLayout';
+import { StartRentalConversation } from '@/components/apartments/StartRentalConversation';
 import { useTenancyContext } from '@/contexts/TenancyContext';
 import { billingMoney } from '@/services/billing/billingService';
 import { roomInvoices,roomMaintenance } from '@/services/resident/residentService';
@@ -41,16 +42,22 @@ function ResidentHomeContent(){
   const canReport=!!selected&&selected.startDate<=today;
   const openTickets=tickets.filter(t=>!['RESOLVED','CANCELLED','REJECTED'].includes(t.apiStatus??'')).length;
   const places=selected&&canReport?[{value:selected.apartmentId,label:`${selected.propertyName} — ${selected.roomNumber}`,apartmentId:selected.apartmentId}]:[];
-  return <main className="resident-hub operations-page max-w-7xl mx-auto px-5 py-8">
-    <header className="op-heading"><div className="op-title-group"><span className="op-heading-icon"><Home size={23}/></span><div><div className="op-eyebrow">Không gian của bạn</div><h1>Nhà đang thuê</h1><p>Thông tin nơi ở, hóa đơn và hỗ trợ sửa chữa trong một nơi.</p></div></div><button className="op-button" onClick={()=>{reloadLeases();reload();}} disabled={leasesLoading||loading}><RefreshCw size={14}/>Làm mới</button></header>
+  return <main className="resident-hub operations-page home-wrap py-8">
+    <header className="resident-heading">
+      <h1 className="app-page-title">Nhà đang thuê</h1>
+      <button type="button" className="op-button" onClick={()=>{reloadLeases();reload();}} disabled={leasesLoading||loading}><RefreshCw size={14} aria-hidden="true"/>Làm mới</button>
+    </header>
     {leaseError&&<p role="alert" className="op-error">{leaseError}</p>}
     {leasesLoading&&!selected&&<p role="status" className="op-empty">Đang tải nơi ở của bạn...</p>}
     {!leasesLoading&&!leaseError&&!selected&&<section className="op-panel op-empty"><Building2 size={34}/><strong>Bạn chưa có nhà đang thuê.</strong><p>Nhà sẽ xuất hiện khi hợp đồng được hai bên ký và kích hoạt.</p><div className="op-buttons justify-center mt-5"><Link className="op-button op-button-primary" to="/">Tìm nhà để thuê</Link><Link className="op-button" to="/my/rental-requests">Yêu cầu & hợp đồng</Link></div></section>}
     {selected&&<>
       <section className="resident-home-card" aria-label="Nơi ở được chọn">
         <div className="resident-home-icon"><Building2 size={32}/></div>
-        <div className="min-w-0 flex-1"><span className="op-badge green">{canReport?'Đang thuê':'Sắp đến ngày thuê'}</span><h2>{selected.roomNumber} · {selected.apartmentTitle}</h2><p>{selected.propertyName}</p><div className="resident-home-meta"><span><CalendarDays size={13}/>{selected.startDate} → {selected.endDate}</span><span>{billingMoney(selected.monthlyRent)} / tháng</span></div></div>
+        <div className="resident-lease"><span className={`op-badge ${canReport ? 'green' : 'blue'}`}>{canReport?'Đang thuê':'Sắp đến ngày thuê'}</span><h2>{selected.roomNumber} · {selected.apartmentTitle}</h2><p>{selected.propertyName}</p><div className="resident-home-meta"><span><CalendarDays size={15} aria-hidden="true"/>{selected.startDate} → {selected.endDate}</span><strong>{billingMoney(selected.monthlyRent)} / tháng</strong></div></div>
+        <div className="resident-lease-actions">
         {leases.length>1&&<label className="text-sm">Chọn nơi ở<select aria-label="Chọn nơi ở" value={selected.apartmentId} onChange={e=>setParams(p=>{p.set('room',e.target.value);p.delete('report');return p;})} className="block mt-2">{leases.map(c=><option key={c.id} value={c.apartmentId}>{c.propertyName} — {c.roomNumber}</option>)}</select></label>}
+        <StartRentalConversation key={selected.apartmentId} apartmentId={selected.apartmentId} verified checking={false} />
+        </div>
       </section>
       <nav className="resident-tabs" aria-label="Quản lý nhà đang thuê">{tabs.map(([value,label,Icon])=><button key={value} aria-pressed={tab===value} onClick={()=>selectTab(value)}><Icon size={16}/>{label}</button>)}</nav>
       {tab==='overview'&&<>
@@ -60,9 +67,9 @@ function ResidentHomeContent(){
           <button onClick={()=>selectTab('contract')} className="resident-action"><span className="op-stat-icon blue"><FileText size={21}/></span><strong>Hợp đồng của phòng</strong><p>Xem PDF, chữ ký, thời hạn và điều khoản thuê.</p><span className="op-link">Mở hợp đồng<ArrowUpRight size={14}/></span></button>
         </div>
         {(invoiceError||ticketError)&&<p role="alert" className="op-error">{invoiceError||ticketError} Bạn có thể nhấn Làm mới để thử lại.</p>}
-        <p className="text-xs text-slate-400 mt-5">Xem hồ sơ thuê cũ và lịch sử tại <Link className="text-emerald-700 underline" to="/my/rental-requests">Yêu cầu & hợp đồng</Link>.</p>
+        <p className="text-xs text-slate-400 mt-5">Xem hồ sơ thuê cũ và lịch sử tại <Link className="text-brand-700 underline" to="/my/rental-requests">Yêu cầu & hợp đồng</Link>.</p>
       </>}
-      {tab==='invoices'&&<section className="op-panel"><div className="op-toolbar"><div><h2 className="font-bold">Hóa đơn phòng {selected.roomNumber}</h2><p className="text-xs text-slate-500 mt-1">Các kỳ đã gửi đến bạn tại phòng này. “Đã gửi” không xác nhận đã thanh toán.</p></div></div>
+      {tab==='invoices'&&<section className="op-panel"><div className="op-toolbar"><div><h2 className="font-bold">Hóa đơn phòng {selected.roomNumber}</h2><p className="text-xs text-slate-500 mt-1">Các kỳ đã gửi đến bạn tại phòng này. “Đã gửi” không xác nhận đã thanh toán.</p></div><Link to="/my/invoices" className="op-link">Xem thống kê hóa đơn <ArrowUpRight size={14}/></Link></div>
         {busy?<p role="status" className="op-empty">Đang tải hóa đơn...</p>:invoiceError?<p role="alert" className="op-error">{invoiceError}</p>:!invoices.length?<div className="op-empty"><ReceiptText size={28}/><strong>Chưa có hóa đơn cho phòng này.</strong>Hóa đơn xuất hiện khi chủ nhà gửi đến bạn.</div>:<div className="resident-invoices">{invoices.map(i=><Link key={i.id} to={`/my/invoices/${i.id}?from=home`} className="resident-invoice"><div><span className="op-badge green">Đã gửi</span><h3>Kỳ {i.period}</h3><p>Hạn đóng: {i.dueDate}</p></div><div><strong>{billingMoney(i.totalAmount)}</strong><span className="op-link">Chi tiết & thông tin thanh toán<ArrowUpRight size={13}/></span></div></Link>)}</div>}
       </section>}
       {tab==='maintenance'&&<>

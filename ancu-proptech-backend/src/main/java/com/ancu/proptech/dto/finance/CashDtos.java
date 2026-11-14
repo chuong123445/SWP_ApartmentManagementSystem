@@ -17,6 +17,9 @@ public final class CashDtos {
     public record Entry(Long id,String code,Long propertyId,String propertyName,Direction direction,Status status,
         Method paymentMethod,String amount,LocalDate transactionDate,String category,String counterparty,
         String description,String reference,Instant createdAt,Instant postedAt,Instant cancelledAt,
-        Long createdBy,Long postedBy,Long cancelledBy,String cancellationReason,long version) {}
+        Long createdBy,Long postedBy,Long cancelledBy,String cancellationReason,long version,String sourceType,Long sourceId) {}
+    public enum SourceType { INVOICE, MAINTENANCE }
+    public record SourceCreate(@NotNull SourceType type,@NotNull @Positive Long id,@NotNull LocalDate transactionDate,@NotNull Method paymentMethod) {}
+    public record SourceItem(String type,Long id,Long propertyId,String propertyName,String title,String amount,LocalDate suggestedDate) {}
     public record Summary(String income,String expense,String netCashflow,long postedCount) {}
 }

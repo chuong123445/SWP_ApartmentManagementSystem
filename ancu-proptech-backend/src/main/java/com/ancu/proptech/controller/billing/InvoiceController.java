@@ -13,10 +13,16 @@ import java.net.URI;
 @RestController @RequiredArgsConstructor
 public class InvoiceController {
     private final InvoiceService invoices;
+    @GetMapping("/api/v1/owner/contracts/{id}/rent-billing-context") public RentBillingContext rentContext(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id){return invoices.rentContext(jwt,id);}
+    @PostMapping("/api/v1/owner/contracts/{id}/rent-invoices") public InvoiceResponse createRent(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody RentInvoiceCreate input){return invoices.createRent(jwt,id,input);}
+    @PatchMapping("/api/v1/owner/invoices/{id}/draft") public InvoiceResponse update(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody InvoiceDraftChange request){return invoices.updateDraft(jwt,id,request);}
+    @PostMapping("/api/v1/owner/invoices/{id}/cancel") public InvoiceResponse cancel(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody InvoiceCancel request){return invoices.cancel(jwt,id,request);}
+    @GetMapping("/api/v1/owner/invoices/{id}/history") public java.util.List<InvoiceHistoryResponse> history(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id){return invoices.history(jwt,id);}
     @GetMapping("/api/v1/owner/contracts/{id}/billing-context") public BillingContext context(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id){return invoices.context(jwt,id);}
+    @PostMapping("/api/v1/owner/contracts/{id}/meter-readings") public BillingContext readings(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody MeterReadingSave request){return invoices.saveReadings(jwt,id,request);}
     @PostMapping("/api/v1/owner/contracts/{id}/invoices") public ResponseEntity<InvoiceResponse> create(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody InvoiceCreate request){var result=invoices.create(jwt,id,request);return ResponseEntity.created(URI.create("/api/v1/invoices/"+result.id())).body(result);}
     @PostMapping("/api/v1/owner/invoices/{id}/send") public InvoiceResponse send(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id,@Valid @RequestBody InvoiceSend request){return invoices.send(jwt,id,request);}
-    @GetMapping("/api/v1/owner/invoices") public PageResponse<InvoiceResponse> owner(@AuthenticationPrincipal Jwt jwt,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size,@RequestParam(required=false) Long propertyId){return invoices.owner(jwt,page,size,propertyId);}
-    @GetMapping("/api/v1/me/invoices") public PageResponse<InvoiceResponse> mine(@AuthenticationPrincipal Jwt jwt,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size){return invoices.mine(jwt,page,size);}
+    @GetMapping("/api/v1/owner/invoices") public PageResponse<InvoiceResponse> owner(@AuthenticationPrincipal Jwt jwt,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size,@RequestParam(required=false) Long propertyId,@RequestParam(defaultValue="ALL") OwnerInvoiceFilter filter){return invoices.owner(jwt,page,size,propertyId,filter);}
+    @GetMapping("/api/v1/me/invoices") public PageResponse<InvoiceResponse> mine(@AuthenticationPrincipal Jwt jwt,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size,@RequestParam(defaultValue="ALL") InvoicePaymentFilter paymentStatus){return invoices.mine(jwt,page,size,paymentStatus);}
     @GetMapping("/api/v1/invoices/{id}") public InvoiceResponse detail(@AuthenticationPrincipal Jwt jwt,@PathVariable Long id){return invoices.detail(jwt,id);}
 }

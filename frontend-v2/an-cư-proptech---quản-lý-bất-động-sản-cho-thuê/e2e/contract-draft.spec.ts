@@ -25,7 +25,7 @@ test('isolated accepted-request wizard reuses stored parties/assets, persists ed
   const login = async (p: Page, email: string) => {
     await p.goto('/login');await p.locator('#login-email').fill(email);await p.locator('#login-password').fill(password);
     const pending = p.waitForResponse(r => r.url().endsWith('/api/v1/auth/login') && r.request().method() === 'POST');await p.locator('button[type=submit]').click();
-    const result = await (await pending).json();await expect(p.getByRole('button', { name: 'Vai trò và tài khoản' })).toBeVisible();return { Authorization: `Bearer ${result.accessToken}` };
+    const result = await (await pending).json();await expect(p.getByRole('button', { name: 'Tài khoản' })).toBeVisible();return { Authorization: `Bearer ${result.accessToken}` };
   };
   try {
     ownerId = await register('OWNER', ownerEmail);persist();customerId = await register('CUSTOMER', customerEmail);persist();expect(fixture('prepare').prepared).toBe(true);
@@ -43,7 +43,7 @@ test('isolated accepted-request wizard reuses stored parties/assets, persists ed
     await ownerPage.getByTestId('rental-request').filter({ hasText: 'Wizard accepted selection' }).getByRole('button', { name: 'Tạo hợp đồng', exact: true }).click();
     const dialog = ownerPage.getByRole('dialog');await expect(dialog).toBeVisible();await expect(dialog).toContainText('Chung cư / Căn hộ');
     await dialog.getByRole('button', { name: 'Tiếp theo →', exact: true }).click();await expect(dialog).toContainText(ownerEmail);await expect(dialog).toContainText('0912345678');await expect(dialog).toContainText('Địa chỉ hồ sơ thử riêng');await expect(dialog).toContainText('1995-06-15');expect(await dialog.locator('input,textarea').count()).toBe(0);
-    await expect(dialog).toContainText('999000000101');await expect(dialog).toContainText('Chưa xác minh danh tính');await expect(dialog).toContainText('Thông tin căn cước mẫu');
+    await expect(dialog).toContainText('999000000101');await expect(dialog).toContainText('Chưa xác minh danh tính');await expect(dialog.getByText('Thông tin căn cước mẫu',{exact:false})).toHaveCount(0);
     await dialog.getByRole('button', { name: 'Tiếp theo →', exact: true }).click();await expect(dialog).toContainText(customerEmail);await expect(dialog).toContainText('0912345678');expect(await dialog.locator('input,textarea').count()).toBe(0);
     await dialog.getByRole('button', { name: 'Tiếp theo →', exact: true }).click();await expect(dialog).toContainText('45.50');await expect(dialog).toContainText('Máy lạnh');
     await expect(dialog).toContainText('MAU-E2E-001');await expect(dialog).toContainText('Cơ quan giấy chứng nhận mẫu');await expect(dialog).toContainText('Quyền cho thuê minh họa');

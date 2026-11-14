@@ -47,6 +47,16 @@ public class PaymentQrDecoder {
   }return result;
  }
  public static int crc(String text){int crc=0xffff;for(byte value:text.getBytes(StandardCharsets.UTF_8)){crc^=(value&255)<<8;for(int i=0;i<8;i++)crc=((crc&0x8000)!=0?(crc<<1)^0x1021:crc<<1)&0xffff;}return crc;}
- public static String bankName(String bin){return Map.of("970422","MBBank","970436","Vietcombank","970415","VietinBank","970418","BIDV","970407","Techcombank","970416","ACB","970432","VPBank").getOrDefault(bin,"Ngân hàng BIN "+bin);}
+ private static final Map<String,String> BANK_NAMES = Map.of("970422","MBBank","970436","Vietcombank","970415","VietinBank","970418","BIDV","970407","Techcombank","970416","ACB","970432","VPBank");
+ private static final String UNKNOWN_BANK_PREFIX = "Ngân hàng BIN ";
+ public static String bankName(String bin) { return BANK_NAMES.getOrDefault(bin, UNKNOWN_BANK_PREFIX + bin); }
+ public static Optional<String> bankBin(String name) {
+  if (name.startsWith(UNKNOWN_BANK_PREFIX)) {
+   String bin = name.substring(UNKNOWN_BANK_PREFIX.length());
+   return bin.matches("[0-9]{6}") ? Optional.of(bin) : Optional.empty();
+  }
+  return BANK_NAMES.entrySet().stream().filter(entry -> entry.getValue().equalsIgnoreCase(name))
+          .map(Map.Entry::getKey).findFirst();
+ }
  private static ApiException invalid(String message){return new ApiException(HttpStatus.BAD_REQUEST,"INVALID_PAYMENT_QR",message);}
 }

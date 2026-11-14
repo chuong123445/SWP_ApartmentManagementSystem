@@ -14,6 +14,9 @@ import java.net.URI;
 @RestController @RequestMapping("/api/v1/owner/cash-entries") @RequiredArgsConstructor
 public class CashEntryController {
     private final CashEntryService service;
+    private final com.ancu.proptech.service.finance.CashSourceService sources;
+    @GetMapping("/sources") public ResponseEntity<PageResponse<SourceItem>> sources(@AuthenticationPrincipal Jwt jwt,@RequestParam(required=false) Long propertyId,@RequestParam String month,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size){return privateResponse(sources.sources(jwt,propertyId,month,page,size));}
+    @PostMapping("/from-source") public ResponseEntity<Entry> fromSource(@AuthenticationPrincipal Jwt jwt,@Valid @RequestBody SourceCreate input){return ResponseEntity.status(HttpStatus.CREATED).cacheControl(CacheControl.noStore()).body(sources.create(jwt,input));}
     @PostMapping public ResponseEntity<Entry> create(@AuthenticationPrincipal Jwt jwt,@Valid @RequestBody Create input){var e=service.create(jwt,input);return ResponseEntity.created(URI.create("/api/v1/owner/cash-entries/"+e.id())).cacheControl(CacheControl.noStore()).body(e);}
     @GetMapping public ResponseEntity<PageResponse<Entry>> list(@AuthenticationPrincipal Jwt jwt,@RequestParam(required=false) Long propertyId,@RequestParam String month,@RequestParam(required=false) Direction direction,@RequestParam(required=false) Status status,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size){return privateResponse(service.list(jwt,propertyId,month,direction,status,page,size));}
     @GetMapping("/summary") public ResponseEntity<Summary> summary(@AuthenticationPrincipal Jwt jwt,@RequestParam(required=false) Long propertyId,@RequestParam String month,@RequestParam(required=false) Direction direction){return privateResponse(service.summary(jwt,propertyId,month,direction));}

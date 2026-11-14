@@ -1,10 +1,10 @@
 import { apiFetch, readApiError } from '@/services/http/client';
 import type { AuthSession, AuthUser } from '@/types/auth';
 export interface VneidConfig { enabled: boolean; issuer: string; clientId: string; audience: string; connection: string }
-export interface VerifiedCitizen { documentNumber: string; legalName: string; dateOfBirth: string; gender: string; address: string }
+export interface VerifiedCitizen { documentNumber: string; legalName: string; dateOfBirth: string; gender: string; address: string; documentIssueDate?: string | null; documentIssuePlace?: string | null; permanentAddress?: string | null }
 export interface AccountVerification {
   emailVerified: boolean;
-  vneid: { status: 'VERIFIED' | 'UNVERIFIED'; verifiedAt: string | null; identity: VerifiedCitizen | null };
+  vneid: { status: 'VERIFIED' | 'UNVERIFIED'; verifiedAt: string | null; identity: VerifiedCitizen | null; source?: string | null };
 }
 export async function getAccountVerification(signal?: AbortSignal): Promise<AccountVerification> {
   const response = await apiFetch('/api/v1/me/verifications', { cache: 'no-store', signal });
@@ -27,21 +27,28 @@ export async function vneidLogin(token: string): Promise<AuthSession> {
   if (!response.ok) throw await readApiError(response);
   return response.json();
 }
-export async function verifyVneid(token: string): Promise<AuthUser> {
+export interface VneidNameConfirmation {
+  status: 'CONFIRMATION_REQUIRED'; confirmationId: string; displayName: string; legalName: string; expiresAt: string;
+}
+export async function verifyVneid(token: string): Promise<AuthUser | VneidNameConfirmation> {
   const headers = await csrfHeaders(); headers.set('Content-Type', 'application/json');
   const response = await apiFetch('/api/v1/me/verifications/vneid', { method: 'POST', headers, body: JSON.stringify({ auth0AccessToken: token }) });
   if (!response.ok) throw await readApiError(response);
   return response.json();
 }
-export interface OwnerUpgradeContext { role: 'CUSTOMER' | 'OWNER' | 'ADMIN'; identityVerified: boolean; assetServiceAvailable: boolean; version: number }
-export async function getOwnerUpgradeContext(signal?: AbortSignal): Promise<OwnerUpgradeContext> {
-  const response = await apiFetch('/api/v1/me/owner-upgrade', { signal, cache: 'no-store' });
-  if (!response.ok) throw await readApiError(response);
+
+export async function confirmVneid(confirmationId: string): Promise<AuthUser> {
+  const response = await linkDecision('confirm', confirmationId);
   return response.json();
 }
-export async function upgradeOwner(version: number): Promise<AuthUser> {
-  const headers = await csrfHeaders();headers.set('Content-Type', 'application/json');
-  const response = await apiFetch('/api/v1/me/owner-upgrade', { method: 'POST', headers, body: JSON.stringify({ consent: true, version }) });
+export async function cancelVneid(confirmationId: string): Promise<void> {
+  await linkDecision('cancel', confirmationId);
+}
+async function linkDecision(action: 'confirm' | 'cancel', confirmationId: string) {
+  const headers = await csrfHeaders(); headers.set('Content-Type', 'application/json');
+  const response = await apiFetch(`/api/v1/me/verifications/vneid/${action}`, {
+    method: 'POST', headers, body: JSON.stringify({ confirmationId }),
+  });
   if (!response.ok) throw await readApiError(response);
-  return response.json();
+  return response;
 }

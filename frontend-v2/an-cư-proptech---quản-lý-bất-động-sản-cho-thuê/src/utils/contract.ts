@@ -5,6 +5,7 @@ export function validateContractTerms(t: ContractTerms): string {
     if (!/^\d{1,13}(\.\d{1,2})?$/.test(value) || (positive && Number(value) <= 0)) return 'Nhập đầy đủ số tiền hợp lệ, tối đa 2 chữ số thập phân.';
   }
   if(!Number.isInteger(t.occupantCount??1)||(t.occupantCount??1)<1||(t.occupantCount??1)>100)return 'Số người phải từ 1 đến 100.';
+  if (![1,3,6,12].includes(t.rentCycleMonths??1)) return 'Chu kỳ tiền thuê phải là 1, 3, 6 hoặc 12 tháng.';
   if (!Number.isInteger(t.paymentDay) || t.paymentDay < 1 || t.paymentDay > 28) return 'Ngày thanh toán phải từ 1 đến 28.';
   if (!t.paymentMethod.trim() || !t.usagePurpose.trim()) return 'Nhập phương thức thanh toán và mục đích thuê.';
   if (t.clauses.length < 1 || t.clauses.length > 30 || t.clauses.some(c => !c.title.trim() || !c.body.trim())) return 'Mỗi điều khoản cần tiêu đề và nội dung; hợp đồng cần từ 1 đến 30 điều khoản.';

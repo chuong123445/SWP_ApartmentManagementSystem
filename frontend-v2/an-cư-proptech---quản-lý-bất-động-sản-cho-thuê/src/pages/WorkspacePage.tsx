@@ -5,14 +5,16 @@ import { hasManagementRole } from '@/utils/auth';
 import { ManagementLayout } from '@/layouts/ManagementLayout';
 import { WorkspaceRoutes } from '@/routes/WorkspaceRoutes';
 import { WorkspaceModals } from '@/components/workspace/WorkspaceModals';
+import { Link, Navigate, useSearchParams } from 'react-router';
 import { useEffect } from 'react';
 
 // Owner navigation retains shared workspace data while switching management tabs.
 export function WorkspacePage() {
   const { user, logout, isLoggingOut, error } = useAuth();
+  const [params] = useSearchParams();
   const canManage = hasManagementRole(user!);
   const navigation = useWorkspaceNavigation(canManage);
-  const workspace = useRentalWorkspace(canManage, navigation.selectedBuildingId);
+  const workspace = useRentalWorkspace(canManage, navigation.selectedBuildingId, navigation.activeTab === 'invoices', navigation.activeTab === 'finance', navigation.activeTab === 'dashboard' || navigation.activeTab === 'reports');
   const reloadInventory = workspace.reloadInventory;
   useEffect(() => {
     if (canManage && (navigation.activeTab === 'tenants' || navigation.activeTab === 'invoices' || navigation.isCreateInvoiceOpen))
@@ -33,19 +35,19 @@ export function WorkspacePage() {
     navigation.setIsAddRoomOpen(false);navigation.setIsCreateInvoiceOpen(false);
   }, [propertyId]);
   useEffect(() => {
-    if (!workspace.inventoryLoading && !workspace.inventoryError && propertyId !== 'all' && !workspace.buildings.some(p => p.id === propertyId))
+    if (!workspace.inventoryLoading && !workspace.inventoryError && propertyId !== 'all' && !workspace.buildings.some(p => p.id === propertyId && p.legalStatus==='APPROVED'))
       navigation.setSelectedBuildingId('all');
   }, [workspace.inventoryLoading, workspace.inventoryError, workspace.buildings, propertyId]);
+  if (params.get('tab') === 'home') return <Navigate to="/" replace />;
   return (
     <ManagementLayout
       account={user!}
       canManage={canManage}
-      properties={workspace.buildings}
+      properties={workspace.buildings.filter(p=>p.legalStatus==='APPROVED')}
       propertiesLoading={workspace.inventoryLoading}
       propertiesError={!!workspace.inventoryError}
       navigation={navigation}
-      counters={{ unpaidCount: scoped.invoices.filter(i => i.apiInvoice?.status === 'SENT').length,
-        maintenanceCount: workspace.maintenanceCount, expiringCount: scoped.contracts.filter(c => c.status === 'expiring').length }}
+      counters={{ ...workspace.ownerCounters, maintenanceCount: workspace.maintenanceCount }}
       onLogout={logout}
       isLoggingOut={isLoggingOut}
       authError={error}
@@ -54,11 +56,11 @@ export function WorkspacePage() {
       {workspace.inventoryLoading && <p role="status" className="p-3 text-sm text-slate-500">Đang tải căn hộ...</p>}
       {workspace.inventoryError && <div role="alert" className="p-3 mb-4 bg-rose-50 text-rose-700 rounded-lg">{workspace.inventoryError}
         <button onClick={workspace.reloadInventory} className="ml-3 underline">Thử lại</button></div>}
-      {empty && navigation.activeTab !== 'home' ? <section className="bg-white border rounded-2xl p-6 md:p-10 space-y-4">
-        <h1 className="text-2xl font-bold">Thêm tài sản cho thuê</h1>
+      {empty && navigation.activeTab !== 'home' ? <section className="app-panel p-6 md:p-10 space-y-4">
+        <h1 className="app-page-title">Thêm tài sản cho thuê</h1>
         <p className="text-slate-600">Bạn chưa có tài sản. Bắt đầu với một căn/nhà cho thuê nguyên căn hoặc tài sản gồm nhiều căn/phòng.</p>
         <p className="text-sm text-slate-500">Tài sản mới được lưu nháp và cần kiểm duyệt trước khi công khai.</p>
-        <button onClick={() => navigation.setIsAddPropertyOpen(true)} className="bg-emerald-600 text-white px-4 py-3 rounded-lg font-semibold">Thêm tài sản cho thuê</button>
+        <Link to="/account/properties" className="inline-block bg-brand-600 text-white px-4 py-3 rounded-lg font-semibold">Mở quản lý tài sản</Link>
       </section> : <>
         {navigation.activeTab !== 'home' && propertyId !== 'all' && <p className="mb-4 text-sm text-slate-600">Tài sản đang chọn: <strong>{workspace.buildings.find(p => p.id === propertyId)?.name}</strong></p>}
         <WorkspaceRoutes workspace={scoped} navigation={navigation} />

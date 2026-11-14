@@ -50,7 +50,7 @@ public class AuthService {
             throw new AuthException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Mật khẩu tối đa 72 byte.");
         }
         AuthAccount account = accounts.findByEmail(email.trim().toLowerCase(Locale.ROOT)).orElse(null);
-        boolean hasPassword = account != null && account.getPasswordHash() != null;
+        boolean hasPassword = account != null && account.getPasswordHash() != null && account.isLocalPasswordEnabled();
         boolean matches = passwordEncoder.matches(password, hasPassword ? account.getPasswordHash() : dummyHash);
         if (!hasPassword || !matches) {
             throw new AuthException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Email hoặc mật khẩu không đúng.");
@@ -115,7 +115,7 @@ public class AuthService {
 
     public AuthUserResponse user(AuthAccount account) {
         return new AuthUserResponse(account.getId(), account.getEmail(), account.getFullName(),
-                List.of(account.getRole().name()), account.getStatus().name(),
+                account.roleNames(), account.getStatus().name(),
                 verification.isVerified(account) ? "VERIFIED" : "UNVERIFIED", account.getVersion());
     }
 
@@ -132,7 +132,7 @@ public class AuthService {
         if (expires.isAfter(session.getExpiresAt())) expires = session.getExpiresAt();
         JwtClaimsSet claims = JwtClaimsSet.builder().issuer(ISSUER).audience(List.of(AUDIENCE))
                 .subject(session.getAccount().getId().toString()).issuedAt(now).expiresAt(expires)
-                .id(java.util.UUID.randomUUID().toString()).claim("sid", session.getId().toString()).build();
+                .id(java.util.UUID.randomUUID().toString()).claim("sid", session.getId().toString()).claim("roles",session.getAccount().roleNames()).build();
         String jwt = jwtEncoder.encode(JwtEncoderParameters.from(
                 JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
         long cookieAge = Math.max(0, session.getExpiresAt().getEpochSecond() - now.getEpochSecond());
@@ -151,7 +151,7 @@ public class AuthService {
     }
 
     private void requireUsableAccount(AuthAccount account) {
-        if (account.getStatus() == AuthAccount.Status.LOCKED || account.getStatus() == AuthAccount.Status.INACTIVE) {
+        if (account.getDeletedAt() != null || account.getStatus() == AuthAccount.Status.LOCKED || account.getStatus() == AuthAccount.Status.INACTIVE) {
             throw new AuthException(HttpStatus.FORBIDDEN, "ACCOUNT_UNAVAILABLE", "Tài khoản đã bị khóa hoặc ngừng hoạt động.");
         }
     }

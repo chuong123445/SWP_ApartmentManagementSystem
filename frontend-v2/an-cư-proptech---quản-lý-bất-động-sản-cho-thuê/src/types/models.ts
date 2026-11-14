@@ -42,9 +42,16 @@ export interface Room {
   depositEscrowLocked?: boolean;
 }
 
-export type NewRoom = Omit<Room, 'id' | 'electricityIndex' | 'waterIndex'> & { electricityIndex: number | null; waterIndex: number | null };
+export type NewRoom = { imageIds?:string[] } & Omit<Room, 'id' | 'electricityIndex' | 'waterIndex'> & { electricityIndex: number | null; waterIndex: number | null };
 
 export interface Tenant {
+  contractId?: string;
+  contractDeposit?: string | null;
+  emailVerified?: boolean;
+  identityStatus?: import('@/types/billing').Tenancy['customerIdentityStatus'];
+  identitySource?: string | null;
+  inAppSigningStatus?: import('@/types/billing').Tenancy['inAppSigningStatus'];
+  localFixture?: boolean;
   id: string;
   name: string;
   phone: string;
@@ -53,7 +60,7 @@ export interface Tenant {
   roomNumber: string;
   buildingName: string;
   startDate: string;
-  deposit: number;
+  deposit: number | null;
   hometown: string;
   status: 'active' | 'departed';
   vehiclePlate?: string;
@@ -76,7 +83,7 @@ export interface Contract {
   monthlyRent: number;
   deposit: number;
   paymentCycle: number; // months
-  status: 'draft' | 'active' | 'expiring' | 'terminated';
+  status: 'draft' | 'active' | 'expiring' | 'terminated' | 'cancelled';
   note?: string;
   signingMethod?: 'VNPT SmartCA' | 'Ký OTP SMS' | 'Chữ ký số Viettel-CA';
   signedDate?: string;

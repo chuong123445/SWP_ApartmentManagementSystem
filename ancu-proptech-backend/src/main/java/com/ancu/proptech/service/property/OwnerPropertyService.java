@@ -17,11 +17,14 @@ import org.springframework.http.HttpStatus;
 @Service @RequiredArgsConstructor
 public class OwnerPropertyService {
     private final PropertyRepository properties;
+    private final AssetManagementAccess assetAccess;
     private final AccountAccessService access;
     private final OwnerApartmentService apartments;
     private final com.ancu.proptech.repository.property.PropertyExternalImportRepository imports;
     private final PropertyApplicantAccess applicantAccess;
     private final PropertyImageService images;
+    @Transactional(readOnly=true) public List<OwnerPropertyResponse> selfList(Jwt jwt){return properties.findByOwnerIdOrderByNameAscIdAsc(assetAccess.read(jwt).getId()).stream().map(this::response).toList();}
+    @Transactional public OwnerPropertyCreated createSource(Jwt jwt,OwnerPropertyCreate input){return createInternal(jwt,input,com.ancu.proptech.model.property.PropertyDossier.RightType.OWNERSHIP);}
     @Transactional public OwnerPropertyCreated createApplication(Jwt jwt,PropertyApplicationCreate input){
         if(input.getRightType()==com.ancu.proptech.model.property.PropertyDossier.RightType.OWNERSHIP)
             throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_RIGHT_TYPE","Hồ sơ nâng cấp thủ công dùng quyền ủy quyền hoặc cho thuê lại.");
@@ -58,6 +61,19 @@ public class OwnerPropertyService {
         property.setOnboardingApplication(applicationRight!=null);property.setRightType(applicationRight);
         properties.saveAndFlush(property);
         images.bind(property,input.getImageIds());
+        return createUnits(jwt,property,input,applicationRight);
+    }
+    @Transactional public OwnerPropertyCreated completeListing(Jwt jwt,Property property,OwnerPropertyCreate input){
+        if(input.getRentalMode()==Property.RentalMode.SINGLE_UNIT && input.getApartments().size()!=1)
+            throw new ApiException(HttpStatus.BAD_REQUEST,"SINGLE_UNIT_REQUIRED","Cho thuê nguyên căn chỉ có một căn.");
+        var numbers=new HashSet<String>();
+        for(var unit:input.getApartments())if(!numbers.add(unit.getRoomNumber().strip().toLowerCase(java.util.Locale.ROOT)))
+            throw new ApiException(HttpStatus.BAD_REQUEST,"APARTMENT_NUMBER_EXISTS","Mã căn/phòng bị trùng.");
+        property.setName(input.getName().strip());property.setAddress(input.getAddress().strip());property.setCity(input.getCity().strip());property.setDistrict(input.getDistrict().strip());property.setWard(input.getWard());property.setRentalMode(input.getRentalMode());
+        images.bind(property,input.getImageIds());properties.flush();
+        return createUnits(jwt,property,input,property.getRightType());
+    }
+    private OwnerPropertyCreated createUnits(Jwt jwt,Property property,OwnerPropertyCreate input,com.ancu.proptech.model.property.PropertyDossier.RightType applicationRight){
         var created = input.getApartments().stream().map(unit -> {
             var apartment = new OwnerApartmentCreate();
             apartment.setPropertyId(property.getId()); apartment.setRoomNumber(unit.getRoomNumber()); apartment.setTitle(unit.getTitle());
@@ -67,7 +83,8 @@ public class OwnerPropertyService {
             apartment.setElectricityIndex(unit.getElectricityIndex()); apartment.setWaterIndex(unit.getWaterIndex());
             apartment.setElectricityUnitPrice(unit.getElectricityUnitPrice());apartment.setWaterUnitPrice(unit.getWaterUnitPrice());
             apartment.setAmenities(unit.getAmenities()); apartment.setPublicationStatus(Apartment.PublicationStatus.DRAFT);
-            return applicationRight==null?apartments.create(jwt, apartment):apartments.createApplication(jwt,apartment);
+            var result=applicationRight==null?apartments.create(jwt, apartment):apartments.createApplication(jwt,apartment);
+            images.bindUnit(property,result.id(),unit.getImageIds());return result;
         }).toList();
         return new OwnerPropertyCreated(response(property), created);
     }

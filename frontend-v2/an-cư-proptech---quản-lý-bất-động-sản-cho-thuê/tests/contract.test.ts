@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { saveContract, signContract, getContractPdf } from '../src/services/contract/contractService.ts';
+import { saveContract, signContract, getContractPdf, requestRenewal, decideRenewalRequest, cancelAcceptedRenewalRequest } from '../src/services/contract/contractService.ts';
 import { validateContractTerms } from '../src/utils/contract.ts';
 import { tenancyViews } from '../src/services/billing/billingService.ts';
 import { setAccessToken } from '../src/services/http/client.ts';
@@ -25,10 +25,10 @@ test('Signature command binds to the saved version and hash without allowing a c
   globalThis.fetch = async (url, init) => {
     assert.equal(url, '/api/v1/contracts/42/signatures');assert.equal(init?.method, 'POST');
     assert.equal(new Headers(init?.headers).get('Authorization'), 'Bearer signer-token');
-    assert.deepEqual(JSON.parse(init!.body as string), { version: 3, contentHash: 'a'.repeat(64), signature: 'data:image/png;base64,sample', consent: true });
+    assert.deepEqual(JSON.parse(init!.body as string), { version: 3, contentHash: 'a'.repeat(64), signature: 'data:image/png;base64,sample', consent: true, challengeId: 'challenge', code: '123456' });
     return Response.json({ id: '42' });
   };
-  await signContract({ id: '42', version: 3, signing: { contentHash: 'a'.repeat(64) } } as ContractDraft, 'data:image/png;base64,sample');
+  await signContract({ id: '42', version: 3, signing: { contentHash: 'a'.repeat(64) } } as ContractDraft, 'data:image/png;base64,sample', {challengeId: 'challenge', code: '123456'});
 });
 
 test('PDF is fetched privately as a real PDF blob and server errors are not rendered as documents', async () => {
@@ -49,4 +49,16 @@ test('Contract validation prevents incomplete/decreasing dates and implicit zero
 });
 test('DRAFT cannot be mapped as ended or create an active Tenant relationship', () => {
   const result = tenancyViews([{ id: 'draft', status: 'DRAFT' } as never]);assert.equal(result.contracts[0].status, 'draft');assert.equal(result.tenants.length, 0);
+});
+test('Renewal request and decision bind versions without client-selected parties or status', async () => {
+  const calls: { url: string; body: unknown }[] = [];
+  globalThis.fetch = async (url, init) => { calls.push({ url: String(url), body: JSON.parse(init!.body as string) });return Response.json({ id: '42' }); };
+  await requestRenewal('42', 3, 'Muốn thuê tiếp');
+  await decideRenewalRequest('42', 1, 'REJECT', 'Không tiếp tục cho thuê');
+  await cancelAcceptedRenewalRequest('42', 2);
+  assert.deepEqual(calls, [
+    { url: '/api/v1/contracts/42/renewal-request', body: { version: 3, consent: true, message: 'Muốn thuê tiếp' } },
+    { url: '/api/v1/owner/contracts/42/renewal-request/decision', body: { version: 1, decision: 'REJECT', reason: 'Không tiếp tục cho thuê' } },
+    { url: '/api/v1/owner/contracts/42/renewal-request/cancel', body: { version: 2, consent: true } },
+  ]);
 });

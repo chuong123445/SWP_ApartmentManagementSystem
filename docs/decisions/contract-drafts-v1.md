@@ -1,5 +1,13 @@
 # Contract drafts v1 — 14 October 2026
 
+## Override 3 November 2026 — direct PDF completion
+
+The final wizard step is now **Bản PDF**. **Tạo và xem PDF** on the clause step saves the draft (or its pending edits), then immediately loads the existing private server PDF endpoint. It does not repeat the HTML party/asset/terms table. Save failures permit an explicit retry; conflicts require reloading current context, and PDF-only failures retry the read without creating another contract. Signing remains a separate explicit action; ordinary and renewal authoring share this behavior.
+
+User's subsequent correction requires the paper form's structure and typography: serif national heading and title; **Hôm nay, ngày … tháng … năm …**, address, **Chúng tôi gồm**; numbered **1. BÊN CHO THUÊ … (Bên A)** / **2. BÊN THUÊ … (Bên B)**; name/birth and CCCD/issue-date paired rows, permanent address, issuer labelled **Tại**, account phone. Missing permanent address stays a dotted blank and is never replaced with a contact address. Latest explicit override: print only one Bên B, the exact contract customer/invoice recipient. Omit the photo's extra blank occupant block. The single employment line remains blank; no employment value, additional party or signing authority is invented.
+
+Then print **Sau khi bàn bạc…**, the room/unit and full address sentence, **Giá thuê là** with stored rent in digits and Vietnamese words, monthly payment day and separate **Tiền điện / Tiền nước** lines. Preserve actual metered/per-person mode and nonzero Internet/waste fees; never copy photo amounts, invent a payment interval/end-of-month deadline or hardcode a CCCD issuer. **ĐIỀU KHOẢN HỢP ĐỒNG** follows these opening sections and contains term, deposit, payment method, purpose, relevant occupant count, all saved clauses and signatures. All bank name/holder/account-number fields are excluded even when present in the snapshot. Catalog bedroom/bathroom/floor/area/amenities/certificate/right/email fields stay excluded. Noto Serif static fonts are bundled under SIL OFL; footer retains number/signing state/hash without adding those blocks above the form. Stored snapshots and signature/content-hash rules are unchanged; regenerated PDFs use this presentation.
+
 User authorization: Owner chooses **Tạo hợp đồng** after an ACCEPTED rental request; follow the nine images in `Sample_Contract_progress/SWTi_AHC [14-10-2026 09_33]`. Six steps: apartment template, Owner review, Customer review, asset review/commercial conditions, editable clauses, complete preview. User corrected “5 pages” to **at least five clauses**. User subsequently confirmed “Hoàn thiện tạo và rà soát bản nháp trước” in the async question. No new account roles, signing provider, payment integration or release rules were authorized.
 
 ## Stored data and privacy
@@ -33,3 +41,9 @@ Original short suggestions: (1) delivery/use, (2) purpose/building rules, (3) re
 ## Contracts and checks
 
 Exact implemented routes/schema: `docs/api/contract-drafts.openapi.json`. T15/T25 authoring slice only. Appropriate checks and commits recorded in root WORK_PROGRESS and the validation report; do not mark full signing lifecycle DONE. RDS/diagrams remain reference artifacts; legacy contract/provider and identity sections need a separately authorized update.
+
+## F07 correction — 28 October 2026
+
+New contexts/drafts now use ContractPropertyEvidenceResolver: source-imported properties use immutable PropertyExternalImport source data; manual properties use their approved dossier (exact approvedRightsDossierId when present). Both return the same ContractSnapshot asset/receiving-account structure plus nullable provenance source/reference/hash/time. Auth0 imports retain rightDescription from new source reads; old snapshots without it remain missing/readable. No fake Admin review, external request on contract creation, legal claim or modification of existing saved contract snapshots.
+
+Source receiving-account fields are private owner declarations, name-matched against the exact linked verified citizen; not bank verification. New wizard step4 can save bank/account/holder with source row version, reload context/sourceVersion without clearing terms, and then snapshot it in a new draft. Source changes after context require re-review; bank changes after saved draft do not rewrite it. Missing data stays explicit, not hardcoded. See f07-f08-f09-fixes-2026-10-28 report and updated OpenAPI.

@@ -1,3 +1,4 @@
+import { dossierFieldDisplay } from '@/utils/dossierDates';
 import {useEffect,useState} from 'react';
 import {Sparkles,RefreshCw,FileSearch,Info} from 'lucide-react';
 import {adminAiReview,retryAiReview} from '@/services/property/dossierAiService';
@@ -13,8 +14,8 @@ function Finding({item}:{item:AiFinding}){
   return <li className="border border-amber-100 bg-amber-50/70 rounded-lg p-3 text-xs space-y-2">
     <p className="font-semibold text-amber-900">{findingLabels[item.type]??item.type} · {fields[item.field]??item.field}</p>
     <p className="text-slate-700 whitespace-pre-wrap break-words">{item.message}</p>
-    {item.declaredValue&&<p className="break-words"><span className="text-slate-500">Đã khai: </span>{item.declaredValue}</p>}
-    {item.observedValue&&<p className="break-words"><span className="text-slate-500">Đọc từ tệp: </span>{item.observedValue}</p>}
+    {item.declaredValue&&<p className="break-words"><span className="text-slate-500">Đã khai: </span>{dossierFieldDisplay(item.field,item.declaredValue)}</p>}
+    {item.observedValue&&<p className="break-words"><span className="text-slate-500">Đọc từ tệp: </span>{dossierFieldDisplay(item.field,item.observedValue)}</p>}
   </li>;
 }
 export function DossierAiReviewPanel({dossierId,files}:{dossierId:string;files:EvidenceFile[]}){

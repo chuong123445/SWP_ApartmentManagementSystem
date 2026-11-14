@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "An Cu Private Property Dossiers and Admin Review",
-    "version": "1.1.0",
-    "description": "Implemented private PDF/JPEG/PNG up to10MB, VNeID-verified submissions, AUTHORIZATION/SUBLEASE typed papers and validity, Admin confirmation/promotion, append-only renewal. SQL binary private storage, no malware-scan/OCR claim. Self application/expiry endpoints are described in property-rights.openapi.json."
+    "version": "1.2.0",
+    "description": "Implemented private PDF/JPEG/PNG up to10MB, VNeID-verified submissions, AUTHORIZATION/SUBLEASE typed papers and validity, Admin confirmation/promotion, append-only renewal. SQL binary private storage, no malware-scan/OCR claim. Self application/expiry endpoints are described in property-rights.openapi.json. Submission and approval reject certificates or exact canonical ownership evidence already attached to another approved property (CERTIFICATE_ALREADY_APPROVED/EVIDENCE_ALREADY_APPROVED, HTTP409). Same-property renewal is excluded. Admin approvals and source imports serialize duplicate checks in a SQL Server transaction-owned application lock. Rejection reasons and reviewedAt are returned by the existing private dossier history."
   },
   "servers": [
     {
@@ -787,7 +787,9 @@
             ]
           },
           "receivingAccount": {
-            "$ref": "#/components/schemas/ReceivingAccount"
+            "$ref": "#/components/schemas/ReceivingAccount",
+            "deprecated": true,
+            "description": "Legacy client compatibility only. Ignored on new property dossier submissions. Configure payments separately."
           },
           "documentFileIds": {
             "type": "array",
@@ -906,7 +908,6 @@
         "required": [
           "propertyVersion",
           "rightType",
-          "receivingAccount",
           "documentFileIds"
         ],
         "description": "AUTHORIZATION requires rightsValidFrom/Until, principalName/CCCD, original ownership documentFileIds and authorizationFileIds. SUBLEASE additionally requires originalLeaseFrom/Until, originalLeaseFileIds and separate subleaseConsentFileIds. Rights range must be inside original lease, not expired; no automatic one-year inference. All papers must belong to exact property with exact purpose; max20 total. VERIFIED Auth0 required."
@@ -976,13 +977,25 @@
             ]
           },
           "bank": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Historical receiving account, nullable for new rights-only dossiers."
           },
           "accountNumber": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Historical receiving account, nullable for new rights-only dossiers."
           },
           "accountHolderName": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Historical receiving account, nullable for new rights-only dossiers."
           },
           "status": {
             "type": "string",

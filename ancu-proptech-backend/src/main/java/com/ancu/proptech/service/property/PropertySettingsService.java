@@ -30,16 +30,21 @@ public class PropertySettingsService {
   // Version 0 denotes an unconfigured property; existing versions are exposed as JPA version + 1.
   if(input.version()!=(s==null?0:s.getVersion()+1))throw new ApiException(HttpStatus.CONFLICT,"SETTINGS_VERSION_CONFLICT","Cài đặt đã thay đổi. Hãy tải lại trước khi lưu.");
   if(s==null){s=new PropertySettings();s.setProperty(p);}
+  if(input.rentInvoiceMode()!=null)s.setRentInvoiceMode(input.rentInvoiceMode());
   s.setElectricityUnitPrice(input.electricityUnitPrice());s.setWaterUnitPrice(input.waterUnitPrice());
   s.setWaterBillingMode(input.waterBillingMode());s.setInternetFee(input.internetFee());s.setGarbageFee(input.garbageFee());s.setUpdatedAt(Instant.now());s.setUpdatedBy(owner.getId());
   return view(p,settings.saveAndFlush(s));
  }
  private View view(Property p,PropertySettings s) {
   var d=dossiers.findByPropertyIdOrderBySubmittedAtDescIdDesc(p.getId()).stream().filter(x->x.getStatus()==PropertyDossier.Status.APPROVED).findFirst().orElse(null);
+  ContractSnapshot.ReceivingAccount receivingAccount = null;
+  if (d != null && d.getBank() != null && d.getAccountNumber() != null && d.getAccountHolderName() != null) {
+   receivingAccount = new ContractSnapshot.ReceivingAccount(d.getBank(), d.getAccountNumber(), d.getAccountHolderName());
+  }
   return new View(p.getId().toString(),p.getName(),s!=null,s==null?0:s.getVersion()+1,
    s==null?null:s.getElectricityUnitPrice().toPlainString(),s==null?null:s.getWaterUnitPrice().toPlainString(),
    s==null?null:s.getInternetFee().toPlainString(),s==null?null:s.getGarbageFee().toPlainString(),s==null?null:s.getUpdatedAt(),
-   d==null?null:new ContractSnapshot.ReceivingAccount(d.getBank(),d.getAccountNumber(),d.getAccountHolderName()),s==null?PropertySettings.WaterBillingMode.METERED:s.getWaterBillingMode());
+   receivingAccount,s==null?PropertySettings.WaterBillingMode.METERED:s.getWaterBillingMode(),s==null?PropertySettings.RentInvoiceMode.DRAFT:s.getRentInvoiceMode());
  }
  private static ApiException missing(){return new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy tài sản thuộc tài khoản của bạn.");}
 }

@@ -3,6 +3,9 @@ import com.ancu.proptech.model.property.Property;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.*;
 public interface PropertyRepository extends JpaRepository<Property, Long> {
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("update Property p set p.version=p.version+1 where p.id=:id")
+    int bumpVersion(@org.springframework.data.repository.query.Param("id") Long id);
     @org.springframework.data.jpa.repository.Query("select p.id from Property p where p.approvalStatus=com.ancu.proptech.model.property.Property.ApprovalStatus.APPROVED and p.approvedRightsDossierId is not null and p.rightsValidUntil<=:through")
     List<Long> rightsDue(@org.springframework.data.repository.query.Param("through") java.time.LocalDate through);
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)

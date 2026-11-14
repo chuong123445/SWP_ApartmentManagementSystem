@@ -1,0 +1,598 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "An Cu — self asset management and asset-bound lessor activation",
+    "version": "2.0.0",
+    "description": "Implemented28October2026. Shared Customer layout and detail, private own draft access, strict owner edit/gallery/price commands. OWNER only after successful source property creation or manual property Admin approval; consent alone never promotes. No data reset or demotion of existing Owners."
+  },
+  "security": [
+    {
+      "internalBearer": []
+    }
+  ],
+  "paths": {
+    "/api/v1/me/properties": {
+      "get": {
+        "summary": "Own Property→Apartment groups, including own drafts; no operational role granted",
+        "responses": {
+          "200": {
+            "description": "Private no-store result.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Groups"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid/unknown fields, invalid image list"
+          },
+          "401": {
+            "description": "Missing/revoked session"
+          },
+          "403": {
+            "description": "Ineligible account, missing VERIFIED evidence or CSRF"
+          },
+          "404": {
+            "description": "Resource is not owned by current account"
+          },
+          "409": {
+            "description": "Stale version, apartment not VACANT, PENDING_REQUESTS_EXIST"
+          }
+        }
+      }
+    },
+    "/api/v1/me/property-source-consent": {
+      "get": {
+        "summary": "Read linked-source consent state, no provider asset fetch",
+        "responses": {
+          "200": {
+            "description": "Private no-store result.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid/unknown fields, invalid image list"
+          },
+          "401": {
+            "description": "Missing/revoked session"
+          },
+          "403": {
+            "description": "Ineligible account, missing VERIFIED evidence or CSRF"
+          },
+          "404": {
+            "description": "Resource is not owned by current account"
+          },
+          "409": {
+            "description": "Stale version, apartment not VACANT, PENDING_REQUESTS_EXIST"
+          }
+        }
+      },
+      "post": {
+        "summary": "Explicitly consent after OWNERSHIP selection; exact account/binding/version, never role promotion",
+        "responses": {
+          "200": {
+            "description": "Private no-store result.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid/unknown fields, invalid image list"
+          },
+          "401": {
+            "description": "Missing/revoked session"
+          },
+          "403": {
+            "description": "Ineligible account, missing VERIFIED evidence or CSRF"
+          },
+          "404": {
+            "description": "Resource is not owned by current account"
+          },
+          "409": {
+            "description": "Stale version, apartment not VACANT, PENDING_REQUESTS_EXIST"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentInput"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "internalBearer": [],
+            "csrf": []
+          }
+        ]
+      }
+    },
+    "/api/v1/me/apartments/{id}": {
+      "patch": {
+        "summary": "Update marketing information only; exact owner/version; legal fields and prices excluded",
+        "responses": {
+          "204": {
+            "description": "Saved; no-store. Prices route returns existing OwnerApartmentResponse200."
+          },
+          "400": {
+            "description": "Invalid/unknown fields, invalid image list"
+          },
+          "401": {
+            "description": "Missing/revoked session"
+          },
+          "403": {
+            "description": "Ineligible account, missing VERIFIED evidence or CSRF"
+          },
+          "404": {
+            "description": "Resource is not owned by current account"
+          },
+          "409": {
+            "description": "Stale version, apartment not VACANT, PENDING_REQUESTS_EXIST"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Information"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/me/apartments/{id}/prices": {
+      "patch": {
+        "summary": "Only exact owned VACANT apartment with no PENDING requests; row lock and version; existing contracts unchanged",
+        "responses": {
+          "200": {
+            "description": "Saved; no-store. Prices route returns existing OwnerApartmentResponse200."
+          },
+          "400": {
+            "description": "Invalid/unknown fields, invalid image list"
+          },
+          "401": {
+            "description": "Missing/revoked session"
+          },
+          "403": {
+            "description": "Ineligible account, missing VERIFIED evidence or CSRF"
+          },
+          "404": {
+            "description": "Resource is not owned by current account"
+          },
+          "409": {
+            "description": "Stale version, apartment not VACANT, PENDING_REQUESTS_EXIST"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Prices"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/me/properties/{id}/images": {
+      "put": {
+        "summary": "Replace ordered Property gallery with1–4own retained/staged images; parent lock/version bump, no cross-asset images",
+        "responses": {
+          "204": {
+            "description": "Saved; no-store. Prices route returns existing OwnerApartmentResponse200."
+          },
+          "400": {
+            "description": "Invalid/unknown fields, invalid image list"
+          },
+          "401": {
+            "description": "Missing/revoked session"
+          },
+          "403": {
+            "description": "Ineligible account, missing VERIFIED evidence or CSRF"
+          },
+          "404": {
+            "description": "Resource is not owned by current account"
+          },
+          "409": {
+            "description": "Stale version, apartment not VACANT, PENDING_REQUESTS_EXIST"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Gallery"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "internalBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "csrf": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-XSRF-TOKEN"
+      }
+    },
+    "schemas": {
+      "Image": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url"
+        ]
+      },
+      "Information": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 3000
+          },
+          "maxOccupants": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "amenities": {
+            "type": "array",
+            "maxItems": 30,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        },
+        "required": [
+          "version",
+          "title",
+          "description",
+          "maxOccupants",
+          "amenities"
+        ]
+      },
+      "Gallery": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "imageIds": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        },
+        "required": [
+          "version",
+          "imageIds"
+        ]
+      },
+      "Prices": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "monthlyRent": {
+            "type": "string",
+            "description": "DECIMAL(15,2), monthlyRent>0; utility prices>=0"
+          },
+          "electricityUnitPrice": {
+            "type": "string",
+            "description": "DECIMAL(15,2), monthlyRent>0; utility prices>=0"
+          },
+          "waterUnitPrice": {
+            "type": "string",
+            "description": "DECIMAL(15,2), monthlyRent>0; utility prices>=0"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "monthlyRent"
+            ]
+          },
+          {
+            "required": [
+              "electricityUnitPrice"
+            ]
+          },
+          {
+            "required": [
+              "waterUnitPrice"
+            ]
+          }
+        ],
+        "description": "Partial PATCH: version and at least one price. Omitted prices remain unchanged, including null legacy utilities. Explicit null/empty prices rejected; zero utilities allowed. Owner, version, VACANT and no-PENDING checks unchanged."
+      },
+      "ConsentInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "consent": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "consent",
+          "version"
+        ]
+      },
+      "ConsentStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "consented": {
+            "type": "boolean"
+          },
+          "assetServiceAvailable": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "consented",
+          "assetServiceAvailable",
+          "version"
+        ]
+      },
+      "Management": {
+        "type": "object",
+        "nullable": true,
+        "description": "Only exact owner of Property receives this object; cannot be supplied by client. Read-only self draft does not imply operational OWNER authority.",
+        "properties": {
+          "propertyId": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "propertyVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "approvalStatus": {
+            "type": "string"
+          },
+          "verificationSource": {
+            "type": "string",
+            "nullable": true
+          },
+          "canEdit": {
+            "type": "boolean"
+          },
+          "pricesEditable": {
+            "type": "boolean"
+          },
+          "priceLockReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "gallery": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Image"
+            }
+          },
+          "roomNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "maxOccupants": {
+            "type": "integer",
+            "nullable": true
+          }
+        }
+      },
+      "Group": {
+        "type": "object",
+        "description": "Private Property with its exact owned apartments. Shape follows existing OwnerPropertyResponse/OwnerApartmentResponse, filtered by current account, not a caller actor ID.",
+        "properties": {
+          "property": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]*$"
+              },
+              "name": {
+                "type": "string"
+              },
+              "approvalStatus": {
+                "type": "string"
+              },
+              "rightType": {
+                "type": "string",
+                "nullable": true
+              },
+              "version": {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 0
+              }
+            }
+          },
+          "apartments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                },
+                "propertyId": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "advertisedMonthlyRent": {
+                  "type": "string"
+                },
+                "publicationStatus": {
+                  "type": "string"
+                },
+                "availability": {
+                  "type": "string"
+                },
+                "thumbnail": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
+      },
+      "Groups": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Group"
+        }
+      }
+    }
+  }
+}

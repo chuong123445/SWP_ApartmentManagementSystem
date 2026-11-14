@@ -1,42 +1,295 @@
 {
   "openapi": "3.0.3",
-  "info": { "title": "An Cu Auth0 VNeID", "version": "1.0.0", "description": "SWP VNeID simulation. Account verification VERIFIED; source AUTH0_VNEID_SIMULATION. Asset import is not implemented by these routes." },
-  "paths": {
-    "/api/v1/me/verifications": { "get": {
-      "summary": "Read own persisted verification methods and verified citizen details",
-      "description": "Self account derived only from internal JWT/session. Returns emailVerified and vneid {status, verifiedAt, identity}. identity is null when UNVERIFIED; VERIFIED identity contains documentNumber, legalName, dateOfBirth (ISO date), gender, address. No issuer/subject/tokens/images exposed. Reads existing evidence even when new Auth0 login is disabled; does not modify self-declared identity dossiers.",
-      "security": [{ "internalBearer": [] }],
-      "responses": { "200": { "description": "Per-method status and private read-only citizen; Cache-Control no-store" }, "401": { "description": "Missing/expired/revoked internal session" } }
-    } },
-    "/api/v1/auth/vneid-config": { "get": { "summary": "Public non-secret runtime configuration", "responses": { "200": { "description": "enabled, issuer, clientId, audience, connection; no-store" } } } },
-    "/api/v1/auth/vneid-login": { "post": {
-      "summary": "Register CUSTOMER or sign in an already linked external identity",
-      "description": "Requires Auth0 RS256 access token for configured audience/client/source/connection and CSRF cookie/header. Does not auto-link matching email/CCCD. Returns existing TokenResponse shape and rotates internal refresh credential. Creates no password and does not set emailVerified. No citizen JSON accepted as proof.",
-      "security": [{ "auth0Bearer": [], "csrfHeader": [] }],
-      "responses": {
-        "200": { "description": "accessToken, tokenType, expiresIn, user; opaque HttpOnly SameSite refresh cookie; no-store" },
-        "400": { "description": "VNEID_CLAIMS_INVALID" }, "401": { "description": "VNEID_TOKEN_INVALID" },
-        "403": { "description": "Missing CSRF or ACCOUNT_UNAVAILABLE" },
-        "409": { "description": "VNEID_ACCOUNT_LINK_REQUIRED, VNEID_IDENTITY_IN_USE or uniqueness conflict" },
-        "429": { "description": "RATE_LIMITED; retry in one minute" }
-      }
-    } },
-    "/api/v1/me/verifications/vneid": { "post": {
-      "summary": "Link and verify only the currently signed-in account",
-      "description": "Internal session JWT in Authorization; separate Auth0 access token in JSON, excluded from logging. Requires CSRF. Same link retry is idempotent; existing dossier/profile/contract snapshot not overwritten; no role or Property approval change.",
-      "security": [{ "internalBearer": [], "csrfHeader": [] }],
-      "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "additionalProperties": false, "required": ["auth0AccessToken"], "properties": { "auth0AccessToken": { "type": "string", "minLength": 1, "maxLength": 16384, "writeOnly": true } } } } } },
-      "responses": {
-        "200": { "description": "AuthUserResponse with current role/accountStatus/contactVerificationStatus/version" },
-        "400": { "description": "Unknown JSON fields or invalid/missing citizen claims" }, "401": { "description": "Invalid internal session or external token" },
-        "403": { "description": "Missing CSRF or unavailable account" }, "409": { "description": "Identity belongs to another account or different identity already linked" },
-        "429": { "description": "RATE_LIMITED" }, "503": { "description": "VNEID_UNAVAILABLE when disabled" }
-      }
-    } }
+  "info": {
+    "title": "An Cu Auth0 VNeID",
+    "version": "1.0.0",
+    "description": "SWP VNeID simulation. Account verification VERIFIED; source AUTH0_VNEID_SIMULATION. Asset import is not implemented by these routes."
   },
-  "components": { "securitySchemes": {
-    "auth0Bearer": { "type": "http", "scheme": "bearer", "bearerFormat": "Auth0 RS256 access JWT" },
-    "internalBearer": { "type": "http", "scheme": "bearer", "bearerFormat": "An Cu session JWT" },
-    "csrfHeader": { "type": "apiKey", "in": "header", "name": "X-XSRF-TOKEN", "description": "GET /api/v1/auth/csrf first; retain corresponding cookie" }
-  } }
+  "paths": {
+    "/api/v1/me/verifications": {
+      "get": {
+        "summary": "Read own persisted verification methods and verified citizen details",
+        "description": "Self account derived only from internal JWT/session. Returns emailVerified and vneid {status, verifiedAt, identity, source}. identity is null when UNVERIFIED; VERIFIED identity contains documentNumber, legalName, dateOfBirth (ISO date), gender, address. No issuer/subject/tokens/images exposed. Reads existing evidence even when new Auth0 login is disabled; does not modify self-declared identity dossiers. Optional citizen fields documentIssueDate (ISO date), documentIssuePlace and permanentAddress come from persisted accepted identity records and may be null for legacy evidence. Phone is read only from the ordinary account profile, never from citizen claims. source is AUTH0_VNEID_SIMULATION for provider evidence. Explicit LOCAL_DEMO records with issuer urn:ancu:local-demo and subject equal to account ID are accepted only when local is active and prod is inactive; other profiles ignore that source. No public command creates LOCAL_DEMO evidence, and it is never used to import Auth0 properties.",
+        "security": [
+          {
+            "internalBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Per-method status and private read-only citizen; Cache-Control no-store"
+          },
+          "401": {
+            "description": "Missing/expired/revoked internal session"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/vneid-config": {
+      "get": {
+        "summary": "Public non-secret runtime configuration",
+        "responses": {
+          "200": {
+            "description": "enabled, issuer, clientId, audience, connection; no-store"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/vneid-login": {
+      "post": {
+        "summary": "Register CUSTOMER or sign in an already linked external identity",
+        "description": "Requires Auth0 RS256 access token for configured audience/client/source/connection and CSRF cookie/header. Does not auto-link matching email/CCCD. Returns existing TokenResponse shape and rotates internal refresh credential. Creates no password and does not set emailVerified. No citizen JSON accepted as proof. A fresh validated token for an existing binding may fill only missing optional citizen fields when issuer, subject, document number, legal name, date of birth, gender and core address match. Existing values, verifiedAt, contact flags, display name, credentials and contract snapshots are unchanged; changed core identity returns VNEID_DETAILS_IDENTITY_CHANGED (409).",
+        "security": [
+          {
+            "auth0Bearer": [],
+            "csrfHeader": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "accessToken, tokenType, expiresIn, user; opaque HttpOnly SameSite refresh cookie; no-store"
+          },
+          "400": {
+            "description": "VNEID_CLAIMS_INVALID"
+          },
+          "401": {
+            "description": "VNEID_TOKEN_INVALID"
+          },
+          "403": {
+            "description": "Missing CSRF or ACCOUNT_UNAVAILABLE"
+          },
+          "409": {
+            "description": "VNEID_ACCOUNT_LINK_REQUIRED, VNEID_IDENTITY_IN_USE or uniqueness conflict"
+          },
+          "429": {
+            "description": "RATE_LIMITED; retry in one minute"
+          }
+        }
+      }
+    },
+    "/api/v1/me/verifications/vneid": {
+      "post": {
+        "summary": "Link and verify only the currently signed-in account",
+        "description": "Internal session JWT in Authorization; separate Auth0 access token in JSON, excluded from logging. Requires CSRF. Same link retry is idempotent; existing dossier/profile/contract snapshot not overwritten; no role or Property approval change. If the display name differs from the validated legal name (NFC/case/Unicode whitespace normalized; accents retained), return 202 with a self-only preview. This does not persist identity, activate the account or overwrite its display name. The server retains validated evidence only in bounded process memory; no raw external token is retained. Same-binding retries may fill missing optional citizen details under the same exact-core checks; they never replace existing values or a saved contract snapshot.",
+        "security": [
+          {
+            "internalBearer": [],
+            "csrfHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "auth0AccessToken"
+                ],
+                "properties": {
+                  "auth0AccessToken": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16384,
+                    "writeOnly": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "AuthUserResponse with current role/accountStatus/contactVerificationStatus/version"
+          },
+          "202": {
+            "description": "Name confirmation required; no-store, no identity binding or activation yet. No document number/issuer/subject/provider token in preview.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "confirmationId",
+                    "displayName",
+                    "legalName",
+                    "expiresAt"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "CONFIRMATION_REQUIRED"
+                      ]
+                    },
+                    "confirmationId": {
+                      "type": "string",
+                      "description": "Opaque one-time handle. Keep in memory, never log or put in URLs/storage."
+                    },
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "legalName": {
+                      "type": "string"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown JSON fields or invalid/missing citizen claims"
+          },
+          "401": {
+            "description": "Invalid internal session or external token"
+          },
+          "403": {
+            "description": "Missing CSRF or unavailable account"
+          },
+          "409": {
+            "description": "Identity belongs to another account or different identity already linked"
+          },
+          "429": {
+            "description": "RATE_LIMITED"
+          },
+          "503": {
+            "description": "VNEID_UNAVAILABLE when disabled"
+          }
+        }
+      }
+    },
+    "/api/v1/me/verifications/vneid/confirm": {
+      "post": {
+        "summary": "Confirm an own pending VNeID name mismatch",
+        "description": "Requires internal session and CSRF. Body is only the opaque confirmationId, not names/citizen JSON or the external token. Bound to the same account, session, profile version and exact display name. Single-use; expires at the earlier of five minutes or external-token expiry. Restart/another instance fails closed and requires starting verification again. Confirmation rechecks account eligibility and subject/CCCD uniqueness under the account lock before binding. Existing display name, contact flags, role, properties and saved contract snapshots are preserved.",
+        "security": [
+          {
+            "internalBearer": [],
+            "csrfHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "confirmationId"
+                ],
+                "properties": {
+                  "confirmationId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "writeOnly": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Current AuthUserResponse after binding; no-store"
+          },
+          "400": {
+            "description": "Unknown fields or invalid confirmationId"
+          },
+          "401": {
+            "description": "Invalid/revoked session"
+          },
+          "403": {
+            "description": "Missing CSRF or unavailable account"
+          },
+          "409": {
+            "description": "Expired, consumed, wrong account/session, changed profile/version, unavailable process-local preview or identity conflict"
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        }
+      }
+    },
+    "/api/v1/me/verifications/vneid/cancel": {
+      "post": {
+        "summary": "Cancel an own pending VNeID name mismatch",
+        "description": "Requires internal session and CSRF. Body is only the opaque confirmationId, not names/citizen JSON or the external token. Bound to the same account, session, profile version and exact display name. Single-use; expires at the earlier of five minutes or external-token expiry. Restart/another instance fails closed and requires starting verification again. Confirmation rechecks account eligibility and subject/CCCD uniqueness under the account lock before binding. Existing display name, contact flags, role, properties and saved contract snapshots are preserved.",
+        "security": [
+          {
+            "internalBearer": [],
+            "csrfHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "confirmationId"
+                ],
+                "properties": {
+                  "confirmationId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "writeOnly": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Pending evidence discarded; no binding or activation; no-store"
+          },
+          "400": {
+            "description": "Unknown fields or invalid confirmationId"
+          },
+          "401": {
+            "description": "Invalid/revoked session"
+          },
+          "403": {
+            "description": "Missing CSRF or unavailable account"
+          },
+          "409": {
+            "description": "Expired, consumed, wrong account/session, changed profile/version, unavailable process-local preview or identity conflict"
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "auth0Bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Auth0 RS256 access JWT"
+      },
+      "internalBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "An Cu session JWT"
+      },
+      "csrfHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-XSRF-TOKEN",
+        "description": "GET /api/v1/auth/csrf first; retain corresponding cookie"
+      }
+    }
+  }
 }

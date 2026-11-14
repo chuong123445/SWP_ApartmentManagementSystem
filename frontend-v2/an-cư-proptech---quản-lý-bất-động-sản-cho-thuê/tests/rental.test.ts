@@ -5,6 +5,8 @@ import { submitRentalRequest, getOwnerRentalRequests } from '@/services/rental/r
 import { ApiError, setAccessToken } from '@/services/http/client';
 import { loginDestination } from '@/utils/navigation';
 import type { AuthUser } from '@/types/auth';
+import { getRenewalInbox } from '@/services/contract/contractService';
+import { ordinaryInboxQuery } from '@/utils/rentalInbox';
 
 const original = globalThis.fetch;
 afterEach(() => { globalThis.fetch = original; setAccessToken(null); });
@@ -42,6 +44,22 @@ test('request rejection remains an error and owner inbox never sends an ownerId'
   await assert.rejects(submitRentalRequest('id', ''), (error: ApiError) => error.status === 403 && error.code === 'CONTACT_NOT_VERIFIED');
   await getOwnerRentalRequests(1, 'PENDING');
 });
+test('owner contracting and signed filters preserve false/true before server pagination', async () => {
+  const seen: string[] = [];
+  globalThis.fetch = async url => { seen.push(String(url));return Response.json({ items: [] }); };
+  for (const filter of ['CONTRACTING', 'SIGNED', 'ALL'] as const) {
+    const query = ordinaryInboxQuery(filter);await getOwnerRentalRequests(0, query.status, '2', query.contractCompleted);
+  }
+  assert.deepEqual(seen, [
+    '/api/v1/owner/rental-requests?page=0&size=10&status=ACCEPTED&propertyId=2&contractCompleted=false',
+    '/api/v1/owner/rental-requests?page=0&size=10&status=ACCEPTED&propertyId=2&contractCompleted=true',
+    '/api/v1/owner/rental-requests?page=0&size=10&propertyId=2',
+  ]);
+});
+test('renewal inbox sends status/property/page but never a caller-selected owner', async () => {
+  globalThis.fetch = async url => { assert.equal(String(url), '/api/v1/owner/renewal-requests?page=1&size=10&status=PENDING&propertyId=2');return Response.json({ items: [] }); };
+  await getRenewalInbox(1, 'PENDING', '2');
+});
 test('hidden/missing apartment error is surfaced instead of showing mock details', async () => {
   globalThis.fetch = async () => Response.json({ code: 'RESOURCE_NOT_FOUND', message: 'Không tìm thấy căn hộ' }, { status: 404 });
   await assert.rejects(getApartment('id'), /Không tìm thấy căn hộ/);
@@ -51,6 +69,12 @@ test('login redirects only to supported local pages', () => {
   assert.equal(loginDestination(user, 'https://external.example'), '/');
   assert.equal(loginDestination(user, '//external.example'), '/');
   assert.equal(loginDestination(user, '/my/rental-requests'), '/my/rental-requests');
+  for (const target of ['/apartments/123', '/my/invoices/456', '/my/contracts/9223372036854775807', '/account/settings/identity', '/account/owner-upgrade', '/account/rental-properties', '/account/property-notices', '/account/properties/new/ownership', '/account/properties/new/authorization', '/account/properties/new/sublease']) {
+    assert.equal(loginDestination(user, target), target);
+  }
+  for (const target of ['javascript:alert(1)', '/apartments/3/../../evil', '/my/contracts/not-an-id', '/apartments/0', '/apartments/-1', '/apartments/1e3', '/apartments/1?next=https://evil.invalid', '/account/properties/new/unknown', '/%2f%2fevil.invalid', '/account/settings\\evil.invalid']) {
+    assert.equal(loginDestination(user, target), '/');
+  }
 });
 test('owner decision sends decision, version and optional reason with bearer token', async () => {
   const { decideRentalRequest } = await import('@/services/rental/rentalService');

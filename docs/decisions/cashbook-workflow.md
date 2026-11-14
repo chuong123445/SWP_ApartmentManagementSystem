@@ -30,12 +30,12 @@ Danh sách hỗ trợ thêm `status=DRAFT|POSTED|CANCELLED`, `page` và `size`. 
 
 ## Các phần nối tiếp
 
-1. Giao diện bỏ dữ liệu mẫu, chọn tháng/tài sản, tạo và xác nhận/hủy phiếu.
+1. Đã nối giao diện với API ngày 07/11/2026: bỏ state mẫu, chọn tháng/tài sản/loại/trạng thái, phân trang, tổng từ server, tạo nháp và xác nhận/hủy có version/lý do. Xem [báo cáo FIX-01](../reports/cashbook-api-2026-11-07.md).
 2. Gắn khoản thu với hóa đơn và theo dõi thanh toán từng phần; không dùng phiếu thủ công không liên kết để tự đánh dấu hóa đơn đã thanh toán.
 3. Gắn cọc/hoàn cọc và chi phí bảo trì với chứng từ nguồn, chống ghi trùng. Cọc cần theo dõi riêng, không coi là doanh thu thuê.
 4. Tải chứng từ riêng tư và chi tiết căn hộ. Hiện `reference` chỉ là mã tham chiếu văn bản, chưa phải upload chứng từ.
 
-Không tự nhận tiền từ QR/ảnh chuyển khoản; chưa có tích hợp ngân hàng. Không tự biến nghiệm thu bảo trì hay đối soát bàn giao thành giao dịch tiền.
+Sổ quỹ thủ công không tự nhận tiền từ QR/ảnh chuyển khoản và không tự đồng bộ giao dịch ngân hàng. Luồng SePay/ledger của module thanh toán là nghiệp vụ riêng, không được cộng lại vào sổ này như một lần thu mới. Không tự biến nghiệm thu bảo trì hay đối soát bàn giao thành giao dịch tiền.
 
 ## Kiểm tra
 

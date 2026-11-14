@@ -1,223 +1,55 @@
-import React, { useState } from 'react';
-import { Zap, Droplets, Save, Calculator, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
-import { Room, Tenant, SystemConfig } from '@/types';
-
-interface UtilitiesPageProps {
-  rooms: Room[];
-  tenants: Tenant[];
-  config: SystemConfig;
-  onUpdateIndices: (updates: { roomId: string; electric: number; water: number }[]) => void;
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Zap, Droplets, RefreshCw, Save, ReceiptText, Settings } from 'lucide-react';
+import type { Tenancy, BillingContext, BillingTariff } from '@/types/billing';
+import { getBillingContext, saveMeterReadings, billingMoney } from '@/services/billing/billingService';
+import '@/styles/operations.css';
+import '@/styles/utilities.css';
+type Tariff=Pick<BillingTariff,'electricityUnitPrice'|'waterUnitPrice'|'waterBillingMode'>;
+function MeterRow({tenancy,onInvoice,onTariff,revision}:{tenancy:Tenancy;onInvoice:(id:string)=>void;onTariff:(id:string,tariff:Tariff|null)=>void;revision:number}){
+ const [context,setContext]=useState<BillingContext|null>(null);
+ const [electricity,setElectricity]=useState('');const [water,setWater]=useState('');
+ const [source,setSource]=useState('CONTRACT');const [error,setError]=useState('');
+ const [loading,setLoading]=useState(true);const [saving,setSaving]=useState(false);const [retry,setRetry]=useState(0);const [notice,setNotice]=useState('');
+ const electricInput=useRef<HTMLInputElement>(null);const waterInput=useRef<HTMLInputElement>(null);
+ const install=(c:BillingContext)=>{setContext(c);setElectricity(c.savedReading?.electricityEndReading??'');setWater(c.savedReading?.waterEndReading??'');setSource(c.savedReading?'SAVED':'CONTRACT');};
+ useEffect(()=>{let active=true;setLoading(true);setError('');setContext(null);setNotice('');
+ getBillingContext(tenancy.id).then(c=>{if(active)install(c);}).catch(e=>{if(active)setError(e.message);}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};
+ },[tenancy.id,revision,retry]);
+ const propertyRates=source==='PROPERTY';
+ const tariff=context&&(source==='SAVED'?context:propertyRates?context.propertyTariff:context.contractTariff??context);
+ useEffect(()=>{const t=context&&(source==='SAVED'?context:source==='PROPERTY'?context.propertyTariff:context.contractTariff??context);onTariff(tenancy.id,t?{electricityUnitPrice:t.electricityUnitPrice,waterUnitPrice:t.waterUnitPrice,waterBillingMode:t.waterBillingMode??'METERED'}:null);},[context,source,onTariff,tenancy.id]);
+ const perPerson=tariff?.waterBillingMode==='PER_PERSON';
+ const dirty=!!context&&(!context.savedReading||electricity!==context.savedReading.electricityEndReading||(!perPerson&&water!==context.savedReading.waterEndReading)||source!=='SAVED');
+ const eUsage=context&&electricity!==''?Number(electricity)-Number(context.electricityStartReading):null;
+ const wUsage=perPerson?context?.occupantCount??1:context&&water!==''?Number(water)-Number(context.waterStartReading):null;
+ const eCost=tariff&&eUsage!==null&&eUsage>=0?eUsage*Number(tariff.electricityUnitPrice):null;
+ const wCost=tariff&&wUsage!==null&&wUsage>=0?wUsage*Number(tariff.waterUnitPrice):null;
+ const total=eCost!==null&&wCost!==null?eCost+wCost:null;
+ const money=(n:number|null)=>n===null?'—':n.toLocaleString('vi-VN')+' đ';
+ const save=async()=>{if(!context||saving||!electricInput.current?.reportValidity()||(!perPerson&&!waterInput.current?.reportValidity()))return;
+ setSaving(true);setError('');setNotice('');try{const c=await saveMeterReadings(tenancy.id,{period:context.period,baselineVersion:context.baselineVersion,electricityEndReading:electricity,waterEndReading:perPerson?context.waterStartReading:water,applyPropertyRates:propertyRates,keepSavedTariff:source==='SAVED',settingsVersion:propertyRates?context.propertyTariff?.version:undefined});install(c);setNotice('Đã chốt và lưu chỉ số. Hóa đơn sẽ dùng dữ liệu này.');}catch(e){setError(e instanceof Error?e.message:'Không thể lưu chỉ số.');}finally{setSaving(false);}};
+ return <tr aria-label={'Chốt chỉ số '+tenancy.roomNumber}>
+  <td><strong className="meter-room">{tenancy.roomNumber}</strong><small>{tenancy.propertyName}</small>{context&&<small>Kỳ {context.period}</small>}</td>
+  <td><span className="font-medium">{tenancy.customerName}</span>{context&&<select aria-label="Nguồn đơn giá" value={source} disabled={saving} onChange={e=>{setSource(e.target.value);setNotice('');}} className="meter-source"><option value="CONTRACT">Giá hợp đồng</option>{context.savedReading&&<option value="SAVED">Giá đã chốt</option>}<option value="PROPERTY" disabled={!context.propertyTariff}>Giá cài đặt kỳ này</option></select>}</td>
+  {context?<><td className="meter-electric">{context.electricityStartReading}</td>
+   <td className="meter-electric"><input ref={electricInput} aria-label="Chỉ số điện mới" required type="number" min={context.electricityStartReading} max="9999999999999.99" step="0.01" value={electricity} disabled={saving} onChange={e=>{setElectricity(e.target.value);setNotice('');}}/></td>
+   <td className="meter-electric meter-consumption"><strong>{eUsage===null?'—':eUsage+' kWh'}</strong><small>{money(eCost)}</small><small>{tariff&&billingMoney(tariff.electricityUnitPrice)+'/kWh'}</small></td>
+   <td className="meter-water">{perPerson?'—':context.waterStartReading}</td>
+   <td className="meter-water">{perPerson?<span className="meter-person">{context.occupantCount} người<small>Theo người/tháng</small></span>:<input ref={waterInput} aria-label="Chỉ số nước mới" required type="number" min={context.waterStartReading} max="9999999999999.99" step="0.01" value={water} disabled={saving} onChange={e=>{setWater(e.target.value);setNotice('');}}/>}</td>
+   <td className="meter-water meter-consumption"><strong>{wUsage===null?'—':wUsage+(perPerson?' người':' m³')}</strong><small>{money(wCost)}</small><small>{tariff&&billingMoney(tariff.waterUnitPrice)+(perPerson?'/người':'/m³')}</small></td>
+   <td className="meter-total"><strong>{money(total)}</strong>{context.savedReading&&!dirty&&<small className="text-emerald-700">Đã chốt</small>}</td>
+   <td className="meter-actions"><div><button type="button" onClick={()=>void save()} disabled={saving} aria-label="Lưu & chốt chỉ số" className="meter-save"><Save size={13}/>{saving?'Đang lưu':'Chốt'}</button><button type="button" onClick={()=>onInvoice(tenancy.id)} disabled={saving||dirty} aria-label="Lập hóa đơn từ chỉ số đã chốt"><ReceiptText size={13}/>Hóa đơn</button></div>{notice&&<small role="status">{notice}</small>}{error&&<small role="alert">{error}</small>}</td></>:<td colSpan={8}>{loading?<span role="status">Đang tải chỉ số và đơn giá...</span>:<div className="meter-row-error"><span role="alert">{error}</span><button type="button" onClick={()=>setRetry(v=>v+1)}>Thử lại</button></div>}</td>}
+ </tr>;
 }
-
-export const UtilitiesPage: React.FC<UtilitiesPageProps> = ({
-  rooms,
-  tenants,
-  config,
-  onUpdateIndices,
-}) => {
-  // Local state for meter readings
-  const [readings, setReadings] = useState<{
-    [roomId: string]: { newElectric: string; newWater: string };
-  }>(() => {
-    const init: { [roomId: string]: { newElectric: string; newWater: string } } = {};
-    rooms.forEach((r) => {
-      init[r.id] = {
-        newElectric: r.meterBaselineKnown === false ? '' : r.electricityIndex.toString(),
-        newWater: r.meterBaselineKnown === false ? '' : r.waterIndex.toString(),
-      };
-    });
-    return init;
-  });
-
-  const [savedSuccess, setSavedSuccess] = useState(false);
-
-  const handleElectricChange = (roomId: string, val: string) => {
-    setReadings((prev) => ({
-      ...prev,
-      [roomId]: { ...prev[roomId], newElectric: val },
-    }));
-  };
-
-  const handleWaterChange = (roomId: string, val: string) => {
-    setReadings((prev) => ({
-      ...prev,
-      [roomId]: { ...prev[roomId], newWater: val },
-    }));
-  };
-
-  const handleSaveAll = () => {
-    const updates = rooms.filter(r => r.meterBaselineKnown !== false).map((r) => ({
-      roomId: r.id,
-      electric: Number(readings[r.id]?.newElectric) || r.electricityIndex,
-      water: Number(readings[r.id]?.newWater) || r.waterIndex,
-    }));
-    onUpdateIndices(updates);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
-  };
-
-  return (
-    <div className="space-y-6 pb-12">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <span>Chốt Chỉ Số Điện - Nước & Tiện Ích</span>
-            <span className="text-xs bg-amber-100 text-amber-800 font-semibold px-2.5 py-0.5 rounded-full">
-              Kỳ chốt: Tháng 09/2026
-            </span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Đơn giá quy định: Điện {config.electricPrice.toLocaleString('vi-VN')} đ/kWh • Nước {config.waterPrice.toLocaleString('vi-VN')} đ/m³
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {savedSuccess && (
-            <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
-              <CheckCircle2 className="w-4 h-4" /> Đã lưu chỉ số thành công!
-            </span>
-          )}
-          <button
-            onClick={handleSaveAll}
-            id="btn-save-utilities"
-            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
-          >
-            <Save className="w-4 h-4" />
-            <span>Lưu & Chốt Toàn Bộ Tòa Nhà</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Info bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-amber-50/60 border border-amber-200 p-4 rounded-xl flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
-            <Zap className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs font-bold text-amber-900">Đơn giá điện: {config.electricPrice.toLocaleString('vi-VN')} đ / kWh</div>
-            <div className="text-[11px] text-amber-700">Công tơ điện riêng từng phòng tử tế</div>
-          </div>
-        </div>
-
-        <div className="bg-sky-50/60 border border-sky-200 p-4 rounded-xl flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center font-bold">
-            <Droplets className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs font-bold text-sky-900">Đơn giá nước: {config.waterPrice.toLocaleString('vi-VN')} đ / m³</div>
-            <div className="text-[11px] text-sky-700">Đồng hồ nước kiểm định định kỳ</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Utilities Table matching Image 5 */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider text-[11px]">
-              <tr>
-                <th className="px-3.5 py-3">Phòng</th>
-                <th className="px-3.5 py-3">Khách Thuê</th>
-                <th className="px-3.5 py-3 bg-amber-50/40 text-amber-900">Điện Cũ</th>
-                <th className="px-3.5 py-3 bg-amber-50/60 text-amber-900">Điện Mới (Nhập)</th>
-                <th className="px-3.5 py-3 text-right bg-amber-50/80 text-amber-900">Tiêu Thụ (kWh)</th>
-                <th className="px-3.5 py-3 bg-sky-50/40 text-sky-900">Nước Cũ</th>
-                <th className="px-3.5 py-3 bg-sky-50/60 text-sky-900">Nước Mới (Nhập)</th>
-                <th className="px-3.5 py-3 text-right bg-sky-50/80 text-sky-900">Tiêu Thụ (m³)</th>
-                <th className="px-3.5 py-3 text-right font-bold">Tổng Tiền Đ+N</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {rooms.map((room) => {
-                const tenant = tenants.find((t) => t.id === room.currentTenantId);
-                const missingBaseline = room.meterBaselineKnown === false;
-                const currentRecord = readings[room.id] || {
-                  newElectric: missingBaseline ? '' : room.electricityIndex.toString(),
-                  newWater: missingBaseline ? '' : room.waterIndex.toString(),
-                };
-
-                const newE = Number(currentRecord.newElectric) || room.electricityIndex;
-                const newW = Number(currentRecord.newWater) || room.waterIndex;
-
-                const eUsage = Math.max(0, newE - room.electricityIndex);
-                const wUsage = Math.max(0, newW - room.waterIndex);
-
-                const eCost = eUsage * config.electricPrice;
-                const wCost = wUsage * config.waterPrice;
-                const totalCost = eCost + wCost;
-
-                return (
-                  <tr key={room.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="px-3.5 py-2.5 font-bold text-slate-900">
-                      <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200">
-                        {room.roomNumber}
-                      </span>
-                    </td>
-                    <td className="px-3.5 py-2.5 text-slate-700 font-medium">
-                      {tenant ? tenant.name : <span className="text-slate-400 italic">Trống</span>}
-                    </td>
-
-                    {/* Electric Old */}
-                    <td className="px-3.5 py-2.5 font-mono text-slate-600 bg-amber-50/20">
-                      {missingBaseline ? 'Chưa nhập' : room.electricityIndex}
-                    </td>
-
-                    {/* Electric New Input */}
-                    <td className="px-3.5 py-2.5 bg-amber-50/40">
-                      <input
-                        type="number"
-                        value={currentRecord.newElectric}
-                        disabled={missingBaseline}
-                        onChange={(e) => handleElectricChange(room.id, e.target.value)}
-                        className="w-24 bg-white border border-amber-300 rounded px-2 py-1 font-mono font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                      />
-                    </td>
-
-                    {/* Electric Usage */}
-                    <td className="px-3.5 py-2.5 text-right font-bold text-amber-700 bg-amber-50/60">
-                      {missingBaseline ? 'Thiếu chỉ số bàn giao' : `${eUsage} kWh`}
-                      <span className="text-[10px] text-slate-400 font-normal block">
-                        ({eCost.toLocaleString('vi-VN')} đ)
-                      </span>
-                    </td>
-
-                    {/* Water Old */}
-                    <td className="px-3.5 py-2.5 font-mono text-slate-600 bg-sky-50/20">
-                      {missingBaseline ? 'Chưa nhập' : room.waterIndex}
-                    </td>
-
-                    {/* Water New Input */}
-                    <td className="px-3.5 py-2.5 bg-sky-50/40">
-                      <input
-                        type="number"
-                        value={currentRecord.newWater}
-                        disabled={missingBaseline}
-                        onChange={(e) => handleWaterChange(room.id, e.target.value)}
-                        className="w-20 bg-white border border-sky-300 rounded px-2 py-1 font-mono font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-sky-500"
-                      />
-                    </td>
-
-                    {/* Water Usage */}
-                    <td className="px-3.5 py-2.5 text-right font-bold text-sky-700 bg-sky-50/60">
-                      {missingBaseline ? 'Thiếu chỉ số bàn giao' : `${wUsage} m³`}
-                      <span className="text-[10px] text-slate-400 font-normal block">
-                        ({wCost.toLocaleString('vi-VN')} đ)
-                      </span>
-                    </td>
-
-                    {/* Total Cost */}
-                    <td className="px-3.5 py-2.5 text-right font-bold text-slate-900 text-sm">
-                      {totalCost.toLocaleString('vi-VN')} đ
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-};
+export function UtilitiesPage({tenancies,onInvoice,onSettings}:{tenancies:Tenancy[];onInvoice:(id:string)=>void;onSettings:()=>void}){
+ const active=tenancies.filter(c=>c.status==='ACTIVE');const [revision,setRevision]=useState(0);const [tariffs,setTariffs]=useState<Record<string,Tariff|null>>({});
+ const onTariff=useCallback((id:string,tariff:Tariff|null)=>setTariffs(prev=>({...prev,[id]:tariff})),[]);
+ const loaded=active.flatMap(c=>tariffs[c.id]?[tariffs[c.id]!]:[]);
+ const electric=[...new Set(loaded.map(t=>billingMoney(t.electricityUnitPrice)+'/kWh'))];
+ const water=[...new Set(loaded.map(t=>billingMoney(t.waterUnitPrice)+(t.waterBillingMode==='PER_PERSON'?'/người/tháng':'/m³')))];
+ return <section className="operations-page utilities-page" aria-label="Chốt điện nước">
+  <header className="op-heading"><div className="op-title-group"><span className="op-heading-icon"><Zap size={22}/></span><div><h1>Chỉ số điện nước</h1><p>Nhập chỉ số từng phòng. Chốt xong, hóa đơn tự lấy dữ liệu đã lưu.</p></div></div><div className="op-buttons"><button type="button" className="op-button" onClick={()=>setRevision(v=>v+1)}><RefreshCw size={15}/>Tải lại</button><button type="button" className="op-button" onClick={onSettings}><Settings size={15}/>Cài đặt đơn giá</button></div></header>
+  <div className="meter-tariffs"><div className="meter-rate meter-rate-electric"><span><Zap size={22}/></span><div><strong>Đơn giá điện: {electric.length?electric.join(' · '):'Chưa có dữ liệu'}</strong><small>Đơn giá áp dụng cho các phòng bên dưới</small></div></div><div className="meter-rate meter-rate-water"><span><Droplets size={22}/></span><div><strong>Đơn giá nước: {water.length?water.join(' · '):'Chưa có dữ liệu'}</strong><small>Theo đồng hồ m³ hoặc theo người/tháng</small></div></div></div>
+  {!active.length?<p className="bg-white border border-slate-200 rounded-xl p-6 text-slate-500">Chưa có hợp đồng đang hoạt động tại tài sản đang chọn để chốt chỉ số.</p>:<><div className="meter-table-wrap" role="region" aria-label="Bảng chỉ số điện nước" tabIndex={0}><table className="meter-table"><thead><tr><th>Phòng</th><th>Khách thuê</th><th className="meter-electric">Điện cũ</th><th className="meter-electric">Điện mới (nhập)</th><th className="meter-electric">Tiêu thụ (kWh)</th><th className="meter-water">Nước cũ</th><th className="meter-water">Nước mới (nhập)</th><th className="meter-water">Nước tiêu thụ</th><th>Tổng tiền Đ+N</th><th>Thao tác</th></tr></thead><tbody>{active.map(c=><MeterRow key={c.id} tenancy={c} onInvoice={onInvoice} onTariff={onTariff} revision={revision}/>)}</tbody></table></div><p className="meter-note">Tổng điện + nước chưa gồm tiền thuê và phí dịch vụ. Chọn “Giá cài đặt kỳ này” để áp dụng đơn giá tài sản; giá đã chốt được giữ riêng cho từng kỳ.</p></>}
+ </section>;
+}

@@ -1,0 +1,11 @@
+# Nhập điện nước khi lập hóa đơn — 04/11/2026
+
+Nhánh `feat/invoice-inline-readings` từ main `857f429`. Người dùng cần nhập trực tiếp chỉ số cuối kỳ trong cửa sổ lập hóa đơn, tự lấy chỉ số kỳ trước và dùng 0 khi thiếu dữ liệu quá khứ. Người dùng xác nhận thu đủ tiền thuê một tháng cho tháng đầu thuê giữa tháng.
+
+- `CreateInvoiceModal`: hiển thị đầu kỳ chỉ đọc và ô nhập cuối kỳ, giới hạn số không âm/không giảm/decimal(15,2). Chưa có chỉ số đã chốt thì gửi trực tiếp cùng lệnh tạo hóa đơn. Đã chốt vẫn sửa được tại đây: lưu lại qua meter-readings với keepSavedTariff, rồi tạo từ version mới; giữ đơn giá đã chốt. Nước PER_PERSON hiển thị số người và đơn giá, không yêu cầu ô nước công tơ. Gửi lỗi giữ bản nháp để gửi lại, có ref chống submit lặp.
+- `InvoiceService.source`: ưu tiên chỉ số cuối hóa đơn SENT gần nhất của đúng hợp đồng, tiếp theo baseline đã có, cuối cùng 0 cho từng chỉ số thiếu. Không ghi hoặc backfill hợp đồng khi đọc. Bỏ chặn ngày bắt đầu khác ngày 1 theo lựa chọn thu đủ tháng; giữ giá thuê đầy đủ hiện có, kỳ liên tiếp, trạng thái ACTIVE, version/unique guards và điều kiện kết thúc kỳ trong thời hạn thuê. Không thay quy tắc tháng cuối không trọn tháng.
+- OpenAPI mô tả lại mốc tính và tiền thuê tháng đầu. Không schema/migration hoặc ghi database ứng dụng.
+
+Kiểm tra thực tế: PASS18 BillingIntegrationTests trên database test có sẵn `ancu_contract_pdf_20261103` (Maven BUILD SUCCESS 1 phút 13 giây), gồm mốc 0, chuỗi lấy hóa đơn SENT, từ chối số giảm/giả dữ liệu, tháng đầu thu đủ, chốt số/tariff, quyền truy cập, duplicate/version guards. PASS109 frontend unit tests bằng native Node loader, tsc --noEmit, production Vite native-loader build (cảnh báo bundle lớn có sẵn). PASS8 Playwright MCP với SPA thật và API fixtures ở1440/390: nhập mới, nước theo người, sửa số đã chốt dùng đúng version/tariff, gửi lại không tạo thêm hóa đơn, kiểm tra console/network/page errors và tràn ngang. Đã xem ảnh mobile. Hai lần fixture đầu dùng nút cũ/thiếu dữ liệu căn hộ đã được sửa; không sửa nghiệp vụ khác để né lỗi fixture. Không tuyên bố browser dùng database thật hoặc live-send hóa đơn.
+
+Server test riêng cổng3017 được dừng sau kiểm tra; server người dùng giữ nguyên. Source nằm ngay checkout hiện tại; cần restart backend để bỏ guard cũ và reload frontend. Giữ nguyên ba file diagnostics untracked có sẵn, không commit. Chưa push/PR.

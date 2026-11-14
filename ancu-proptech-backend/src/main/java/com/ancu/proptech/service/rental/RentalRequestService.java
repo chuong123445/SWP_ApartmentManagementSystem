@@ -42,7 +42,7 @@ public class RentalRequestService {
         if (!activeRequests(customer.getId(), apartmentId).isEmpty())
             throw new ApiException(HttpStatus.CONFLICT, "RENTAL_REQUEST_EXISTS", "Bạn đã có yêu cầu thuê cho căn hộ này. Hãy xem hoặc hủy yêu cầu đang chờ xử lý.");
         if (apartment.getPublicationStatus() != Apartment.PublicationStatus.PUBLISHED || p.getApprovalStatus() != Property.ApprovalStatus.APPROVED
-                || owner.getStatus() != AuthAccount.Status.ACTIVE || !verification.isVerified(owner) || owner.getRole() != AuthAccount.Role.OWNER) throw notFound();
+                || owner.getStatus() != AuthAccount.Status.ACTIVE || !verification.isVerified(owner) || !owner.hasRole(AuthAccount.Role.OWNER)) throw notFound();
         if (apartment.getAvailability() != Apartment.Availability.VACANT)
             throw new ApiException(HttpStatus.CONFLICT, "APARTMENT_NOT_AVAILABLE", "Căn hộ hiện không còn nhận yêu cầu thuê.");
         RentalRequest request = new RentalRequest();
@@ -64,7 +64,7 @@ public class RentalRequestService {
         return requests.findByCustomerIdAndApartmentIdAndStatusInOrderByCreatedAtDescIdDesc(customerId, apartmentId,
                 java.util.List.of(RentalRequest.Status.PENDING, RentalRequest.Status.ACCEPTED)).stream()
             .filter(r->r.getStatus()!=RentalRequest.Status.ACCEPTED || drafts.findByRentalRequestId(r.getId())
-                .map(d->d.getContract().getStatus()!=com.ancu.proptech.model.contract.RentalContract.Status.ENDED).orElse(true)).toList();
+                .map(d->d.getContract().isOpen()).orElse(true)).toList();
     }
 
     @Transactional
@@ -95,9 +95,14 @@ public class RentalRequestService {
 
     @Transactional(readOnly = true)
     public PageResponse<RentalRequestResponse> ownerInbox(Jwt jwt, Long apartmentId, RentalRequest.Status status, int page, int size, Long propertyId) {
+        return ownerInbox(jwt,apartmentId,status,page,size,propertyId,null);
+    }
+    @Transactional(readOnly=true)
+    public PageResponse<RentalRequestResponse> ownerInbox(Jwt jwt, Long apartmentId, RentalRequest.Status status, int page, int size, Long propertyId, Boolean contractCompleted) {
+        if(contractCompleted!=null&&status!=RentalRequest.Status.ACCEPTED)throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_FILTER","Bộ lọc chữ ký chỉ dùng cho yêu cầu đã chuyển sang làm hợp đồng.");
         ApartmentService.validatePage(page, size);
         var owner = access.owner(jwt);
-        return PageResponse.from(requests.findOwnerInbox(owner.getId(), apartmentId, status, propertyId,
+        return PageResponse.from(requests.findOwnerInbox(owner.getId(), apartmentId, status, propertyId,contractCompleted,
                 PageRequest.of(page, size)).map(this::response));
     }
 

@@ -1,10 +1,13 @@
+import {dossierDateDisplay} from '@/utils/dossierDates';
 import { apiFetch, readApiError } from '@/services/http/client';
-import type { BillingContext, BillingInvoice, InvoiceCreate, Tenancy } from '@/types/billing';
+import type { BillingContext, MeterReadingInput, BillingInvoice, InvoiceCreate, Tenancy, InvoiceDraftCommand, InvoiceDraftUpdate, InvoiceHistoryEntry } from '@/types/billing';
 import type { PageResult } from '@/types/apartment';
 import type { Invoice, Tenant, Contract } from '@/types';
-async function request<T>(url: string, body?: unknown): Promise<T> {
+import type { TestReceipt } from '@/services/payment/sepayService';
+export type OwnerInvoiceFilter = 'ALL' | 'DRAFT' | 'CANCELLED' | 'UNPAID' | 'PAID';
+async function request<T>(url: string, body?: unknown, method = 'POST'): Promise<T> {
   const response = await apiFetch(url, body === undefined ? undefined : {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   });
   if (!response.ok) throw await readApiError(response);
   return response.json();
@@ -12,25 +15,36 @@ async function request<T>(url: string, body?: unknown): Promise<T> {
 export function ownerTenancies() { return request<Tenancy[]>('/api/v1/owner/tenancies'); }
 export function myTenancies() { return request<Tenancy[]>('/api/v1/me/tenancies'); }
 export function getBillingContext(id: string) { return request<BillingContext>(`/api/v1/owner/contracts/${encodeURIComponent(id)}/billing-context`); }
+export function saveMeterReadings(id:string,input:MeterReadingInput){return request<BillingContext>(`/api/v1/owner/contracts/${encodeURIComponent(id)}/meter-readings`,input);}
 export function createInvoice(id: string, input: InvoiceCreate) { return request<BillingInvoice>(`/api/v1/owner/contracts/${encodeURIComponent(id)}/invoices`, input); }
 export function sendInvoice(id: string, version: number) { return request<BillingInvoice>(`/api/v1/owner/invoices/${encodeURIComponent(id)}/send`, { version }); }
 export function getInvoice(id: string) { return request<BillingInvoice>(`/api/v1/invoices/${encodeURIComponent(id)}`); }
-export function ownerInvoices(page = 0, size = 20, propertyId?: string) {
+export function ownerInvoices(page = 0, size = 20, propertyId?: string, filter: OwnerInvoiceFilter = 'ALL') {
   const query = new URLSearchParams({ page: String(page), size: String(size) });
   if (propertyId) query.set('propertyId', propertyId);
+  if (filter !== 'ALL') query.set('filter', filter);
   return request<PageResult<BillingInvoice>>(`/api/v1/owner/invoices?${query}`);
 }
-export function myInvoices(page = 0, size = 20) { return request<PageResult<BillingInvoice>>(`/api/v1/me/invoices?page=${page}&size=${size}`); }
+export function ownerReceivedInvoices(page = 0, size = 20, propertyId?: string, paymentStatus: InvoicePaymentFilter = 'ALL') {
+  const query = new URLSearchParams({ page: String(page), size: String(size), paymentStatus });
+  if (propertyId) query.set('propertyId', propertyId);
+  return request<PageResult<TestReceipt>>(`/api/v1/owner/invoices/additional?${query}`);
+}
+export const getOwnerReceivedInvoice = (id: string) => request<TestReceipt>(`/api/v1/owner/invoices/additional/${encodeURIComponent(id)}`);
+export type InvoicePaymentFilter = 'UNPAID' | 'PAID' | 'ALL';
+export function myInvoices(page = 0, size = 20, paymentStatus: InvoicePaymentFilter = 'ALL') { return request<PageResult<BillingInvoice>>(`/api/v1/me/invoices?page=${page}&size=${size}&paymentStatus=${paymentStatus}`); }
 // Adapt server data to the existing Owner layout. Numbers are for display only.
 export function invoiceView(i: BillingInvoice): Invoice {
   return {
-    id: i.id, invoiceCode: `HD-${i.period}-${i.id.slice(0, 8)}`, monthYear: i.period, roomId: i.apartmentId,
+    id: i.id, invoiceCode: `${i.kind==='RENT'?'HDT':i.kind==='UTILITY'?'HDN':'HD'}-${i.period}-${i.id.slice(0, 8)}`, monthYear: i.kind==='RENT'?`${dossierDateDisplay(i.coverageStart)} – ${dossierDateDisplay(i.coverageEnd)}`:i.period, roomId: i.apartmentId,
     roomNumber: i.roomNumber, tenantName: i.tenantName, tenantPhone: '', createdAt: i.createdAt, dueDate: i.dueDate,
-    status: 'unpaid', paidAmount: 0, totalAmount: Number(i.totalAmount), apiInvoice: i,
+    status: i.paymentStatus==='PAID'?'paid':'unpaid', paidAmount: i.paymentStatus==='PAID'?Number(i.totalAmount):0, totalAmount: Number(i.totalAmount), apiInvoice: i,
     items: [
-      { name: 'Tiền thuê', unit: 'tháng', quantity: 1, unitPrice: Number(i.monthlyRent), amount: Number(i.monthlyRent) },
+      ...(i.kind==='UTILITY'?[]:[{ name: 'Tiền thuê', unit: 'tháng', quantity: i.rentMonths||1, unitPrice: Number(i.rentUnitPrice??i.monthlyRent), amount: Number(i.monthlyRent) }]),
+      ...(i.kind==='RENT'?[]:[
       { name: 'Tiền điện', unit: 'kWh', oldIndex: Number(i.electricityStartReading), newIndex: Number(i.electricityEndReading), quantity: Number(i.electricityQuantity), unitPrice: Number(i.electricityUnitPrice), amount: Number(i.electricityAmount) },
-      { name: 'Tiền nước', unit: i.waterBillingMode==='PER_PERSON'?'người/tháng':'m³', oldIndex: Number(i.waterStartReading), newIndex: Number(i.waterEndReading), quantity: Number(i.waterQuantity), unitPrice: Number(i.waterUnitPrice), amount: Number(i.waterAmount) },
+      { name: 'Tiền nước', unit: i.waterBillingMode==='PER_PERSON'?'người/tháng':'m³', oldIndex: Number(i.waterStartReading), newIndex: Number(i.waterEndReading), quantity: Number(i.waterQuantity), unitPrice: Number(i.waterUnitPrice), amount: Number(i.waterAmount) }
+      ]),
       ...(Number(i.internetFee??0)>0?[{name:'Internet',unit:'tháng',quantity:1,unitPrice:Number(i.internetFee),amount:Number(i.internetFee)}]:[]),
       ...(Number(i.garbageFee??0)>0?[{name:'Vệ sinh và rác',unit:'tháng',quantity:1,unitPrice:Number(i.garbageFee),amount:Number(i.garbageFee)}]:[]),
     ],
@@ -38,13 +52,16 @@ export function invoiceView(i: BillingInvoice): Invoice {
 }
 export function tenancyViews(items: Tenancy[]): { tenants: Tenant[]; contracts: Contract[] } {
   return {
-    tenants: items.filter(c => c.status === 'ACTIVE').map(c => ({ id: c.customerId, name: c.customerName, phone: '', email: c.customerEmail, idCard: '',
+    tenants: items.filter(c => c.status === 'ACTIVE').map(c => ({ id: c.customerId, contractId: c.id, name: c.customerName, phone: '', email: c.customerEmail, idCard: '',
       roomId: c.apartmentId, roomNumber: c.roomNumber, buildingName: c.propertyName, startDate: c.startDate,
-      deposit: 0, hometown: '', status: c.status === 'ACTIVE' ? 'active' : 'departed' })),
+      deposit: c.contractDeposit == null ? null : Number(c.contractDeposit), contractDeposit: c.contractDeposit ?? null,
+      emailVerified: c.customerEmailVerified, identityStatus: c.customerIdentityStatus, identitySource: c.customerIdentitySource,
+      inAppSigningStatus: c.inAppSigningStatus, localFixture: c.localFixture,
+      hometown: '', status: c.status === 'ACTIVE' ? 'active' : 'departed' })),
     contracts: items.map(c => ({ id: c.id, contractNumber: `HD-${c.id.slice(0, 8)}`, tenantId: c.customerId,
       tenantName: c.customerName, roomId: c.apartmentId, roomNumber: c.roomNumber, buildingName: c.propertyName,
-      startDate: c.startDate, endDate: c.endDate, monthlyRent: Number(c.monthlyRent), deposit: 0, paymentCycle: 1,
-      status: c.status === 'ACTIVE' ? 'active' : c.status === 'DRAFT' ? 'draft' : 'terminated' })),
+      startDate: c.startDate, endDate: c.endDate, monthlyRent: Number(c.monthlyRent), deposit: 0, paymentCycle: c.rentCycleMonths??1,
+      status: c.status === 'ACTIVE' ? 'active' : c.status === 'DRAFT' ? 'draft' : c.status === 'CANCELLED' ? 'cancelled' : 'terminated' })),
   };
 }
 export function billingMoney(value: string) {
@@ -52,3 +69,10 @@ export function billingMoney(value: string) {
   const decimal = fraction.replace(/0+$/, '');
   return `${integer.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}${decimal ? `,${decimal}` : ''} đ`;
 }
+
+export function updateInvoiceDraft(id: string, input: InvoiceDraftUpdate) { return request<BillingInvoice>(`/api/v1/owner/invoices/${encodeURIComponent(id)}/draft`, input, 'PATCH'); }
+export function cancelInvoiceDraft(id: string, input: InvoiceDraftCommand) { return request<BillingInvoice>(`/api/v1/owner/invoices/${encodeURIComponent(id)}/cancel`, input); }
+export function invoiceHistory(id: string) { return request<InvoiceHistoryEntry[]>(`/api/v1/owner/invoices/${encodeURIComponent(id)}/history`); }
+
+export const getRentBillingContext = (id:string) => request<import('@/types/billing').RentBillingContext>(`/api/v1/owner/contracts/${encodeURIComponent(id)}/rent-billing-context`);
+export const createRentInvoice = (id:string,input:{billingVersion:number;coverageStart:string;dueDate:string}) => request<BillingInvoice>(`/api/v1/owner/contracts/${encodeURIComponent(id)}/rent-invoices`,input);

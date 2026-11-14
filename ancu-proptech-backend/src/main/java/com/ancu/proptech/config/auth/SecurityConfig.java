@@ -64,7 +64,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOriginPatterns(Arrays.asList(origins.split(",")));
         config.setAllowedMethods(List.of("GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-XSRF-TOKEN"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-XSRF-TOKEN", "X-CSRF-TOKEN"));
         config.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", config);
@@ -81,31 +81,53 @@ public class SecurityConfig {
                         .withObjectPostProcessor(VneidSecurityConfig.enforceCsrf(request -> !Set.of("GET", "HEAD", "OPTIONS", "TRACE").contains(request.getMethod())
                                 && (request.getRequestURI().startsWith(request.getContextPath() + "/api/v1/auth/")
                                 || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/verifications/vneid")
+                                || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/verifications/vneid/confirm")
+                                || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/verifications/vneid/cancel")
+                                || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/property-source-consent")
                                 || request.getRequestURI().equals(request.getContextPath()+"/api/v1/me/owner-upgrade")))))
                 .authorizeHttpRequests(a -> a
+                        .requestMatchers("/api/v1/contracts/*/exit", "/api/v1/contracts/*/exit/actions", "/api/v1/contracts/*/exit/pdf", "/api/v1/contracts/*/exit/sign", "/api/v1/contracts/*/exit/signature-otp", "/api/v1/contracts/*/exit/evidence", "/api/v1/contracts/*/exit/evidence/*").authenticated()
                         .requestMatchers("/api/v1/owner/contracts/*/renewal-context", "/api/v1/owner/contracts/*/renewals", "/api/v1/owner/contracts/*/cancel-renewal",
                             "/api/v1/owner/contracts/*/handover", "/api/v1/owner/contracts/*/handover/cancel", "/api/v1/contracts/*/handover/confirm").authenticated()
-                        .requestMatchers("/api/v1/contracts/*/pdf", "/api/v1/contracts/*/signatures").authenticated()
+                        .requestMatchers("/api/v1/owner/renewal-requests", "/api/v1/contracts/*/renewal-request", "/api/v1/owner/contracts/*/renewal-request/decision", "/api/v1/owner/contracts/*/renewal-request/cancel").authenticated()
+                        .requestMatchers("/api/v1/contracts/*/pdf", "/api/v1/contracts/*/signatures", "/api/v1/contracts/*/signature-otp").authenticated()
+                        .requestMatchers("/api/v1/auth/password-recovery", "/api/v1/auth/password-recovery/verify", "/api/v1/auth/password-recovery/reset").permitAll()
                         .requestMatchers("/api/v1/auth/google").permitAll()
                         .requestMatchers("/api/v1/auth/csrf", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout", "/error").permitAll()
-                        .requestMatchers("/api/v1/me/verifications", "/api/v1/me/verifications/vneid", "/api/v1/me/owner-upgrade").authenticated()
+                        .requestMatchers("/api/v1/me/verifications", "/api/v1/me/verifications/vneid", "/api/v1/me/verifications/vneid/confirm", "/api/v1/me/verifications/vneid/cancel", "/api/v1/me/owner-upgrade").authenticated()
                         .requestMatchers("/api/v1/auth/vneid-config").permitAll()
-                        .requestMatchers("/api/v1/me/property-images").authenticated()
+                        .requestMatchers("/api/v1/me/properties", "/api/v1/me/properties/*/images", "/api/v1/me/apartments/*", "/api/v1/me/apartments/*/images", "/api/v1/me/apartments/*/prices").authenticated()
+                        .requestMatchers("/api/v1/me/property-source-consent", "/api/v1/me/property-images").authenticated()
                         .requestMatchers(HttpMethod.GET,"/api/v1/property-images/*").permitAll()
                         .requestMatchers("/api/v1/me").authenticated()
+                        .requestMatchers("/api/v1/me/conversations", "/api/v1/me/conversations/*/messages", "/api/v1/me/conversations/apartments/*", "/api/v1/me/conversations/contracts/*").authenticated()
                         .requestMatchers("/api/v1/me/identity", "/api/v1/me/identity/documents/*").authenticated()
+                        .requestMatchers("/api/v1/me/listing-description/suggest", "/api/v1/me/listing-drafts", "/api/v1/me/listing-drafts/*", "/api/v1/me/listing-drafts/*/complete").authenticated()
                         .requestMatchers("/api/v1/me/rental-properties", "/api/v1/me/rental-properties/*/evidence-files", "/api/v1/me/rental-properties/*/verification-dossiers", "/api/v1/me/property-notices").authenticated()
+                         .requestMatchers("/api/v1/me/security", "/api/v1/me/reauthentications", "/api/v1/me/reauthentications/*/confirm").authenticated()
                         .requestMatchers("/api/v1/me/profile", "/api/v1/me/password", "/api/v1/me/phone", "/api/v1/me/email-change", "/api/v1/me/email-changes", "/api/v1/me/email-changes/*/confirm").authenticated()
+                        .requestMatchers(HttpMethod.GET,"/api/v1/rental-requests/*/cancellation").authenticated()
+                        .requestMatchers(HttpMethod.POST,"/api/v1/rental-requests/*/cancellation/actions").authenticated()
+                        .requestMatchers(HttpMethod.POST,"/api/v1/owner/properties/*/ai-precheck","/api/v1/owner/properties/*/ai-precheck/*/acknowledge","/api/v1/me/rental-properties/*/ai-precheck","/api/v1/me/rental-properties/*/ai-extract","/api/v1/me/rental-properties/*/ai-precheck/*/acknowledge").authenticated()
+                        .requestMatchers(HttpMethod.POST,"/api/v1/apartments/ai-chat","/api/v1/apartments/ai-search","/api/v1/apartments/ai-search/*/apply").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/apartments", "/api/v1/apartments/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/apartment/images/**").permitAll()
                         .requestMatchers(HttpMethod.HEAD, "/apartment/images/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/apartments/*/rental-requests").authenticated()
                         .requestMatchers("/api/v1/me/rental-requests", "/api/v1/me/rental-requests/*/cancel", "/api/v1/me/apartments/*/rental-requests", "/api/v1/owner/rental-requests", "/api/v1/owner/rental-requests/*/decisions").authenticated()
-                        .requestMatchers("/api/v1/owner/apartments", "/api/v1/owner/properties", "/api/v1/owner/properties/vneid-assets", "/api/v1/owner/properties/vneid-imports").authenticated()
+                        .requestMatchers("/api/v1/owner/apartments", "/api/v1/owner/properties", "/api/v1/owner/properties/vneid-assets", "/api/v1/owner/properties/vneid-imports", "/api/v1/owner/properties/*/vneid-units", "/api/v1/owner/properties/*/receiving-account").authenticated()
                         .requestMatchers("/api/v1/owner/properties/*/evidence-files", "/api/v1/owner/properties/*/verification-dossiers", "/api/v1/property-evidence-files/*", "/api/v1/admin/property-dossiers", "/api/v1/admin/property-dossiers/*", "/api/v1/admin/property-dossiers/*/decisions", "/api/v1/owner/apartments/*/publication", "/api/v1/owner/apartments/*/prices").authenticated()
-                        .requestMatchers("/api/v1/owner/tenancies", "/api/v1/me/tenancies", "/api/v1/owner/contracts/*/billing-context", "/api/v1/owner/contracts/*/invoices", "/api/v1/owner/invoices", "/api/v1/owner/invoices/*/send", "/api/v1/me/invoices", "/api/v1/invoices/*").authenticated()
+                        .requestMatchers("/api/v1/owner/payments/sepay", "/api/v1/owner/payments/sepay/bank-accounts", "/api/v1/owner/payments/sepay/virtual-accounts", "/api/v1/owner/payments/sepay/status", "/api/v1/owner/payments/sepay/rotate-key", "/api/v1/owner/payments/sepay/events", "/api/v1/owner/payments/sepay/test-payments", "/api/v1/owner/payments/sepay/test-recipients", "/api/v1/me/payments/sepay/test-payments", "/api/v1/me/payments/sepay/test-payments/*", "/api/v1/invoices/*/payment").authenticated()
+                        .requestMatchers(HttpMethod.GET,"/api/v1/owner/workspace-summary","/api/v1/owner/financial-summary","/api/v1/me/financial-summary").authenticated()
+                        .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/v1/owner/invoices/*/draft").authenticated()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/owner/invoices/*/cancel").authenticated()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/owner/invoices/*/history").authenticated()
+                        .requestMatchers("/api/v1/owner/tenancies", "/api/v1/me/tenancies", "/api/v1/owner/contracts/*/billing-context", "/api/v1/owner/contracts/*/rent-billing-context", "/api/v1/owner/contracts/*/rent-invoices", "/api/v1/owner/contracts/*/meter-readings", "/api/v1/owner/contracts/*/invoices", "/api/v1/owner/invoices", "/api/v1/owner/invoices/*/send", "/api/v1/me/invoices", "/api/v1/invoices/*").authenticated()
                         .requestMatchers("/api/v1/owner/rental-requests/*/contract-context", "/api/v1/owner/rental-requests/*/contract", "/api/v1/owner/contract-drafts", "/api/v1/me/contract-drafts", "/api/v1/contracts/*", "/api/v1/owner/contracts/*/draft").authenticated()
-                        .requestMatchers("/api/trustguard/**").hasAnyRole("OWNER", "ADMIN")
+                        // API ký quỹ cũ chưa có ownership/provider hợp lệ: đóng mọi truy cập,
+                        // kể cả Owner/Admin, thay vì chỉ kiểm tra role rồi cho đọc/sửa toàn bộ.
+                        .requestMatchers("/api/v1/owner/invoices/additional", "/api/v1/owner/invoices/additional/*").authenticated()
+                        .requestMatchers("/api/trustguard/escrow", "/api/trustguard/escrow/**").denyAll()
                         .requestMatchers("/api/v1/owner/maintenance-tickets", "/api/v1/me/maintenance-tickets").authenticated()
                         .requestMatchers("/api/v1/owner/maintenance-tickets/*/actions", "/api/v1/me/maintenance-tickets/*/actions").authenticated()
                         .requestMatchers("/api/v1/maintenance-tickets/*/images", "/api/v1/maintenance-images/*").authenticated()
@@ -115,6 +137,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/owner/payment-qr/**", "/api/v1/invoices/*/payment-qr").authenticated()
                         .requestMatchers("/api/v1/owner/properties/*/payment-qr").authenticated()
                         .requestMatchers("/api/v1/me/notifications", "/api/v1/me/notifications/**").authenticated()
+                        .requestMatchers("/api/v1/owner/settlements", "/api/v1/owner/settlements/**", "/api/v1/admin/settlements/**").authenticated()
+                        .requestMatchers("/api/v1/admin/accounts", "/api/v1/admin/accounts/**").authenticated()
                         .anyRequest().denyAll())
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((request, response, error) -> writeError(response, 401, "UNAUTHENTICATED", "Vui lòng đăng nhập lại."))
@@ -124,9 +148,11 @@ public class SecurityConfig {
                         .jwt(j -> j.jwtAuthenticationConverter(jwt -> {
                             try {
                                 AuthAccount account = auth.authenticate(jwt);
-                                String role = account.getStatus() == AuthAccount.Status.ACTIVE && verification.isVerified(account)
-                                        ? account.getRole().name() : "ONBOARDING";
-                                return new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
+                                // Live DB memberships are authoritative; never trust stale role claims.
+                                java.util.List<SimpleGrantedAuthority> authorities = account.getStatus() == AuthAccount.Status.ACTIVE && verification.isVerified(account)
+                                        ? account.roleNames().stream().map(role->new SimpleGrantedAuthority("ROLE_"+role)).toList()
+                                        : List.of(new SimpleGrantedAuthority("ROLE_ONBOARDING"));
+                                return new JwtAuthenticationToken(jwt, authorities);
                             } catch (AuthException error) {
                                 throw new OAuth2AuthenticationException(new OAuth2Error("invalid_token"));
                             }
