@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { ownerSummaryFixture } from './fixtures/ownerSummary';
 import { readFileSync } from 'node:fs';
 
 for(const width of [1440,390])for(const scenario of ['create-edit','save-error','pdf-error','stale'] as const)test(`Final PDF ${scenario} at ${width}px`,async({page})=>{
@@ -11,6 +12,7 @@ for(const width of [1440,390])for(const scenario of ['create-edit','save-error',
   let saved:any=null,postCount=0,putCount=0,pdfCount=0,failedSave=false,failedPdf=false;
   const pdf=readFileSync('../../ancu-proptech-backend/target/compact-contract.pdf');
   await page.route('**/api/**',async route=>{
+    const summary=ownerSummaryFixture(route);if(summary)return summary;
     const req=route.request(),url=new URL(req.url()),path=url.pathname,json=(body:unknown)=>route.fulfill({json:body});
     if(path.endsWith('/csrf'))return json({token:'fixture',headerName:'X-XSRF-TOKEN'});
     if(path.endsWith('/vneid-config'))return json({enabled:false});
@@ -38,21 +40,29 @@ for(const width of [1440,390])for(const scenario of ['create-edit','save-error',
   for(let i=0;i<3;i++)await dialog.getByRole('button',{name:'Tiếp theo →',exact:true}).click();
   await dialog.getByLabel('Ngày bắt đầu',{exact:true}).fill('2026-11-03');await dialog.getByLabel('Ngày kết thúc',{exact:true}).fill('2027-11-03');
   await dialog.getByRole('button',{name:'Tiếp theo →',exact:true}).click();
-  await dialog.getByRole('button',{name:'Tạo và xem PDF →',exact:true}).click();
-  await expect(dialog.locator('#contract-preview')).toHaveCount(0);
+  await dialog.getByRole('button',{name:'Rà soát và xác nhận →',exact:true}).click();
+  await expect(dialog.getByRole('heading',{name:'Ký xác nhận',exact:false})).toHaveCount(0);
+  await expect(dialog.getByTitle('Bản PDF hợp đồng HD-42')).toHaveCount(0);
+  if(!saved){expect(postCount).toBe(0);expect(pdfCount).toBe(0);}
+  await dialog.getByRole('button',{name:saved?'Xác nhận lưu thay đổi':'Xác nhận tạo hợp đồng',exact:true}).click();
   if(scenario==='stale'){
     await expect(dialog.getByRole('button',{name:'Tải lại thông tin',exact:true})).toBeVisible();expect(postCount).toBe(1);expect(pdfCount).toBe(0);
-    await expect(dialog.getByRole('button',{name:'Thử tạo lại PDF',exact:true})).toBeDisabled();
+    await expect(dialog.getByRole('button',{name:'Xác nhận tạo hợp đồng',exact:true})).toBeDisabled();
   }else{
-    if(scenario==='save-error'){await expect(dialog.getByText('Không lưu được bản nháp.',{exact:true})).toBeVisible();await dialog.getByRole('button',{name:'Thử tạo lại PDF',exact:true}).click();}
+    if(scenario==='save-error'){await expect(dialog.getByText('Không lưu được bản nháp.',{exact:true})).toBeVisible();await dialog.getByRole('button',{name:'Xác nhận tạo hợp đồng',exact:true}).click();}
     if(scenario==='pdf-error'){await expect(dialog.getByText('Chưa tải được PDF.',{exact:true})).toBeVisible();failedPdf=true;await dialog.getByRole('button',{name:'Tải lại PDF',exact:true}).click();}
     await expect(dialog.getByTitle('Bản PDF hợp đồng HD-42')).toBeVisible();
+    await expect(dialog.locator('#contract-preview')).toHaveCount(0);
     await expect(dialog.getByRole('heading',{name:'Tài sản cho thuê',exact:true})).toHaveCount(0);
     expect(postCount).toBe(scenario==='save-error'?2:1);
     if(scenario==='create-edit'){
       await dialog.getByRole('button',{name:'Chỉnh sửa',exact:true}).click();
       await dialog.getByLabel('Tiền thuê mỗi tháng (VND)',{exact:true}).fill('2700000');
-      await dialog.getByRole('button',{name:'Tiếp theo →',exact:true}).click();await dialog.getByRole('button',{name:'Tạo và xem PDF →',exact:true}).click();
+      await dialog.getByRole('button',{name:'Tiếp theo →',exact:true}).click();await dialog.getByRole('button',{name:'Rà soát và xác nhận →',exact:true}).click();
+      await expect(dialog.getByRole('heading',{name:'Ký xác nhận',exact:false})).toHaveCount(0);
+      await expect(dialog.getByTitle('Bản PDF hợp đồng HD-42')).toHaveCount(0);
+      if(!saved){expect(postCount).toBe(0);expect(pdfCount).toBe(0);}
+      await dialog.getByRole('button',{name:saved?'Xác nhận lưu thay đổi':'Xác nhận tạo hợp đồng',exact:true}).click();
       await expect(dialog.getByTitle('Bản PDF hợp đồng HD-42')).toBeVisible();expect(putCount).toBe(1);expect(postCount).toBe(1);expect(saved.monthlyRent).toBe('2700000');
     }
   }

@@ -21,7 +21,7 @@ export interface BillingContext {
   monthlyRent: string; electricityStartReading: string; electricityUnitPrice: string;
   waterStartReading: string; waterUnitPrice: string; baselineVersion: number;
 }
-export interface RentBillingContext {contractId:string;cycleMonths:number;coverageStart:string|null;coverageEnd:string|null;months:number;monthlyRent:string;totalAmount:string;dueDate:string|null;billingVersion:number;existingDraftId:string|null;hasPartialDays:boolean;automationMode:'MANUAL'|'DRAFT'|'SEND'}
+export interface RentBillingContext {contractId:string;cycleMonths:number;coverageStart:string|null;coverageEnd:string|null;months:number;monthlyRent:string;totalAmount:string;dueDate:string|null;billingVersion:number;existingDraftId:string|null;hasPartialDays:boolean;automationMode:'SEND';sendAvailableFrom:string|null;canSend:boolean}
 export interface BillingInvoice {
   kind?:'LEGACY'|'RENT'|'UTILITY'|null;coverageStart?:string|null;coverageEnd?:string|null;rentMonths?:number;rentUnitPrice?:string|null;
   waterBillingMode?:'METERED'|'PER_PERSON';occupantCount?:number;internetFee?:string;garbageFee?:string;

@@ -63,16 +63,16 @@ export function InvoicePaymentPanel({ invoiceId, additional = false, tenant = fa
     {error && <p role="alert" className="text-rose-700">{error}</p>}
     {!data && !error && <p role="status">Đang tải trạng thái thanh toán...</p>}
     {data?.status === 'PAID' && <p role="status" className="rounded-xl p-4 bg-emerald-50 text-emerald-800">
-      Đã thanh toán qua SePay{data.paidAt && ` · Ghi nhận ${new Date(data.paidAt).toLocaleString('vi-VN')}`}
+      Đã thanh toán{data.paidAt && ` · Ghi nhận ${new Date(data.paidAt).toLocaleString('vi-VN')}`}
     </p>}
     {data?.status === 'UNPAID' && <p role="status" className="text-amber-800">Chưa thanh toán</p>}
     {data?.status === 'PLATFORM_UNAVAILABLE' && <p className="text-amber-800">Hệ thống chưa sẵn sàng nhận thanh toán. Vui lòng thử lại sau.</p>}
     {data?.status === 'NOT_CONFIGURED' && <p className="text-amber-800">Chưa có kết nối thanh toán SePay.</p>}
     {data?.amount && <p className="font-semibold">Số tiền: {billingMoney(data.amount)}</p>}
-    {data?.bank && <p>Ngân hàng: {data.bank}</p>}
-    {data?.accountNumber && <p className="break-all">Tài khoản nhận: {data.accountNumber}</p>}
-    {data?.accountHolderName && <p>Chủ tài khoản: {data.accountHolderName}</p>}
-    {data?.paymentCode && <p className="break-all">Nội dung: <strong>{data.paymentCode}</strong></p>}
+    {data?.status !== 'PAID' && data?.bank && <p>Ngân hàng: {data.bank}</p>}
+    {data?.status !== 'PAID' && data?.accountNumber && <p className="break-all">Tài khoản nhận: {data.accountNumber}</p>}
+    {data?.status !== 'PAID' && data?.accountHolderName && <p>Chủ tài khoản: {data.accountHolderName}</p>}
+    {data?.status !== 'PAID' && data?.paymentCode && <p className="break-all">Nội dung: <strong>{data.paymentCode}</strong></p>}
     {tenant && data?.status === 'UNPAID' && (data.qrUrl
       ? <div className="space-y-2">
           <img src={data.qrUrl} alt="QR chuyển khoản hóa đơn SePay" referrerPolicy="no-referrer" className="w-72 max-w-full mx-auto rounded-lg" />

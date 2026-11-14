@@ -5,6 +5,7 @@ import { SelectionCancellationPanel } from '@/components/rental/SelectionCancell
 import { useEffect, useRef, useState } from 'react';
 import { Download, ExternalLink, RefreshCw, Copy, PenLine, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router';
 import { getContract, requestContractSignatureOtp, getContractPdf, signContract } from '@/services/contract/contractService';
 import { SignaturePad } from '@/components/contract/SignaturePad';
 import type { ContractDraft } from '@/types/contract';
@@ -17,7 +18,8 @@ export const signingLabel = (draft: ContractDraft) => draft.status === 'CANCELLE
   draft.signing?.state === 'WAITING_OWNER' ? 'Chờ chủ nhà ký' : draft.status === 'ACTIVE' ? 'Đang hiệu lực' : 'Chờ hai bên ký';
 const action = 'inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50';
 
-export function ContractDocument({ draft, onUpdated }: { draft: ContractDraft; onUpdated: (draft: ContractDraft) => void }) {
+export function ContractDocument({ draft, onUpdated, onRemoved }: { draft: ContractDraft; onUpdated: (draft: ContractDraft) => void; onRemoved?:()=>void }) {
+  const navigate=useNavigate();const removed=useRef(false);
   const { user } = useAuth();
   const [pdfUrl, setPdfUrl] = useState('');
   const [pdfLoading, setPdfLoading] = useState(true);
@@ -36,7 +38,7 @@ export function ContractDocument({ draft, onUpdated }: { draft: ContractDraft; o
   const isCustomer = user?.id === (signing?.customerAccountId ?? draft.snapshot.customer.id);
   const mySignedAt = isOwner ? signing?.ownerSignedAt : signing?.customerSignedAt;
   const canSign = !!signing && (isOwner || isCustomer) && !mySignedAt && draft.status === 'DRAFT' && draft.cancellationState !== 'PENDING' && !pendingCancellation;
-  useEffect(()=>{setPendingCancellation(false);setShowCancellation(false);},[draft.id]);
+  useEffect(()=>{removed.current=false;setPendingCancellation(false);setShowCancellation(false);},[draft.id]);
   useEffect(() => {
     let active = true; let url = '';
     setPdfLoading(true); setPdfError(''); setPdfUrl('');
@@ -89,7 +91,7 @@ export function ContractDocument({ draft, onUpdated }: { draft: ContractDraft; o
     </section>)}</div>
     {draft.status === 'CANCELLED' && <p className="rounded-lg bg-slate-50 p-3 text-sm">Hợp đồng đã hủy trước hiệu lực. Nội dung và chữ ký được giữ nguyên để xem lại; thao tác hủy không xác nhận hoàn cọc.</p>}
     {draft.cancellationState==='PENDING' && <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm">Đang chờ phản hồi đề nghị hủy; tạm khóa sửa và ký tiếp.</p>}
-    {!draft.lifecycle?.previousContractId && (draft.status==='DRAFT'||draft.status==='CANCELLED') && <div className="space-y-3"><button type="button" className="text-sm text-red-700 underline" onClick={()=>setShowCancellation(v=>!v)}>Hủy / lịch sử làm hợp đồng</button>{showCancellation&&<SelectionCancellationPanel requestId={draft.rentalRequestId} onState={value=>setPendingCancellation(value.state==='PENDING'||value.state==='CANCELLED')} onChanged={async()=>{onUpdated(await getContract(draft.id));setRevision(v=>v+1);}}/>}</div>}
+    {!draft.lifecycle?.previousContractId && (draft.status==='DRAFT'||draft.status==='CANCELLED') && <div className="space-y-3"><button type="button" className="text-sm text-red-700 underline" onClick={()=>setShowCancellation(v=>!v)}>Hủy / lịch sử làm hợp đồng</button>{showCancellation&&<SelectionCancellationPanel requestId={draft.rentalRequestId} onState={value=>{removed.current=value.state==='CANCELLED'&&!value.contractId;setPendingCancellation(value.state==='PENDING'||value.state==='CANCELLED');}} onChanged={async()=>{if(removed.current){if(onRemoved)onRemoved();else navigate(isOwner?'/app?tab=contracts':'/my/contracts',{replace:true});return;}onUpdated(await getContract(draft.id));setRevision(v=>v+1);}}/>}</div>}
     {canSign && <section className="p-4 sm:p-5 border border-emerald-200 rounded-xl space-y-4 bg-white">
       <h3 className="font-bold flex items-center gap-2"><PenLine size={18} />Ký xác nhận · {isOwner ? 'Bên cho thuê (Bên A)' : 'Bên thuê (Bên B)'}</h3>
       <p className="text-sm text-slate-600">Đọc bản PDF ở trên, sau đó vẽ chữ ký của bạn vào khung. Nội dung sẽ bị khóa ngay khi có chữ ký đầu tiên.</p>

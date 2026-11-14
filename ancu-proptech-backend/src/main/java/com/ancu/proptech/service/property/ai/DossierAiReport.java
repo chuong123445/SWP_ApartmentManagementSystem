@@ -7,7 +7,7 @@ import static com.ancu.proptech.service.property.ai.DossierAiClient.Failure;
 public record DossierAiReport(String verdict,String summary,List<FileReview> files,List<Finding> overallFindings) {
     public record Extraction(String field,String value,Integer page){public Extraction(String field,String value){this(field,value,null);}}
     public record Finding(String type,String field,String message,String declaredValue,String observedValue){}
-    public record FileReview(String fileId,boolean readable,String documentType,List<Extraction> extractedFields,List<Finding> findings){}
+    public record FileReview(String fileId,boolean readable,String documentType,List<Extraction> extractedFields,List<Finding> findings,Boolean purposeMatch){ public FileReview(String fileId,boolean readable,String documentType,List<Extraction> fields,List<Finding> findings){this(fileId,readable,documentType,fields,findings,null);} }
     private static final Set<String> FIELDS=Set.of("propertyName","propertyAddress","city","district","ward","applicantName","applicantDocumentNumber","principalName","principalDocumentNumber","certificateNumber","certificateIssueDate","certificateIssuePlace","rightsValidFrom","rightsValidUntil","originalLeaseFrom","originalLeaseUntil","bank","accountNumber","accountHolderName","other");
     private static final Set<String> TYPES=Set.of("MISSING_INFORMATION","MISSING_IMAGE","MISMATCH","UNREADABLE","INCONCLUSIVE");
     public static FileReview parse(JsonNode node,String expectedId){
@@ -23,7 +23,7 @@ public record DossierAiReport(String verdict,String summary,List<FileReview> fil
             observed=DossierDateValues.normalize(field,observed);
             if(type.equals("MISMATCH")&&!declared.isBlank()&&declared.equals(observed))continue;
             issues.add(new Finding(type,field,message,declared,observed));}
-        return new FileReview(expectedId,node.path("readable").asBoolean(),text(node,"documentType",120),List.copyOf(extracts),List.copyOf(issues));
+        return new FileReview(expectedId,node.path("readable").asBoolean(),text(node,"documentType",120),List.copyOf(extracts),List.copyOf(issues),node.path("purposeMatch").isBoolean()?node.path("purposeMatch").asBoolean():null);
     }
     public static FileReview relevant(FileReview report,JsonNode declared,String purpose){
         String right=declared.path("rightType").asString("");
@@ -31,7 +31,7 @@ public record DossierAiReport(String verdict,String summary,List<FileReview> fil
             if("OWNERSHIP".equals(right)&&Set.of("principalName","principalDocumentNumber","rightsValidFrom","rightsValidUntil","originalLeaseFrom","originalLeaseUntil").contains(finding.field()))return false;
             return !("MISSING_INFORMATION".equals(finding.type())&&"RIGHT_DOCUMENT".equals(purpose)&&Set.of("AUTHORIZATION","SUBLEASE").contains(right)&&Set.of("applicantName","applicantDocumentNumber").contains(finding.field()));
         }).toList();
-        return new FileReview(report.fileId(),report.readable(),report.documentType(),report.extractedFields(),findings);
+        return new FileReview(report.fileId(),report.readable(),report.documentType(),report.extractedFields(),findings,report.purposeMatch());
     }
     private static String text(JsonNode node,String field,int max){var value=node.path(field);if(!value.isString()||value.asString().length()>max)throw invalid();return value.asString();}
     public static DossierAiReport aggregate(List<FileReview> files){

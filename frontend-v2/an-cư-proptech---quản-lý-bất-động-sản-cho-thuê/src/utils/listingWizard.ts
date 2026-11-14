@@ -5,16 +5,17 @@ export const legalFields=[['principalName','Họ tên chủ sở hữu gốc'],[
 export type LegalKey=typeof legalFields[number][0];
 export interface Suggestion { field:string;value:string;fileId:string;filename:string;page?:number|null }
 export interface WizardUnit extends PropertyUnitInput { key:string;selected:boolean;imageIds:string[];amenitiesText?:string }
-export interface ListingState { step:number;confirmed:boolean;name:string;address:string;city:string;district:string;ward:string;rentalMode:'SINGLE_UNIT'|'MULTI_UNIT';imageIds:string[];units:WizardUnit[];legal:Record<LegalKey,string>;excludedFiles:string[];suggestions:Suggestion[]; autoValues?:Record<string,string>; extractionVersion?:number; extractedFileIds?:string[] }
+export interface ListingState { photoLayoutVersion?:number;step:number;confirmed:boolean;name:string;address:string;city:string;district:string;ward:string;rentalMode:'SINGLE_UNIT'|'MULTI_UNIT';imageIds:string[];units:WizardUnit[];legal:Record<LegalKey,string>;excludedFiles:string[];suggestions:Suggestion[]; autoValues?:Record<string,string>; extractionVersion?:number; extractedFileIds?:string[] }
 export const blankListingUnit=():WizardUnit=>({key:crypto.randomUUID(),selected:true,imageIds:[],roomNumber:'',title:'',description:'',floor:0,areaM2:'',advertisedMonthlyRent:'',deposit:null,bedrooms:null,bathrooms:null,maxOccupants:null,electricityIndex:null,waterIndex:null,electricityUnitPrice:null,waterUnitPrice:null,amenities:[]});
-export const blankListing=():ListingState=>({step:0,confirmed:false,name:'',address:'',city:'',district:'',ward:'',rentalMode:'SINGLE_UNIT',imageIds:[],units:[blankListingUnit()],legal:Object.fromEntries(legalFields.map(([key])=>[key,''])) as Record<LegalKey,string>,excludedFiles:[],suggestions:[]});
+export const blankListing=():ListingState=>({photoLayoutVersion:2,step:0,confirmed:false,name:'',address:'',city:'',district:'',ward:'',rentalMode:'SINGLE_UNIT',imageIds:[],units:[blankListingUnit()],legal:Object.fromEntries(legalFields.map(([key])=>[key,''])) as Record<LegalKey,string>,excludedFiles:[],suggestions:[]});
 export function restoreListing(payload:unknown):ListingState {
  const initial=blankListing();
  if(!payload||typeof payload!=='object'||Array.isArray(payload))return initial;
  const data=payload as Partial<ListingState>;
  const result={...initial};
  for(const key of ['name','address','city','district','ward'] as const)if(typeof data[key]==='string')result[key]=data[key];
- result.step=Number.isInteger(data.step)?Math.max(0,Math.min(4,data.step!)):0;
+ result.step=Number.isInteger(data.step)?Math.max(0,Math.min(3,data.photoLayoutVersion===2?data.step!:data.step===4?3:data.step===3?2:data.step!)):0;
+ result.photoLayoutVersion=2;
  result.confirmed=data.confirmed===true;
  result.autoValues=data.autoValues&&typeof data.autoValues==='object'?data.autoValues:{};
  result.extractionVersion=data.extractionVersion;

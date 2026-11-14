@@ -1,3 +1,4 @@
+import {IdentityReviewsPage} from './IdentityReviewsPage';
 import { Link, useSearchParams } from 'react-router';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { SettlementPanel } from '@/pages/account/SettlementPage';
@@ -5,6 +6,7 @@ import { PropertyDossiersPage } from './PropertyDossiersPage';
 import { AccountsPage } from './AccountsPage';
 
 const tabs = [
+  { key: 'identity', label: 'Duyệt xác thực tài khoản', search: '?tab=identity' },
   { key: 'dossiers', label: 'Kiểm duyệt tài sản', search: '' },
   { key: 'withdrawals', label: 'Yêu cầu rút tiền', search: '?tab=withdrawals' },
   { key: 'accounts', label: 'Tài khoản người dùng', search: '?tab=accounts' },
@@ -23,6 +25,6 @@ export function AdminPage() {
           {tab.label}
         </Link>)}
       </nav>
-      {active === 'accounts' ? <AccountsPage /> : active === 'withdrawals' ? <SettlementPanel admin /> : <PropertyDossiersPage />}
+      {active === 'identity' ? <IdentityReviewsPage /> : active === 'accounts' ? <AccountsPage /> : active === 'withdrawals' ? <SettlementPanel admin /> : <PropertyDossiersPage />}
   </AdminLayout>;
 }

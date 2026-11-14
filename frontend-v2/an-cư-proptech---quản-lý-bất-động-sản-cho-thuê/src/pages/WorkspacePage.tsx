@@ -1,3 +1,4 @@
+import { OwnerAssistant } from '@/components/owner/OwnerAssistant';
 import { useAuth } from '@/hooks/useAuth';
 import { useRentalWorkspace } from '@/hooks/useRentalWorkspace';
 import { useWorkspaceNavigation } from '@/hooks/useWorkspaceNavigation';
@@ -65,6 +66,7 @@ export function WorkspacePage() {
         {navigation.activeTab !== 'home' && propertyId !== 'all' && <p className="mb-4 text-sm text-slate-600">Tài sản đang chọn: <strong>{workspace.buildings.find(p => p.id === propertyId)?.name}</strong></p>}
         <WorkspaceRoutes workspace={scoped} navigation={navigation} />
       </>}
+      {user?.roles.includes('OWNER') && <OwnerAssistant hidden={navigation.isCreateInvoiceOpen || !!workspace.selectedInvoice || navigation.isAddRoomOpen} key={propertyId} propertyId={propertyId} tenancies={scoped.tenancies} onNavigate={navigation.selectTab} onCreateInvoice={workspace.handleCreateInvoice}/>}
     </ManagementLayout>
   );
 }

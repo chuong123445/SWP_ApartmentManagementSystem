@@ -6,8 +6,9 @@ import { X } from 'lucide-react';
 import type { Invoice } from '@/types';
 import type { Tenancy, BillingContext, BillingInvoice, RentBillingContext } from '@/types/billing';
 import { getRentBillingContext, createRentInvoice, getBillingContext, createInvoice, sendInvoice, saveMeterReadings, invoiceView, billingMoney } from '@/services/billing/billingService';
-export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice, initialContractId }: {
+export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice, initialContractId, initialSuggestion }: {
   initialContractId?:string;
+  initialSuggestion?: {context: BillingContext; electricity: string; water: string};
   tenancies: Tenancy[]; onClose: () => void; onCreateInvoice: (invoice: Invoice) => void;
 }) {
   const [kind,setKind]=useState<'RENT'|'UTILITY'>('UTILITY');
@@ -30,15 +31,15 @@ export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice, initia
     let active = true;setContext(null);setRent(null);setError('');
     if (!contractId) return;
     if(kind==='RENT'){getRentBillingContext(contractId).then(value=>{if(active){setRent(value);setDue(value.dueDate??'');}}).catch(e=>{if(active)setError(e.message);});return()=>{active=false;};}
-    getBillingContext(contractId).then(c => { if (active) { setContext(c);setDue(`${c.period}-28`);setElectricity(c.savedReading?.electricityEndReading??'');setWater(c.savedReading?.waterEndReading??''); } })
+    getBillingContext(contractId).then(c => { if (active) { setContext(c);setDue(`${c.period}-28`);const matches=initialSuggestion?.context.contractId===c.contractId&&initialSuggestion.context.period===c.period&&initialSuggestion.context.baselineVersion===c.baselineVersion;setElectricity(matches?initialSuggestion.electricity:c.savedReading?.electricityEndReading??'');setWater(matches?initialSuggestion.water:c.savedReading?.waterEndReading??'');if(initialSuggestion&&!matches)setError('Kỳ hóa đơn hoặc chỉ số đầu kỳ đã thay đổi. Vui lòng nhập lại chỉ số mới.'); } })
       .catch(e => { if (active) setError(e.message); });return () => { active = false; };
-  }, [contractId, revision, kind]);
+  }, [contractId, revision, kind, initialSuggestion]);
   const save = async (send: boolean) => {
     if(submitting.current||!form.current?.reportValidity())return;
     if(kind==='RENT'){
-      if(!rent||rent.contractId!==contractId||!rent.coverageStart||rent.existingDraftId)return;
+      if(!rent||rent.contractId!==contractId||!rent.coverageStart||rent.existingDraftId||!rent.canSend)return;
       submitting.current=true;setSaving(true);setError('');
-      try{const draft=created??await createRentInvoice(contractId,{billingVersion:rent.billingVersion,coverageStart:rent.coverageStart,dueDate:due});setCreated(draft);onCreateInvoice(invoiceView(draft));if(send){onCreateInvoice(invoiceView(await sendInvoice(draft.id,draft.version)));}onClose();}
+      try{const sent=await createRentInvoice(contractId,{billingVersion:rent.billingVersion,coverageStart:rent.coverageStart,dueDate:due});onCreateInvoice(invoiceView(sent));onClose();}
       catch(e){setError(e instanceof Error?e.message:'Không lưu được tiền thuê.');}
       finally{submitting.current=false;setSaving(false);}return;
     }
@@ -64,12 +65,14 @@ export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice, initia
     <div className="flex justify-between items-center"><h2 className="text-lg font-bold">Lập hóa đơn cho người thuê</h2><button onClick={onClose} disabled={saving} aria-label="Đóng"><X /></button></div>
     {error && <p role="alert" className="bg-rose-50 text-rose-700 rounded-lg p-3 mt-4">{error}{!created && <button type="button" onClick={() => setRevision(v => v + 1)} className="ml-2 underline">Tải lại</button>}</p>}
     {!active.length && <p className="py-4 text-slate-500">Chưa có hợp đồng đang hoạt động để lập hóa đơn.</p>}
-    <form ref={form} onSubmit={e => { e.preventDefault(); void save(false); }} className="space-y-4 mt-4">
+    <form ref={form} onSubmit={e => { e.preventDefault(); void save(kind==='RENT'); }} className="space-y-4 mt-4">
       <fieldset disabled={saving || !!created} className="space-y-4">
         <label className="block text-sm font-semibold">Loại hóa đơn<select aria-label="Loại hóa đơn" className={cls} value={kind} onChange={e=>setKind(e.target.value as 'RENT'|'UTILITY')}><option value="UTILITY">Điện nước và dịch vụ hàng tháng</option><option value="RENT">Tiền thuê theo chu kỳ hợp đồng</option></select></label>
         <div><label htmlFor="invoice-contract" className="text-sm font-semibold">Căn hộ / Người thuê</label><select id="invoice-contract" required className={cls} value={contractId} onChange={e => setContractId(e.target.value)}><option value="">Chọn quan hệ thuê</option>{active.map(c => <option key={c.id} value={c.id}>{c.roomNumber} — {c.customerName}</option>)}</select></div>
         {contractId && !context && !rent && !error && <p role="status">Đang tải dữ liệu lập hóa đơn...</p>}
         {kind==='RENT'&&rent&&<div className="rounded-lg bg-slate-50 p-3 text-sm space-y-2">
+          <p>Tiền phòng được tự động lập và gửi trong 7 ngày trước hạn đóng.</p>
+          {!rent.canSend&&rent.sendAvailableFrom&&<p role="status" className="text-amber-800">Chưa đến thời gian gửi. Bắt đầu gửi từ {dossierDateDisplay(rent.sendAvailableFrom)}.</p>}
           <p>Chu kỳ đã ký: {rent.cycleMonths} tháng / lần</p>
           {rent.coverageStart?<><p>Kỳ tiền thuê: {dossierDateDisplay(rent.coverageStart)} đến {dossierDateDisplay(rent.coverageEnd)} ({rent.months} tháng)</p><p>{billingMoney(rent.monthlyRent)} / tháng · Tổng {billingMoney(rent.totalAmount)}</p></>:<p>Đã hết tháng tròn cần lập tiền thuê.</p>}
           {rent.hasPartialDays&&<p className="text-amber-800">Hợp đồng có ngày lẻ. Hai bên đối chiếu và xử lý riêng phần này.</p>}
@@ -91,8 +94,8 @@ export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice, initia
       </fieldset>
       {created && <p className="text-sm text-amber-700">Đã lưu bản nháp. Bạn có thể thử gửi lại hóa đơn này.</p>}
       <div className="flex justify-end gap-3 pt-4 border-t"><button type="button" onClick={onClose} disabled={saving}>Hủy</button>
-        <button type="submit" id="btn-confirm-create-invoice" disabled={saving || (kind==='RENT'?rent?.contractId!==contractId||!rent.coverageStart||!!rent.existingDraftId:context?.contractId!==contractId)} className="border rounded-lg px-4 py-2 disabled:opacity-50">Lưu bản nháp</button>
-        <button type="button" id="btn-create-send-invoice" disabled={saving || (kind==='RENT'?rent?.contractId!==contractId||!rent.coverageStart||!!rent.existingDraftId:context?.contractId!==contractId)} onClick={() => void save(true)} className="bg-brand-600 text-white rounded-lg px-4 py-2 disabled:opacity-50">{saving ? 'Đang xử lý...' : created ? 'Gửi lại' : 'Lập và gửi'}</button></div>
+        {kind==='UTILITY'&&<button type="submit" id="btn-confirm-create-invoice" disabled={saving || context?.contractId!==contractId} className="border rounded-lg px-4 py-2 disabled:opacity-50">Lưu bản nháp</button>}
+        <button type="button" id="btn-create-send-invoice" disabled={saving || (kind==='RENT'?rent?.contractId!==contractId||!rent.coverageStart||!!rent.existingDraftId||!rent.canSend:context?.contractId!==contractId)} onClick={() => void save(true)} className="bg-brand-600 text-white rounded-lg px-4 py-2 disabled:opacity-50">{saving ? 'Đang xử lý...' : created ? 'Gửi lại' : 'Lập và gửi'}</button></div>
     </form>
   </section></div>;
 }

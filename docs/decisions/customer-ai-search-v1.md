@@ -23,3 +23,24 @@ Validation: see `docs/reports/home-ai-chat-2026-11-09.md`. Restart backend and r
 ## Override 09 November 2026 — automatic AI consent
 
 User requested removing Gemini consent checkboxes throughout the AI flows, including rental property uploads. Chat and the shared Owner/applicant dossier precheck now submit consent:true automatically when the user sends a message or starts scanning. API clients already send this value. The checkbox state, client-side consent gates and unused chat consent styles were removed. Updated browser scenarios assert checkbox absence and successful commands with automatic consent.
+
+
+## 14/11/2026 — tên thành phố tương đương
+
+Thành phố Đà Nẵng / TP. Đà Nẵng / Đà Nẵng được xem là cùng thành phố nếu
+có trong danh mục công khai đủ điều kiện. Server chuẩn hóa tiền tố hành chính,
+hoa/thường, dấu và khoảng trắng khi so khớp; chọn nhãn có sẵn ngắn nhất làm
+canonical. Không hardcode thêm địa phương không có trong catalog.
+
+Trước khi gọi AI, đổi cách viết có tiền tố tương đương thành tên catalog trong
+request, giữ nguyên ngân sách/phủ định/các yêu cầu khác; source hash vẫn dựa
+trên đầu vào gốc. Chuẩn hóa city trong output trước kiểm tra hierarchy; district
+và ward vẫn phải đúng catalog và thành phố tương ứng. Prompt giải thích rõ
+không yêu cầu User chọn lại chỉ vì khác tiền tố. Hàng tồn kho vẫn được truy vấn
+bằng bộ lọc thường, ranh giới “dưới10triệu” giữ9999999.99.
+
+Search thường/grouped cũng tìm tất cả biến thể city trong catalog hiện tại,
+không chỉ một chuỗi. City không biết không mở rộng thành tìm toàn quốc. Không
+sửa địa chỉ đã lưu hoặc nới VACANT/public/approved/owner/right/date/budget.
+AI sinh dữ liệu không hợp lệ/địa điểm thực sự vắng mặt vẫn bị chặn hoặc trả
+hạn chế rõ ràng. Không suy kết quả phòng cụ thể từ câu trả lời của mô hình.

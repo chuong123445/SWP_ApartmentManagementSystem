@@ -105,6 +105,36 @@ class OwnerFinancialSummaryIntegrationTests {
         money(read(auth, property, 2027), "$.totals.billedAmount", "0");
     }
 
+    private RentalInvoice covered(RentalContract c,String start,int months,String amount,RentalInvoice.Status status){
+        var first=LocalDate.parse(start);var i=invoice(c,YearMonth.from(first).toString(),amount,"0",first.plusDays(4),status);
+        i.setKind(RentalInvoice.Kind.RENT);i.setCoverageStart(first);i.setCoverageEnd(first.plusMonths(months).minusDays(1));i.setRentMonths(months);return invoices.saveAndFlush(i);
+    }
+    @Test void fourteenMonthRentIsAllocatedAcrossYearsWhileCashStaysOnPaymentDate()throws Exception{
+        var owner=account(AuthAccount.Role.OWNER);var p=property(owner);var c=contract(p,account(AuthAccount.Role.CUSTOMER));
+        for(var invoice:List.of(covered(c,"2025-09-01",6,"51000000",RentalInvoice.Status.SENT),covered(c,"2026-03-01",6,"51000000",RentalInvoice.Status.SENT),covered(c,"2026-09-01",2,"17000000",RentalInvoice.Status.SENT)))paid(invoice,"2026-11-14T05:00:00Z");
+        covered(c,"2026-11-01",1,"99999999",RentalInvoice.Status.DRAFT);
+        covered(c,"2026-12-01",1,"99999999",RentalInvoice.Status.CANCELLED);
+        var utility=invoice(c,"2026-10","0","100",LocalDate.of(2026,11,5),RentalInvoice.Status.SENT);utility.setKind(RentalInvoice.Kind.UTILITY);invoices.saveAndFlush(utility);
+        receipt(c,"500","2026-11-14T05:00:00Z");
+        var t=token(owner);var current=read(t,p,2026);
+        money(current,"$.allocatedRentAmount","85000000");money(current,"$.properties[0].allocatedRentAmount","85000000");
+        for(int m=0;m<10;m++)money(current,"$.months["+m+"].allocatedRentAmount","8500000");
+        money(current,"$.months[10].allocatedRentAmount","0");money(current,"$.months[11].allocatedRentAmount","0");
+        money(current,"$.months[10].receipts.totalAmount","119000500");money(current,"$.totals.rentAmount","68000000");
+        var previous=read(t,p,2025);money(previous,"$.allocatedRentAmount","34000000");money(previous,"$.receipts.totalAmount","0");
+        money(read(t,null,2026),"$.allocatedRentAmount","85000000");
+    }
+    @Test void allocationConservesFractionalRentAndIncludesUnpaidSentInvoicesOnly()throws Exception{
+        var owner=account(AuthAccount.Role.OWNER);var p=property(owner);var c=contract(p,account(AuthAccount.Role.CUSTOMER));
+        covered(c,"2025-11-01",3,"100",RentalInvoice.Status.SENT);
+        var t=token(owner);var previous=read(t,p,2025);var current=read(t,p,2026);
+        money(previous,"$.months[10].allocatedRentAmount","33.3333");money(previous,"$.months[11].allocatedRentAmount","33.3333");
+        money(current,"$.months[0].allocatedRentAmount","33.3334");money(current,"$.receipts.totalAmount","0");
+        var sum=new BigDecimal(JsonPath.<String>read(previous,"$.allocatedRentAmount")).add(new BigDecimal(JsonPath.<String>read(current,"$.allocatedRentAmount")));
+        assertEquals(0,new BigDecimal("100").compareTo(sum));
+        money(read(t,property(owner),2026),"$.allocatedRentAmount","0");
+    }
+
     @Test void tenantSummaryCountsAllSentInvoicesAndOnlyOwnAdditionalCharges() throws Exception {
         var owner = account(AuthAccount.Role.OWNER);
         var customer = account(AuthAccount.Role.CUSTOMER);

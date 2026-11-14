@@ -6,7 +6,7 @@ import java.time.Instant;
 @Entity @Table(name="property_settings") @Getter @Setter @NoArgsConstructor
 public class PropertySettings {
  public enum RentInvoiceMode { MANUAL, DRAFT, SEND }
- @Enumerated(EnumType.STRING) @Column(nullable=false,length=16) private RentInvoiceMode rentInvoiceMode=RentInvoiceMode.DRAFT;
+ @Enumerated(EnumType.STRING) @Column(nullable=false,length=16) private RentInvoiceMode rentInvoiceMode=RentInvoiceMode.SEND;
  public enum WaterBillingMode { METERED, PER_PERSON }
  @Enumerated(EnumType.STRING) @Column(nullable=false,length=16) private WaterBillingMode waterBillingMode=WaterBillingMode.METERED;
  @Id private Long id;

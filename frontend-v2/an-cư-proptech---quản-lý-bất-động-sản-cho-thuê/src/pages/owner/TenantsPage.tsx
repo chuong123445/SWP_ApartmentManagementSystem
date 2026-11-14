@@ -9,6 +9,7 @@ export function identityLabel(tenant: Tenant) {
   if (tenant.identityStatus === 'NOT_VERIFIED') return 'Chưa xác minh định danh';
   if (tenant.identityStatus !== 'VERIFIED') return 'Chưa có dữ liệu định danh';
   if (tenant.identitySource === 'AUTH0_VNEID_SIMULATION') return 'Đã đối chiếu qua Auth0 (mô phỏng)';
+  if (tenant.identitySource === 'ADMIN_REVIEW') return 'Căn cước đã được Admin duyệt';
   if (tenant.identitySource === 'LOCAL_DEMO') return 'Định danh mẫu local';
   return 'Đã xác minh theo nguồn hệ thống';
 }

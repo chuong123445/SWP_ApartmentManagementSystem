@@ -28,3 +28,7 @@ Cùng actor/action/reason retry kết quả hiện hành tương ứng trả l�
 ## Tiền và triển khai
 
 Không thu/khấu trừ/hoàn cọc hoặc đánh dấu đã hoàn; cọc thực thu và quyết toán vẫn là FIX10/11. Hợp đồng ACTIVE thuộc FIX09. V59 thêm root/event tables/index, không backfill quyết định hủy cho dữ liệu cũ. Source migration đăng ký startup; chưa apply thủ công lên DB ứng dụng. Giữ V56 và toàn bộ migration trước đó. Context7 Spring Data JPA4.1.0 gần nhất managed4.1.1; React19.3.0 cleanup đối chiếu nguồn chính thức.
+
+## Override 13/11/2026 — nháp chưa ký bị hủy
+
+Theo yêu cầu mới, khi hủy lựa chọn thuê đầu không có chữ ký, xóa `contract_drafts` rồi `rental_contracts` trong transaction sau khi ghi audit của yêu cầu thuê. Response không còn contractId/contractStatus; không đọc lại PDF đã xóa, UI đóng wizard/quay lại danh sách. Request/root/events/lý do hủy vẫn tồn tại; giữ khóa request/contract/apartment, tính idempotent, pending requests và trạng thái công khai. Nháp đã có chữ ký vẫn giữ dữ liệu và đi qua quy trình đề nghị/đồng ý. Không xóa hàng loạt dữ liệu đã lưu: các nháp CANCELLED chưa ký cũ được loại khỏi danh sách Owner/Customer/tenancies; lịch sử cũ vẫn có thể đọc bởi đúng bên. Không áp dụng cho hợp đồng đã có hiệu lực, gia hạn hoặc thanh toán.

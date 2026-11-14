@@ -29,7 +29,8 @@
             "schema": {
               "type": "string",
               "maxLength": 80
-            }
+            },
+            "description": " Matches equivalent city-name variants in the eligible public catalog; unknown city does not broaden to all cities."
           },
           {
             "name": "district",

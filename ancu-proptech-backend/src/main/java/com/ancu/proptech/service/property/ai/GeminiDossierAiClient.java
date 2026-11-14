@@ -45,7 +45,7 @@ public class GeminiDossierAiClient implements DossierAiClient {
         var parts=List.of(Map.of("text",data),Map.of("inlineData",Map.of("mimeType",document.mimeType(),"data",Base64.getEncoder().encodeToString(document.content()))));
         var generation=new LinkedHashMap<String,Object>();
         generation.put("temperature",0);generation.put("maxOutputTokens",4096);
-        generation.put("responseMimeType","application/json");generation.put("responseJsonSchema",schema);
+        generation.put("responseMimeType","application/json");generation.put("responseJsonSchema",instruction.contains("EXTRACTION_PURPOSE_GATE_V2")?extractionSchema():schema);
         // Flash 2.5 defaults to dynamic thinking, which shares the output token limit.
         // Keep reasoning bounded and leave room for the full structured per-file report.
         // Other models may not accept thinkingBudget (or may forbid disabling thinking).
@@ -80,6 +80,7 @@ public class GeminiDossierAiClient implements DossierAiClient {
         }catch(Failure e){throw e;}catch(InterruptedException e){Thread.currentThread().interrupt();throw new Failure("PROVIDER_TIMEOUT",true);}
         catch(IOException e){throw new Failure("PROVIDER_UNAVAILABLE",true);}catch(RuntimeException e){throw new Failure("INVALID_RESPONSE",false);}
     }
+    private JsonNode extractionSchema(){try{return json.readTree(new ClassPathResource("ai/property-extraction.schema.json").getContentAsString(StandardCharsets.UTF_8));}catch(IOException e){throw new Failure("CONFIGURATION_MISSING",false);}}
     private static String safeReason(String reason){
         return Set.of("STOP","MAX_TOKENS","SAFETY","RECITATION","LANGUAGE","OTHER","BLOCKLIST","PROHIBITED_CONTENT","SPII",
             "MALFORMED_FUNCTION_CALL","IMAGE_SAFETY","IMAGE_PROHIBITED_CONTENT","IMAGE_OTHER","NO_IMAGE","IMAGE_RECITATION",

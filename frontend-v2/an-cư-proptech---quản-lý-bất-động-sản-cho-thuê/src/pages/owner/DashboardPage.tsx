@@ -56,10 +56,10 @@ export function DashboardPage({ propertyName, report, counters, onNavigateTab }:
         <FinancialCard label="Lấp đầy hiện tại" icon={<Building2 size={18} />}
           value={data.inventory.units ? `${Math.round(100 * data.inventory.occupied / data.inventory.units)}%` : '—'}
           note={`${data.inventory.occupied}/${data.inventory.units} căn đang ở · ${data.inventory.vacant} căn trống`} />
-        <FinancialCard label={`Hóa đơn kỳ ${current.period}`} icon={<ReceiptText size={18} />}
-          value={money(current.invoices.billedAmount)}
-          note={`${current.invoices.invoiceCount} hóa đơn · ${money(current.invoices.unpaidInvoiceAmount)} chưa thu theo kỳ`} />
-        <FinancialCard label={`Tiền nhận tháng ${current.period}`} icon={<ArrowDownToLine size={18} />}
+        <FinancialCard label="Hóa đơn quá hạn · Mọi kỳ" icon={<ReceiptText size={18} />}
+          value={money(data.arrears.overdueInvoiceAmount)}
+          note={`${data.arrears.overdueInvoiceCount} hóa đơn cần nhắc thanh toán`} />
+        <FinancialCard label={`Thực thu tháng ${current.period}`} icon={<ArrowDownToLine size={18} />}
           value={money(current.receipts.totalAmount)} note="Theo ngày thu từ hóa đơn và phiếu bổ sung." />
         <FinancialCard label="Hóa đơn chưa thu · Mọi kỳ" icon={<Wallet size={18} />}
           value={money(data.arrears.monthlyInvoiceAmount)}
@@ -67,7 +67,7 @@ export function DashboardPage({ propertyName, report, counters, onNavigateTab }:
       </section>
 
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(245px,1fr)]">
-        <FinancialChart months={data.months.slice(Math.max(0, month - 6), month)} />
+        <FinancialChart mode="cash" months={data.months.slice(Math.max(0, month - 6), month)} />
         <section className="app-panel p-4 sm:p-5" aria-labelledby="dashboard-followup">
           <h2 id="dashboard-followup" className="text-base font-bold">Cần theo dõi</h2>
           <dl className="mt-2 divide-y divide-slate-100 text-sm">

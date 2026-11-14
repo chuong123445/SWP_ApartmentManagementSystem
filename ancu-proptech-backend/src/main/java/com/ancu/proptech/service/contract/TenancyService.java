@@ -28,7 +28,7 @@ public class TenancyService {
         var terms = drafts.findTenancyTerms(scoped.stream().map(RentalContract::getId).toList()).stream()
                 .collect(Collectors.toMap(TenancyTerms::contractId, value -> value));
         Map<Long, Optional<String>> identitySources = new HashMap<>();
-        return scoped.stream().map(c -> {
+        return scoped.stream().filter(c -> !(c.getStatus()==RentalContract.Status.CANCELLED&&c.getRenewalOfContractId()==null&&terms.containsKey(c.getId())&&"UNSIGNED".equals(terms.get(c.getId()).signingStatus()))).map(c -> {
             var a = c.getApartment();var u = c.getCustomer();var saved = terms.get(c.getId());
             var source = identitySources.computeIfAbsent(u.getId(), id -> identities.verified(id).map(value -> value.getSource()));
             return new TenancyResponse(c.getId(),a.getId(),a.getRoomNumber(),a.getTitle(),a.getProperty().getName(),

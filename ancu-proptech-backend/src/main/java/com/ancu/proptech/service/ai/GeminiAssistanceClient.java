@@ -18,13 +18,19 @@ public class GeminiAssistanceClient implements AssistanceClient {
     @Value("${app.assistance-ai.enabled:false}") private boolean enabled;
     private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).followRedirects(HttpClient.Redirect.NEVER).build();
     public JsonNode generate(String instruction,JsonNode schema,Object input){
+        return generate(instruction,schema,input,List.of());
+    }
+    public JsonNode generate(String instruction,JsonNode schema,Object input,List<AssistanceClient.Image> images){
         if(!enabled||!settings.configured())throw failure("AI_NOT_CONFIGURED");
         var uri=URI.create(settings.getBaseUrl()+"/models/"+settings.getModel()+":generateContent");
         if(!"https".equals(uri.getScheme())&&!Set.of("localhost","127.0.0.1").contains(uri.getHost()))throw failure("AI_NOT_CONFIGURED");
         var generation=new LinkedHashMap<String,Object>();generation.put("temperature",0);generation.put("maxOutputTokens",4096);generation.put("responseMimeType","application/json");generation.put("responseJsonSchema",schema);
         if(settings.getModel().startsWith("gemini-2.5-flash"))generation.put("thinkingConfig",Map.of("thinkingBudget",0));
         GeminiGenerationConfig.adapt(generation,settings.getModel());
-        var userParts=List.of(Map.of("text",json.writeValueAsString(input)));
+        if(images.size()>4||images.stream().anyMatch(i->!Set.of("image/png","image/jpeg").contains(i.mimeType())||i.content().length>2_000_000))throw failure("AI_INVALID_IMAGES");
+        var userParts=new ArrayList<Map<String,Object>>();
+        userParts.add(Map.of("text",json.writeValueAsString(input)));
+        for(var image:images)userParts.add(Map.of("inlineData",Map.of("mimeType",image.mimeType(),"data",Base64.getEncoder().encodeToString(image.content()))));
         var payload=Map.of("systemInstruction",Map.of("parts",List.of(Map.of("text",instruction))),"contents",List.of(Map.of("role","user","parts",userParts)),"generationConfig",generation);
         try{
             var req=HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(45)).header("Content-Type","application/json").header("x-goog-api-key",settings.getApiKey()).POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(payload))).build();

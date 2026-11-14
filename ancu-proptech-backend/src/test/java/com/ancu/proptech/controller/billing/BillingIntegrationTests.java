@@ -324,28 +324,55 @@ class BillingIntegrationTests {
         mvc.perform(get(path+"/billing-context").header("Authorization","Bearer "+ownerToken)).andExpect(jsonPath("$.period").value("2026-10")).andExpect(jsonPath("$.electricityStartReading").value("1000.00"));
         create(ownerToken,body("2026-10",2,"1120","208")).andExpect(status().isCreated()).andExpect(jsonPath("$.kind").value("UTILITY")).andExpect(jsonPath("$.monthlyRent").value("0"));
     }
-    @Test void rentDraftCanBeEditedWithoutMeterReadingsAndCancelledThenRecreated()throws Exception{
+    @Test void manualRentSendsImmediatelyAndCannotBeEditedAsDraft()throws Exception{
         String root="/api/v1/owner/contracts/"+contract.getId();
-        String rent=mvc.perform(post(root+"/rent-invoices").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"billingVersion\":0,\"coverageStart\":\"2026-10-01\",\"dueDate\":\"2026-10-05\"}")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String rent=mvc.perform(post(root+"/rent-invoices").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"billingVersion\":0,\"coverageStart\":\"2026-10-01\",\"dueDate\":\"2026-10-05\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("SENT")).andReturn().getResponse().getContentAsString();
         String id=JsonPath.read(rent,"$.id");
-        mvc.perform(patch("/api/v1/owner/invoices/"+id+"/draft").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"version\":0,\"billingVersion\":1,\"reason\":\"Due date adjustment\",\"dueDate\":\"2026-10-10\"}")).andExpect(status().isOk());
-        mvc.perform(get(root+"/rent-billing-context").header("Authorization","Bearer "+ownerToken)).andExpect(jsonPath("$.dueDate").value("2026-10-10"));
-        mvc.perform(post("/api/v1/owner/invoices/"+id+"/cancel").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"version\":1,\"billingVersion\":2,\"reason\":\"Recreate\"}")).andExpect(status().isOk());
-        mvc.perform(get(root+"/rent-billing-context").header("Authorization","Bearer "+ownerToken)).andExpect(jsonPath("$.coverageStart").value("2026-10-01"));
+        assertEquals(1,notifications.countByInvoiceId(Long.valueOf(id)));
+        mvc.perform(patch("/api/v1/owner/invoices/"+id+"/draft").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"version\":0,\"billingVersion\":2,\"reason\":\"Due date adjustment\",\"dueDate\":\"2026-10-10\"}" )).andExpect(status().isConflict());
+        mvc.perform(post("/api/v1/owner/invoices/"+id+"/cancel").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"version\":0,\"billingVersion\":2,\"reason\":\"Recreate\"}" )).andExpect(status().isConflict());
+        send(ownerToken,id,0).andExpect(status().isOk());
+        assertEquals(1,notifications.countByInvoiceId(Long.valueOf(id)));
     }
-    @Test void automaticRentDraftIsIdempotentAndOptionalSendingNotifiesOnce(){
+    @org.junit.jupiter.params.ParameterizedTest @org.junit.jupiter.params.provider.EnumSource(com.ancu.proptech.model.property.PropertySettings.RentInvoiceMode.class)
+    void automaticRentSendsWithoutOptInAndNotifiesOnce(com.ancu.proptech.model.property.PropertySettings.RentInvoiceMode oldMode){
         var today=LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
         org.junit.jupiter.api.Assumptions.assumeTrue(today.getDayOfMonth()<=28);
         contract.setStartDate(today.withDayOfMonth(1));contract.setEndDate(today.withDayOfMonth(1).plusYears(1).minusDays(1));contract.setRentPaymentDay(today.getDayOfMonth());contracts.flush();
+        var settings=new com.ancu.proptech.model.property.PropertySettings();settings.setProperty(property);settings.setElectricityUnitPrice(BigDecimal.ZERO);settings.setWaterUnitPrice(BigDecimal.ZERO);settings.setInternetFee(BigDecimal.ZERO);settings.setGarbageFee(BigDecimal.ZERO);settings.setUpdatedAt(java.time.Instant.now());settings.setUpdatedBy(owner.getId());settings.setRentInvoiceMode(oldMode);propertyRates.saveAndFlush(settings);
         invoiceService.prepareScheduledRent(contract.getId());invoiceService.prepareScheduledRent(contract.getId());
         var list=invoiceRecords.findByContractIdAndStatusNotOrderByPeriodAsc(contract.getId(),com.ancu.proptech.model.billing.RentalInvoice.Status.CANCELLED);
-        assertEquals(1,list.size());assertEquals(com.ancu.proptech.model.billing.RentalInvoice.Status.DRAFT,list.getFirst().getStatus());
-        var settings=new com.ancu.proptech.model.property.PropertySettings();settings.setProperty(property);settings.setElectricityUnitPrice(BigDecimal.ZERO);settings.setWaterUnitPrice(BigDecimal.ZERO);settings.setInternetFee(BigDecimal.ZERO);settings.setGarbageFee(BigDecimal.ZERO);settings.setUpdatedAt(java.time.Instant.now());settings.setUpdatedBy(owner.getId());settings.setRentInvoiceMode(com.ancu.proptech.model.property.PropertySettings.RentInvoiceMode.SEND);propertyRates.saveAndFlush(settings);
-        invoiceService.prepareScheduledRent(contract.getId());invoiceService.prepareScheduledRent(contract.getId());
-        assertEquals(com.ancu.proptech.model.billing.RentalInvoice.Status.SENT,invoiceRecords.findById(list.getFirst().getId()).orElseThrow().getStatus());
+        assertEquals(1,list.size());assertEquals(com.ancu.proptech.model.billing.RentalInvoice.Status.SENT,list.getFirst().getStatus());
         assertEquals(1,notifications.countByInvoiceId(list.getFirst().getId()));
     }
+    @Test void manualRentRejectsD8WithoutPersistingThenAllowsD7()throws Exception{
+        var today=LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));String path="/api/v1/owner/contracts/"+contract.getId()+"/rent-invoices";
+        String input="{\"billingVersion\":0,\"coverageStart\":\"2026-10-01\",\"dueDate\":\"%s\"}";
+        mvc.perform(post(path).header("Authorization","Bearer "+ownerToken).contentType("application/json").content(input.formatted(today.plusDays(8))))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("RENT_SEND_TOO_EARLY"));
+        assertTrue(invoiceRecords.findByContractIdAndStatusNotOrderByPeriodAsc(contract.getId(),com.ancu.proptech.model.billing.RentalInvoice.Status.CANCELLED).isEmpty());
+        mvc.perform(post(path).header("Authorization","Bearer "+ownerToken).contentType("application/json").content(input.formatted(today.plusDays(7))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("SENT"));
+    }
+    @org.junit.jupiter.params.ParameterizedTest @org.junit.jupiter.params.provider.ValueSource(ints={-1,0,7,8})
+    void schedulerOnlySendsWithinSevenDayWindow(int offset){
+        var today=LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));var due=today.plusDays(offset);
+        org.junit.jupiter.api.Assumptions.assumeTrue(due.getDayOfMonth()<=28);
+        contract.setStartDate(due.withDayOfMonth(1));contract.setEndDate(due.withDayOfMonth(1).plusYears(1).minusDays(1));contract.setRentPaymentDay(due.getDayOfMonth());contracts.flush();
+        invoiceService.prepareScheduledRent(contract.getId());invoiceService.prepareScheduledRent(contract.getId());
+        var list=invoiceRecords.findByContractIdAndStatusNotOrderByPeriodAsc(contract.getId(),com.ancu.proptech.model.billing.RentalInvoice.Status.CANCELLED);
+        assertEquals(offset>=0&&offset<=7?1:0,list.size());
+        if(!list.isEmpty()){assertEquals(com.ancu.proptech.model.billing.RentalInvoice.Status.SENT,list.getFirst().getStatus());assertEquals(1,notifications.countByInvoiceId(list.getFirst().getId()));}
+    }
 
+    @Test void legacyRentDraftCannotBypassSendWindow()throws Exception{
+        String id=JsonPath.read(mvc.perform(post("/api/v1/owner/contracts/"+contract.getId()+"/rent-invoices").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"billingVersion\":0,\"coverageStart\":\"2026-10-01\",\"dueDate\":\"2026-10-05\"}" )).andExpect(status().isOk()).andReturn().getResponse().getContentAsString(),"$.id");
+        var invoice=invoiceRecords.findById(Long.valueOf(id)).orElseThrow();
+        invoice.setStatus(com.ancu.proptech.model.billing.RentalInvoice.Status.DRAFT);invoice.setDueDate(LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh")).plusDays(8));invoiceRecords.flush();
+        send(ownerToken,id,invoice.getVersion()).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("RENT_SEND_TOO_EARLY"));
+        assertEquals(1,notifications.countByInvoiceId(invoice.getId()));
+    }
     @Test void automaticRentSkipsAnOpenContractExitAndRentRespectsAgreedDueDay()throws Exception{
         String path="/api/v1/owner/contracts/"+contract.getId();
         mvc.perform(post(path+"/rent-invoices").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"billingVersion\":0,\"coverageStart\":\"2026-10-01\",\"dueDate\":\"2026-10-01\"}")).andExpect(status().isBadRequest());

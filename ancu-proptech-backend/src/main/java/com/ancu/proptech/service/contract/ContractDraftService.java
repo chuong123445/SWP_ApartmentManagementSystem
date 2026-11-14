@@ -97,12 +97,14 @@ public class ContractDraftService {
     @Transactional(readOnly=true)
     public List<ContractDraftResponse> ownerList(Jwt jwt,Long propertyId) {
         return drafts.findByContractApartmentPropertyOwnerIdOrderByCreatedAtDescIdDesc(access.owner(jwt).getId()).stream()
+            .filter(this::visibleInList)
             .filter(d->propertyId==null || d.getContract().getApartment().getProperty().getId().equals(propertyId)).map(this::response).toList();
     }
     @Transactional(readOnly=true)
     public List<ContractDraftResponse> customerList(Jwt jwt) {
-        return drafts.findByContractCustomerIdOrderByCreatedAtDescIdDesc(access.customer(jwt).getId()).stream().map(this::response).toList();
+        return drafts.findByContractCustomerIdOrderByCreatedAtDescIdDesc(access.customer(jwt).getId()).stream().filter(this::visibleInList).map(this::response).toList();
     }
+    private boolean visibleInList(ContractDraft d){return !(d.getContract().getStatus()==RentalContract.Status.CANCELLED&&d.getContract().getRenewalOfContractId()==null&&d.getOwnerSignedAt()==null&&d.getCustomerSignedAt()==null);}
     @Transactional(readOnly=true)
     public ContractDraftResponse get(Jwt jwt,Long id) {
         var account=access.account(jwt);

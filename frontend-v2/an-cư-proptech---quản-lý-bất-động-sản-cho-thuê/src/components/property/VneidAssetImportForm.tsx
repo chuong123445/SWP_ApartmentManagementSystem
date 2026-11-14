@@ -78,7 +78,7 @@ export function VneidAssetImportForm({ onClose, onBack, onImported, propertyId }
             ] as const).map(([key,label,min,step]) => <label key={key} className="text-sm">{label} *<input required type="number" min={min} step={step} max={key==='floor'?200:key==='maxOccupants'?1000:key.endsWith('Index')?2147483647:'9999999999999.99'} value={terms[unit.externalUnitId]?.[key] ?? ''} onChange={e => change(unit.externalUnitId,key,e.target.value)} className={inputClass} /></label>)}</div>
             <div className="mt-3"><h4 className="font-semibold text-sm">Ảnh riêng phòng {unit.code}</h4><PropertyImagesField files={unitPhotos[unit.externalUnitId]??[]} onChange={files=>setUnitPhotos(prev=>({...prev,[unit.externalUnitId]:files}))} disabled={saving||stale}/></div>
             <label className="block text-sm mt-3">Mô tả cho thuê<textarea maxLength={3000} value={terms[unit.externalUnitId]?.description ?? ''} onChange={e => change(unit.externalUnitId,'description',e.target.value)} className={inputClass} /></label>
-            <DescriptionSuggestion facts={{
+            <DescriptionSuggestion photos={unitPhotos[unit.externalUnitId]??[]} facts={{
               areaM2: unit.areaM2,
               monthlyRent: terms[unit.externalUnitId]?.monthlyRent ?? '',
               bedrooms: unit.bedrooms,

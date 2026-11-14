@@ -1,3 +1,4 @@
+import {ManualIdentityForm} from '@/components/identity/ManualIdentityForm';
 import { Link, useLocation } from 'react-router';
 import { AccountLayout } from '@/layouts/AccountLayout';
 import { VneidButton } from '@/components/auth/VneidButton';
@@ -24,8 +25,9 @@ export function IdentityPage() {
   return <AccountLayout>
     <Link to={returnTo} className="text-emerald-700 underline text-sm">{returnLabel}</Link>
     <h1 className="app-page-title mt-4 mb-3">Xác thực danh tính</h1>
-    <p className="text-slate-600 mb-5">{verification.data?.vneid.source === 'LOCAL_DEMO' ? 'Thông tin căn cước đã xác thực của tài khoản.' : 'Xác thực căn cước bằng VNeID mô phỏng qua Auth0. Đây là luồng mô phỏng, chưa kết nối VNeID thực tế.'}</p>
+    <p className="text-slate-600 mb-5">{'Bạn có thể nhập hồ sơ căn cước để Admin xét duyệt hoặc sử dụng lựa chọn VNeID mô phỏng qua Auth0.'}</p>
     <VerifiedCitizenPanel state={verification} />
+    {!verification.loading&&!verification.error&&!verified&&<ManualIdentityForm onRefresh={verification.reload}/>}
     {!verification.loading && !verification.error && verification.data && !verified && <section className="app-panel p-4 sm:p-6">
       <h2 className="font-semibold text-slate-900">Căn cước · Chưa xác thực</h2>
       <p className="text-sm text-slate-600 mt-2">Tiếp tục đến VNeID mô phỏng để xác thực căn cước cho tài khoản hiện tại.</p>

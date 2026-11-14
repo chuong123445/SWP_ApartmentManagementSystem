@@ -12,7 +12,7 @@ export function useWorkspaceNavigation(canManage: boolean) {
   const [activeTab, setActiveTab] = useState<ActiveTab>(canManage ? 'dashboard' : 'market');
   const [selectedBuildingId, setSelectedBuildingId] = useState<string>('all');
 
-  useEffect(()=>{if(!canManage)return;const tab=params.get('tab');if(tab&&['home','dashboard','rental_requests','maintenance','contracts','properties','invoices','finance','settings'].includes(tab)){setActiveTab(tab as ActiveTab);const property=params.get('propertyId');setSelectedBuildingId(property&&/^[0-9]+$/.test(property)?property:'all');}},[params,canManage,location.key]);
+  useEffect(()=>{if(!canManage)return;const tab=params.get('tab');if(tab&&['home','dashboard','rental_requests','maintenance','contracts','properties','invoices','finance','reports','settings'].includes(tab)){setActiveTab(tab as ActiveTab);const property=params.get('propertyId');setSelectedBuildingId(property&&/^[0-9]+$/.test(property)?property:'all');}},[params,canManage,location.key]);
   // Modals
   const [isAddRoomOpen, setIsAddRoomOpen] = useState(false);
   const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false);

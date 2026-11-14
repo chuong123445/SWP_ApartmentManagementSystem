@@ -20,7 +20,7 @@ class PropertyListingServiceTests {
     private final OwnerPropertyService creation=mock(OwnerPropertyService.class);
     private final PropertyDossierService dossiers=mock(PropertyDossierService.class);
     private final JsonMapper json=JsonMapper.builder().build();
-    private final PropertyListingService service=new PropertyListingService(access,accounts,properties,drafts,files,creation,dossiers,json);
+    private final PropertyListingService service=new PropertyListingService(mock(PropertyDocumentGate.class),access,accounts,properties,drafts,files,creation,dossiers,json);
     private final Property p=new Property();private final PropertyListingDraft d=new PropertyListingDraft();
     @BeforeEach void setup(){var a=new AuthAccount();a.setId(1L);p.setId(2L);p.setOwner(a);p.setApprovalStatus(Property.ApprovalStatus.DRAFT);p.setRightType(PropertyDossier.RightType.AUTHORIZATION);
         d.setPropertyId(2L);d.setAccountId(1L);d.setPayload("{}");d.setVersion(3);

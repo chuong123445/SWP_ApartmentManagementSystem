@@ -30,4 +30,9 @@ class VerifiedIdentityPolicyTests {
         i.setSource("AUTH0_VNEID_SIMULATION");assertTrue(policy(i,"prod").isVerified(3L));
         i.setVerificationStatus("NOT_VERIFIED");assertFalse(policy(i,"local").isVerified(3L));
     }
+    @Test void adminEvidenceRequiresExactIssuerAndAccountBinding() {
+        var i=identity("ADMIN_REVIEW");i.setIssuer("urn:ancu:admin-review");assertTrue(policy(i,"prod").isVerified(3L));
+        i.setSubject("4");assertFalse(policy(i,"prod").isVerified(3L));
+        i.setSubject("3");i.setIssuer("other");assertFalse(policy(i,"prod").isVerified(3L));
+    }
 }

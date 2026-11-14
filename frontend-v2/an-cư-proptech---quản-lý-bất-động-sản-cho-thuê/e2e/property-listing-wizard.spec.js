@@ -23,7 +23,7 @@ async function exerciseWizard(page, outputPath, origin) {
     if(path.endsWith('/me/verifications'))return respond(r,{emailVerified:true,vneid:{status:'VERIFIED',verifiedAt:'2026-11-01T00:00:00Z',identity:null}});
     if(path==='/api/v1/me/listing-drafts'){
      if(req.method()==='GET')return respond(r,current&&!current.completed?[current]:[]);
-     current={propertyId:'5',version:0,propertyVersion:0,rightType:body().rightType,completed:false,payload:{},files:[]};return respond(r,current);
+     current={propertyId:'5',version:0,propertyVersion:0,rightType:body().rightType,completed:false,payload:{},files:[],acceptedFileIds:[]};return respond(r,current);
     }
     if(path==='/api/v1/me/listing-drafts/5'){
      if(req.method()==='PUT'){const input=body();if(input.version!==current.version)throw Error('Version mismatch');current={...current,payload:input.payload,version:current.version+1};}
@@ -36,10 +36,11 @@ async function exerciseWizard(page, outputPath, origin) {
     if(path.endsWith('/rental-properties/5/ai-precheck')){declared=body().propertyFields;return respond(r,{sourceHash:'fixture-hash',propertyVersion:0,files:current.files,checklist:[],review:body().fileId?{fileId:body().fileId,readable:true,findings:[],extractedFields:[]}:null});}
     if(path.endsWith('/rental-properties/5/ai-extract')){
      if(failAI)return r.fulfill({status:503,json:{message:'AI tạm thời không khả dụng'}});
-     return respond(r,{sourceHash:'fixture-hash',propertyVersion:0,files:[],checklist:[],review:{fileId:body().fileId,readable:true,findings:[],extractedFields:[{field:'principalName',value:'Lê Minh Khoa',page:1},{field:'principalDocumentNumber',value:'999000000101',page:1},{field:'propertyName',value:'Nhà tự điền',page:1},{field:'propertyAddress',value:'12 Đường Kiểm Thử, Phường Linh Trung, Thành phố Thủ Đức, TP. Hồ Chí Minh',page:1},{field:'certificateNumber',value:'GCN-001',page:1},{field:'certificateIssueDate',value:'15/12/2025',page:1},{field:'certificateIssuePlace',value:'Văn phòng đăng ký đất đai TP. Hồ Chí Minh',page:1},{field:'rightsValidFrom',value:'05/06/2026',page:1},{field:'rightsValidUntil',value:'31/12/2028',page:1}]}});
+     if(!current.acceptedFileIds.includes(body().fileId))current.acceptedFileIds.push(body().fileId);
+     return respond(r,{sourceHash:'fixture-hash',propertyVersion:0,files:[],checklist:[],review:{fileId:body().fileId,readable:true,purposeMatch:true,documentType:current.files.find(f=>f.id===body().fileId).purpose,findings:[],extractedFields:[{field:'principalName',value:'Lê Minh Khoa',page:1},{field:'principalDocumentNumber',value:'999000000101',page:1},{field:'propertyName',value:'Nhà tự điền',page:1},{field:'propertyAddress',value:'12 Đường Kiểm Thử, Phường Linh Trung, Thành phố Thủ Đức, TP. Hồ Chí Minh',page:1},{field:'certificateNumber',value:'GCN-001',page:1},{field:'certificateIssueDate',value:'15/12/2025',page:1},{field:'certificateIssuePlace',value:'Văn phòng đăng ký đất đai TP. Hồ Chí Minh',page:1},{field:'rightsValidFrom',value:'05/06/2026',page:1},{field:'rightsValidUntil',value:'31/12/2028',page:1}]}});
     }
     if(path==='/api/v1/me/listing-description/suggest'){
-     if(body().areaM2!=='24'||body().monthlyRent!=='4000000'||'address' in body()||'legal' in body())throw Error('Unexpected listing facts');
+     if(body().areaM2!=='24'||body().monthlyRent!=='4000000'||body().imageIds?.length!==1||'address' in body()||'legal' in body())throw Error('Unexpected listing facts');
      return respond(r,{description:'Phòng 24 m², giá thuê 4 triệu đồng mỗi tháng.'});
     }
     if(path==='/api/v1/me/property-images')return respond(r,[{id:String(++serial),url:'/unused'}]);
@@ -58,11 +59,16 @@ async function exerciseWizard(page, outputPath, origin) {
    if(await p.getByRole('button',{name:'Dùng giá trị này'}).count())throw Error('Manual field application remains');
    const expected=[['Tên tài sản *','Nhà tự điền'],['Tỉnh/Thành phố *','TP. Hồ Chí Minh'],['Quận/Huyện/Khu vực *','Thủ Đức'],['Phường/Xã','Linh Trung'],['CCCD chủ sở hữu gốc *','999000000101'],['Quyền cho thuê từ ngày *','05/06/2026'],['Quyền cho thuê đến hết ngày *','31/12/2028'],['Ngày cấp giấy chứng nhận *','15/12/2025']];
    for(const [label,value] of expected)if(await p.getByLabel(label,{exact:true}).inputValue()!==value)throw Error('Autofill/date failed '+label);
+   const png={name:'room.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aJ1sAAAAASUVORK5CYII=','base64')};
+   await p.getByLabel('Ảnh chung: mặt tiền, lối đi, khu vực chung').setInputFiles(png);
+   await p.getByRole('button',{name:'Lưu tiến trình',exact:true}).click({trial:true});
    await p.getByRole('checkbox',{name:'Tôi đã đối chiếu thông tin khai báo với giấy tờ.'}).check();
    await p.getByRole('button',{name:'Lưu và tiếp tục'}).click();
    await p.reload();await p.getByRole('heading',{name:'Các căn/phòng muốn cho thuê'}).waitFor();
    await p.getByLabel('Cách cho thuê').selectOption('MULTI_UNIT');
    for(const [label,value] of [['Mã căn/phòng *','P101'],['Diện tích (m²) *','24'],['Giá thuê/tháng (đ) *','4000000'],['Đơn giá điện (đ/kWh) *','3500'],['Đơn giá nước (đ/m³) *','15000']])await p.getByLabel(label,{exact:true}).fill(value);
+   await p.getByLabel('Ảnh riêng căn/phòng P101').setInputFiles(png);
+   await p.getByRole('button',{name:'Lưu tiến trình',exact:true}).click({trial:true});
    const description=p.getByRole('textbox',{name:'Mô tả phòng',exact:true});
    await description.fill('Mô tả của chủ nhà');
    await p.getByRole('button',{name:'AI gợi ý mô tả',exact:true}).click();
@@ -73,11 +79,6 @@ async function exerciseWizard(page, outputPath, origin) {
    await description.fill('Phòng 24 m², giá thuê 4 triệu đồng mỗi tháng. Liên hệ để xem phòng.');
    await p.getByRole('button',{name:'Thêm phòng',exact:true}).click();
    await p.getByRole('checkbox').nth(1).uncheck();
-   await p.getByRole('button',{name:'Lưu và tiếp tục'}).click();
-   await p.getByRole('heading',{name:'Ảnh chung và ảnh từng phòng'}).waitFor();
-   const png={name:'room.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aJ1sAAAAASUVORK5CYII=','base64')};
-   await p.locator('input[type=file]').nth(0).setInputFiles(png);await p.getByRole('button',{name:'Lưu tiến trình',exact:true}).click({trial:true});await p.getByText('Đã lưu tiến trình.',{exact:false}).waitFor();
-   await p.locator('input[type=file]').nth(1).setInputFiles(png);await p.getByRole('button',{name:'Lưu tiến trình',exact:true}).click({trial:true});
    await p.getByRole('button',{name:'Lưu và tiếp tục'}).click();
    await p.getByRole('heading',{name:'Kiểm tra trước khi gửi'}).waitFor();
    await p.getByText('Đã đọc đủ 2 tệp; hãy xem từng nhận xét bên dưới.').waitFor();if(await p.getByRole('button',{name:'Quét chứng từ bằng AI',exact:true}).count())throw Error('Final manual scan button still present');if(declared?.address!=='12 Đường Kiểm Thử, Phường Linh Trung, Thành phố Thủ Đức, TP. Hồ Chí Minh')throw Error('Unsaved property declarations missing from precheck');
@@ -177,6 +178,6 @@ async function exerciseSourceAndGroups(page, outputPath, origin) {
  return results;
 }
 
-test('private listing wizard resumes and tolerates AI failures', async ({page}, info)=>{ await exerciseWizard(page, name=>info.outputPath(name), process.env.E2E_BASE_URL||'http://localhost:3000'); });
+test('private listing wizard requires successful scans and resumes', async ({page}, info)=>{ await exerciseWizard(page, name=>info.outputPath(name), process.env.E2E_BASE_URL||'http://localhost:3000'); });
 
 test('source room photos and property-group filters', async ({page}, info)=>{ await exerciseSourceAndGroups(page, name=>info.outputPath(name), process.env.E2E_BASE_URL||'http://localhost:3000'); });

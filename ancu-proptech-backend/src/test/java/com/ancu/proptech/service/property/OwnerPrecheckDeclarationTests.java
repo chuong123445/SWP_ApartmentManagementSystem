@@ -19,7 +19,7 @@ class OwnerPrecheckDeclarationTests {
  @Test void declaredPropertyChangesInvalidateTheReviewHashWithoutProviderCall(){
   var access=mock(PropertyApplicantAccess.class);var files=mock(PropertyEvidenceFileRepository.class);
   var client=mock(DossierAiClient.class);var manager=mock(PlatformTransactionManager.class);var identities=mock(VerifiedIdentityPolicy.class);
-  var service=new OwnerPrecheckService(access,files,mock(PropertyEvidenceContentRepository.class),mock(PropertyDossierRepository.class),client,mock(AssistanceAudit.class),mock(AssistanceLimit.class),JsonMapper.builder().build(),manager,identities,mock(AssistanceRunRepository.class));
+  var service=new OwnerPrecheckService(mock(PropertyDocumentGate.class),access,files,mock(PropertyEvidenceContentRepository.class),mock(PropertyDossierRepository.class),client,mock(AssistanceAudit.class),mock(AssistanceLimit.class),JsonMapper.builder().build(),manager,identities,mock(AssistanceRunRepository.class));
   when(manager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
   var owner=new AuthAccount();owner.setId(1L);owner.setFullName("Applicant");
   var property=new Property();property.setId(2L);property.setOwner(owner);property.setName("Placeholder");property.setAddress("");property.setApprovalStatus(Property.ApprovalStatus.DRAFT);

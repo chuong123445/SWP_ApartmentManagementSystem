@@ -33,14 +33,17 @@ public class AiSearchService {
    var addresses=apartments.addressOptions();
    var schema=json.readTree(new ClassPathResource("ai/"+(chat?"apartment-chat":"apartment-search")+".schema.json").getContentAsString(StandardCharsets.UTF_8));
    var instruction=new ClassPathResource("ai/"+prompt+".txt").getContentAsString(StandardCharsets.UTF_8);
-   var out=client.generate(instruction,schema,Map.of("request",input.text(),"history",chat?history:List.of(),"publicAddressOptions",addresses));
+   var out=client.generate(instruction,schema,Map.of("request",PublicCityNames.request(input.text(),addresses),"history",chat?history:List.of(),"publicAddressOptions",addresses));
    if(!out.isObject()||out.size()!=(chat?3:2)||!out.path("filters").isObject()||out.path("filters").size()!=10||!out.path("notes").isArray()||out.path("notes").size()>5)throw invalid();
    String reply=chat?out.path("reply").asString():"";
    if(chat&&(!out.path("reply").isString()||reply.isBlank()||reply.length()>2000))throw invalid();
-   var f=json.treeToValue(out.path("filters"),Filters.class);validate(f);
-   if(f.city()!=null&&!addresses.stream().anyMatch(a->a.city().equals(f.city())))throw invalid();
-   if(f.district()!=null&&!addresses.stream().anyMatch(a->a.district().equals(f.district())&&(f.city()==null||a.city().equals(f.city()))))throw invalid();
-   if(f.ward()!=null&&!addresses.stream().anyMatch(a->Objects.equals(a.ward(),f.ward())&&(f.city()==null||a.city().equals(f.city()))&&(f.district()==null||a.district().equals(f.district()))))throw invalid();
+   var parsed=json.treeToValue(out.path("filters"),Filters.class);validate(parsed);
+   String canonicalCity=parsed.city()==null?null:PublicCityNames.canonical(parsed.city(),addresses);
+   if(parsed.city()!=null&&canonicalCity==null)throw invalid();
+   var f=new Filters(parsed.q(),canonicalCity,parsed.district(),parsed.ward(),parsed.minRent(),parsed.maxRent(),parsed.minArea(),parsed.maxArea(),parsed.bedrooms(),parsed.occupants());
+   if(f.city()!=null&&!addresses.stream().anyMatch(a->PublicCityNames.same(a.city(),f.city())))throw invalid();
+   if(f.district()!=null&&!addresses.stream().anyMatch(a->a.district().equals(f.district())&&(f.city()==null||PublicCityNames.same(a.city(),f.city()))))throw invalid();
+   if(f.ward()!=null&&!addresses.stream().anyMatch(a->Objects.equals(a.ward(),f.ward())&&(f.city()==null||PublicCityNames.same(a.city(),f.city()))&&(f.district()==null||a.district().equals(f.district()))))throw invalid();
    var notes=new ArrayList<String>();for(var n:out.path("notes")){if(!n.isString()||n.asString().isBlank()||n.asString().length()>300)throw invalid();notes.add(n.asString());}
    boolean canApply=hasFilters(f);if(!chat&&!canApply&&notes.isEmpty())notes.add("Chưa xác định được bộ lọc. Hãy mô tả rõ khu vực, ngân sách hoặc diện tích.");
    var result=new Result(run.getId(),run.getSourceHash(),run.getModel(),prompt,run.getCreatedAt(),f,List.copyOf(notes),canApply);audit.finish(run.getId(),json.writeValueAsString(result),null);return new ChatResult(reply,result);

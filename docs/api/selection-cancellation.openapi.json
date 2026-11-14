@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "An Cu Initial Rental Selection Cancellation",
-    "version": "1.0.0",
-    "description": "Exact-party pre-activation cancellation only. No refunds or automatic tenant selection. See initial-selection-cancellation-v1 ADR."
+    "version": "1.1.0",
+    "description": "Exact-party pre-activation cancellation only. No refunds or automatic tenant selection. See initial-selection-cancellation-v1 ADR. 13 Nov 2026: direct cancellation deletes never-signed initial contract/draft after recording request-scoped cancellation history. Response contractId/contractStatus become null. A draft with a signature is retained; bilateral cancellation rules unchanged. Historical unsigned cancelled initial drafts are excluded from contract/tenancy lists without bulk deletion."
   },
   "security": [
     {

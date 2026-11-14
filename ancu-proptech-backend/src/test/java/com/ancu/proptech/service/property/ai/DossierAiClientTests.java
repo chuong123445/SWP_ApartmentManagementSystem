@@ -61,8 +61,8 @@ class DossierAiClientTests {
     void doesNotSendFlashThinkingOptionsToOtherModels(String model){
         settings.setModel(model);client.analyze(json.createObjectNode(),document());
         var config=received.get().path("generationConfig");
-        assertEquals(4096,config.path("maxOutputTokens").asInt());
-        assertFalse(config.has("thinkingConfig"));
+        assertEquals(model.startsWith("gemini-3")?16384:4096,config.path("maxOutputTokens").asInt());
+        if(model.startsWith("gemini-3")){assertEquals("low",config.path("thinkingConfig").path("thinkingLevel").asString());assertFalse(config.path("thinkingConfig").has("thinkingBudget"));}else assertFalse(config.has("thinkingConfig"));
     }
     @Test void logsOnlySafeStopDiagnosticsAndStillRefusesTruncatedOutput(){
         var logger=(Logger)LoggerFactory.getLogger(GeminiDossierAiClient.class);
@@ -95,5 +95,14 @@ class DossierAiClientTests {
         var unreadable=new DossierAiReport.FileReview("9",false,"Ảnh mờ",List.of(),List.of());assertEquals("INCONCLUSIVE",DossierAiReport.aggregate(List.of(unreadable)).verdict());
         var unrelated=new DossierAiReport.FileReview("10",true,"Ảnh không liên quan",List.of(new DossierAiReport.Extraction("other","Ảnh phong cảnh")),List.of());assertEquals("INCONCLUSIVE",DossierAiReport.aggregate(List.of(unrelated)).verdict());
         String injected=valid("7","CERT-1").replace("certificateNumber","status");assertThrows(DossierAiClient.Failure.class,()->DossierAiReport.parse(json.readTree(injected),"7"));
+    }
+    @Test void extractionRequestsStrictDocumentClassificationSchema() {
+        output=json.writeValueAsString(Map.of("fileId","7","readable",true,"purposeMatch",true,"documentType","RIGHT_DOCUMENT","extractedFields",List.of(Map.of("field","certificateNumber","value","CERT-1")),"findings",List.of()));
+        var result=client.extract(json.readTree("{\"rightType\":\"OWNERSHIP\"}"),document());
+        assertEquals(Boolean.TRUE,result.purposeMatch());assertEquals("RIGHT_DOCUMENT",result.documentType());
+        var schema=received.get().path("generationConfig").path("responseJsonSchema");
+        assertEquals("boolean",schema.path("properties").path("purposeMatch").path("type").asString());
+        assertTrue(schema.path("required").toString().contains("purposeMatch"));assertTrue(schema.path("properties").path("documentType").path("enum").toString().contains("UNRELATED"));
+        assertTrue(received.get().path("systemInstruction").toString().contains("EXTRACTION_PURPOSE_GATE_V2"));
     }
 }

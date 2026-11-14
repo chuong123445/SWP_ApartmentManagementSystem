@@ -28,8 +28,13 @@ import java.math.BigDecimal;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-@SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
+@SpringBootTest(properties="app.auth.otp-secret=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=") @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
 class SelectionCancellationIntegrationTests {
+ @org.springframework.test.context.bean.override.mockito.MockitoBean com.ancu.proptech.service.auth.EmailOtpSender otpSender;
+ @Autowired com.ancu.proptech.repository.auth.ActionOtpChallengeRepository otpChallenges;
+ private String otpCode;
+ @BeforeEach void otpSetup(){org.mockito.Mockito.when(otpSender.isConfigured()).thenReturn(true);org.mockito.Mockito.doAnswer(call->{otpCode=call.getArgument(1);return null;}).when(otpSender).sendAction(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString());}
+
  @Autowired MockMvc mvc;@Autowired ObjectMapper json;@Autowired AuthAccountRepository accounts;@Autowired PropertyRepository properties;@Autowired ApartmentRepository apartments;@Autowired RentalRequestRepository requests;@Autowired RentalContractRepository contracts;@Autowired ContractDraftRepository drafts;@Autowired AuthService auth;@Autowired PasswordEncoder passwords;@Autowired JdbcTemplate jdbc;
  private AuthAccount owner,customer,other;private Property property;private Apartment apartment;private RentalRequest request;private String ownerToken,customerToken,otherToken;private static String hash;
  @BeforeEach void setup(){if(hash==null)hash=passwords.encode("Cancel-test!12345");owner=account(AuthAccount.Role.OWNER);customer=account(AuthAccount.Role.CUSTOMER);other=account(AuthAccount.Role.OWNER);ownerToken=token(owner);customerToken=token(customer);otherToken=token(other);
@@ -45,7 +50,16 @@ class SelectionCancellationIntegrationTests {
  private ResultActions act(String actor,String action,String version,String reason)throws Exception{return mvc.perform(post(path()+"/actions").header("Authorization",actor).contentType("application/json").content(json.writeValueAsString(Map.of("action",action,"sourceVersion",version,"reason",reason))));}
  private String draft()throws Exception{String ctx=mvc.perform(get("/api/v1/owner/rental-requests/"+request.getId()+"/contract-context").header("Authorization",ownerToken)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();var body=new LinkedHashMap<String,Object>();body.put("requestVersion",request.getVersion());body.put("sourceVersion",json.readTree(ctx).path("sourceVersion").asString());body.put("startDate",LocalDate.now().plusDays(1).toString());body.put("endDate",LocalDate.now().plusYears(1).toString());body.put("monthlyRent","5000000");body.put("electricityUnitPrice","3500");body.put("waterUnitPrice","15000");body.put("deposit","10000000");body.put("paymentDay",5);body.put("paymentMethod","Transfer");body.put("usagePurpose","Living");body.put("clauses",List.of(Map.of("title","Term","body","Fixture")));return mvc.perform(post("/api/v1/owner/rental-requests/"+request.getId()+"/contract").header("Authorization",ownerToken).contentType("application/json").content(json.writeValueAsString(body))).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();}
  private String signature()throws Exception{var image=new java.awt.image.BufferedImage(900,280,java.awt.image.BufferedImage.TYPE_INT_ARGB);var pen=image.createGraphics();pen.setColor(java.awt.Color.BLACK);pen.setStroke(new java.awt.BasicStroke(4));pen.drawPolyline(new int[]{70,160,240,170,400,490,570,700},new int[]{180,70,170,210,80,180,100,170},8);pen.dispose();var bytes=new java.io.ByteArrayOutputStream();javax.imageio.ImageIO.write(image,"png",bytes);return "data:image/png;base64,"+Base64.getEncoder().encodeToString(bytes.toByteArray());}
- private ResultActions sign(String d,String actor)throws Exception{var value=json.readTree(d);return mvc.perform(post("/api/v1/contracts/"+value.path("id").asString()+"/signatures").header("Authorization",actor).contentType("application/json").content(json.writeValueAsString(Map.of("version",value.path("version").asLong(),"contentHash",value.path("signing").path("contentHash").asString(),"signature",signature(),"consent",true))));}
+ private ResultActions sign(String d,String actor)throws Exception{
+  var value=json.readTree(d);String path="/api/v1/contracts/"+value.path("id").asString();
+  otpChallenges.findAll().forEach(c->c.setCreatedAt(Instant.now().minusSeconds(1000)));otpChallenges.flush();
+  var input=new LinkedHashMap<String,Object>(Map.of("version",value.path("version").asLong(),"contentHash",value.path("signing").path("contentHash").asString(),"signature",signature(),"consent",true));
+  var issued=mvc.perform(post(path+"/signature-otp").header("Authorization",actor).contentType("application/json").content(json.writeValueAsString(input)));
+  var result=issued.andReturn();if(result.getResponse().getStatus()!=200)return issued;
+  input.put("challengeId",json.readTree(result.getResponse().getContentAsString()).path("challengeId").asString());input.put("code",otpCode);
+  return mvc.perform(post(path+"/signatures").header("Authorization",actor).contentType("application/json").content(json.writeValueAsString(input)));
+ }
+
  @Test void directCancellationRetainsHistoryReopensRoomAndKeepsOtherRequestsAndPublication()throws Exception{
   var waiting=selection(RentalRequest.Status.PENDING);String source=version(customerToken);
   act(customerToken,"START",source,"No longer renting").andExpect(status().isOk()).andExpect(jsonPath("$.state").value("CANCELLED")).andExpect(jsonPath("$.history.length()").value(1)).andExpect(jsonPath("$.history[0].before.decisionReason").value("Original acceptance note"));
@@ -55,8 +69,12 @@ class SelectionCancellationIntegrationTests {
   assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM selection_cancellation_events WHERE request_id=?",Integer.class,request.getId()));
  }
  @Test void unsignedDraftIsCancelledAndNewSelectionCanCreateItsOwnDraft()throws Exception{
-  String d=draft();String id=json.readTree(d).path("id").asString();String source=version(ownerToken);act(ownerToken,"START",source,"Change of plan").andExpect(status().isOk()).andExpect(jsonPath("$.contractStatus").value("CANCELLED"));
-  mvc.perform(get("/api/v1/contracts/"+id).header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CANCELLED"));mvc.perform(get("/api/v1/contracts/"+id+"/pdf").header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(content().contentType("application/pdf"));sign(d,customerToken).andExpect(status().isConflict());
+  String d=draft();String id=json.readTree(d).path("id").asString();String source=version(ownerToken);act(ownerToken,"START",source,"Change of plan").andExpect(status().isOk()).andExpect(jsonPath("$.contractId").doesNotExist());
+  mvc.perform(get("/api/v1/contracts/"+id).header("Authorization",customerToken)).andExpect(status().isNotFound());
+  mvc.perform(get("/api/v1/contracts/"+id+"/pdf").header("Authorization",customerToken)).andExpect(status().isNotFound());
+  assertFalse(contracts.existsById(Long.valueOf(id)));assertTrue(drafts.findByContractId(Long.valueOf(id)).isEmpty());
+  mvc.perform(get("/api/v1/owner/contract-drafts").header("Authorization",ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+  act(ownerToken,"START",source,"Change of plan").andExpect(status().isOk()).andExpect(jsonPath("$.history.length()").value(1));
   String submitted=mvc.perform(post("/api/v1/apartments/"+apartment.getId()+"/rental-requests").header("Authorization",customerToken).contentType("application/json").content("{\"message\":\"New selection\"}")).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
   request=requests.findById(Long.valueOf(json.readTree(submitted).path("id").asString())).orElseThrow();mvc.perform(post("/api/v1/owner/rental-requests/"+request.getId()+"/decisions").header("Authorization",ownerToken).contentType("application/json").content("{\"version\":0,\"decision\":\"ACCEPT\"}")).andExpect(status().isOk());draft();
  }
@@ -67,6 +85,16 @@ class SelectionCancellationIntegrationTests {
   act(ownerToken,"REJECT",version(ownerToken),"Please discuss").andExpect(status().isOk()).andExpect(jsonPath("$.state").value("REJECTED"));
   act(customerToken,"START",version(customerToken),"New request").andExpect(status().isOk());act(customerToken,"WITHDRAW",version(customerToken),"").andExpect(status().isOk()).andExpect(jsonPath("$.state").value("WITHDRAWN"));
   sign(d,customerToken).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"));assertEquals(Apartment.Availability.OCCUPIED,apartment.getAvailability());
+ }
+ @Test void historicalUnsignedCancelledDraftsDisappearFromListsWithoutBulkDeletingHistory()throws Exception{
+  String d=draft();Long id=Long.valueOf(json.readTree(d).path("id").asString());var c=contracts.findById(id).orElseThrow();c.setStatus(RentalContract.Status.CANCELLED);contracts.saveAndFlush(c);
+  for(String actor:List.of(ownerToken,customerToken)){
+   String draftsPath=actor.equals(ownerToken)?"/api/v1/owner/contract-drafts":"/api/v1/me/contract-drafts";
+   String tenanciesPath=actor.equals(ownerToken)?"/api/v1/owner/tenancies":"/api/v1/me/tenancies";
+   mvc.perform(get(draftsPath).header("Authorization",actor)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+   mvc.perform(get(tenanciesPath).header("Authorization",actor)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+  }
+  assertTrue(contracts.existsById(id));assertTrue(drafts.findByContractId(id).isPresent());
  }
  @Test void bilateralCancellationPreservesSignedContentAndDoesNotCreateRefundOrEndedState()throws Exception{
   String d=draft();sign(d,ownerToken).andExpect(status().isOk());var contractId=Long.valueOf(json.readTree(d).path("id").asString());var saved=drafts.findByContractId(contractId).orElseThrow();byte[] original=saved.getOwnerSignature().clone();String content=saved.getSignedContentHash();String snapshot=saved.getSnapshotJson();
@@ -103,5 +131,5 @@ class SelectionCancellationIntegrationTests {
   var second=new RentalRequest();second.setApartment(otherRoom);second.setCustomer(customer);second.setStatus(original.getStatus());second.setMessage(original.getMessage());second.setCreatedAt(original.getCreatedAt());second.setDecidedAt(original.getDecidedAt());second.setDecisionReason(original.getDecisionReason());requests.saveAndFlush(second);request=second;
   assertNotEquals(first,version(ownerToken));act(ownerToken,"START",first,"Wrong source scope").andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("STALE_VERSION"));request=original;
  }
- private void cleanup(){Long aid=apartment.getId();jdbc.update("DELETE FROM selection_cancellation_events WHERE request_id IN(SELECT id FROM rental_requests WHERE apartment_id=?)",aid);jdbc.update("DELETE FROM selection_cancellations WHERE request_id IN(SELECT id FROM rental_requests WHERE apartment_id=?)",aid);jdbc.update("DELETE FROM contract_drafts WHERE contract_id IN(SELECT id FROM rental_contracts WHERE apartment_id=?)",aid);jdbc.update("DELETE FROM rental_contracts WHERE apartment_id=?",aid);jdbc.update("DELETE FROM rental_requests WHERE apartment_id=?",aid);jdbc.update("DELETE FROM rental_apartment_amenities WHERE apartment_id=?",aid);jdbc.update("DELETE FROM rental_apartments WHERE id=?",aid);jdbc.update("DELETE FROM rental_properties WHERE id=?",property.getId());for(var a:List.of(owner,customer,other)){jdbc.update("DELETE FROM auth_refresh_tokens WHERE session_id IN(SELECT id FROM auth_sessions WHERE account_id=?)",a.getId());jdbc.update("DELETE FROM auth_sessions WHERE account_id=?",a.getId());jdbc.update("DELETE FROM auth_account_roles WHERE account_id=?",a.getId());jdbc.update("DELETE FROM auth_accounts WHERE id=?",a.getId());}}
+ private void cleanup(){Long aid=apartment.getId();jdbc.update("DELETE FROM selection_cancellation_events WHERE request_id IN(SELECT id FROM rental_requests WHERE apartment_id=?)",aid);jdbc.update("DELETE FROM selection_cancellations WHERE request_id IN(SELECT id FROM rental_requests WHERE apartment_id=?)",aid);jdbc.update("DELETE FROM contract_drafts WHERE contract_id IN(SELECT id FROM rental_contracts WHERE apartment_id=?)",aid);jdbc.update("DELETE FROM rental_contracts WHERE apartment_id=?",aid);jdbc.update("DELETE FROM rental_requests WHERE apartment_id=?",aid);jdbc.update("DELETE FROM rental_apartment_amenities WHERE apartment_id=?",aid);jdbc.update("DELETE FROM rental_apartments WHERE id=?",aid);jdbc.update("DELETE FROM rental_properties WHERE id=?",property.getId());for(var a:List.of(owner,customer,other)){jdbc.update("DELETE FROM action_otp_challenges WHERE account_id=?",a.getId());jdbc.update("DELETE FROM auth_refresh_tokens WHERE session_id IN(SELECT id FROM auth_sessions WHERE account_id=?)",a.getId());jdbc.update("DELETE FROM auth_sessions WHERE account_id=?",a.getId());jdbc.update("DELETE FROM auth_account_roles WHERE account_id=?",a.getId());jdbc.update("DELETE FROM auth_accounts WHERE id=?",a.getId());}}
 }

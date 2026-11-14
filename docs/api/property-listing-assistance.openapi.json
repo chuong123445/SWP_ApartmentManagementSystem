@@ -3,7 +3,7 @@
   "info": {
     "title": "Property listing evidence, room images and grouped discovery",
     "version": "1.0.0",
-    "description": "Backend contracts implemented. SQL acceptance and live provider checks pending. Precheck and acknowledge endpoints also accept optional propertyFields. These declarations participate in sourceHash and are advisory input. Upload in the listing wizard automatically requests extraction and fills readable fields, including city/district/ward. Dates remain ISO yyyy-MM-dd in API responses and requests, while UI/PDF use dd/MM/yyyy. Provider DMY values are normalized before comparison. User-corrected values remain editable and are preserved across automatic fills."
+    "description": "Backend contracts implemented. SQL acceptance and live provider checks pending. Precheck and acknowledge endpoints also accept optional propertyFields. These declarations participate in sourceHash and are advisory input. Upload in the listing wizard automatically requests extraction and fills readable fields, including city/district/ward. Dates remain ISO yyyy-MM-dd in API responses and requests, while UI/PDF use dd/MM/yyyy. Provider DMY values are normalized before comparison. User-corrected values remain editable and are preserved across automatic fills. Update14Nov2026: ai-extract is now a required document-type/readability gate in the listing wizard. review.purposeMatch must be true and documentType must equal the evidence purpose. Inappropriate or unreadable documents return422 DOCUMENT_INAPPROPRIATE; unavailable AI remains503 and blocks progression. Saved drafts expose authoritative acceptedFileIds. Save with step>0 and complete verify all selected immutable files plus required purpose groups; reject422 DOCUMENT_SCAN_REQUIRED. Old draft/scan metadata requires rescan; no client flags bypass the gate."
   },
   "paths": {
     "/api/v1/me/apartments/{id}/images": {
@@ -216,6 +216,9 @@
           },
           "200": {
             "description": "OwnerPrecheck view including review.fileId, readable, documentType, extractedFields[field,value,page?], findings, sourceHash, model, runId and promptVersion. Requires exact-owned selected evidence and matching sourceHash with consent."
+          },
+          "422": {
+            "description": "DOCUMENT_INAPPROPRIATE or DOCUMENT_SCAN_REQUIRED; reupload correct evidence/rescan before proceeding"
           }
         },
         "security": [
@@ -245,6 +248,131 @@
             }
           }
         ]
+      }
+    },
+    "/api/v1/me/listing-description/suggest": {
+      "post": {
+        "summary": "Suggest a Vietnamese room description using supplied facts and optional owned room photos",
+        "description": "ACTIVE authorized Owner/Customer. Maximum four image IDs, each uploaded by this account. Raster images are re-encoded and bounded before Gemini. No private dossier images or caller-selected external URLs. User explicitly applies the suggestion.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "areaM2",
+                  "monthlyRent"
+                ],
+                "properties": {
+                  "areaM2": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "monthlyRent": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "floor": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 200
+                  },
+                  "maxOccupants": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 1,
+                    "maximum": 1000
+                  },
+                  "bedrooms": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "bathrooms": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "amenities": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "maxItems": 20,
+                    "items": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "imageIds": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "maxItems": 4,
+                    "items": {
+                      "type": [
+                        "string",
+                        "integer"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Description suggestion",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "description"
+                  ],
+                  "properties": {
+                    "description": {
+                      "type": "string",
+                      "maxLength": 3000
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid facts/photo"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Account cannot use this feature"
+          },
+          "404": {
+            "description": "Image does not belong to this account"
+          },
+          "429": {
+            "description": "Request limit"
+          },
+          "503": {
+            "description": "Provider not configured/unavailable or invalid response"
+          }
+        }
       }
     }
   },
