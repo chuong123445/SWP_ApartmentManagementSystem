@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link } from 'react-router';
+import { useOpenMessages } from '@/components/navigation/FloatingMessages';
 import { MessageCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { openConversation, type ConversationTarget } from '@/services/messaging/rentalMessagingService';
@@ -22,7 +23,7 @@ export function StartRentalConversation({ apartmentId, verified, checking }: {
 export function OpenConversationButton({ target, className, label, accessibleName, disabled }: {
   target: ConversationTarget; className: string; label: string; accessibleName?: string; disabled?: boolean;
 }) {
-  const navigate = useNavigate();
+  const openMessages = useOpenMessages();
   const pending = useRef<AbortController | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -36,7 +37,7 @@ export function OpenConversationButton({ target, className, label, accessibleNam
     setError('');
     try {
       const result = await openConversation(target, controller.signal);
-      if (!controller.signal.aborted) navigate(`/my/messages/${encodeURIComponent(result.id)}`);
+      if (!controller.signal.aborted) openMessages(result.id);
     } catch (error) {
       if (!controller.signal.aborted) setError(error instanceof Error ? error.message : 'Chưa mở được cuộc trò chuyện.');
     } finally {

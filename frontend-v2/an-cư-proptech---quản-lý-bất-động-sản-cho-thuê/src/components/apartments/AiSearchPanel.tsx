@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router';
-import { MessageCircle, Send, Sparkles, X } from 'lucide-react';
+import { Bot, Send, Sparkles, X } from 'lucide-react';
 import { chatWithAi, applyAiSearch, toApartmentFilters, hasAiFilters, type ChatMessage } from '@/services/apartments/aiSearchService';
 import { getApartments } from '@/services/apartments/apartmentService';
 import { formatRent } from '@/utils/format';
@@ -20,6 +20,11 @@ export function AiSearchPanel({ onApply, onViewResults }: {
   onViewResults: () => void;
 }) {
   const [open,setOpen]=useState(false);
+  useEffect(() => {
+    const hide = () => setOpen(false);
+    window.addEventListener('ancu:messages-open', hide);
+    return () => window.removeEventListener('ancu:messages-open', hide);
+  }, []);
   const [text,setText]=useState('');
   const [messages,setMessages]=useState<Bubble[]>([]);
   const [busy,setBusy]=useState(false);
@@ -38,6 +43,7 @@ export function AiSearchPanel({ onApply, onViewResults }: {
       return;
     }
     launcher.current = button;
+    window.dispatchEvent(new Event('ancu:toba-open'));
     setOpen(true);
   };
   const send=async()=>{
@@ -103,7 +109,7 @@ export function AiSearchPanel({ onApply, onViewResults }: {
         <div className="ai-chat-input"><textarea ref={input} aria-label="Tin nhắn cho TOBA" placeholder="Nhập tin nhắn…" rows={2} maxLength={1000} disabled={busy} value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void send();}}}/><button type="submit" aria-label="Gửi tin nhắn" disabled={busy||!text.trim()}><Send size={19}/></button></div>
       </form>
     </section>}
-    <button type="button" className="ai-chat-launcher" aria-label={open?'Thu gọn TOBA':'Mở TOBA'} aria-expanded={open} aria-controls="ai-chat-panel" onClick={e => toggle(e.currentTarget)}>{open?<X size={25}/>:<MessageCircle size={27}/>}<span>TOBA</span></button>
+    <button type="button" className="ai-chat-launcher" aria-label={open?'Thu gọn TOBA':'Mở TOBA'} aria-expanded={open} aria-controls="ai-chat-panel" onClick={e => toggle(e.currentTarget)}>{open?<X size={22} aria-hidden="true" />:<Bot size={27} aria-hidden="true" />}<span>TOBA</span></button>
   </div>,document.body)}
   </>;
 }

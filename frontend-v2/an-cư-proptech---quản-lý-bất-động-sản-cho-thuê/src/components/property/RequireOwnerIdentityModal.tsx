@@ -58,7 +58,7 @@ export function RequireOwnerIdentityModal({ onClose }: { onClose: () => void }) 
             to="/account/settings/identity"
             state={{ returnTo: '/app', returnLabel: 'Quay lại trang quản lý' }}
             onClick={onClose}
-            className="flex-1 inline-flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm py-2.5 px-4 rounded-xl shadow-sm shadow-emerald-700/20 transition-all hover:shadow-md"
+            className="flex-1 inline-flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm py-2.5 px-4 rounded-xl shadow-sm shadow-brand-700/20 transition-all hover:shadow-md"
           >
             <span>Xác thực danh tính ngay</span>
             <ArrowRight className="w-4 h-4" />

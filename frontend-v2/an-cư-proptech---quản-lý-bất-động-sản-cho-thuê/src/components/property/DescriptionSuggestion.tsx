@@ -66,14 +66,14 @@ export function DescriptionSuggestion({ facts, photos = [], onApply }: {
 
   return <div className="mt-2 space-y-2 text-sm">
     <button type="button" disabled={!ready || loading} onClick={() => void generate()}
-      className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 font-semibold text-emerald-800 hover:bg-brand-100 disabled:opacity-50">
+      className="inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 font-semibold text-brand-800 hover:bg-brand-100 disabled:opacity-50">
       <Sparkles size={16} aria-hidden="true" />{loading ? 'Đang tạo gợi ý…' : 'AI gợi ý mô tả'}
     </button>
     <p className="text-xs text-slate-600">{ready
       ? `Gửi thông tin cho thuê và ${photos.length||facts.imageIds?.length||0} ảnh riêng của phòng này đến AI để soạn gợi ý. Kiểm tra nội dung trước khi dùng.`
       : 'Nhập diện tích và giá thuê để dùng gợi ý AI.'}</p>
     {error && <p role="alert" className="text-rose-700">{error}</p>}
-    {suggestion?.input === input && <div className="space-y-2 rounded-lg border border-emerald-100 bg-emerald-50 p-3">
+    {suggestion?.input === input && <div className="space-y-2 rounded-lg border border-brand-100 bg-brand-50 p-3">
       <p className="whitespace-pre-wrap break-words">{suggestion.text}</p>
       <button type="button" className="rounded-md bg-brand-700 px-3 py-2 font-semibold text-white"
         onClick={() => { onApply(suggestion.text); setSuggestion(null); }}>Dùng gợi ý</button>

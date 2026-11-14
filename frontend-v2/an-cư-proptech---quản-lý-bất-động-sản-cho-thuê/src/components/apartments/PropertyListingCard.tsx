@@ -28,7 +28,7 @@ export function PropertyListingCard({listing,filters}:{listing:PropertyListingSu
  const area=listing.minArea===listing.maxArea?listing.minArea:`${listing.minArea}–${listing.maxArea}`;
  return <article className="app-panel listing-card" data-testid="property-listing-card">
   <div className="listing-cover">
-   <ApartmentImage src={listing.thumbnail} alt={`Ảnh đại diện ${listing.name}`} className="size-full object-cover"/>
+   <ApartmentImage src={listing.thumbnail} alt={`Ảnh đại diện ${listing.name}`} className="size-full object-cover" illustrate/>
    <span className="listing-match">{listing.matchingRooms} căn/phòng phù hợp</span>
   </div>
   <div className="listing-body">
@@ -45,7 +45,7 @@ export function PropertyListingCard({listing,filters}:{listing:PropertyListingSu
     {loading&&<p role="status">Đang tải phòng phù hợp...</p>}
     {error&&<p role="alert">{error}<button className="ml-2 underline" onClick={()=>setRevision(v=>v+1)}>Thử lại</button></p>}
     {rooms?.items.map(room=><Link key={room.id} to={`/apartments/${room.id}`} className="listing-room">
-     <ApartmentImage src={room.thumbnail} alt={room.title} className="w-16 h-16 object-cover rounded shrink-0"/>
+     <div className="h-20 w-24 shrink-0 overflow-hidden rounded-lg"><ApartmentImage src={room.thumbnail} alt={room.title} className="size-full object-cover" illustrate /></div>
      <span className="min-w-0 break-words"><strong className="block text-sm">{room.title}</strong><span className="text-xs">{room.areaM2} m² · {formatRent(room.advertisedMonthlyRent)}/tháng</span>{room.maxOccupants!=null&&<span className="block text-xs">Tối đa {room.maxOccupants} người</span>}<span className="block text-xs text-brand-800">Xem phòng này →</span></span>
      <ArrowUpRight className="ml-auto shrink-0 text-brand-700" size={16} aria-hidden="true"/>
     </Link>)}

@@ -48,9 +48,9 @@ export function TenantsPage({ tenants, loading = false, error = '', onReload }: 
           <td className="px-4 py-3"><div className="font-semibold text-slate-900">{tenant.name}</div><div className="text-slate-500 break-all mt-1">{tenant.email || 'Chưa có email'}</div>
             {tenant.contractId && <OpenConversationButton target={{ contractId: tenant.contractId }} label="Nhắn tin"
               accessibleName={`Nhắn tin cho ${tenant.name} · ${tenant.roomNumber}`}
-              className="mt-2 inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-emerald-50 px-2.5 py-1.5 font-semibold text-emerald-800 hover:bg-brand-100 disabled:opacity-50" />}
+              className="mt-2 inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-brand-50 px-2.5 py-1.5 font-semibold text-brand-800 hover:bg-brand-100 disabled:opacity-50" />}
           </td>
-          <td className="px-4 py-3"><div className="font-bold text-emerald-700">{tenant.roomNumber}</div><div className="text-slate-500 mt-1">{tenant.buildingName}</div><div className="text-slate-500 mt-1">{tenant.contractId ? `HĐ #${tenant.contractId}` : 'Chưa có mã hợp đồng'}</div></td>
+          <td className="px-4 py-3"><div className="font-bold text-brand-800">{tenant.roomNumber}</div><div className="text-slate-500 mt-1">{tenant.buildingName}</div><div className="text-slate-500 mt-1">{tenant.contractId ? `HĐ #${tenant.contractId}` : 'Chưa có mã hợp đồng'}</div></td>
           <td className="px-4 py-3">{tenant.emailVerified === true ? 'Đã xác thực email' : tenant.emailVerified === false ? 'Chưa xác thực email' : 'Chưa có dữ liệu xác thực email'}</td>
           <td className="px-4 py-3">{identityLabel(tenant)}</td>
           <td className="px-4 py-3">{signingLabels[tenant.inAppSigningStatus ?? 'NO_DATA'] ?? signingLabels.NO_DATA}</td>
