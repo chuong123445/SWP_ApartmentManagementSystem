@@ -2,7 +2,7 @@ import {test} from '@playwright/test';
 
 async function separateBilling(page,baseURL,outputPath){
 const results=[];const check=(v,m)=>{if(!v)throw Error(m);};
-for(const width of [1440,390])for(const mode of ['OWNER','OWNER_EARLY','CUSTOMER_RENT','CUSTOMER_UTILITY','SETTINGS','WIZARD']){
+for(const width of [1440,390])for(const mode of ['OWNER','OWNER_EARLY','CUSTOMER_RENT','CUSTOMER_UTILITY','CUSTOMER_PAID','CUSTOMER_UNPAID','SETTINGS','WIZARD']){
  const context=await page.context().browser().newContext({viewport:{width,height:1000}});const p=await context.newPage();p.setDefaultTimeout(15000);
  const customer=mode.startsWith('CUSTOMER');const errors=[],unexpected=[],commands=[];let saved=null,settingsSaved=false;
  const user={id:customer?'2':'1',email:'party@example.invalid',fullName:customer?'Khách thuê':'Chủ nhà',roles:customer?['CUSTOMER']:['OWNER'],accountStatus:'ACTIVE',contactVerificationStatus:'VERIFIED',version:0};
@@ -41,7 +41,7 @@ for(const width of [1440,390])for(const mode of ['OWNER','OWNER_EARLY','CUSTOMER
  if(path.endsWith('/owner/payment-qr/current'))return json(null);
  if(path.endsWith('/11/payment-qr'))return json({configured:false});
  if(path==='/api/v1/invoices/91')return json(invoice);
- if(path==='/api/v1/invoices/91/payment')return json({status:'PLATFORM_UNAVAILABLE',amount:invoice.totalAmount});
+ if(path==='/api/v1/invoices/91/payment')return json(mode==='CUSTOMER_PAID'?{status:'PAID',amount:invoice.totalAmount,paidAt:'2026-11-14T05:00:00Z',bank:'LOCAL_DEMO',accountNumber:'LOCAL_DEMO',accountHolderName:'DỮ LIỆU MẪU',paymentCode:'LOCALDEMO29'}:mode==='CUSTOMER_UNPAID'?{status:'UNPAID',amount:invoice.totalAmount,bank:'MB',accountNumber:'123456789',accountHolderName:'Chủ nhà',paymentCode:'ANCU91',qrUrl:null}:{status:'PLATFORM_UNAVAILABLE',amount:invoice.totalAmount});
  if(path.endsWith('/owner/rental-requests'))return json({items:[{id:'31',apartmentId:'21',apartmentTitle:'Phòng A.102',advertisedMonthlyRent:'5000000',customerId:'2',customerName:'Khách thuê',customerEmail:'tenant@example.invalid',status:'ACCEPTED',createdAt:'2026-11-11T00:00:00Z',version:0,contractCompleted:false}],page:0,totalElements:1,totalPages:1});
  if(path.endsWith('/contract-context'))return json({rentalRequestId:'31',requestVersion:0,sourceVersion:'a'.repeat(64),snapshot,advertisedMonthlyRent:'5000000',suggestedDeposit:'5000000',suggestedRates:{electricityUnitPrice:'3500',waterUnitPrice:'15000'},templateClauses:[{title:'Điều khoản',body:'Thỏa thuận thuê.'}],existingDraft:null});
  unexpected.push(r.request().method()+' '+path);return json([]);
@@ -54,8 +54,10 @@ for(const width of [1440,390])for(const mode of ['OWNER','OWNER_EARLY','CUSTOMER
 
  await p.locator('#btn-create-invoice-page').click();dialog=p.getByRole('dialog',{name:'Lập hóa đơn',exact:true});await dialog.getByRole('spinbutton',{name:/^Chỉ số điện cuối kỳ/}).fill('400');await dialog.getByRole('spinbutton',{name:/^Chỉ số nước cuối kỳ/}).fill('25');await dialog.getByRole('button',{name:'Lưu bản nháp',exact:true}).click();await dialog.waitFor({state:'hidden'});check(commands.length===(mode==='OWNER_EARLY'?1:2),'Utility did not save');
  }else if(customer){
- await p.goto(new URL('/my/invoices/91',baseURL).href);await p.getByRole('heading',{name:mode==='CUSTOMER_RENT'?'Hóa đơn tiền thuê · A.102':'Hóa đơn điện nước và dịch vụ · A.102',exact:true}).waitFor();
- check(await p.getByRole('cell',{name:'Tiền thuê',exact:true}).count()===(mode==='CUSTOMER_RENT'?1:0),'Wrong rent charge rows');check(await p.getByRole('cell',{name:/^Điện/}).count()===(mode==='CUSTOMER_RENT'?0:1),'Wrong meter rows');
+ await p.goto(new URL('/my/invoices/91',baseURL).href);await p.getByRole('heading',{name:mode!=='CUSTOMER_UTILITY'?'Hóa đơn tiền thuê · A.102':'Hóa đơn điện nước và dịch vụ · A.102',exact:true}).waitFor();
+ check(await p.getByRole('cell',{name:'Tiền thuê',exact:true}).count()===(mode!=='CUSTOMER_UTILITY'?1:0),'Wrong rent charge rows');check(await p.getByRole('cell',{name:/^Điện/}).count()===(mode!=='CUSTOMER_UTILITY'?0:1),'Wrong meter rows');
+ if(mode==='CUSTOMER_PAID'){await p.getByRole('status').filter({hasText:'Đã thanh toán'}).waitFor();check(!/LOCAL_DEMO|LOCALDEMO|DỮ LIỆU MẪU|Đã thanh toán qua SePay/.test(await p.locator('body').innerText()),'Paid details leak internal source or provider claim');}
+ if(mode==='CUSTOMER_UNPAID'){await p.getByText('Ngân hàng: MB',{exact:true}).waitFor();await p.getByText('Tài khoản nhận: 123456789',{exact:true}).waitFor();}
  }else if(mode==='SETTINGS'){
  await p.goto(new URL('/app?tab=settings&propertyId=11',baseURL).href);await p.getByRole('heading',{name:'Hóa đơn tiền thuê tự động',exact:true}).waitFor();check(await p.getByRole('combobox',{name:/^Hóa đơn tiền thuê/}).count()===0,'Automation still requires mode selection');await p.getByRole('button',{name:'Lưu thay đổi',exact:true}).click();await p.getByRole('status').filter({hasText:'Đã lưu cài đặt'}).waitFor();check(settingsSaved,'Settings not saved');
  }else{
