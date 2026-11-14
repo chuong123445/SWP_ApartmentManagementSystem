@@ -234,6 +234,7 @@ public class ContractDraftService {
             : new ContractContextResponse.SuggestedRates(s.getElectricityUnitPrice().toPlainString(),s.getWaterUnitPrice().toPlainString(),s.getInternetFee().toPlainString(),s.getGarbageFee().toPlainString(),s.getWaterBillingMode().name());
     }
     void validateTerms(ContractTerms t) {
+        if(t.getStartDate().isBefore(rights.today())) throw new ApiException(HttpStatus.BAD_REQUEST,"CONTRACT_START_DATE_IN_PAST","Ngày bắt đầu hợp đồng không được trước ngày hôm nay.");
         if(!t.getEndDate().isAfter(t.getStartDate())) throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_CONTRACT_DATES","Ngày kết thúc phải sau ngày bắt đầu.");
     }
     void applyContract(RentalContract c,ContractTerms t) {

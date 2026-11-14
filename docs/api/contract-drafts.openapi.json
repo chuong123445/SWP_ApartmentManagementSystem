@@ -1666,7 +1666,8 @@
         "properties": {
           "startDate": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Must be today or later in Asia/Ho_Chi_Minh on create/update, including renewal. Past start dates return HTTP 400 CONTRACT_START_DATE_IN_PAST. Existing saved history is unchanged."
           },
           "endDate": {
             "type": "string",
@@ -1757,7 +1758,8 @@
         "properties": {
           "startDate": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Must be today or later in Asia/Ho_Chi_Minh on create/update, including renewal. Past start dates return HTTP 400 CONTRACT_START_DATE_IN_PAST. Existing saved history is unchanged."
           },
           "endDate": {
             "type": "string",

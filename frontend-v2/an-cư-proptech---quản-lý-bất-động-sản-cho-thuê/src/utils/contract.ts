@@ -1,6 +1,14 @@
 import type { ContractTerms } from '@/types/contract';
-export function validateContractTerms(t: ContractTerms): string {
+export function contractToday(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+  return ['year', 'month', 'day'].map(key => parts.find(part => part.type === key)!.value).join('-');
+}
+export function contractStartMinimum(rightsValidFrom?: string | null, today = contractToday()): string {
+  return rightsValidFrom && rightsValidFrom > today ? rightsValidFrom : today;
+}
+export function validateContractTerms(t: ContractTerms, today = contractToday()): string {
   if (!t.startDate || !t.endDate || t.endDate <= t.startDate) return 'Ngày kết thúc phải sau ngày bắt đầu.';
+  if (t.startDate < today) return 'Ngày bắt đầu hợp đồng không được trước ngày hôm nay.';
   for (const [value, positive] of [[t.monthlyRent, true], [t.deposit, false], [t.electricityUnitPrice, false], [t.waterUnitPrice, false], [t.internetFee??'0',false],[t.garbageFee??'0',false]] as const) {
     if (!/^\d{1,13}(\.\d{1,2})?$/.test(value) || (positive && Number(value) <= 0)) return 'Nhập đầy đủ số tiền hợp lệ, tối đa 2 chữ số thập phân.';
   }
