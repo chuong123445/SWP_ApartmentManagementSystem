@@ -48,7 +48,7 @@ class VneidPropertyImportIntegrationTests {
         i.setDocumentNumber(String.format("%012d",Math.abs(com.ancu.proptech.support.TestIds.next().longValue()%1000000000000L)));i.setLegalName(owner.getFullName());i.setDateOfBirth(LocalDate.of(1990,1,1));i.setGender("Nam");i.setAddress("Đà Nẵng");i.setSource(VneidTokenVerifier.SOURCE);i.setVerificationStatus("VERIFIED");i.setVerifiedAt(Instant.now());identities.saveAndFlush(i);
         var consent=new com.ancu.proptech.model.property.PropertySourceConsent();consent.setAccountId(owner.getId());consent.setIssuer(issuer);consent.setSubject(subject);consent.setConsentedAt(Instant.now());consent.setConsentVersion("property-selection-v2");consents.saveAndFlush(consent);
         token=auth.createSession(owner).tokens().accessToken();accounts.flush();
-        source=new VneidAsset(assetId,"Tài sản nguồn kiểm thử "+assetId,"12 Đường nguồn","SINGLE_UNIT","CERT-TEST",null,null,List.of(new VneidAsset.Unit("unit-1","A.01",new BigDecimal("50.25"),2,1)));
+        source=new VneidAsset(assetId,"Tài sản nguồn kiểm thử "+assetId,"12 Đường nguồn","SINGLE_UNIT","CERT-"+assetId,null,null,List.of(new VneidAsset.Unit("unit-1","A.01",new BigDecimal("50.25"),2,1)));
         when(assets.assetDetails(issuer,subject)).thenReturn(List.of(source));
     }
     ResultActions list()throws Exception{return mvc.perform(get("/api/v1/owner/properties/vneid-assets").header("Authorization","Bearer "+token));}
@@ -74,13 +74,13 @@ class VneidPropertyImportIntegrationTests {
         mvc.perform(get("/api/v1/owner/properties").header("Authorization","Bearer "+token)).andExpect(jsonPath("$[?(@.id == '"+id+"')].verificationSource").value(org.hamcrest.Matchers.contains(VneidTokenVerifier.SOURCE)));
     }
     @Test void multiUnitImportPublishesEveryExactSourceUnit()throws Exception{
-        source=new VneidAsset(assetId,source.name(),source.address(),"MULTI_UNIT","CERT-TEST",null,null,List.of(source.units().get(0),new VneidAsset.Unit("unit-2","A.02",new BigDecimal("35"),1,1)));
+        source=new VneidAsset(assetId,source.name(),source.address(),"MULTI_UNIT","CERT-"+assetId,null,null,List.of(source.units().get(0),new VneidAsset.Unit("unit-2","A.02",new BigDecimal("35"),1,1)));
         when(assets.assetDetails(issuer,subject)).thenReturn(List.of(source));String body=body(version()).replace(unit(),unit()+","+unit().replace("unit-1","unit-2"));
         submit(body).andExpect(status().isCreated()).andExpect(jsonPath("$.apartments.length()").value(2)).andExpect(jsonPath("$.apartments[1].publicationStatus").value("PUBLISHED"));
     }
     @Test void duplicateImportDoesNotCreateAnotherProperty()throws Exception{String body=body(version());submit(body).andExpect(status().isCreated());long before=properties.count();submit(body).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("ASSET_ALREADY_IMPORTED"));assertEquals(before,properties.count());}
     @Test void cannotSelectAnotherAccountsAsset()throws Exception{String body=body(version()).replace(assetId,"other-person-asset");submit(body).andExpect(status().isNotFound());assertFalse(imports.existsByIssuerAndExternalAssetId(issuer,assetId));}
-    @Test void staleSourceDoesNotPublish()throws Exception{String v=version();when(assets.assetDetails(issuer,subject)).thenReturn(List.of(new VneidAsset(assetId,"Tên đã đổi",source.address(),"SINGLE_UNIT","CERT-TEST",null,null,source.units())));submit(body(v)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("ASSET_SOURCE_CHANGED"));}
+    @Test void staleSourceDoesNotPublish()throws Exception{String v=version();when(assets.assetDetails(issuer,subject)).thenReturn(List.of(new VneidAsset(assetId,"Tên đã đổi",source.address(),"SINGLE_UNIT","CERT-"+assetId,null,null,source.units())));submit(body(v)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("ASSET_SOURCE_CHANGED"));}
     @Test void sourceRemovedCannotUsePreviousPreview()throws Exception{String v=version();when(assets.assetDetails(issuer,subject)).thenReturn(List.of());submit(body(v)).andExpect(status().isNotFound());}
     @Test void refusesClientAuthorityAndMissingPrice()throws Exception{String body=body(version());submit(body.replace("}",",\"approvalStatus\":\"APPROVED\"}")).andExpect(status().isBadRequest());submit(body.replace("\"electricityUnitPrice\":\"3500\",","")).andExpect(status().isBadRequest());submit(body.replace("\"monthlyRent\":\"4500000\"","\"monthlyRent\":\"0\"")).andExpect(status().isBadRequest());}
     @Test void exactUnitSetIsRequired()throws Exception{String body=body(version());submit(body.replace("unit-1","unit-for-other-asset")).andExpect(status().isBadRequest());submit(body.replace(unit(),unit()+","+unit())).andExpect(status().isBadRequest());}
@@ -94,7 +94,7 @@ class VneidPropertyImportIntegrationTests {
             .andExpect(status().isCreated()).andExpect(jsonPath("$.property.approvalStatus").value("DRAFT")).andExpect(jsonPath("$.apartments[0].publicationStatus").value("DRAFT"));
     }
     private void multiSource(){
-        source=new VneidAsset(assetId,source.name(),source.address(),"MULTI_UNIT","CERT-TEST",null,null,List.of(source.units().get(0),
+        source=new VneidAsset(assetId,source.name(),source.address(),"MULTI_UNIT","CERT-"+assetId,null,null,List.of(source.units().get(0),
             new VneidAsset.Unit("unit-2","A.02",new BigDecimal("35"),1,1),new VneidAsset.Unit("unit-3","A.03",new BigDecimal("28"),0,1)));
         when(assets.assetDetails(issuer,subject)).thenReturn(List.of(source));
     }
@@ -143,7 +143,7 @@ class VneidPropertyImportIntegrationTests {
         Long id=initialSelection();source=new VneidAsset(assetId,source.name(),source.address(),"MULTI_UNIT","CERT-CHANGED",null,null,source.units());
         when(assets.assetDetails(issuer,subject)).thenReturn(List.of(source));
         append(id,appendBody(id,unit().replace("unit-1","unit-2"))).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("ASSET_LEGAL_SOURCE_CHANGED"));
-        source=new VneidAsset(assetId,source.name(),source.address(),"MULTI_UNIT","CERT-TEST",null,null,source.units());when(assets.assetDetails(issuer,subject)).thenReturn(List.of(source));
+        source=new VneidAsset(assetId,source.name(),source.address(),"MULTI_UNIT","CERT-"+assetId,null,null,source.units());when(assets.assetDetails(issuer,subject)).thenReturn(List.of(source));
         sourceUnits.deleteAll(sourceUnits.findByPropertyId(id));sourceUnits.flush();
         list().andExpect(jsonPath("$[0].appendBlockedReason").value("SOURCE_UNIT_RECONCILIATION_REQUIRED"));
         append(id,appendBody(id,unit().replace("unit-1","unit-2"))).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("SOURCE_UNIT_RECONCILIATION_REQUIRED"));
@@ -188,7 +188,7 @@ class VneidPropertyImportIntegrationTests {
     @Test void newSourceRoomUsesItsOwnBatchAndDoesNotRewriteOldSourceHash()throws Exception{
         Long id=initialSelection();var old=apartments.findByPropertyIdOrderByIdAsc(id).getFirst();var before=evidenceResolver.resolve(old);
         var units=new ArrayList<>(source.units());units.add(new VneidAsset.Unit("unit-4","A.04",new BigDecimal("32"),1,1));
-        source=new VneidAsset(assetId,source.name(),source.address(),"MULTI_UNIT","CERT-TEST",null,null,units);when(assets.assetDetails(issuer,subject)).thenReturn(List.of(source));
+        source=new VneidAsset(assetId,source.name(),source.address(),"MULTI_UNIT","CERT-"+assetId,null,null,units);when(assets.assetDetails(issuer,subject)).thenReturn(List.of(source));
         String current=version();append(id,appendBody(id,unit().replace("unit-1","unit-4"))).andExpect(status().isCreated());
         assertEquals(before,evidenceResolver.resolve(apartments.findById(old.getId()).orElseThrow()));
         assertEquals(current,evidenceResolver.resolve(apartments.findByPropertyIdAndRoomNumber(id,"A.04").orElseThrow()).evidence().sourceHash());

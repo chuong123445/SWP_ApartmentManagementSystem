@@ -56,4 +56,20 @@ class PropertySettingsIntegrationTests {
   var otherProperty=property(owner);
   mvc.perform(get("/api/v1/owner/properties/"+otherProperty.getId()+"/settings").header("Authorization",t)).andExpect(status().isOk()).andExpect(jsonPath("$.configured").value(false));
  }
+ @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
+ @Test void automaticSendIsMandatoryForNewAndLegacySettingsAndMigrationReplays()throws Exception{
+  var owner=account(AuthAccount.Role.OWNER);var p=property(owner);String t=token(owner),url="/api/v1/owner/properties/"+p.getId()+"/settings";
+  mvc.perform(get(url).header("Authorization",t)).andExpect(status().isOk()).andExpect(jsonPath("$.rentInvoiceMode").value("SEND"));
+  String body="{\"version\":0,\"electricityUnitPrice\":\"0\",\"waterUnitPrice\":\"0\",\"internetFee\":\"0\",\"garbageFee\":\"0\",\"rentInvoiceMode\":\"MANUAL\"}";
+  mvc.perform(put(url).header("Authorization",t).contentType("application/json").content(body)).andExpect(status().isOk()).andExpect(jsonPath("$.rentInvoiceMode").value("SEND"));
+  em.flush();jdbc.update("UPDATE property_settings SET rent_invoice_mode='DRAFT' WHERE property_id=?",p.getId());em.clear();
+  mvc.perform(get(url).header("Authorization",t)).andExpect(jsonPath("$.rentInvoiceMode").value("SEND"));
+  long version=jdbc.queryForObject("SELECT version FROM property_settings WHERE property_id=?",Long.class,p.getId());
+  var resource=new org.springframework.core.io.ClassPathResource("db/migration/V69__automatic_rent_send.sql");
+  String script=new String(resource.getInputStream().readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);
+  for(int pass=0;pass<2;pass++)for(var batch:script.split("(?im)^GO\\s*$"))if(!batch.isBlank())jdbc.execute(batch);
+  org.junit.jupiter.api.Assertions.assertEquals("SEND",jdbc.queryForObject("SELECT rent_invoice_mode FROM property_settings WHERE property_id=?",String.class,p.getId()));
+  org.junit.jupiter.api.Assertions.assertEquals(version+1,jdbc.queryForObject("SELECT version FROM property_settings WHERE property_id=?",Long.class,p.getId()));
+ }
+
 }

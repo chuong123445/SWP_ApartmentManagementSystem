@@ -1,0 +1,294 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Manual account identity review",
+    "version": "1.0.0",
+    "description": "Separate self-declared profile and immutable submissions/images. Admin approval creates ADMIN_REVIEW evidence; no email/phone verification or role/property change. Existing Auth0 remains."
+  },
+  "paths": {
+    "/api/v1/me/identity-submissions": {
+      "get": {
+        "summary": "Latest own submitted snapshot; 204 if none",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "No-store result; see manual-identity-review-v1 ADR for fields"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden actor/status"
+          },
+          "409": {
+            "description": "Pending, already reviewed/verified, duplicate citizen or stale version"
+          },
+          "204": {
+            "description": "No submitted profile yet"
+          }
+        }
+      },
+      "post": {
+        "summary": "Submit saved private profile with explicit consent",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "No-store result; see manual-identity-review-v1 ADR for fields"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden actor/status"
+          },
+          "409": {
+            "description": "Pending, already reviewed/verified, duplicate citizen or stale version"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "profileVersion",
+                  "consent"
+                ],
+                "properties": {
+                  "profileVersion": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "consent": {
+                    "type": "boolean",
+                    "const": true
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/identity-submissions": {
+      "get": {
+        "summary": "ACTIVE ADMIN queue, status and page filters",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "No-store result; see manual-identity-review-v1 ADR for fields"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden actor/status"
+          },
+          "409": {
+            "description": "Pending, already reviewed/verified, duplicate citizen or stale version"
+          }
+        },
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "APPROVED",
+                "REJECTED"
+              ],
+              "default": "PENDING"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/identity-submissions/{id}": {
+      "get": {
+        "summary": "ACTIVE ADMIN immutable submitted profile",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "No-store result; see manual-identity-review-v1 ADR for fields"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden actor/status"
+          },
+          "409": {
+            "description": "Pending, already reviewed/verified, duplicate citizen or stale version"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/identity-submissions/{id}/decision": {
+      "post": {
+        "summary": "ACTIVE ADMIN approve or reject with optimistic version",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "No-store result; see manual-identity-review-v1 ADR for fields"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden actor/status"
+          },
+          "409": {
+            "description": "Pending, already reviewed/verified, duplicate citizen or stale version"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "version",
+                  "action"
+                ],
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "APPROVE",
+                      "REJECT"
+                    ]
+                  },
+                  "reason": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 2000,
+                    "description": "Required nonblank for REJECT"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/identity-submissions/{id}/documents/{side}": {
+      "get": {
+        "summary": "ACTIVE ADMIN private submitted JPEG/PNG; no-store",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "No-store result; see manual-identity-review-v1 ADR for fields"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden actor/status"
+          },
+          "409": {
+            "description": "Pending, already reviewed/verified, duplicate citizen or stale version"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "side",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "front",
+                "back"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}

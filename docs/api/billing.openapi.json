@@ -222,7 +222,8 @@
           "409": {
             "$ref": "#/components/responses/Error"
           }
-        }
+        },
+        "description": " RENT drafts additionally require today >= dueDate minus seven days (409 RENT_SEND_TOO_EARLY); utility invoices have no new date restriction."
       }
     },
     "/api/v1/owner/invoices": {
@@ -596,8 +597,8 @@
     },
     "/api/v1/owner/contracts/{id}/rent-invoices": {
       "post": {
-        "summary": "Create rent-only draft from signed contract cycle",
-        "description": "Exact owner only. RENT and UTILITY have independent coverage and meter chains. Uncancelled LEGACY coverage prevents double charging. Partial calendar-month days require separate manual agreement. Due date cannot precede the agreed payment day.",
+        "summary": "Create and immediately send rent-only invoice within seven days before due date",
+        "description": "Exact owner only. RENT and UTILITY have independent coverage and meter chains. Uncancelled LEGACY coverage prevents double charging. Partial calendar-month days require separate manual agreement. Due date cannot precede the agreed payment day. Rent is created and SENT atomically, with exactly one tenant notification. Reject earlier than dueDate minus 7 days (Asia/Ho_Chi_Minh), including direct send of an old RENT draft. Due date cannot be moved earlier than agreed. Manual overdue reconciliation remains allowed. Utility draft workflow is unchanged.",
         "parameters": [
           {
             "name": "id",
@@ -627,7 +628,7 @@
             "description": "Contract outside owner scope"
           },
           "409": {
-            "description": "Stale billing version, pending rent/legacy draft, overlapping or exhausted coverage"
+            "description": "Stale billing version, pending rent/legacy draft, overlapping or exhausted coverage; RENT_SEND_TOO_EARLY or open contract exit. Failed sends leave no new draft."
           }
         },
         "requestBody": {
@@ -638,6 +639,115 @@
                 "$ref": "#/components/schemas/RentInvoiceCreate"
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/owner/contracts/{id}/utility-invoice-suggestion": {
+      "post": {
+        "summary": "Read an Owner command into a reviewed utility-invoice suggestion; never creates or sends an invoice",
+        "description": "Requires exact ACTIVE-contract Owner, current period/baselineVersion, explicit room code and end meter readings. Missing/ambiguous input returns 422. PER_PERSON water keeps its existing baseline. Server remains the source of prices and totals.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "message",
+                  "period",
+                  "baselineVersion"
+                ],
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "period": {
+                    "type": "string"
+                  },
+                  "baselineVersion": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Validated suggestion; explicit Apply and Save/Send remain separate UI actions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "contractId",
+                    "roomNumber",
+                    "period",
+                    "baselineVersion",
+                    "electricityEndReading",
+                    "waterEndReading"
+                  ],
+                  "properties": {
+                    "contractId": {
+                      "type": "string"
+                    },
+                    "roomNumber": {
+                      "type": "string"
+                    },
+                    "period": {
+                      "type": "string"
+                    },
+                    "electricityEndReading": {
+                      "type": "string"
+                    },
+                    "waterEndReading": {
+                      "type": "string"
+                    },
+                    "baselineVersion": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Owner required"
+          },
+          "404": {
+            "description": "Contract outside Owner scope"
+          },
+          "409": {
+            "description": "Inactive contract or stale billing period/version"
+          },
+          "422": {
+            "description": "INVOICE_INPUT_REQUIRED: missing/wrong room, missing, invented or decreasing end readings"
+          },
+          "429": {
+            "description": "Local request limit"
+          },
+          "503": {
+            "description": "AI unavailable/configuration/provider failure"
           }
         }
       }
@@ -1041,7 +1151,7 @@
               "string",
               "null"
             ],
-            "description": "Accepted evidence source only. AUTH0_VNEID_SIMULATION remains simulation; LOCAL_DEMO is accepted only in local/non-prod. No provider subject, citizen data or documents included."
+            "description": "Accepted evidence source only. AUTH0_VNEID_SIMULATION remains simulation; LOCAL_DEMO is accepted only in local/non-prod. ADMIN_REVIEW indicates an account identity submission approved by an active Admin. No provider subject, citizen data or documents included."
           },
           "inAppSigningStatus": {
             "type": "string",
@@ -1286,12 +1396,27 @@
           "automationMode": {
             "type": "string",
             "enum": [
-              "MANUAL",
-              "DRAFT",
               "SEND"
-            ]
+            ],
+            "description": "Always automatic send; no Owner opt-in."
+          },
+          "sendAvailableFrom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "Agreed/current due date minus seven days, Vietnam date."
+          },
+          "canSend": {
+            "type": "boolean",
+            "description": "Date window is open; existing draft/exhausted coverage and ownership/version rules still apply."
           }
-        }
+        },
+        "required": [
+          "sendAvailableFrom",
+          "canSend"
+        ]
       },
       "RentInvoiceCreate": {
         "type": "object",

@@ -79,7 +79,7 @@ public class IdentityProfileService {
             }finally{reader.dispose();}
         }catch(IOException e){throw invalidImage();}
     }
-    private static IdentityProfileResponse response(IdentityProfile p){return new IdentityProfileResponse(p.getLegalName(),p.getDocumentNumber(),p.getDateOfBirth(),p.getIssueDate(),p.getIssuePlace(),p.getPermanentAddress(),p.getCurrentAddress(),p.getVerificationStatus().name(),p.getUpdatedAt(),p.getVersion(),p.isLocalFixture());}
+    static IdentityProfileResponse response(IdentityProfile p){return new IdentityProfileResponse(p.getLegalName(),p.getDocumentNumber(),p.getDateOfBirth(),p.getIssueDate(),p.getIssuePlace(),p.getPermanentAddress(),p.getCurrentAddress(),p.getVerificationStatus().name(),p.getUpdatedAt(),p.getVersion(),p.isLocalFixture());}
     private static ApiException invalidImage(){return error(HttpStatus.BAD_REQUEST,"INVALID_FILE","Chỉ nhận ảnh PNG/JPEG hợp lệ, tối đa 5 MB mỗi ảnh và 20 triệu điểm ảnh.");}
     private static ApiException missing(){return error(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy ảnh căn cước của bạn.");}
     private static ApiException error(HttpStatus status,String code,String message){return new ApiException(status,code,message);}

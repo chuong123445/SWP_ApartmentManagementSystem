@@ -87,13 +87,14 @@ public class ApartmentService {
                 || (minRent != null && maxRent != null && minRent.compareTo(maxRent) > 0)
                 || (bedrooms != null && bedrooms < 0))
             throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Bộ lọc căn hộ không hợp lệ.");
+        var cityNames=city==null||city.isBlank()?java.util.List.<String>of():addressOptions().stream().map(AddressOption::city).distinct().filter(name->PublicCityNames.same(name,city)).toList();
         Specification<Apartment> filters = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (q != null && !q.isBlank()) {
                 String pattern = "%" + q.strip().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_").replace("[", "\\[") + "%";
                 predicates.add(cb.or(cb.like(cb.lower(root.get("title")), pattern, '\\'), cb.like(cb.lower(root.get("property").get("address")), pattern, '\\')));
             }
-            if (city != null && !city.isBlank()) predicates.add(cb.equal(root.get("property").get("city"), city.strip()));
+            if (city != null && !city.isBlank()) predicates.add(root.get("property").get("city").in(cityNames.isEmpty()?java.util.List.of(city.strip()):cityNames));
             if (district != null && !district.isBlank()) predicates.add(cb.equal(root.get("property").get("district"), district.strip()));
             if (ward != null && !ward.isBlank()) predicates.add(cb.equal(root.get("property").get("ward"), ward.strip()));
             if (minRent != null) predicates.add(cb.greaterThanOrEqualTo(root.get("advertisedMonthlyRent"), minRent));

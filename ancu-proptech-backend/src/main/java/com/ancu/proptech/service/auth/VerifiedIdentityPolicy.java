@@ -23,6 +23,8 @@ public class VerifiedIdentityPolicy {
     private boolean accepted(ExternalIdentity identity) {
         if (!"VERIFIED".equals(identity.getVerificationStatus())) return false;
         if (VneidTokenVerifier.SOURCE.equals(identity.getSource())) return true;
+        if ("ADMIN_REVIEW".equals(identity.getSource())) return "urn:ancu:admin-review".equals(identity.getIssuer())
+                && identity.getAccountId().toString().equals(identity.getSubject());
         return LOCAL_DEMO.equals(identity.getSource()) && environment.acceptsProfiles(Profiles.of("local"))
                 && !environment.acceptsProfiles(Profiles.of("prod"))
                 && "urn:ancu:local-demo".equals(identity.getIssuer())

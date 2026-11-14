@@ -1,0 +1,7 @@
+# Ảnh đăng tài sản và mô tả AI — 13/11/2026
+
+Ảnh chung nằm trong bước **Thông tin & ảnh tài sản**; ảnh riêng nằm trong từng **Căn/phòng**, trước nút tạo mô tả. Bỏ bước Hình ảnh riêng. Nháp 5 bước cũ được chuyển sang 4 bước khi đọc; giữ ảnh và phòng đã chọn. Nháp đã ở bước ảnh quay về Căn/phòng, bước gửi cũ chuyển thành bước gửi mới.
+
+`POST /api/v1/me/listing-description/suggest` nhận thêm `imageIds` (tối đa 4 ID ảnh của chính tài khoản). Controller gọi ListingDescriptionService, service kiểm tra uploader trước khi giải mã và gửi ảnh JPEG đã thu nhỏ/loại metadata cùng các thông tin phòng đến Gemini. Không gửi giấy tờ pháp lý hoặc gọi URL do người dùng cung cấp. Mô tả chỉ là gợi ý; chỉnh sửa/áp dụng vẫn do người dùng. Luồng nhập tài sản nguồn cũng gửi ảnh riêng đã chọn khi yêu cầu mô tả.
+
+Kiểm tra: 9 backend unit (GeminiAssistanceClientTests, AiImageSupportTests, ListingDescriptionServiceTests), 162 frontend unit, TypeScript và production build PASS tại checkpoint. Playwright MCP 1440/390: luồng giấy tờ → ảnh chung → phòng/ảnh riêng → AI gợi ý có imageIds → tải lại nháp → gửi hồ sơ PASS, không lỗi trang/console/network ngoài lỗi 503 mô phỏng có chủ đích, không tràn ngang. Provider là HTTP loopback/mock; chưa xác minh Gemini thật. Build có cảnh báo chunk lớn sẵn có. Context7 lỗi `fetch failed`; định dạng inlineData đối chiếu tài liệu chính thức Gemini image understanding. Không thay đổi fixtures, RDS hoặc sơ đồ.

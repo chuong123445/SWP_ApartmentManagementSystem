@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { acceptableSuggestion,blankListing,blankListingUnit,copyCommonTerms,listingDossier,listingProperty,selectedListingUnits } from '../src/utils/listingWizard';
+import { restoreListing,acceptableSuggestion,blankListing,blankListingUnit,copyCommonTerms,listingDossier,listingProperty,selectedListingUnits } from '../src/utils/listingWizard';
 
 test('only selected rooms become commands and UI state stays private',()=>{
  const state=blankListing();state.rentalMode='MULTI_UNIT';state.units=[blankListingUnit(),blankListingUnit()];state.units[1].selected=false;
@@ -22,4 +22,12 @@ test('dossier references exclude removed evidence and ownership has no authoriza
  const state=blankListing();state.legal.rightsValidFrom='2026-01-01';state.excludedFiles=['2'];
  const files=[{id:'1',purpose:'RIGHT_DOCUMENT' as const,filename:'a.pdf',contentType:'application/pdf',size:1},{id:'2',purpose:'RIGHT_DOCUMENT' as const,filename:'b.pdf',contentType:'application/pdf',size:1}];
  const input=listingDossier(state,files,'OWNERSHIP',3);assert.deepEqual(input.documentFileIds,['1']);assert.equal(input.rightsValidFrom,null);assert.equal('receivingAccount' in input,false);
+});
+
+test('old photo-step drafts resume in rooms and preserve all photo IDs',()=>{
+ const state=blankListing();state.imageIds=['10'];state.units[0].imageIds=['11'];
+ const restored=restoreListing({...state,photoLayoutVersion:undefined,step:3});
+ assert.equal(restored.step,2);assert.deepEqual(restored.imageIds,['10']);assert.deepEqual(restored.units[0].imageIds,['11']);
+ assert.equal(restoreListing({...state,photoLayoutVersion:undefined,step:4}).step,3);
+ assert.equal(restoreListing({...state,photoLayoutVersion:2,step:3}).step,3);
 });

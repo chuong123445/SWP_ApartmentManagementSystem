@@ -16,6 +16,7 @@ import java.util.*;
 
 @Service @RequiredArgsConstructor
 public class PropertyListingService {
+    private final PropertyDocumentGate documentGate;
     private final PropertyApplicantAccess access;
     private final AuthAccountRepository accounts;
     private final PropertyRepository properties;
@@ -58,6 +59,10 @@ public class PropertyListingService {
         if(!units.isMissingNode()&&(!units.isArray()||units.size()>50))throw bad("Bản nháp có tối đa 50 căn/phòng.");
         var step=input.payload().path("step");
         if(!step.isMissingNode()&&(!step.isIntegralNumber()||!step.canConvertToInt()||step.asInt()<0||step.asInt()>4))throw bad("Bước đăng tải không hợp lệ.");
+        if(step.isIntegralNumber()&&step.asInt()>0){
+            var excluded=new HashSet<Long>();for(var item:input.payload().path("excludedFiles")){try{excluded.add(Long.valueOf(item.asString()));}catch(RuntimeException e){throw bad("Mã tệp loại trừ không hợp lệ.");}}
+            documentGate.require(p,files.findByPropertyIdOrderByIdAsc(p.getId()).stream().filter(f->!excluded.contains(f.getId())).map(PropertyEvidenceFile::getId).toList());
+        }
         d.setPayload(payload);d.setUpdatedAt(Instant.now());drafts.flush();return view(d,p);
     }
     @Transactional public View finish(Jwt jwt,Long id,Finish input){
@@ -71,6 +76,9 @@ public class PropertyListingService {
             if(unit.getImageIds()==null||unit.getImageIds().isEmpty())throw bad("Cần ít nhất một ảnh riêng cho mỗi căn/phòng được chọn.");
             if(unit.getElectricityUnitPrice()==null||unit.getWaterUnitPrice()==null)throw bad("Cần khai báo đơn giá điện và nước cho từng căn/phòng.");
         }
+        var selected=new ArrayList<Long>();
+        for(var group:Arrays.asList(input.dossier().getDocumentFileIds(),input.dossier().getSupportingFileIds(),input.dossier().getOwnerEvidenceFileIds(),input.dossier().getAuthorizationFileIds(),input.dossier().getOriginalLeaseFileIds(),input.dossier().getSubleaseConsentFileIds())){if(group!=null)selected.addAll(group);}
+        documentGate.require(p,selected);
         creation.completeListing(jwt,p,input.property());
         d.setCompleted(true);drafts.flush();
         if(Boolean.TRUE.equals(input.submit())){
@@ -84,7 +92,7 @@ public class PropertyListingService {
         if(d.isCompleted()||p.getApprovalStatus()!=Property.ApprovalStatus.DRAFT)throw new ApiException(HttpStatus.CONFLICT,"LISTING_NOT_EDITABLE","Bản nháp đã hoàn tất hoặc đã gửi duyệt.");
         if(d.getVersion()!=version)throw new ApiException(HttpStatus.CONFLICT,"STALE_VERSION","Bản nháp đã được sửa ở nơi khác. Tải lại trước khi tiếp tục.");
     }
-    private View view(PropertyListingDraft d,Property p){return new View(p.getId().toString(),d.getVersion(),p.getVersion(),p.getRightType().name(),d.isCompleted(),json.readTree(d.getPayload()),files.findByPropertyIdOrderByIdAsc(p.getId()).stream().map(PropertyEvidenceService::response).toList());}
+    private View view(PropertyListingDraft d,Property p){return new View(p.getId().toString(),d.getVersion(),p.getVersion(),p.getRightType().name(),d.isCompleted(),json.readTree(d.getPayload()),files.findByPropertyIdOrderByIdAsc(p.getId()).stream().map(PropertyEvidenceService::response).toList(),documentGate.acceptedIds(p));}
     private static ApiException missing(){return new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy bản nháp của bạn.");}
     private static ApiException bad(String message){return new ApiException(HttpStatus.BAD_REQUEST,"VALIDATION_ERROR",message);}
 }

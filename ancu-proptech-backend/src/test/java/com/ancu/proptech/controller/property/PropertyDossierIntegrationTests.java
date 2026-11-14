@@ -224,6 +224,7 @@ class PropertyDossierIntegrationTests {
         String first=send(uploadRight());decision(adminToken,first,"APPROVE","Checked",0).andExpect(status().isOk());
         String otherToken=token(other);
         String copy=JsonPath.read(upload(otherToken,foreignProperty,"RIGHT_DOCUMENT",png).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(),"$.id");
+        evidenceContents.flush(); // Real upload commits its content before the separate submit request.
         submit(otherToken,foreignProperty,body(copy,foreignProperty.getVersion())).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EVIDENCE_ALREADY_APPROVED"));
         assertFalse(dossiers.existsByPropertyId(foreignProperty.getId()));
     }

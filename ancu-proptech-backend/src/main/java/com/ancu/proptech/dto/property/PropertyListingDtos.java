@@ -9,5 +9,5 @@ public final class PropertyListingDtos {
     public record Start(@NotBlank @Pattern(regexp="[0-9a-fA-F-]{36}") String requestKey,@NotNull PropertyDossier.RightType rightType){}
     public record Save(@NotNull @Min(0) Long version,@NotNull JsonNode payload){}
     public record Finish(@NotNull @Min(0) Long version,@NotNull @Valid OwnerPropertyCreate property,@NotNull @Valid PropertyDossierSubmit dossier,@NotNull Boolean submit){}
-    public record View(String propertyId,long version,long propertyVersion,String rightType,boolean completed,JsonNode payload,List<PropertyEvidenceResponse> files){}
+    public record View(String propertyId,long version,long propertyVersion,String rightType,boolean completed,JsonNode payload,List<PropertyEvidenceResponse> files,List<String> acceptedFileIds){}
 }

@@ -51,6 +51,12 @@ public class SelectionCancellationService {
   root.setUpdatedAt(now());root=cancellations.saveAndFlush(root);entities.flush();
   var after=new Selection(r,s.draft(),s.contract(),root);
   var event=new SelectionCancellationEvent();event.setRequestId(id);event.setActorId(actor.getId());event.setActorName(actor.getFullName());event.setAction(action);event.setReason(reason);event.setCreatedAt(root.getUpdatedAt());event.setBeforeJson(before);event.setAfterJson(json.writeValueAsString(snapshot(after)));events.saveAndFlush(event);
+  // Only an unsigned, never-effective initial draft can be removed. The request and
+  // cancellation event retain the reason and before/after audit independently.
+  if(root.getState()==SelectionCancellation.State.CANCELLED&&s.contract()!=null&&signatureCount(s)==0){
+   drafts.delete(s.draft());drafts.flush();contracts.delete(s.contract());contracts.flush();
+   after=new Selection(r,null,null,root);
+  }
   return view(after,actor.getId());
  }
  private Selection load(AuthAccount actor,Long id,boolean lock){

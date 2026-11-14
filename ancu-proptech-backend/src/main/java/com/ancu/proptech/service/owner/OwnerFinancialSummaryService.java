@@ -35,6 +35,7 @@ public class OwnerFinancialSummaryService {
         try(var stream=reports.invoices(ownerId,propertyId)) {
             stream.forEach(row->{
                 var property=byProperty.computeIfAbsent(row.propertyId(),id->new Accumulator());
+                allocateRent(row,months,total,property);
                 if(row.paidAt()==null){debtCounts[0]++;debt[0]=debt[0].add(row.total());if(row.dueDate().isBefore(today)){debtCounts[1]++;debt[1]=debt[1].add(row.total());}}
                 var month=months.get(row.period());
                 if(month!=null){total.invoice(row);month.invoice(row);property.invoice(row);}
@@ -49,13 +50,31 @@ public class OwnerFinancialSummaryService {
             });
         }
         var units=new OwnerFinancialSummary.Inventory(inventory.stream().mapToLong(FinancialInventoryRow::units).sum(),inventory.stream().mapToLong(FinancialInventoryRow::occupied).sum(),inventory.stream().mapToLong(FinancialInventoryRow::vacant).sum());
-        var propertyRows=inventory.stream().map(row->{var a=byProperty.get(row.propertyId());return new OwnerFinancialSummary.Property(row.propertyId(),row.name(),new OwnerFinancialSummary.Inventory(row.units(),row.occupied(),row.vacant()),a.amounts(),a.receipts());}).toList();
+        var propertyRows=inventory.stream().map(row->{var a=byProperty.get(row.propertyId());return new OwnerFinancialSummary.Property(row.propertyId(),row.name(),new OwnerFinancialSummary.Inventory(row.units(),row.occupied(),row.vacant()),a.amounts(),a.receipts(),a.allocated.toPlainString());}).toList();
         return new OwnerFinancialSummary(propertyId,year,today,total.amounts(),total.receipts(),new OwnerFinancialSummary.Arrears(debtCounts[0],debt[0].toPlainString(),debtCounts[1],debt[1].toPlainString(),debtCounts[2],debt[2].toPlainString()),units,
-                months.entrySet().stream().map(entry->new OwnerFinancialSummary.Month(entry.getKey(),entry.getValue().amounts(),entry.getValue().receipts())).toList(),propertyRows);
+                months.entrySet().stream().map(entry->new OwnerFinancialSummary.Month(entry.getKey(),entry.getValue().amounts(),entry.getValue().receipts(),entry.getValue().allocated.toPlainString())).toList(),propertyRows,total.allocated.toPlainString());
+    }
+    // Allocate only rent frozen on SENT invoices, not cash, utilities or unsigned forecasts.
+    // Iterate at most twelve selected-year months, even for long historical coverage.
+    private static void allocateRent(FinancialInvoiceRow row,Map<String,Accumulator> months,Accumulator total,Accumulator property){
+        if(row.rent().signum()==0)return;
+        var first=row.coverageStart()==null?YearMonth.parse(row.period()):YearMonth.from(row.coverageStart());
+        var last=row.coverageEnd()==null?first:YearMonth.from(row.coverageEnd());
+        long count=java.time.temporal.ChronoUnit.MONTHS.between(first,last)+1;
+        if(count<=0)return;
+        var perMonth=row.rent().divide(BigDecimal.valueOf(count),4,java.math.RoundingMode.DOWN);
+        var finalMonth=row.rent().subtract(perMonth.multiply(BigDecimal.valueOf(count-1)));
+        months.forEach((period,acc)->{
+            var month=YearMonth.parse(period);
+            if(!month.isBefore(first)&&!month.isAfter(last)){
+                var amount=month.equals(last)?finalMonth:perMonth;
+                acc.allocated=acc.allocated.add(amount);total.allocated=total.allocated.add(amount);property.allocated=property.allocated.add(amount);
+            }
+        });
     }
     private static final class Accumulator {
         long count,paid,onTime;
-        BigDecimal billed=BigDecimal.ZERO,settled=BigDecimal.ZERO,rent=BigDecimal.ZERO,electricity=BigDecimal.ZERO,water=BigDecimal.ZERO,services=BigDecimal.ZERO,received=BigDecimal.ZERO,additional=BigDecimal.ZERO;
+        BigDecimal allocated=BigDecimal.ZERO,billed=BigDecimal.ZERO,settled=BigDecimal.ZERO,rent=BigDecimal.ZERO,electricity=BigDecimal.ZERO,water=BigDecimal.ZERO,services=BigDecimal.ZERO,received=BigDecimal.ZERO,additional=BigDecimal.ZERO;
         void invoice(FinancialInvoiceRow row){count++;billed=billed.add(row.total());rent=rent.add(row.rent());electricity=electricity.add(row.electricity());water=water.add(row.water());services=services.add(row.internet()).add(row.garbage());if(row.paidAt()!=null){paid++;settled=settled.add(row.total());if(!row.paidAt().atZone(ZONE).toLocalDate().isAfter(row.dueDate()))onTime++;}}
         OwnerFinancialSummary.Amounts amounts(){return new OwnerFinancialSummary.Amounts(count,paid,onTime,billed.toPlainString(),settled.toPlainString(),billed.subtract(settled).toPlainString(),rent.toPlainString(),electricity.toPlainString(),water.toPlainString(),services.toPlainString());}
         OwnerFinancialSummary.Receipts receipts(){return new OwnerFinancialSummary.Receipts(received.toPlainString(),additional.toPlainString(),received.add(additional).toPlainString());}
