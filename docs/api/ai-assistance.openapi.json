@@ -8,7 +8,7 @@
   "paths": {
     "/api/v1/apartments/ai-search": {
       "post": {
-        "description": "Return runId/sourceHash/model/promptVersion/createdAt/filters/notes/canApply. No generated inventory. 10 requests/minute/process per remote hash.",
+        "description": "Return runId/sourceHash/model/promptVersion/createdAt/filters/notes/canApply. No generated inventory. 10 requests/minute/process per remote hash. Equivalent city prefixes (Thành phố/TP./bare name), case and accents resolve only against the eligible public address catalog. Original text remains the audit hash input; provider request city spelling is normalized before extraction. Budget and hierarchy validations remain enforced.",
         "requestBody": {
           "required": true,
           "content": {
@@ -423,7 +423,7 @@
     },
     "/api/v1/apartments/ai-chat": {
       "post": {
-        "description": "Public consented conversation; returns reply (plain text <=2000) and search (existing Result with filters, notes, canApply, runId). Automatic frontend apply only when canApply and nonempty filters. Same rate limit as ai-search. Raw conversation/reply not stored. Inventory stays GET /api/v1/apartments.",
+        "description": "Public consented conversation; returns reply (plain text <=2000) and search (existing Result with filters, notes, canApply, runId). Automatic frontend apply only when canApply and nonempty filters. Same rate limit as ai-search. Raw conversation/reply not stored. Inventory stays GET /api/v1/apartments. Equivalent city prefixes (Thành phố/TP./bare name), case and accents resolve only against the eligible public address catalog. Original text remains the audit hash input; provider request city spelling is normalized before extraction. Budget and hierarchy validations remain enforced.",
         "requestBody": {
           "required": true,
           "content": {
