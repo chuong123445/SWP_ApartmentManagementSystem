@@ -33,7 +33,7 @@ public interface FinancialReportRepository extends Repository<RentalInvoice,Long
         """)
     TenantInvoiceTotals tenantAdditionalInvoices(@Param("customerId") Long customerId);
 
-    @Query("select new com.ancu.proptech.dto.finance.FinancialInvoiceRow(i.contract.apartment.property.id,i.period,i.dueDate,i.monthlyRent,i.electricityAmount,i.waterAmount,i.internetFee,i.garbageFee,i.totalAmount,p.amount,p.paidAt) from RentalInvoice i left join InvoicePayment p on p.invoiceId=i.id where i.contract.apartment.property.owner.id=:ownerId and (:propertyId is null or i.contract.apartment.property.id=:propertyId) and i.status=com.ancu.proptech.model.billing.RentalInvoice.Status.SENT")
+    @Query("select new com.ancu.proptech.dto.finance.FinancialInvoiceRow(i.contract.apartment.property.id,i.period,i.dueDate,i.monthlyRent,i.electricityAmount,i.waterAmount,i.internetFee,i.garbageFee,i.totalAmount,p.amount,p.paidAt,i.coverageStart,i.coverageEnd) from RentalInvoice i left join InvoicePayment p on p.invoiceId=i.id where i.contract.apartment.property.owner.id=:ownerId and (:propertyId is null or i.contract.apartment.property.id=:propertyId) and i.status=com.ancu.proptech.model.billing.RentalInvoice.Status.SENT")
     @QueryHints(@jakarta.persistence.QueryHint(name="org.hibernate.fetchSize",value="100"))
     Stream<FinancialInvoiceRow> invoices(@Param("ownerId") Long ownerId,@Param("propertyId") Long propertyId);
 
