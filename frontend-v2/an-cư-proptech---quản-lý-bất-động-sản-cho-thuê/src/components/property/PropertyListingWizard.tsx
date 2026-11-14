@@ -1,3 +1,4 @@
+import {ApiError} from '@/services/http/client';
 import { DescriptionSuggestion } from './DescriptionSuggestion';
 import { useEffect,useRef,useState,type FormEvent } from 'react';
 import { useNavigate,useSearchParams } from 'react-router';
@@ -12,6 +13,7 @@ import { dossierFieldDisplay } from '@/utils/dossierDates';
 import { OwnerPrecheckPanel } from '@/components/property/OwnerPrecheckPanel';
 import { ApartmentImage } from '@/components/apartments/ApartmentImage';
 
+const documentWarning='Chưa thể tiếp tục. Bỏ tệp không phù hợp, gửi lại giấy tờ đúng loại và quét lại.';
 const field='mt-1 w-full min-w-0 border border-slate-300 rounded-lg px-3 py-2 bg-white';
 const button='rounded-lg border px-4 py-2 text-sm disabled:opacity-50';
 const steps=['Giấy tờ','Thông tin & ảnh tài sản','Căn/phòng','Xem trước & gửi'];
@@ -31,7 +33,7 @@ export function PropertyListingWizard({rightType}:{rightType:Dossier['rightType'
  }).catch(e=>{if(active)setError(e.message);}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[draftId,rightType,navigate]);
  const change=(next:Partial<ListingState>)=>{setState(s=>({...s,...next}));setNotice('Có thay đổi chưa lưu.');};
  const updateUnit=(key:string,values:Partial<WizardUnit>)=>{change({units:state.units.map(u=>u.key===key?{...u,...values}:u)});};
- const fail=(e:unknown)=>setError(e instanceof Error?e.message:'Không thể thực hiện. Vui lòng thử lại.');
+ const fail=(e:unknown)=>{if(e instanceof ApiError&&e.code==='DOCUMENT_SCAN_REQUIRED')setNotice(documentWarning);else setError(e instanceof Error?e.message:'Không thể thực hiện. Vui lòng thử lại.');};
  const run=async(work:()=>Promise<void>)=>{if(busy)return;setBusy(true);setError('');try{await work();}catch(e){if(mounted.current)fail(e);}finally{if(mounted.current)setBusy(false);}};
  const persist=async(next:ListingState,current=draft)=>{if(!current)return;const result=await saveListingDraft(current,next);if(mounted.current){setDraft(result);setState(next);setNotice('Đã lưu tiến trình. Bạn có thể quay lại sau.');}return result;};
  const files=(draft?.files??[]).filter(f=>!state.excludedFiles.includes(f.id));const units=selectedListingUnits(state);
@@ -64,7 +66,7 @@ export function PropertyListingWizard({rightType}:{rightType:Dossier['rightType'
    setScanIssues(issues);
    const filled={...applyExtractedFields(next,suggestions),step:current.files.some(f=>!next.excludedFiles.includes(f.id)&&!extracted.has(f.id))?0:next.step,extractionVersion:3,extractedFileIds:[...extracted]};
    await persist(filled,current);
-   setNotice(current.files.some(f=>!next.excludedFiles.includes(f.id)&&!extracted.has(f.id))?'Chưa thể tiếp tục. Bỏ tệp không phù hợp, gửi lại giấy tờ đúng loại và quét lại.':'Đã đọc giấy tờ phù hợp và tự điền thông tin.');
+   setNotice(current.files.some(f=>!next.excludedFiles.includes(f.id)&&!extracted.has(f.id))?documentWarning:'Đã đọc giấy tờ phù hợp và tự điền thông tin.');
  };
  const upload=async(purpose:EvidencePurpose,chosen:File[])=>{
    if(!draft||!chosen.length)return;
@@ -98,7 +100,7 @@ export function PropertyListingWizard({rightType}:{rightType:Dossier['rightType'
  const validate=()=>{
    if(!form.current?.reportValidity())return false;
    if(state.step===0&&requiredEvidence(rightType).some(p=>!files.some(f=>f.purpose===p)))throw new Error('Cần đủ loại giấy tờ bắt buộc trước khi tiếp tục. Có thể lưu nháp để bổ sung sau.');
-   if(state.step===0&&(state.extractionVersion!==3||files.some(f=>!draft?.acceptedFileIds?.includes(f.id))))throw new Error('Giấy tờ chưa được AI xác nhận phù hợp. Hãy bỏ tệp sai, gửi lại đúng giấy tờ và quét lại trước khi tiếp tục.');
+   if(state.step===0&&(state.extractionVersion!==3||files.some(f=>!draft?.acceptedFileIds?.includes(f.id)))){setNotice(documentWarning);return false;}
    if(state.step===1){const l=state.legal;
      if(rightType!=='OWNERSHIP'&&(l.rightsValidUntil<l.rightsValidFrom||!l.rightsValidFrom||!l.rightsValidUntil))throw new Error('Thời hạn quyền cho thuê không hợp lệ.');
      if(rightType==='SUBLEASE'&&(l.rightsValidFrom<l.originalLeaseFrom||l.rightsValidUntil>l.originalLeaseUntil||!l.originalLeaseFrom||!l.originalLeaseUntil))throw new Error('Thời hạn cho thuê lại phải nằm trong hợp đồng gốc.');
@@ -160,6 +162,6 @@ export function PropertyListingWizard({rightType}:{rightType:Dossier['rightType'
    {state.step===3&&<><h2 className="text-xl font-bold">Kiểm tra trước khi gửi</h2><section className="border rounded-xl p-4 space-y-2"><h3 className="font-bold">Nội dung khách thuê sẽ thấy sau khi công khai</h3><p>{state.name} · {state.address}</p>{units.map(u=><div key={u.key} className="border-t pt-2"><strong>{u.roomNumber} · {u.areaM2} m² · {Number(u.advertisedMonthlyRent).toLocaleString('vi-VN')} đ/tháng</strong><p className="text-sm break-words">{u.description}</p><p className="text-sm">{u.imageIds.length} ảnh riêng · {u.amenities.join(', ')}</p></div>)}</section><section className="rounded-xl bg-slate-50 p-4"><h3 className="font-bold">Hồ sơ riêng tư gửi Admin</h3><p>{rightLabels[rightType]} · {files.length} chứng từ</p>{legalKeys.map(([key,label])=>state.legal[key]&&<p key={key} className="text-sm break-words">{label}: {dossierFieldDisplay(key,state.legal[key])}</p>)}</section><OwnerPrecheckPanel autoScan propertyId={draft.propertyId} draft={dossier()} selfService propertyFields={{name:state.name,address:state.address,city:state.city,district:state.district,ward:state.ward||null}}/><p className="text-sm text-amber-900">Gửi hồ sơ chưa công khai các phòng. Sau khi Admin duyệt, bạn chọn công khai từng căn. Tiền cọc do hai bên tự quản lý ngoài hệ thống.</p></>}
    <div className="flex flex-wrap gap-3 border-t pt-4">{state.step>0&&<button type="button" className={button} onClick={()=>void run(async()=>{await persist({...state,step:state.step-1});})}>Quay lại</button>}<button type="button" className={button} onClick={()=>void run(async()=>{await persist(state);})}>Lưu tiến trình</button><button type="submit" className={`${button} bg-brand-700 text-white`}>{busy?'Đang xử lý…':state.step===3?'Gửi hồ sơ kiểm duyệt':'Lưu và tiếp tục'}</button></div>
    </fieldset></form>
-   {notice&&<p role="status" className="text-sm text-emerald-800">{notice}</p>}{error&&<div role="alert" className="rounded-lg bg-rose-50 p-3 text-rose-800 text-sm">{error}<button className="ml-3 underline" onClick={()=>window.location.reload()}>Tải lại bản đã lưu</button></div>}
+   {notice&&<p role={notice===documentWarning?'alert':'status'} className={notice===documentWarning?'rounded-lg bg-rose-50 p-3 text-sm font-medium text-red-700':'text-sm text-emerald-800'}>{notice}</p>}{error&&<div role="alert" className="rounded-lg bg-rose-50 p-3 text-rose-800 text-sm">{error}<button className="ml-3 underline" onClick={()=>window.location.reload()}>Tải lại bản đã lưu</button></div>}
  </section>;
 }
