@@ -72,3 +72,13 @@ test('Contract start rejects yesterday and allows today/future with Vietnam midn
   assert.equal(contractStartMinimum('2026-11-01', '2026-11-14'), '2026-11-14');
   assert.equal(contractStartMinimum('2026-12-01', '2026-11-14'), '2026-12-01');
 });
+
+
+test('Fully signed first leases and renewals are clearly distinguished while waiting for start', async () => {
+  const { contractSigningLabel } = await import('../src/utils/contractDisplay.ts');
+  const waiting={status:'DRAFT',signing:{state:'SIGNED'},lifecycle:{}} as ContractDraft;
+  assert.equal(contractSigningLabel(waiting),'Đã ký — chờ hiệu lực');
+  assert.equal(contractSigningLabel({...waiting,lifecycle:{previousContractId:'1'}} as ContractDraft),'Đã ký — chờ chuyển kỳ thuê');
+  assert.equal(contractSigningLabel({...waiting,cancellationState:'PENDING'}),'Chờ phản hồi đề nghị hủy');
+  assert.equal(contractSigningLabel({...waiting,status:'CANCELLED'}),'Đã hủy trước hiệu lực');
+});

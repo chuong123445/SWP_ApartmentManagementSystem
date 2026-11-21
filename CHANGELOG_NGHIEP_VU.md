@@ -4,10 +4,11 @@
 
 | Ngày | Mã | Nội dung đã sửa | Kiểm tra | Commit |
 |---|---|---|---|---|
-| 21/11/2026 | RA01 | Chặn ngày bắt đầu đã qua ở cả phát OTP và ký; OTP qua nửa đêm không ký được, giữ nguyên chữ ký cũ. | 56 backend đạt; 4 biên ngày chạy lại đạt; 4 Playwright Owner/Customer desktop/mobile đạt. | Ghi hash sau commit |
+| 21/11/2026 | RA01 | Chặn ngày bắt đầu đã qua ở cả phát OTP và ký; OTP qua nửa đêm không ký được, giữ nguyên chữ ký cũ. | 56 backend đạt; 4 biên ngày chạy lại đạt; 4 Playwright Owner/Customer desktop/mobile đạt. | `5f5f0082` |
+
+| 21/11/2026 | RA02 | Ký đủ trước ngày thuê: giữ phòng, hiển thị chờ hiệu lực, tự kiểm tra/chuyển đúng ngày; hỗ trợ hủy song phương khi đang chờ. | 73 backend đạt qua các lượt; 165 frontend/TypeScript/build và 4 Playwright desktop/mobile đạt. | Ghi hash sau commit |
 
 ## Đang làm và cần cân nhắc
 
-- RA02: tiếp theo — hợp đồng ký đủ trước ngày thuê phải chờ hiệu lực.
 - RA03: tiếp theo — chặn chốt/lập/gửi điện nước cho kỳ tương lai.
 - RA04: **cần cân nhắc, chưa sửa** — chốt các khoản phải thu trước/sau khi trả phòng.

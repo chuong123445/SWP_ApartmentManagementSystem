@@ -49,6 +49,7 @@ class ContractDraftIntegrationTests {
     @Autowired ContractRenewalRequestRepository renewalRequests;
     @Autowired com.ancu.proptech.service.contract.ContractExpiryService expiryNotices;
     @Autowired com.ancu.proptech.service.contract.ContractRenewalActivationService renewalActivation;
+    @Autowired com.ancu.proptech.service.contract.ContractInitialActivationService initialActivation;
     @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired com.ancu.proptech.repository.contract.ContractHandoverRepository handovers;
     @Autowired com.ancu.proptech.repository.identity.IdentityProfileRepository identities;
@@ -631,6 +632,55 @@ class ContractDraftIntegrationTests {
         var d=drafts.findByContractId(Long.valueOf(id(saved))).orElseThrow();
         assertEquals(firstSignatureAlreadySaved,d.getOwnerSignedAt()!=null);assertNull(d.getCustomerSignedAt());
         assertEquals(RentalContract.Status.DRAFT,d.getContract().getStatus());assertEquals(Apartment.Availability.CONTRACT_IN_PROGRESS,request.getApartment().getAvailability());
+    }
+
+
+    private String signedFutureFirstLease()throws Exception{
+        String input=body(context()).replace("\"startDate\":\""+today()+"\"","\"startDate\":\""+today().plusDays(2)+"\"");
+        String saved=create(token,input).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String hash=JsonPath.read(saved,"$.signing.contentHash");
+        sign(saved,token,hash,signature(),true).andExpect(status().isOk());
+        sign(saved,customerToken,hash,signature(),true).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DRAFT")).andExpect(jsonPath("$.signing.state").value("SIGNED"));
+        return readContract(id(saved));
+    }
+    @Test void signedFutureFirstLeaseReservesRoomAndActivatesOnlyAtStartIdempotently()throws Exception{
+        var apartment=request.getApartment();apartment.setElectricityIndex(200);apartment.setWaterIndex(50);apartments.saveAndFlush(apartment);
+        String saved=signedFutureFirstLease();Long contractId=Long.valueOf(id(saved));var c=contracts.findById(contractId).orElseThrow();
+        assertEquals(Apartment.Availability.CONTRACT_IN_PROGRESS,apartment.getAvailability());assertNull(c.getBaselineDate());
+        assertFalse(drafts.dueSignedInitials(today()).contains(contractId));initialActivation.activate(contractId);assertEquals(RentalContract.Status.DRAFT,c.getStatus());
+        String hash=JsonPath.read(saved,"$.signing.contentHash");var d=drafts.findByContractId(contractId).orElseThrow();var ownerAt=d.getOwnerSignedAt();var customerAt=d.getCustomerSignedAt();var snapshot=d.getSnapshotJson();
+        org.mockito.Mockito.doReturn(c.getStartDate()).when(signingDates).today();
+        assertTrue(drafts.dueSignedInitials(c.getStartDate()).contains(contractId));initialActivation.activate(contractId);
+        assertEquals(RentalContract.Status.ACTIVE,c.getStatus());assertEquals(Apartment.Availability.OCCUPIED,apartment.getAvailability());
+        assertEquals(0,new BigDecimal("200").compareTo(c.getElectricityBaseline()));assertEquals(c.getStartDate(),c.getBaselineDate());
+        long version=c.getVersion();initialActivation.activate(contractId);assertEquals(version,c.getVersion());
+        assertEquals(ownerAt,d.getOwnerSignedAt());assertEquals(customerAt,d.getCustomerSignedAt());assertEquals(snapshot,d.getSnapshotJson());assertEquals(hash,JsonPath.read(readContract(contractId.toString()),"$.signing.contentHash"));
+    }
+    @Test void futureSignedFirstLeaseCannotBillAndCannotEditSignedContent()throws Exception{
+        String saved=signedFutureFirstLease();String contractId=id(saved);
+        mvc.perform(get("/api/v1/owner/contracts/"+contractId+"/billing-context").header("Authorization",token)).andExpect(status().isConflict());
+        mvc.perform(get("/api/v1/owner/contracts/"+contractId+"/rent-billing-context").header("Authorization",token)).andExpect(status().isConflict());
+        update(contractId,0,terms()).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONTRACT_SIGNED_CONTENT"));
+        mvc.perform(get("/api/v1/me/tenancies").header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$[0].status").value("DRAFT")).andExpect(jsonPath("$[0].inAppSigningStatus").value("BOTH_SIGNED"));
+    }
+    @Test void waitingFirstLeaseActivationRechecksEligibilityAndNeverInventsMeterReadings()throws Exception{
+        String saved=signedFutureFirstLease();var c=contracts.findById(Long.valueOf(id(saved))).orElseThrow();
+        org.mockito.Mockito.doReturn(c.getStartDate()).when(signingDates).today();customer.setStatus(AuthAccount.Status.LOCKED);accounts.saveAndFlush(customer);
+        var failure=assertThrows(com.ancu.proptech.exception.common.ApiException.class,()->initialActivation.activate(c.getId()));assertEquals("CONTRACT_ACTIVATION_BLOCKED",failure.code);
+        assertEquals(RentalContract.Status.DRAFT,c.getStatus());assertEquals(Apartment.Availability.CONTRACT_IN_PROGRESS,request.getApartment().getAvailability());assertNull(c.getElectricityBaseline());
+    }
+    @Test void fullySignedWaitingFirstLeaseCancellationNeedsCounterpartyAndBlocksActivation()throws Exception{
+        String saved=signedFutureFirstLease();String path="/api/v1/rental-requests/"+request.getId()+"/cancellation";
+        var state=json.readTree(mvc.perform(get(path).header("Authorization",token)).andExpect(status().isOk()).andExpect(jsonPath("$.canStart").value(true)).andReturn().getResponse().getContentAsString());
+        mvc.perform(post(path+"/actions").header("Authorization",token).contentType("application/json").content(json.writeValueAsString(Map.of("action","START","sourceVersion",state.path("sourceVersion").asString(),"reason","Hai bên không tiếp tục trước hiệu lực"))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.state").value("PENDING"));
+        var c=contracts.findById(Long.valueOf(id(saved))).orElseThrow();org.mockito.Mockito.doReturn(c.getStartDate()).when(signingDates).today();
+        var failure=assertThrows(com.ancu.proptech.exception.common.ApiException.class,()->initialActivation.activate(c.getId()));assertEquals("CANCELLATION_PENDING",failure.code);
+        state=json.readTree(mvc.perform(get(path).header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.canRespond").value(true)).andReturn().getResponse().getContentAsString());
+        mvc.perform(post(path+"/actions").header("Authorization",customerToken).contentType("application/json").content(json.writeValueAsString(Map.of("action","ACCEPT","sourceVersion",state.path("sourceVersion").asString()))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.state").value("CANCELLED"));
+        assertEquals(RentalContract.Status.CANCELLED,c.getStatus());assertEquals(Apartment.Availability.VACANT,request.getApartment().getAvailability());
+        assertEquals("SIGNED",JsonPath.read(readContract(id(saved)),"$.signing.state"));assertEquals(JsonPath.<String>read(saved,"$.signing.contentHash"),JsonPath.<String>read(readContract(id(saved)),"$.signing.contentHash"));
     }
 
 }

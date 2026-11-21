@@ -49,6 +49,7 @@ public class ContractDraftService {
     private final ContractHandoverRepository handovers;
     private final ContractRenewalRequestRepository renewalRequests;
     private final ContractRenewalActivationService renewalActivation;
+    private final ContractInitialActivationService initialActivation;
     private final com.ancu.proptech.repository.billing.RentalInvoiceRepository invoices;
     @jakarta.persistence.PersistenceContext private jakarta.persistence.EntityManager entityManager;
 
@@ -214,18 +215,9 @@ public class ContractDraftService {
             return response(d);
         }
         if(d.getOwnerSignedAt()!=null && d.getCustomerSignedAt()!=null) {
-            if(apartment.getAvailability()!=Apartment.Availability.CONTRACT_IN_PROGRESS)
-                throw conflict("APARTMENT_NOT_SELECTED","Căn hộ không còn ở bước làm hợp đồng.");
-            if(contracts.findByApartmentId(apartment.getId()).stream().anyMatch(other->!other.getId().equals(id) && other.isOpen()))
-                throw conflict("ACTIVE_CONTRACT_EXISTS","Căn hộ đã có hợp đồng khác.");
-            c.setStatus(RentalContract.Status.ACTIVE);
-            // A signed agreement does not invent meter readings. Missing readings stay missing.
-            if(apartment.getElectricityIndex()!=null && apartment.getWaterIndex()!=null) {
-                c.setElectricityBaseline(java.math.BigDecimal.valueOf(apartment.getElectricityIndex()));
-                c.setWaterBaseline(java.math.BigDecimal.valueOf(apartment.getWaterIndex()));
-                c.setBaselineDate(c.getStartDate());
-            }
-            apartment.setAvailability(Apartment.Availability.OCCUPIED);
+            contracts.saveAndFlush(c);drafts.saveAndFlush(d);
+            if(!c.getStartDate().isAfter(rights.today()))initialActivation.activate(c.getId());
+            return response(d);
         }
         contracts.saveAndFlush(c);drafts.saveAndFlush(d);
         return response(d);

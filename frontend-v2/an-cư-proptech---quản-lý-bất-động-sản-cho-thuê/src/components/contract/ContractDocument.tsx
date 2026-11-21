@@ -11,11 +11,9 @@ import { SignaturePad } from '@/components/contract/SignaturePad';
 import type { ContractDraft } from '@/types/contract';
 import { ContractLifecyclePanel } from '@/components/contract/ContractLifecyclePanel';
 
-export const signingLabel = (draft: ContractDraft) => draft.status === 'CANCELLED' ? 'Đã hủy trước hiệu lực' : draft.cancellationState === 'PENDING' ? 'Chờ phản hồi đề nghị hủy' : draft.status === 'ENDED' ? 'Đã kết thúc' :
-  draft.status === 'DRAFT' && draft.signing?.state === 'SIGNED' && draft.lifecycle?.previousContractId ? 'Đã ký — chờ chuyển kỳ thuê' :
-  draft.status === 'ACTIVE' && draft.lifecycle?.expired ? 'Hết hạn — chờ ký tiếp hoặc bàn giao' :
-  draft.signing?.state === 'SIGNED' ? 'Hai bên đã ký' : draft.signing?.state === 'WAITING_CUSTOMER' ? 'Chờ khách thuê ký' :
-  draft.signing?.state === 'WAITING_OWNER' ? 'Chờ chủ nhà ký' : draft.status === 'ACTIVE' ? 'Đang hiệu lực' : 'Chờ hai bên ký';
+export { contractSigningLabel as signingLabel } from '@/utils/contractDisplay';
+import { contractSigningLabel as signingLabel } from '@/utils/contractDisplay';
+
 const action = 'inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50';
 
 export function ContractDocument({ draft, onUpdated, onRemoved }: { draft: ContractDraft; onUpdated: (draft: ContractDraft) => void; onRemoved?:()=>void }) {
@@ -89,6 +87,7 @@ export function ContractDocument({ draft, onUpdated, onRemoved }: { draft: Contr
       <div className="h-28 rounded-lg border border-dashed border-slate-300 flex items-center justify-center bg-white">{image ? <img src={image} alt={`Chữ ký ${name}`} className="max-h-24 max-w-full object-contain" /> : <span className="text-sm text-slate-400">Chưa ký</span>}</div>
       {at && <p className="text-xs text-emerald-700 flex items-center gap-1"><CheckCircle2 size={13} />{new Date(at).toLocaleString('vi-VN')}</p>}
     </section>)}</div>
+    {draft.status === 'DRAFT' && signing?.state === 'SIGNED' && !draft.lifecycle?.previousContractId && <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Hợp đồng đã đủ hai chữ ký, chờ hiệu lực từ {draft.startDate}. Phòng tiếp tục được giữ; hệ thống kiểm tra điều kiện và chuyển hiệu lực khi đến ngày bắt đầu. Bạn có thể đề nghị hủy trong thời gian chờ, cần bên còn lại đồng ý.</p>}
     {draft.status === 'CANCELLED' && <p className="rounded-lg bg-slate-50 p-3 text-sm">Hợp đồng đã hủy trước hiệu lực. Nội dung và chữ ký được giữ nguyên để xem lại; thao tác hủy không xác nhận hoàn cọc.</p>}
     {draft.cancellationState==='PENDING' && <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm">Đang chờ phản hồi đề nghị hủy; tạm khóa sửa và ký tiếp.</p>}
     {!draft.lifecycle?.previousContractId && (draft.status==='DRAFT'||draft.status==='CANCELLED') && <div className="space-y-3"><button type="button" className="text-sm text-red-700 underline" onClick={()=>setShowCancellation(v=>!v)}>Hủy / lịch sử làm hợp đồng</button>{showCancellation&&<SelectionCancellationPanel requestId={draft.rentalRequestId} onState={value=>{removed.current=value.state==='CANCELLED'&&!value.contractId;setPendingCancellation(value.state==='PENDING'||value.state==='CANCELLED');}} onChanged={async()=>{if(removed.current){if(onRemoved)onRemoved();else navigate(isOwner?'/app?tab=contracts':'/my/contracts',{replace:true});return;}onUpdated(await getContract(draft.id));setRevision(v=>v+1);}}/>}</div>}
