@@ -252,7 +252,8 @@
           "electricityUnitPrice",
           "waterUnitPrice",
           "floor",
-          "maxOccupants"
+          "maxOccupants",
+          "imageIds"
         ],
         "properties": {
           "externalUnitId": {
@@ -309,12 +310,12 @@
           },
           "imageIds": {
             "type": "array",
-            "minItems": 0,
+            "minItems": 1,
             "maxItems": 4,
             "items": {
               "type": "string"
             },
-            "description": "Optional per-room staging images, maximum4. Existing clients may omit. New UI supplies room photos."
+            "description": "Required1–4 private staging room images for each selected unit. Common property images do not replace own room photos. Initial import and append both enforce publication readiness in the creation transaction."
           }
         }
       },

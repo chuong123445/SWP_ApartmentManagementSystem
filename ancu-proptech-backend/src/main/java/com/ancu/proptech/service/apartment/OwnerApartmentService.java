@@ -24,6 +24,7 @@ public class OwnerApartmentService {
     private final com.ancu.proptech.service.property.PropertyRightsPolicy rights;
     private final com.ancu.proptech.repository.rental.RentalRequestRepository requests;
     private final com.ancu.proptech.service.property.PropertyImageService images;
+    private final ApartmentPublicationPolicy publicationPolicy;
     /** Cùng khóa căn hộ với gửi/nhận yêu cầu thuê để không lọt thay giá đồng thời. */
     @Transactional public OwnerApartmentResponse prices(Jwt jwt, Long id, ApartmentPrices input) {
         var owner=assetAccess.write(jwt);
@@ -77,6 +78,8 @@ public class OwnerApartmentService {
             throw new ApiException(HttpStatus.CONFLICT, "SINGLE_UNIT_LIMIT", "Tài sản cho thuê nguyên căn đã có một căn cho thuê.");
         if (apartments.existsByPropertyIdAndRoomNumber(property.getId(), number))
             throw new ApiException(HttpStatus.CONFLICT, "APARTMENT_NUMBER_EXISTS", "Mã căn hộ đã tồn tại trong tài sản này.");
+        if(input.getPublicationStatus()==Apartment.PublicationStatus.PUBLISHED)
+            publicationPolicy.requirePrices(input.getAdvertisedMonthlyRent(),input.getElectricityUnitPrice(),input.getWaterUnitPrice());
         Apartment a = new Apartment();
         a.setProperty(property); a.setRoomNumber(number); a.setTitle(input.getTitle().strip());
         a.setDescription(input.getDescription().strip()); a.setFloor(input.getFloor()); a.setAreaM2(input.getAreaM2());
@@ -89,6 +92,7 @@ public class OwnerApartmentService {
         a.setCoverImagePath("/images/apartment-placeholder.svg");
         apartments.saveAndFlush(a);
         if(!input.getImageIds().isEmpty())images.bindUnit(property,a.getId(),input.getImageIds());
+        if(input.getPublicationStatus()==Apartment.PublicationStatus.PUBLISHED)publicationPolicy.requireReady(a);
         return response(a);
     }
     @Transactional
@@ -101,6 +105,7 @@ public class OwnerApartmentService {
         if (apartment.getVersion() != input.getVersion()) throw new ApiException(HttpStatus.CONFLICT,"STALE_VERSION","Căn hộ đã thay đổi. Hãy tải lại.");
         if (input.getPublicationStatus() == Apartment.PublicationStatus.PUBLISHED && property.getApprovalStatus() != Property.ApprovalStatus.APPROVED)
             throw new ApiException(HttpStatus.CONFLICT,"PROPERTY_NOT_APPROVED","Tài sản phải được Admin duyệt trước khi công khai căn hộ.");
+        if(input.getPublicationStatus()==Apartment.PublicationStatus.PUBLISHED)publicationPolicy.requireReady(apartment);
         apartment.setPublicationStatus(input.getPublicationStatus());apartments.flush();return response(apartment);
     }
     private OwnerApartmentResponse response(Apartment a) {

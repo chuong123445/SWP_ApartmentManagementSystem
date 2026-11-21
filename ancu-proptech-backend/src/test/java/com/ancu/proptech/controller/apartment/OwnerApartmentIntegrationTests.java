@@ -20,6 +20,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 @SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
 class OwnerApartmentIntegrationTests {
+    @Autowired com.ancu.proptech.repository.property.PropertyImageRepository imageFiles;
     @Autowired MockMvc mvc;
     @Autowired AuthAccountRepository accounts;
     @Autowired PropertyRepository properties;
@@ -50,8 +51,8 @@ class OwnerApartmentIntegrationTests {
         return """
             {"propertyId":"%s","roomNumber":"A.301","title":"Owner apartment","description":"Test apartment",
              "floor":3,"areaM2":"28.50","advertisedMonthlyRent":"5000000.00","deposit":"4000000.00",
-             "electricityIndex":1200,"waterIndex":110,"maxOccupants":2,"amenities":["Air conditioning"],"publicationStatus":"%s"}
-            """.formatted(p.getId(),publication);
+             "electricityIndex":1200,"waterIndex":110,"maxOccupants":2,"amenities":["Air conditioning"],"electricityUnitPrice":"3500","waterUnitPrice":"15000","imageIds":["%s"],"publicationStatus":"%s"}
+            """.formatted(p.getId(),com.ancu.proptech.support.PropertyImageFixtures.stage(imageFiles,p.getOwner().getId()),publication);
     }
     private ResultActions create(String token, String body) throws Exception {
         return mvc.perform(post("/api/v1/owner/apartments").header("Authorization","Bearer "+token).contentType("application/json").content(body));
@@ -61,13 +62,13 @@ class OwnerApartmentIntegrationTests {
             .andExpect(jsonPath("$.ownerId").value(owner.getId().toString())).andExpect(jsonPath("$.propertyId").value(approved.getId().toString()))
             .andExpect(jsonPath("$.electricityIndex").value(1200)).andExpect(jsonPath("$.waterIndex").value(110))
             .andExpect(jsonPath("$.areaM2").value("28.50")).andExpect(jsonPath("$.availability").value("VACANT"))
-            .andExpect(jsonPath("$.thumbnail").value("/images/apartment-placeholder.svg")).andReturn();
+            .andExpect(jsonPath("$.thumbnail").value(org.hamcrest.Matchers.startsWith("/api/v1/property-images/"))).andReturn();
         String id = JsonPath.read(result.getResponse().getContentAsString(),"$.id");
         var saved = apartments.findById(Long.valueOf(id)).orElseThrow();assertNotNull(saved.getProperty());
         saved.setCoverImagePath("/apartment/images/apartment1.jpg");apartments.saveAndFlush(saved);
         mvc.perform(get("/api/v1/owner/apartments").header("Authorization","Bearer "+ownerToken))
             .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(id))
-            .andExpect(jsonPath("$[0].thumbnail").value("/apartment/images/apartment1.jpg"));
+            .andExpect(jsonPath("$[0].thumbnail").value(org.hamcrest.Matchers.startsWith("/api/v1/property-images/")));
         mvc.perform(get("/api/v1/apartments/"+id)).andExpect(status().isOk()).andExpect(jsonPath("$.publicOwner.id").value(owner.getId().toString()));
     }
     @Test void ownerCannotReadOrCreateApartmentsInAnotherOwnersProperty() throws Exception {

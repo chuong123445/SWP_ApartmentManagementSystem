@@ -25,3 +25,8 @@
 - Chưa sửa runtime: RA14 thêm căn đăng được giá thuê 0/thiếu đơn giá; RA15 publication chưa kiểm tra lại ảnh riêng; RA16 thêm căn ngoài wizard có thể làm wizard SINGLE_UNIT không hoàn tất. Cần thống nhất policy phát hành và quyền quản lý danh sách căn lúc đang soạn.
 - 55 backend đạt (52 hồi quy + 3 tái hiện), 6 Playwright desktop/mobile cho ba hình thức đạt; giấy mẫu 6 PDF đã mở lại/render/xem. Chi tiết tại [báo cáo tạo/thêm căn hộ](docs/reports/apartment-creation-deep-review-2026-11-21.md).
 - Đã tạo 3 bộ **file riêng tư để tự upload** cho Thu Hà: chính chủ, ủy quyền, thuê lại; hai bộ sau chủ gốc chuongaln. Theo lựa chọn file-only, đã gỡ ba nháp tạm và dữ liệu fixture vừa thêm có backup/guard; không để lại nháp hoặc tự duyệt/xác thực, không đưa giấy tờ cá nhân vào Git. Xem đầu ra trong báo cáo; không chạy lại helper Apply.
+
+## Sửa cục bộ theo yêu cầu không push — 21/11/2026
+
+- RA14/RA15 đã sửa: giá thuê mới phải dương; công khai qua manual/publication/nguồn cần đủ đơn giá điện nước và ảnh riêng (ảnh phòng legacy thật vẫn dùng được). Nháp còn bổ sung giá từng bước, 0 điện/nước khai báo rõ vẫn hợp lệ; ẩn tin và công tơ để sau giữ nguyên. 69 backend + 4 Playwright desktop/mobile đạt; OpenAPI cập nhật. Các fixture test nguồn bổ sung ảnh riêng đúng từng phòng, không nới policy để qua test. Commit local được ghi trong WORK_PROGRESS; không push/PR.
+- Backlog chi tiết theo yêu cầu mới nằm ngoài Git: `../BUSINESS_ISSUES_LOCAL.md`. RA16 đang chờ bước tiếp theo; các quy tắc cần chốt và RA04 chưa tự sửa.

@@ -3,7 +3,7 @@
   "info": {
     "title": "An Cu Owner Apartment Inventory",
     "version": "1.2.0",
-    "description": "Implemented numeric identity inventory, private drafts/dossiers, explicit publication, property image sets and vacant apartment rent/electricity/water edits. Pending requests block price edits. Other apartment edit/delete and approval revocation remain separate. Approved manual property append accepts imageIds (1–4 private staging image IDs) and binds images in the creation transaction. Missing private photos returns UNIT_IMAGES_REQUIRED. Source properties retain the Auth0 append flow."
+    "description": "Implemented numeric identity inventory, private drafts/dossiers, explicit publication, property image sets and vacant apartment rent/electricity/water edits. Pending requests block price edits. Other apartment edit/delete and approval revocation remain separate. Approved manual property append accepts imageIds (1–4 private staging image IDs) and binds images in the creation transaction. Missing private photos returns UNIT_IMAGES_REQUIRED. Source properties retain the Auth0 append flow. Public creation and publication share ApartmentPublicationPolicy: strictly positive rent, explicitly declared nonnegative electricity/water rates and an own room image (existing real legacy room cover remains supported). Missing readiness returns 409 APARTMENT_NOT_READY. Hiding a listing remains allowed when incomplete. Meter baselines are not required for publication."
   },
   "servers": [
     {
@@ -77,7 +77,8 @@
             "$ref": "#/components/responses/Error"
           },
           "409": {
-            "$ref": "#/components/responses/Error"
+            "$ref": "#/components/responses/Error",
+            "description": "Stale state, property not approved, or APARTMENT_NOT_READY: declare positive rent, electricity/water rates and at least one own room photo before publication. DRAFT may retain missing utility rates; zero explicitly declared rates are allowed."
           }
         }
       }
@@ -198,7 +199,8 @@
             "$ref": "#/components/responses/Error"
           },
           "409": {
-            "$ref": "#/components/responses/Error"
+            "$ref": "#/components/responses/Error",
+            "description": "Stale state, property not approved, or APARTMENT_NOT_READY: declare positive rent, electricity/water rates and at least one own room photo before publication. DRAFT may retain missing utility rates; zero explicitly declared rates are allowed."
           }
         }
       }
@@ -279,7 +281,8 @@
           },
           "advertisedMonthlyRent": {
             "type": "string",
-            "description": "Nonnegative decimal string (15,2)."
+            "description": "Strictly positive decimal string (15,2), minimum0.01; same rule as property wizard and source imports.",
+            "pattern": "^(?=.*[1-9])[0-9]+(?:\\.[0-9]{1,2})?$"
           },
           "deposit": {
             "type": [
