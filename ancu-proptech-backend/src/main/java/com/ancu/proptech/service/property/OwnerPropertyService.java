@@ -61,7 +61,7 @@ public class OwnerPropertyService {
         property.setOnboardingApplication(applicationRight!=null);property.setRightType(applicationRight);
         properties.saveAndFlush(property);
         images.bind(property,input.getImageIds());
-        return createUnits(jwt,property,input,applicationRight);
+        return createUnits(jwt,property,input,applicationRight,false);
     }
     @Transactional public OwnerPropertyCreated completeListing(Jwt jwt,Property property,OwnerPropertyCreate input){
         if(input.getRentalMode()==Property.RentalMode.SINGLE_UNIT && input.getApartments().size()!=1)
@@ -71,9 +71,9 @@ public class OwnerPropertyService {
             throw new ApiException(HttpStatus.BAD_REQUEST,"APARTMENT_NUMBER_EXISTS","Mã căn/phòng bị trùng.");
         property.setName(input.getName().strip());property.setAddress(input.getAddress().strip());property.setCity(input.getCity().strip());property.setDistrict(input.getDistrict().strip());property.setWard(input.getWard());property.setRentalMode(input.getRentalMode());
         images.bind(property,input.getImageIds());properties.flush();
-        return createUnits(jwt,property,input,property.getRightType());
+        return createUnits(jwt,property,input,property.getRightType(),true);
     }
-    private OwnerPropertyCreated createUnits(Jwt jwt,Property property,OwnerPropertyCreate input,com.ancu.proptech.model.property.PropertyDossier.RightType applicationRight){
+    private OwnerPropertyCreated createUnits(Jwt jwt,Property property,OwnerPropertyCreate input,com.ancu.proptech.model.property.PropertyDossier.RightType applicationRight,boolean listingCompletion){
         var created = input.getApartments().stream().map(unit -> {
             var apartment = new OwnerApartmentCreate();
             apartment.setPropertyId(property.getId()); apartment.setRoomNumber(unit.getRoomNumber()); apartment.setTitle(unit.getTitle());
@@ -83,7 +83,7 @@ public class OwnerPropertyService {
             apartment.setElectricityIndex(unit.getElectricityIndex()); apartment.setWaterIndex(unit.getWaterIndex());
             apartment.setElectricityUnitPrice(unit.getElectricityUnitPrice());apartment.setWaterUnitPrice(unit.getWaterUnitPrice());
             apartment.setAmenities(unit.getAmenities()); apartment.setPublicationStatus(Apartment.PublicationStatus.DRAFT);
-            var result=applicationRight==null?apartments.create(jwt, apartment):apartments.createApplication(jwt,apartment);
+            var result=listingCompletion?apartments.createListingUnit(jwt,apartment):applicationRight==null?apartments.create(jwt, apartment):apartments.createApplication(jwt,apartment);
             images.bindUnit(property,result.id(),unit.getImageIds());return result;
         }).toList();
         return new OwnerPropertyCreated(response(property), created);

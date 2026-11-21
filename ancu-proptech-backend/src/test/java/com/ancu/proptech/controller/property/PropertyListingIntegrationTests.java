@@ -88,7 +88,9 @@ class PropertyListingIntegrationTests {
                 .andExpect(status().isBadRequest());
         assertFalse(drafts.findById(Long.valueOf(id)).orElseThrow().isCompleted());
     }
-    @Test void completionCreatesPrivateInventoryAndRetryKeepsOneSubmission()throws Exception{
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings={"SINGLE_UNIT","MULTI_UNIT"})
+    void completionCreatesPrivateInventoryAndRetryKeepsOneSubmission(String mode)throws Exception{
         String key=UUID.randomUUID().toString();
         var response=mvc.perform(post("/api/v1/me/listing-drafts").header("Authorization","Bearer "+token)
                 .contentType("application/json").content(json.writeValueAsString(Map.of("requestKey",key,"rightType","OWNERSHIP")))).andExpect(status().isOk()).andReturn();
@@ -106,7 +108,7 @@ class PropertyListingIntegrationTests {
         unit.setAreaM2(new java.math.BigDecimal("24"));unit.setAdvertisedMonthlyRent(new java.math.BigDecimal("4000000"));
         unit.setElectricityUnitPrice(new java.math.BigDecimal("3500"));unit.setWaterUnitPrice(new java.math.BigDecimal("15000"));unit.setImageIds(List.of(room));
         var property=new com.ancu.proptech.dto.property.OwnerPropertyCreate();property.setName("Nhà kiểm thử");property.setAddress("12 Đường A");property.setCity("Test City");property.setDistrict("Test District");
-        property.setRentalMode(com.ancu.proptech.model.property.Property.RentalMode.SINGLE_UNIT);property.setImageIds(List.of(common));property.setApartments(List.of(unit));
+        property.setRentalMode(com.ancu.proptech.model.property.Property.RentalMode.valueOf(mode));property.setImageIds(List.of(common));property.setApartments(List.of(unit));
         var dossier=new com.ancu.proptech.dto.property.PropertyDossierSubmit();dossier.setPropertyVersion(0L);dossier.setRightType(com.ancu.proptech.model.property.PropertyDossier.RightType.OWNERSHIP);dossier.setDocumentFileIds(List.of(file.getId()));
         var command=json.valueToTree(new com.ancu.proptech.dto.property.PropertyListingDtos.Finish(0L,property,dossier,true));((tools.jackson.databind.node.ObjectNode)command.path("dossier")).remove("certificateComplete");String body=json.writeValueAsString(command);
         String route="/api/v1/me/listing-drafts/"+id+"/complete";
@@ -117,5 +119,18 @@ class PropertyListingIntegrationTests {
         var apartment=apartments.findByPropertyIdOrderByIdAsc(id).getFirst();
         assertEquals(com.ancu.proptech.model.apartment.Apartment.PublicationStatus.DRAFT,apartment.getPublicationStatus());
         assertFalse(actor.hasRole(AuthAccount.Role.OWNER));
+    }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings={"SINGLE_UNIT","MULTI_UNIT"})
+    void existingOwnerCannotAppendOutsideAnUnfinishedWizardOrForgeCompletionFlag(String mode)throws Exception{
+        actor.grantRole(AuthAccount.Role.OWNER);accounts.saveAndFlush(actor);token=auth.login(actor.getEmail(),"Listing-test!1234").tokens().accessToken();
+        Long id=Long.valueOf(json.readTree(start(UUID.randomUUID().toString())).path("propertyId").asString());
+        var property=properties.findById(id).orElseThrow();property.setRentalMode(com.ancu.proptech.model.property.Property.RentalMode.valueOf(mode));properties.flush();
+        var input=new LinkedHashMap<String,Object>();input.put("propertyId",id);input.put("roomNumber","OUTSIDE");input.put("title","Căn ngoài wizard");input.put("floor",1);input.put("areaM2","30");input.put("advertisedMonthlyRent","5000000");
+        mvc.perform(post("/api/v1/owner/apartments").header("Authorization","Bearer "+token).contentType("application/json").content(json.writeValueAsString(input)))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("LISTING_INCOMPLETE"));
+        input.put("listingCompletion",true);
+        mvc.perform(post("/api/v1/owner/apartments").header("Authorization","Bearer "+token).contentType("application/json").content(json.writeValueAsString(input))).andExpect(status().isBadRequest());
+        assertEquals(0,apartments.countByPropertyId(id));assertFalse(drafts.findById(id).orElseThrow().isCompleted());
     }
 }

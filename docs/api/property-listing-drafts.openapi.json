@@ -3,7 +3,7 @@
   "info": {
     "title": "Private property listing drafts",
     "version": "1.0.1",
-    "description": "L01-L02. Creation requestKey retries return the existing owned draft. Completed-command retries return the completed view. Creation limits unfinished drafts to 20. Completion uses typed validation and a single transaction. SQL acceptance pending environment access."
+    "description": "L01-L02. Creation requestKey retries return the existing owned draft. Completed-command retries return the completed view. Creation limits unfinished drafts to 20. Completion uses typed validation and a single transaction. SQL acceptance pending environment access. While a listing draft is unfinished, independent owner apartment creation returns409LISTING_INCOMPLETE under the same property lock. Only the internal wizard completion flow creates its selected units; no client completion/bypass flag is accepted. Completion retries remain idempotent."
   },
   "security": [
     {

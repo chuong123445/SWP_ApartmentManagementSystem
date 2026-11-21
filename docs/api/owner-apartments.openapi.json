@@ -78,7 +78,7 @@
           },
           "409": {
             "$ref": "#/components/responses/Error",
-            "description": "Stale state, property not approved, or APARTMENT_NOT_READY: declare positive rent, electricity/water rates and at least one own room photo before publication. DRAFT may retain missing utility rates; zero explicitly declared rates are allowed."
+            "description": "Stale state, property not approved, or APARTMENT_NOT_READY: declare positive rent, electricity/water rates and at least one own room photo before publication. DRAFT may retain missing utility rates; zero explicitly declared rates are allowed. LISTING_INCOMPLETE blocks independent apartment creation while the property has an unfinished listing wizard; edit selected units in that wizard instead."
           }
         }
       }

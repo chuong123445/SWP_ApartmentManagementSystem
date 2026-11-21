@@ -25,6 +25,7 @@ public class OwnerApartmentService {
     private final com.ancu.proptech.repository.rental.RentalRequestRepository requests;
     private final com.ancu.proptech.service.property.PropertyImageService images;
     private final ApartmentPublicationPolicy publicationPolicy;
+    private final com.ancu.proptech.repository.property.PropertyListingDraftRepository listingDrafts;
     /** Cùng khóa căn hộ với gửi/nhận yêu cầu thuê để không lọt thay giá đồng thời. */
     @Transactional public OwnerApartmentResponse prices(Jwt jwt, Long id, ApartmentPrices input) {
         var owner=assetAccess.write(jwt);
@@ -52,15 +53,24 @@ public class OwnerApartmentService {
     }
     /** Called only after the source-import service validates fresh source IDs. */
     @Transactional public OwnerApartmentResponse createSourceUnit(Jwt jwt,OwnerApartmentCreate input) {
-        return createInternal(jwt,input,false,true);
+        return createInternal(jwt,input,false,true,false);
+    }
+    /** Only the locked wizard completion flow creates its selected units through this method. */
+    @Transactional public OwnerApartmentResponse createListingUnit(Jwt jwt,OwnerApartmentCreate input) {
+        return createInternal(jwt,input,true,false,true);
     }
     private OwnerApartmentResponse createInternal(Jwt jwt,OwnerApartmentCreate input,boolean application){
-        return createInternal(jwt,input,application,false);
+        return createInternal(jwt,input,application,false,false);
     }
-    private OwnerApartmentResponse createInternal(Jwt jwt,OwnerApartmentCreate input,boolean application,boolean sourceAppend){
+    private OwnerApartmentResponse createInternal(Jwt jwt,OwnerApartmentCreate input,boolean application,boolean sourceAppend,boolean listingCompletion){
         var owner = application?applicantAccess.verified(jwt):access.owner(jwt);
         var property = properties.findOwnedForCreation(input.getPropertyId(), owner.getId()).orElseThrow(() ->
                 new ApiException(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Không tìm thấy tài sản thuộc tài khoản của bạn."));
+        boolean unfinishedListing=listingDrafts.existsByPropertyIdAndCompletedFalse(property.getId());
+        if(unfinishedListing&&!listingCompletion)
+            throw new ApiException(HttpStatus.CONFLICT,"LISTING_INCOMPLETE","Tài sản đang được soạn trong hồ sơ đăng tải. Hãy thêm hoặc sửa căn/phòng ngay trong bản nháp đó, rồi hoàn tất hồ sơ.");
+        if(listingCompletion&&!unfinishedListing)
+            throw new ApiException(HttpStatus.CONFLICT,"LISTING_NOT_EDITABLE","Bản nháp đăng tải không còn ở bước tạo căn/phòng.");
         boolean imported=imports.existsById(property.getId());
         if(imported&&!sourceAppend)throw new ApiException(HttpStatus.CONFLICT,"SOURCE_UNITS_MANAGED","Dùng chức năng bổ sung phòng từ Auth0 cho tài sản nguồn này.");
         if(sourceAppend&&!imported)throw new ApiException(HttpStatus.CONFLICT,"SOURCE_PROPERTY_REQUIRED","Tài sản không có liên kết nguồn.");
