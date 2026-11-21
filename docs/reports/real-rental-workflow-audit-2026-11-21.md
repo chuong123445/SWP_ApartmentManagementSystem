@@ -1,5 +1,7 @@
 # Rà soát quy trình thuê và quản lý căn hộ ngày 21 tháng 11 năm 2026
 
+> Cập nhật triển khai sau review 21/11: RA01 đã sửa ở `5f5f0082`, RA02 ở `fdc5caa7`, RA03 ở `b5d22553`; RA04 vẫn cần cân nhắc theo yêu cầu người dùng. Theo dõi tóm tắt duy nhất tại [CHANGELOG_NGHIEP_VU.md](../../CHANGELOG_NGHIEP_VU.md). Nội dung bên dưới là snapshot phát hiện trước khi sửa, không phải tình trạng mới nhất của RA01–03.
+
 Hệ thống đã chặn ngày bắt đầu quá khứ khi tạo, sửa và soạn thuê tiếp, nhưng chưa bảo đảm nhất quán toàn bộ vòng đời thực tế. Bốn điểm cần ưu tiên là ký muộn trên bản nháp cũ, đánh dấu cư trú trước ngày bắt đầu, lập điện nước cho kỳ tương lai, và đóng hồ sơ trước khi hoàn tất ghi nhận khoản phải thu. Đây là kết quả rà soát, không phải tuyên bố các điểm hở đã được sửa.
 
 ## Phạm vi và GitHub
@@ -90,3 +92,15 @@ Context7 đã resolve Spring Data JPA và đọc tài liệu transaction/locking
 5. RA06/RA09: thống nhất điều chỉnh đơn giá theo thỏa thuận và làm tròn/hoàn tất chứng từ. Giữ thu cọc/hoàn cọc ngoài hệ thống theo quyết định hiện có.
 
 Các bước trên là đề xuất có thể review, chưa phải tính năng đã triển khai. Không thể kết luận hệ thống đã bảo đảm toàn bộ quy trình phục vụ thật khi RA01–RA04 còn mở.
+
+
+## Kiểm tra sau sửa RA01 đến RA03
+
+- RA01: 56 ContractDraft cases đạt, 4 biên ngày chạy lại đạt sau khi scope assertion OTP theo fixture; cả hai tài khoản và OTP phát trước nửa đêm đều được kiểm tra.
+- RA02: 60 ContractDraft + 2 TenancySummary đạt; 11 SelectionCancellation đạt sau khi fixture cũ chuyển từ bắt đầu ngày mai sang hôm nay cho bài mong đợi ACTIVE ngay. DRAFT+SIGNED/CIP là biểu diễn kỹ thuật của chờ hiệu lực; UI hiển thị rõ. Scheduler kích hoạt ở lượt kế tiếp, mặc định mỗi phút, và kiểm tra lại điều kiện. Đề nghị hủy đang chờ khóa chuyển hiệu lực; không tự mở phòng hoặc làm mất chữ ký.
+- RA03: 45 Billing cases (44 đạt/1 scheduler skipped), 22 SePay, 3 RentSchedule, 8 UtilityInvoiceAiService đạt. Kiểm tra guard trước AI, ghi chỉ số/tạo/gửi, chuyển tháng và hủy nháp tương lai; current-month được xử lý bằng số thực tế. RENT trên hợp đồng đủ điều kiện giữ cửa sổ D-7 riêng; không mở billing cho DRAFT đang chờ hiệu lực.
+- Tổng hợp 7 lớp: 151 trường hợp khác nhau, 150 đạt, 1 skipped do assume ngày thanh toán<=28. Đây là kết quả qua nhiều lượt, không phải một lượt full-suite duy nhất.
+- 165 frontend unit/TypeScript/build đạt, còn cảnh báo kích thước chunk có sẵn. 12 Playwright MCP cases đạt tại 1440/390: 4 lỗi ký quá ngày cho Owner/Customer, 4 chờ hiệu lực/hủy song phương, 4 guard utility/lỗi/nút ghi bị khóa/tải lại phục hồi. API fixtures; không live provider hoặc UI nối DB ứng dụng.
+- Evidence: tmp/ra01-tests-20261121.log, ra01-target-final-20261121.log, ra02-tests-20261121.log, ra02-cancellation-final-20261121.log, ra02-fe-tests-20261121.log, ra02-build-20261121.log, ra03-tests-20261121.log và các script ra01/ra02/ra03-browser-20261121.js. Backend test dùng ancu_auto_rent_20261114. Không schema mới, không sửa ACTIVE/signed history hoặc fixtures đang sử dụng.
+
+Cần restart backend để nạp service/scheduler mới và tải lại frontend. Không tuyên bố đã sửa RA04, RA05–09 hoặc đã kiểm tra provider thật. CHANGELOG_NGHIEP_VU.md là file tóm tắt dùng tiếp; AGENTS.md repository và workspace đã ghi hướng dẫn đọc/cập nhật file này.
