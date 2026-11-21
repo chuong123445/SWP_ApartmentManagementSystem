@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "An Cu Tenant Billing",
-    "version": "1.1.0",
-    "description": "Implemented private monthly billing, Owner draft/send/edit/cancel with audit history, and exact Customer-as-Tenant receipt. Contract and payment flows are documented separately. See docs/decisions/invoice-draft-changes-v1.md."
+    "version": "1.2.0",
+    "description": "Implemented private monthly billing, Owner draft/send/edit/cancel with audit history, and exact Customer-as-Tenant receipt. Contract and payment flows are documented separately. See docs/decisions/invoice-draft-changes-v1.md. 21 Nov RA03: utility context, meter closing, create and send require an already-started ACTIVE contract and period no later than the current Vietnam calendar month. HTTP409 CONTRACT_NOT_STARTED or UTILITY_PERIOD_IN_FUTURE; existing future drafts remain cancellable and SENT history stays readable. RENT prepayment window is separate and unchanged."
   },
   "servers": [
     {
