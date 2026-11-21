@@ -149,6 +149,7 @@ public class ContractDraftService {
         if(input.version()!=d.getContentVersion()||!contentHash(d).equals(input.contentHash()))throw stale();
         if(!input.consent())throw new ApiException(HttpStatus.BAD_REQUEST,"CONSENT_REQUIRED","Bạn cần đồng ý nội dung trước khi ký.");
         if(owner?d.getOwnerSignedAt()!=null:d.getCustomerSignedAt()!=null)throw conflict("ALREADY_SIGNED","Bạn đã ký hợp đồng này.");
+        requireStartNotPast(c.getStartDate());
         SignatureImage.normalize(input.signature());
         cancellationGuard.requireOpen(d.getRentalRequest().getId());
         return signatureOtp.issue(account.getId(),ActionOtpService.CONTRACT,
@@ -180,6 +181,7 @@ public class ContractDraftService {
         if(!input.consent()) throw new ApiException(HttpStatus.BAD_REQUEST,"CONSENT_REQUIRED","Bạn cần đồng ý nội dung trước khi ký.");
         if((owner && d.getOwnerSignedAt()!=null) || (!owner && d.getCustomerSignedAt()!=null))
             throw conflict("ALREADY_SIGNED","Bạn đã ký hợp đồng này.");
+        requireStartNotPast(c.getStartDate());
         var apartment=apartments.findForRequest(c.getApartment().getId()).orElseThrow(ContractDraftService::notFound);
         var landlord=apartment.getProperty().getOwner();
         if(landlord.getStatus()!=AuthAccount.Status.ACTIVE || !landlord.hasRole(AuthAccount.Role.OWNER) || !verification.isVerified(landlord))
@@ -234,8 +236,11 @@ public class ContractDraftService {
             : new ContractContextResponse.SuggestedRates(s.getElectricityUnitPrice().toPlainString(),s.getWaterUnitPrice().toPlainString(),s.getInternetFee().toPlainString(),s.getGarbageFee().toPlainString(),s.getWaterBillingMode().name());
     }
     void validateTerms(ContractTerms t) {
-        if(t.getStartDate().isBefore(rights.today())) throw new ApiException(HttpStatus.BAD_REQUEST,"CONTRACT_START_DATE_IN_PAST","Ngày bắt đầu hợp đồng không được trước ngày hôm nay.");
+        requireStartNotPast(t.getStartDate());
         if(!t.getEndDate().isAfter(t.getStartDate())) throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_CONTRACT_DATES","Ngày kết thúc phải sau ngày bắt đầu.");
+    }
+    private void requireStartNotPast(java.time.LocalDate start) {
+        if(start.isBefore(rights.today())) throw new ApiException(HttpStatus.BAD_REQUEST,"CONTRACT_START_DATE_IN_PAST","Ngày bắt đầu hợp đồng đã qua. Hãy kiểm tra lại ngày bắt đầu; bản đã có chữ ký cần xử lý hủy theo thỏa thuận trước khi lập lại.");
     }
     void applyContract(RentalContract c,ContractTerms t) {
         c.setRentCycleMonths(t.getRentCycleMonths());c.setRentPaymentDay(t.getPaymentDay());c.setSeparateBillingAgreed(true);

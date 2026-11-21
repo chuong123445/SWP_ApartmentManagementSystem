@@ -52,3 +52,10 @@ Source receiving-account fields are private owner declarations, name-matched aga
 ## Override 14 November 2026 — earliest contract start
 
 Create, edit unsigned drafts and renewal authoring require startDate >= today in Asia/Ho_Chi_Minh, with endDate > startDate. Server rejects past starts with HTTP 400 CONTRACT_START_DATE_IN_PAST. The wizard applies the same rule and approved rights bounds; overdue renewal suggestions start no earlier than today. Existing contracts, historical dates, PDFs and signing flows are not rewritten or revalidated by this authoring rule.
+
+
+## Override 21 November 2026 — RA01 signing date recheck
+
+Both signature-OTP issuance and the locked signing transaction reject startDate before Asia/Ho_Chi_Minh today with HTTP400 CONTRACT_START_DATE_IN_PAST. An OTP issued before midnight does not bypass the check after midnight. No OTP is consumed or signature saved when the date check fails. Owner/Customer slots, version/hash/consent and existing saved signatures are preserved. Unsigned drafts can revise dates through the existing update route; a partly signed obsolete draft uses the existing bilateral cancellation/re-authoring flow, not an implicit edit. History and already ACTIVE contracts are not revalidated or rewritten.
+
+Validation:56ContractDraftIntegration cases PASS,4new date-boundary cases rerun PASS after scoping OTP assertions to fixture parties;4Playwright desktop/mobile Owner+Customer server-error scenarios PASS. MockitoSpyBean docs7.0.5 compared with project Framework7.0.9, no exact patch in catalog. Concise history lives in CHANGELOG_NGHIEP_VU.md.

@@ -36,6 +36,7 @@ class ContractDraftIntegrationTests {
 
     @org.springframework.test.context.bean.override.mockito.MockitoBean
     com.ancu.proptech.service.property.ai.DossierAiClient dossierAiClient;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean com.ancu.proptech.service.property.PropertyRightsPolicy signingDates;
     @Autowired MockMvc mvc;
     @Autowired AuthAccountRepository accounts;
     @Autowired PropertyRepository properties;
@@ -600,6 +601,36 @@ class ContractDraftIntegrationTests {
         mvc.perform(get(url).header("Authorization",token)).andExpect(jsonPath("$.signing.ownerSignedAt").isEmpty()).andExpect(jsonPath("$.status").value("DRAFT"));
         assertEquals(1,otpChallenges.findById(challenge).orElseThrow().getAttempts());
         mvc.perform(post(url+"/signatures").header("Authorization",token).contentType("application/json").content(prefix+correct+"\"}")).andExpect(status().isOk());
+    }
+
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans={true,false})
+    void pastStartCannotRequestSignatureOtpForEitherParty(boolean ownerFirst)throws Exception{
+        String saved=create();var c=contracts.findById(Long.valueOf(id(saved))).orElseThrow();
+        c.setStartDate(today().minusDays(1));contracts.saveAndFlush(c);saved=readContract(id(saved));
+        sign(saved,ownerFirst?token:customerToken,JsonPath.read(saved,"$.signing.contentHash"),signature(),true)
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("CONTRACT_START_DATE_IN_PAST"));
+        assertTrue(otpChallenges.findAll().stream().noneMatch(challenge->Set.of(owner.getId(),customer.getId()).contains(challenge.getAccountId())));
+        var d=drafts.findByContractId(c.getId()).orElseThrow();assertNull(d.getOwnerSignedAt());assertNull(d.getCustomerSignedAt());
+        assertEquals(Apartment.Availability.CONTRACT_IN_PROGRESS,request.getApartment().getAvailability());
+    }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans={true,false})
+    void signatureOtpIssuedBeforeMidnightCannotSignPastStartAfterMidnight(boolean firstSignatureAlreadySaved)throws Exception{
+        String saved=create();String documentHash=JsonPath.read(saved,"$.signing.contentHash");
+        if(firstSignatureAlreadySaved)sign(saved,token,documentHash,signature(),true).andExpect(status().isOk());
+        String actor=firstSignatureAlreadySaved?customerToken:token;expireOtpCooldown();
+        var input=new LinkedHashMap<String,Object>(Map.of("version",JsonPath.<Number>read(saved,"$.version"),"contentHash",documentHash,"signature",signature(),"consent",true));
+        String challenge=mvc.perform(post("/api/v1/contracts/"+id(saved)+"/signature-otp").header("Authorization",actor).contentType("application/json").content(json.writeValueAsString(input)))
+            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        input.put("challengeId",JsonPath.<String>read(challenge,"$.challengeId"));input.put("code",otpCode);
+        org.mockito.Mockito.doReturn(today().plusDays(1)).when(signingDates).today();
+        mvc.perform(post("/api/v1/contracts/"+id(saved)+"/signatures").header("Authorization",actor).contentType("application/json").content(json.writeValueAsString(input)))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("CONTRACT_START_DATE_IN_PAST"));
+        var d=drafts.findByContractId(Long.valueOf(id(saved))).orElseThrow();
+        assertEquals(firstSignatureAlreadySaved,d.getOwnerSignedAt()!=null);assertNull(d.getCustomerSignedAt());
+        assertEquals(RentalContract.Status.DRAFT,d.getContract().getStatus());assertEquals(Apartment.Availability.CONTRACT_IN_PROGRESS,request.getApartment().getAvailability());
     }
 
 }
