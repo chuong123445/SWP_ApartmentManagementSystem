@@ -2,6 +2,8 @@
 
 > Cập nhật triển khai sau review 21/11: RA01 đã sửa ở `5f5f0082`, RA02 ở `fdc5caa7`, RA03 ở `b5d22553`; RA04 vẫn cần cân nhắc theo yêu cầu người dùng. Theo dõi tóm tắt duy nhất tại [CHANGELOG_NGHIEP_VU.md](../../CHANGELOG_NGHIEP_VU.md). Nội dung bên dưới là snapshot phát hiện trước khi sửa, không phải tình trạng mới nhất của RA01–03.
 
+> Lượt rà soát tiếp theo đã mở rộng sang tạo tài sản, quyền khai thác, hồ sơ và thuê tiếp: [báo cáo RA10–RA13](business-logic-recheck-2026-11-21.md). Các phát hiện này chưa được sửa trong lượt review.
+
 Hệ thống đã chặn ngày bắt đầu quá khứ khi tạo, sửa và soạn thuê tiếp, nhưng chưa bảo đảm nhất quán toàn bộ vòng đời thực tế. Bốn điểm cần ưu tiên là ký muộn trên bản nháp cũ, đánh dấu cư trú trước ngày bắt đầu, lập điện nước cho kỳ tương lai, và đóng hồ sơ trước khi hoàn tất ghi nhận khoản phải thu. Đây là kết quả rà soát, không phải tuyên bố các điểm hở đã được sửa.
 
 ## Phạm vi và GitHub
