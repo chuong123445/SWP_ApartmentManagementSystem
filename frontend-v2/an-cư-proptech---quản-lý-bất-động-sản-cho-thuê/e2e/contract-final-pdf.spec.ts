@@ -1,8 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { ownerSummaryFixture } from './fixtures/ownerSummary';
+import { contractToday } from '../src/utils/contract';
 import { readFileSync } from 'node:fs';
 
 for(const width of [1440,390])for(const scenario of ['create-edit','save-error','pdf-error','stale'] as const)test(`Final PDF ${scenario} at ${width}px`,async({page})=>{
+  const today=contractToday();const yesterday=new Date(`${today}T00:00:00Z`);yesterday.setUTCDate(yesterday.getUTCDate()-1);
   const errors:string[]=[],unexpected:string[]=[],consoleErrors:string[]=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('console',e=>{if(e.type()==='error'&&!e.text().includes('status of 503')&&!e.text().includes('status of 409'))consoleErrors.push(e.text());});
   const user={id:'3',fullName:'Chủ nhà kiểm thử',email:'owner@example.invalid',roles:['OWNER'],accountStatus:'ACTIVE',contactVerificationStatus:'VERIFIED',version:0};
@@ -38,7 +40,12 @@ for(const width of [1440,390])for(const scenario of ['create-edit','save-error',
   await page.getByLabel('Trạng thái',{exact:true}).selectOption('CONTRACTING');await page.getByRole('button',{name:'Tạo hợp đồng',exact:true}).click();
   const dialog=page.getByRole('dialog');await expect(dialog).toBeVisible();
   for(let i=0;i<3;i++)await dialog.getByRole('button',{name:'Tiếp theo →',exact:true}).click();
-  await dialog.getByLabel('Ngày bắt đầu',{exact:true}).fill('2026-11-03');await dialog.getByLabel('Ngày kết thúc',{exact:true}).fill('2027-11-03');
+  await expect(dialog.getByLabel('Ngày bắt đầu',{exact:true})).toHaveAttribute('min',today);
+  await dialog.getByLabel('Ngày bắt đầu',{exact:true}).fill(yesterday.toISOString().slice(0,10));await dialog.getByLabel('Ngày kết thúc',{exact:true}).fill(`${Number(today.slice(0,4))+1}${today.slice(4)}`);
+  await dialog.getByRole('button',{name:'Tiếp theo →',exact:true}).click();
+  await expect(dialog.getByRole('alert')).toContainText('Ngày bắt đầu hợp đồng không được trước ngày hôm nay.');
+  expect(postCount).toBe(0);
+  await dialog.getByLabel('Ngày bắt đầu',{exact:true}).fill(today);
   await dialog.getByRole('button',{name:'Tiếp theo →',exact:true}).click();
   await dialog.getByRole('button',{name:'Rà soát và xác nhận →',exact:true}).click();
   await expect(dialog.getByRole('heading',{name:'Ký xác nhận',exact:false})).toHaveCount(0);
@@ -57,6 +64,11 @@ for(const width of [1440,390])for(const scenario of ['create-edit','save-error',
     expect(postCount).toBe(scenario==='save-error'?2:1);
     if(scenario==='create-edit'){
       await dialog.getByRole('button',{name:'Chỉnh sửa',exact:true}).click();
+      await dialog.getByLabel('Ngày bắt đầu',{exact:true}).fill(yesterday.toISOString().slice(0,10));
+      await dialog.getByRole('button',{name:'Tiếp theo →',exact:true}).click();
+      await expect(dialog.getByRole('alert')).toContainText('Ngày bắt đầu hợp đồng không được trước ngày hôm nay.');
+      expect(putCount).toBe(0);
+      await dialog.getByLabel('Ngày bắt đầu',{exact:true}).fill(today);
       await dialog.getByLabel('Tiền thuê mỗi tháng (VND)',{exact:true}).fill('2700000');
       await dialog.getByRole('button',{name:'Tiếp theo →',exact:true}).click();await dialog.getByRole('button',{name:'Rà soát và xác nhận →',exact:true}).click();
       await expect(dialog.getByRole('heading',{name:'Ký xác nhận',exact:false})).toHaveCount(0);

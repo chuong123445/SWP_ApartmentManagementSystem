@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { saveContract, signContract, getContractPdf, requestRenewal, decideRenewalRequest, cancelAcceptedRenewalRequest } from '../src/services/contract/contractService.ts';
-import { validateContractTerms } from '../src/utils/contract.ts';
+import { contractToday, contractStartMinimum, validateContractTerms } from '../src/utils/contract.ts';
 import { tenancyViews } from '../src/services/billing/billingService.ts';
 import { setAccessToken } from '../src/services/http/client.ts';
 import type { ContractContext, ContractDraft, ContractTerms } from '../src/types/contract.ts';
@@ -43,9 +43,9 @@ test('PDF is fetched privately as a real PDF blob and server errors are not rend
   await assert.rejects(getContractPdf('42'), /chưa trả về tệp PDF/);
 });
 test('Contract validation prevents incomplete/decreasing dates and implicit zero prices while permitting explicit zero', () => {
-  assert.equal(validateContractTerms(terms), '');
-  for (const values of [{ endDate: terms.startDate }, { electricityUnitPrice: '' }, { deposit: '-1' }, { monthlyRent: '1.001' }, { waterUnitPrice: '10000000000000' }, { paymentDay: 29 }, { clauses: [{ title: ' ', body: 'Body' }] }]) assert.notEqual(validateContractTerms({ ...terms, ...values }), '');
-  assert.equal(validateContractTerms({ ...terms, electricityUnitPrice: '0', waterUnitPrice: '0' }), '');
+  assert.equal(validateContractTerms(terms, '2026-11-01'), '');
+  for (const values of [{ endDate: terms.startDate }, { electricityUnitPrice: '' }, { deposit: '-1' }, { monthlyRent: '1.001' }, { waterUnitPrice: '10000000000000' }, { paymentDay: 29 }, { clauses: [{ title: ' ', body: 'Body' }] }]) assert.notEqual(validateContractTerms({ ...terms, ...values }, '2026-11-01'), '');
+  assert.equal(validateContractTerms({ ...terms, electricityUnitPrice: '0', waterUnitPrice: '0' }, '2026-11-01'), '');
 });
 test('DRAFT cannot be mapped as ended or create an active Tenant relationship', () => {
   const result = tenancyViews([{ id: 'draft', status: 'DRAFT' } as never]);assert.equal(result.contracts[0].status, 'draft');assert.equal(result.tenants.length, 0);
@@ -61,4 +61,24 @@ test('Renewal request and decision bind versions without client-selected parties
     { url: '/api/v1/owner/contracts/42/renewal-request/decision', body: { version: 1, decision: 'REJECT', reason: 'Không tiếp tục cho thuê' } },
     { url: '/api/v1/owner/contracts/42/renewal-request/cancel', body: { version: 2, consent: true } },
   ]);
+});
+
+test('Contract start rejects yesterday and allows today/future with Vietnam midnight boundaries', () => {
+  assert.equal(contractToday(new Date('2026-11-13T16:59:59Z')), '2026-11-13');
+  assert.equal(contractToday(new Date('2026-11-13T17:00:00Z')), '2026-11-14');
+  assert.equal(validateContractTerms({ ...terms, startDate: '2026-11-13' }, '2026-11-14'), 'Ngày bắt đầu hợp đồng không được trước ngày hôm nay.');
+  assert.equal(validateContractTerms({ ...terms, startDate: '2026-11-14' }, '2026-11-14'), '');
+  assert.equal(validateContractTerms({ ...terms, startDate: '2026-11-15' }, '2026-11-14'), '');
+  assert.equal(contractStartMinimum('2026-11-01', '2026-11-14'), '2026-11-14');
+  assert.equal(contractStartMinimum('2026-12-01', '2026-11-14'), '2026-12-01');
+});
+
+
+test('Fully signed first leases and renewals are clearly distinguished while waiting for start', async () => {
+  const { contractSigningLabel } = await import('../src/utils/contractDisplay.ts');
+  const waiting={status:'DRAFT',signing:{state:'SIGNED'},lifecycle:{}} as ContractDraft;
+  assert.equal(contractSigningLabel(waiting),'Đã ký — chờ hiệu lực');
+  assert.equal(contractSigningLabel({...waiting,lifecycle:{previousContractId:'1'}} as ContractDraft),'Đã ký — chờ chuyển kỳ thuê');
+  assert.equal(contractSigningLabel({...waiting,cancellationState:'PENDING'}),'Chờ phản hồi đề nghị hủy');
+  assert.equal(contractSigningLabel({...waiting,status:'CANCELLED'}),'Đã hủy trước hiệu lực');
 });

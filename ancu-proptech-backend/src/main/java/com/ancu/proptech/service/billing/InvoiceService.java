@@ -25,6 +25,7 @@ public class InvoiceService {
     private final RentalInvoiceRepository invoices;
     private final InvoiceNotificationRepository notifications;
     private final AccountAccessService access;
+    private final com.ancu.proptech.service.property.PropertyRightsPolicy utilityDates;
     private final com.ancu.proptech.repository.payment.InvoicePaymentRepository payments;
     private final MeterReadingRepository readings;
     private final com.ancu.proptech.repository.property.PropertySettingsRepository settings;
@@ -183,6 +184,7 @@ public class InvoiceService {
             if(overlap)throw conflict("DUPLICATE_BILLING_PERIOD","Kỳ tiền thuê trùng hóa đơn đã lập.");
             return;
         }
+        requireUtilityDate(i.getContract(),YearMonth.parse(i.getPeriod()));
         var s=sourceAfterSent(i.getContract());
         if(!i.getPeriod().equals(s.period().toString())||i.getElectricityStartReading().compareTo(s.electric())!=0||i.getWaterStartReading().compareTo(s.water())!=0
             ||invoices.existsByContractIdAndPeriodGreaterThanAndKindNotAndStatusNot(i.getContract().getId(),i.getPeriod(),RentalInvoice.Kind.RENT,RentalInvoice.Status.CANCELLED))
@@ -224,9 +226,15 @@ public class InvoiceService {
         if(c.getStatus()!=RentalContract.Status.ACTIVE)throw conflict("INVALID_STATE","Hợp đồng hiện không còn hoạt động.");
         var last=invoices.findFirstByContractIdAndKindNotAndStatusOrderByPeriodDesc(c.getId(),RentalInvoice.Kind.RENT,RentalInvoice.Status.SENT);
         var period=last.map(i->YearMonth.parse(i.getPeriod()).plusMonths(1)).orElse(YearMonth.from(c.getStartDate()));
+        requireUtilityDate(c,period);
         if(period.atEndOfMonth().isAfter(c.getEndDate()))throw conflict("BILLING_PERIOD_OUT_OF_RANGE","Không có kỳ trọn tháng tiếp theo trong hợp đồng.");
         return new Source(period,last.map(RentalInvoice::getElectricityEndReading).orElse(c.getElectricityBaseline()==null?BigDecimal.ZERO:c.getElectricityBaseline()),
             last.map(RentalInvoice::getWaterEndReading).orElse(c.getWaterBaseline()==null?BigDecimal.ZERO:c.getWaterBaseline()));
+    }
+    private void requireUtilityDate(RentalContract contract,YearMonth period){
+        var today=utilityDates.today();
+        if(contract.getStartDate().isAfter(today))throw conflict("CONTRACT_NOT_STARTED","Hợp đồng chưa đến ngày bắt đầu. Chưa được chốt hoặc lập điện nước.");
+        if(period.isAfter(YearMonth.from(today)))throw conflict("UTILITY_PERIOD_IN_FUTURE","Chưa được chốt hoặc lập điện nước cho kỳ tương lai. Hãy thực hiện khi đến tháng của kỳ hóa đơn.");
     }
     @Transactional(readOnly=true)
     public RentBillingContext rentContext(Jwt jwt,Long id){

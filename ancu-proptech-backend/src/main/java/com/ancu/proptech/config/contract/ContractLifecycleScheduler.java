@@ -14,6 +14,7 @@ public class ContractLifecycleScheduler {
     private final ContractExpiryService expiry;
     private final ContractDraftRepository drafts;
     private final ContractRenewalActivationService activation;
+    private final ContractInitialActivationService initialActivation;
     private static final org.slf4j.Logger log=org.slf4j.LoggerFactory.getLogger(ContractLifecycleScheduler.class);
     @Scheduled(initialDelayString="${app.contract-lifecycle.initial-delay-ms:60000}",fixedDelayString="${app.contract-lifecycle.delay-ms:3600000}")
     public void run() {
@@ -21,6 +22,12 @@ public class ContractLifecycleScheduler {
         expiry.generate(today);
         for(Long id:drafts.dueSignedRenewals(today)) {
             try{activation.activate(id);}catch(RuntimeException error){log.warn("Renewal activation deferred for contract {} ({})",id,error.getClass().getSimpleName());}
+        }
+    }
+    @Scheduled(initialDelayString="${app.contract-lifecycle.initial-delay-ms:60000}",fixedDelayString="${app.contract-lifecycle.activation-delay-ms:60000}")
+    public void activateInitialLeases() {
+        for(Long id:drafts.dueSignedInitials(LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")))) {
+            try{initialActivation.activate(id);}catch(RuntimeException error){log.warn("Initial contract activation deferred for contract {} ({})",id,error.getClass().getSimpleName());}
         }
     }
 }

@@ -36,6 +36,7 @@ class ContractDraftIntegrationTests {
 
     @org.springframework.test.context.bean.override.mockito.MockitoBean
     com.ancu.proptech.service.property.ai.DossierAiClient dossierAiClient;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean com.ancu.proptech.service.property.PropertyRightsPolicy signingDates;
     @Autowired MockMvc mvc;
     @Autowired AuthAccountRepository accounts;
     @Autowired PropertyRepository properties;
@@ -48,6 +49,7 @@ class ContractDraftIntegrationTests {
     @Autowired ContractRenewalRequestRepository renewalRequests;
     @Autowired com.ancu.proptech.service.contract.ContractExpiryService expiryNotices;
     @Autowired com.ancu.proptech.service.contract.ContractRenewalActivationService renewalActivation;
+    @Autowired com.ancu.proptech.service.contract.ContractInitialActivationService initialActivation;
     @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired com.ancu.proptech.repository.contract.ContractHandoverRepository handovers;
     @Autowired com.ancu.proptech.repository.identity.IdentityProfileRepository identities;
@@ -153,17 +155,43 @@ class ContractDraftIntegrationTests {
         mvc.perform(put(url).header("Authorization",token).contentType("application/json").content("{\"bank\":\"Bank\",\"accountNumber\":\"12345678\",\"accountHolderName\":\"Khong trung ten\",\"version\":99}")).andExpect(status().isConflict());
     }
     @Test void cannotCreateContractBeyondApprovedRights()throws Exception{
-        var p=request.getApartment().getProperty();p.setRightType(PropertyDossier.RightType.AUTHORIZATION);p.setRightsValidFrom(LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).minusDays(1));p.setRightsValidUntil(LocalDate.of(2027,10,31));properties.flush();
+        var p=request.getApartment().getProperty();p.setRightType(PropertyDossier.RightType.AUTHORIZATION);p.setRightsValidFrom(LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).minusDays(1));p.setRightsValidUntil(today().plusYears(1).minusDays(1));properties.flush();
         create(token,body(context())).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONTRACT_EXCEEDS_PROPERTY_RIGHTS"));
     }
     @Test void contractEndingOnRightsEndIsAllowedButUpdateBeyondItIsRejected()throws Exception{
-        var p=request.getApartment().getProperty();p.setRightType(PropertyDossier.RightType.AUTHORIZATION);p.setRightsValidFrom(LocalDate.parse((String)JsonPath.read("{"+terms()+"}","$.startDate")).minusDays(1));p.setRightsValidUntil(LocalDate.of(2027,11,1));properties.flush();
+        var p=request.getApartment().getProperty();p.setRightType(PropertyDossier.RightType.AUTHORIZATION);p.setRightsValidFrom(LocalDate.parse((String)JsonPath.read("{"+terms()+"}","$.startDate")).minusDays(1));p.setRightsValidUntil(today().plusYears(1));properties.flush();
         String saved=create(token,body(context())).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-        update(id(saved),0,terms().replace("2027-11-01","2027-11-02")).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONTRACT_EXCEEDS_PROPERTY_RIGHTS"));
+        update(id(saved),0,terms().replace(today().plusYears(1).toString(),today().plusYears(1).plusDays(1).toString())).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONTRACT_EXCEEDS_PROPERTY_RIGHTS"));
+    }
+    private static LocalDate today(){return LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));}
+    @Test void creatingContractWithYesterdayStartIsRejectedWithoutPersisting()throws Exception{
+        String input=body(context()).replace("\"startDate\":\""+today()+"\"","\"startDate\":\""+today().minusDays(1)+"\"");
+        create(token,input).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("CONTRACT_START_DATE_IN_PAST"));
+        assertTrue(contracts.findByApartmentId(request.getApartment().getId()).isEmpty());
+        assertEquals(Apartment.Availability.CONTRACT_IN_PROGRESS,request.getApartment().getAvailability());
+    }
+    @Test void editingContractCannotBackdateAndDoesNotChangeSavedDates()throws Exception{
+        String saved=create();
+        update(id(saved),0,terms().replace("\"startDate\":\""+today()+"\"","\"startDate\":\""+today().minusDays(1)+"\""))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("CONTRACT_START_DATE_IN_PAST"));
+        assertEquals(today().toString(),JsonPath.read(readContract(id(saved)),"$.startDate"));
+    }
+    @Test void renewalCannotStartYesterdayEvenAfterOriginalContractExpired()throws Exception{
+        String old=expiredContract();String previousId=id(old);
+        String input=renewalInput(previousId).replace("\"startDate\":\""+today()+"\"","\"startDate\":\""+today().minusDays(1)+"\"");
+        mvc.perform(post("/api/v1/owner/contracts/"+previousId+"/renewals").header("Authorization",token).contentType("application/json").content(input))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("CONTRACT_START_DATE_IN_PAST"));
+        assertEquals(1,contracts.findByApartmentId(request.getApartment().getId()).size());
+        assertEquals("ACTIVE",JsonPath.read(readContract(previousId),"$.status"));
+    }
+    @Test void todayAndFutureStartRemainAllowed()throws Exception{
+        String saved=create();
+        update(id(saved),0,terms().replace("\"startDate\":\""+today()+"\"","\"startDate\":\""+today().plusDays(1)+"\""))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.startDate").value(today().plusDays(1).toString()));
     }
     private String terms() { return """
-        "startDate":"2026-11-01","endDate":"2027-11-01","monthlyRent":"6200000.50","electricityUnitPrice":"3500","waterUnitPrice":"15000","deposit":"10000000","paymentDay":5,"paymentMethod":"Chuyển khoản","usagePurpose":"Để ở","clauses":[{"title":"Điều khoản riêng","body":"Không hút thuốc trong căn hộ."}]
-        """.strip(); }
+        "startDate":"%s","endDate":"%s","monthlyRent":"6200000.50","electricityUnitPrice":"3500","waterUnitPrice":"15000","deposit":"10000000","paymentDay":5,"paymentMethod":"Chuyển khoản","usagePurpose":"Để ở","clauses":[{"title":"Điều khoản riêng","body":"Không hút thuốc trong căn hộ."}]
+        """.formatted(today(),today().plusYears(1)).strip(); }
     private String body(String ctx) { return "{\"requestVersion\":"+request.getVersion()+",\"sourceVersion\":\""+JsonPath.read(ctx,"$.sourceVersion")+"\","+terms()+"}"; }
     private ResultActions create(String authHeader,String input) throws Exception { return mvc.perform(post("/api/v1/owner/rental-requests/"+request.getId()+"/contract").header("Authorization",authHeader).contentType("application/json").content(input)); }
     private String create() throws Exception { return create(token,body(context())).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(); }
@@ -186,7 +214,7 @@ class ContractDraftIntegrationTests {
         var ctx=mvc.perform(get("/api/v1/owner/contracts/"+previousId+"/renewal-context").header("Authorization",token)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         var month=java.time.YearMonth.now(ZoneId.of("Asia/Ho_Chi_Minh"));
         return "{\"requestVersion\":"+JsonPath.read(ctx,"$.requestVersion")+",\"sourceVersion\":\""+JsonPath.read(ctx,"$.sourceVersion")+"\","+
-            terms().replace("2026-11-01",month.atDay(1).toString()).replace("2027-11-01",month.plusMonths(11).atEndOfMonth().toString())+"}";
+            terms().replace(today().plusYears(1).toString(),month.plusMonths(11).atEndOfMonth().toString())+"}";
     }
     private String handoverInput(String contract) {
         return "{\"version\":"+JsonPath.read(contract,"$.lifecycle.version")+",\"returnDate\":\""+LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"))+"\",\"electricityReading\":\"215\",\"waterReading\":\"55\",\"keysReturned\":true,\"conditionNotes\":\"Phòng đã kiểm tra, đủ chìa khóa.\",\"deductionAmount\":\"100000\",\"consent\":true}";
@@ -289,7 +317,7 @@ class ContractDraftIntegrationTests {
         String old=expiredContract();String oldId=id(old);var c=contracts.findById(Long.valueOf(oldId)).orElseThrow();
         var today=LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));c.setEndDate(today.plusDays(10));contracts.saveAndFlush(c);
         acceptRenewal(oldId);
-        String input=renewalInput(oldId).replace(today.withDayOfMonth(1).toString(),today.plusDays(11).toString());
+        String input=renewalInput(oldId).replace("\"startDate\":\""+today+"\"","\"startDate\":\""+today.plusDays(11)+"\"");
         String next=mvc.perform(post("/api/v1/owner/contracts/"+oldId+"/renewals").header("Authorization",token).contentType("application/json").content(input)).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         String hash=JsonPath.read(next,"$.signing.contentHash");sign(next,token,hash,signature(),true).andExpect(status().isOk());
         sign(next,customerToken,hash,signature(),true).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DRAFT")).andExpect(jsonPath("$.signing.state").value("SIGNED"));
@@ -517,7 +545,7 @@ class ContractDraftIntegrationTests {
         create(token,input.replace("\"title\":","\"signed\":true,\"title\":")).andExpect(status().isBadRequest());create(otherToken,input).andExpect(status().isNotFound());create(customerToken,input).andExpect(status().isForbidden());
     }
     @Test void datesDecimalsClausesAndIntegerVersionsValidate() throws Exception {
-        String input=body(context());for(String invalid:List.of(input.replace("2027-11-01","2026-10-01"),input.replace("6200000.50","6200000.501"),input.replace("\"deposit\":\"10000000\"","\"deposit\":\"-1\""),input.replace("\"paymentDay\":5","\"paymentDay\":29"),input.replace("\"paymentDay\":5","\"paymentDay\":5.1"),input.replace("\"requestVersion\":0","\"requestVersion\":0.0"),input.replace("\"requestVersion\":0","\"requestVersion\":\"0\""),input.replace("Không hút thuốc trong căn hộ."," "))) create(token,invalid).andExpect(status().isBadRequest());
+        String input=body(context());for(String invalid:List.of(input.replace(today().plusYears(1).toString(),today().minusDays(1).toString()),input.replace("6200000.50","6200000.501"),input.replace("\"deposit\":\"10000000\"","\"deposit\":\"-1\""),input.replace("\"paymentDay\":5","\"paymentDay\":29"),input.replace("\"paymentDay\":5","\"paymentDay\":5.1"),input.replace("\"requestVersion\":0","\"requestVersion\":0.0"),input.replace("\"requestVersion\":0","\"requestVersion\":\"0\""),input.replace("Không hút thuốc trong căn hộ."," "))) create(token,invalid).andExpect(status().isBadRequest());
     }
     @Test void staleEditsAndNonDraftContractsCannotChangeContent() throws Exception {
         String result=create();update(id(result),0,terms().replace("6200000.50","6500000")).andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));update(id(result),0,terms()).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("STALE_VERSION"));
@@ -574,6 +602,85 @@ class ContractDraftIntegrationTests {
         mvc.perform(get(url).header("Authorization",token)).andExpect(jsonPath("$.signing.ownerSignedAt").isEmpty()).andExpect(jsonPath("$.status").value("DRAFT"));
         assertEquals(1,otpChallenges.findById(challenge).orElseThrow().getAttempts());
         mvc.perform(post(url+"/signatures").header("Authorization",token).contentType("application/json").content(prefix+correct+"\"}")).andExpect(status().isOk());
+    }
+
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans={true,false})
+    void pastStartCannotRequestSignatureOtpForEitherParty(boolean ownerFirst)throws Exception{
+        String saved=create();var c=contracts.findById(Long.valueOf(id(saved))).orElseThrow();
+        c.setStartDate(today().minusDays(1));contracts.saveAndFlush(c);saved=readContract(id(saved));
+        sign(saved,ownerFirst?token:customerToken,JsonPath.read(saved,"$.signing.contentHash"),signature(),true)
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("CONTRACT_START_DATE_IN_PAST"));
+        assertTrue(otpChallenges.findAll().stream().noneMatch(challenge->Set.of(owner.getId(),customer.getId()).contains(challenge.getAccountId())));
+        var d=drafts.findByContractId(c.getId()).orElseThrow();assertNull(d.getOwnerSignedAt());assertNull(d.getCustomerSignedAt());
+        assertEquals(Apartment.Availability.CONTRACT_IN_PROGRESS,request.getApartment().getAvailability());
+    }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans={true,false})
+    void signatureOtpIssuedBeforeMidnightCannotSignPastStartAfterMidnight(boolean firstSignatureAlreadySaved)throws Exception{
+        String saved=create();String documentHash=JsonPath.read(saved,"$.signing.contentHash");
+        if(firstSignatureAlreadySaved)sign(saved,token,documentHash,signature(),true).andExpect(status().isOk());
+        String actor=firstSignatureAlreadySaved?customerToken:token;expireOtpCooldown();
+        var input=new LinkedHashMap<String,Object>(Map.of("version",JsonPath.<Number>read(saved,"$.version"),"contentHash",documentHash,"signature",signature(),"consent",true));
+        String challenge=mvc.perform(post("/api/v1/contracts/"+id(saved)+"/signature-otp").header("Authorization",actor).contentType("application/json").content(json.writeValueAsString(input)))
+            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        input.put("challengeId",JsonPath.<String>read(challenge,"$.challengeId"));input.put("code",otpCode);
+        org.mockito.Mockito.doReturn(today().plusDays(1)).when(signingDates).today();
+        mvc.perform(post("/api/v1/contracts/"+id(saved)+"/signatures").header("Authorization",actor).contentType("application/json").content(json.writeValueAsString(input)))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("CONTRACT_START_DATE_IN_PAST"));
+        var d=drafts.findByContractId(Long.valueOf(id(saved))).orElseThrow();
+        assertEquals(firstSignatureAlreadySaved,d.getOwnerSignedAt()!=null);assertNull(d.getCustomerSignedAt());
+        assertEquals(RentalContract.Status.DRAFT,d.getContract().getStatus());assertEquals(Apartment.Availability.CONTRACT_IN_PROGRESS,request.getApartment().getAvailability());
+    }
+
+
+    private String signedFutureFirstLease()throws Exception{
+        String input=body(context()).replace("\"startDate\":\""+today()+"\"","\"startDate\":\""+today().plusDays(2)+"\"");
+        String saved=create(token,input).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String hash=JsonPath.read(saved,"$.signing.contentHash");
+        sign(saved,token,hash,signature(),true).andExpect(status().isOk());
+        sign(saved,customerToken,hash,signature(),true).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DRAFT")).andExpect(jsonPath("$.signing.state").value("SIGNED"));
+        return readContract(id(saved));
+    }
+    @Test void signedFutureFirstLeaseReservesRoomAndActivatesOnlyAtStartIdempotently()throws Exception{
+        var apartment=request.getApartment();apartment.setElectricityIndex(200);apartment.setWaterIndex(50);apartments.saveAndFlush(apartment);
+        String saved=signedFutureFirstLease();Long contractId=Long.valueOf(id(saved));var c=contracts.findById(contractId).orElseThrow();
+        assertEquals(Apartment.Availability.CONTRACT_IN_PROGRESS,apartment.getAvailability());assertNull(c.getBaselineDate());
+        assertFalse(drafts.dueSignedInitials(today()).contains(contractId));initialActivation.activate(contractId);assertEquals(RentalContract.Status.DRAFT,c.getStatus());
+        String hash=JsonPath.read(saved,"$.signing.contentHash");var d=drafts.findByContractId(contractId).orElseThrow();var ownerAt=d.getOwnerSignedAt();var customerAt=d.getCustomerSignedAt();var snapshot=d.getSnapshotJson();
+        org.mockito.Mockito.doReturn(c.getStartDate()).when(signingDates).today();
+        assertTrue(drafts.dueSignedInitials(c.getStartDate()).contains(contractId));initialActivation.activate(contractId);
+        assertEquals(RentalContract.Status.ACTIVE,c.getStatus());assertEquals(Apartment.Availability.OCCUPIED,apartment.getAvailability());
+        assertEquals(0,new BigDecimal("200").compareTo(c.getElectricityBaseline()));assertEquals(c.getStartDate(),c.getBaselineDate());
+        long version=c.getVersion();initialActivation.activate(contractId);assertEquals(version,c.getVersion());
+        assertEquals(ownerAt,d.getOwnerSignedAt());assertEquals(customerAt,d.getCustomerSignedAt());assertEquals(snapshot,d.getSnapshotJson());assertEquals(hash,JsonPath.read(readContract(contractId.toString()),"$.signing.contentHash"));
+    }
+    @Test void futureSignedFirstLeaseCannotBillAndCannotEditSignedContent()throws Exception{
+        String saved=signedFutureFirstLease();String contractId=id(saved);
+        mvc.perform(get("/api/v1/owner/contracts/"+contractId+"/billing-context").header("Authorization",token)).andExpect(status().isConflict());
+        mvc.perform(get("/api/v1/owner/contracts/"+contractId+"/rent-billing-context").header("Authorization",token)).andExpect(status().isConflict());
+        update(contractId,0,terms()).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONTRACT_SIGNED_CONTENT"));
+        mvc.perform(get("/api/v1/me/tenancies").header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$[0].status").value("DRAFT")).andExpect(jsonPath("$[0].inAppSigningStatus").value("BOTH_SIGNED"));
+    }
+    @Test void waitingFirstLeaseActivationRechecksEligibilityAndNeverInventsMeterReadings()throws Exception{
+        String saved=signedFutureFirstLease();var c=contracts.findById(Long.valueOf(id(saved))).orElseThrow();
+        org.mockito.Mockito.doReturn(c.getStartDate()).when(signingDates).today();customer.setStatus(AuthAccount.Status.LOCKED);accounts.saveAndFlush(customer);
+        var failure=assertThrows(com.ancu.proptech.exception.common.ApiException.class,()->initialActivation.activate(c.getId()));assertEquals("CONTRACT_ACTIVATION_BLOCKED",failure.code);
+        assertEquals(RentalContract.Status.DRAFT,c.getStatus());assertEquals(Apartment.Availability.CONTRACT_IN_PROGRESS,request.getApartment().getAvailability());assertNull(c.getElectricityBaseline());
+    }
+    @Test void fullySignedWaitingFirstLeaseCancellationNeedsCounterpartyAndBlocksActivation()throws Exception{
+        String saved=signedFutureFirstLease();String path="/api/v1/rental-requests/"+request.getId()+"/cancellation";
+        var state=json.readTree(mvc.perform(get(path).header("Authorization",token)).andExpect(status().isOk()).andExpect(jsonPath("$.canStart").value(true)).andReturn().getResponse().getContentAsString());
+        mvc.perform(post(path+"/actions").header("Authorization",token).contentType("application/json").content(json.writeValueAsString(Map.of("action","START","sourceVersion",state.path("sourceVersion").asString(),"reason","Hai bên không tiếp tục trước hiệu lực"))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.state").value("PENDING"));
+        var c=contracts.findById(Long.valueOf(id(saved))).orElseThrow();org.mockito.Mockito.doReturn(c.getStartDate()).when(signingDates).today();
+        var failure=assertThrows(com.ancu.proptech.exception.common.ApiException.class,()->initialActivation.activate(c.getId()));assertEquals("CANCELLATION_PENDING",failure.code);
+        state=json.readTree(mvc.perform(get(path).header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.canRespond").value(true)).andReturn().getResponse().getContentAsString());
+        mvc.perform(post(path+"/actions").header("Authorization",customerToken).contentType("application/json").content(json.writeValueAsString(Map.of("action","ACCEPT","sourceVersion",state.path("sourceVersion").asString()))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.state").value("CANCELLED"));
+        assertEquals(RentalContract.Status.CANCELLED,c.getStatus());assertEquals(Apartment.Availability.VACANT,request.getApartment().getAvailability());
+        assertEquals("SIGNED",JsonPath.read(readContract(id(saved)),"$.signing.state"));assertEquals(JsonPath.<String>read(saved,"$.signing.contentHash"),JsonPath.<String>read(readContract(id(saved)),"$.signing.contentHash"));
     }
 
 }

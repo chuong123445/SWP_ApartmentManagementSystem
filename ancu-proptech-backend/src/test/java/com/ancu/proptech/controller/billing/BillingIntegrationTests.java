@@ -29,6 +29,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 @SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
 class BillingIntegrationTests {
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean com.ancu.proptech.service.property.PropertyRightsPolicy utilityDates;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean com.ancu.proptech.service.ai.AssistanceClient utilityAi;
     @Autowired MockMvc mvc;@Autowired AuthAccountRepository accounts;@Autowired PropertyRepository properties;
     @Autowired ApartmentRepository apartments;@Autowired RentalContractRepository contracts;
     @Autowired InvoiceNotificationRepository notifications;@Autowired AuthService auth;@Autowired PasswordEncoder encoder;@Autowired JdbcTemplate jdbc;
@@ -57,6 +59,7 @@ class BillingIntegrationTests {
         mvc.perform(get(path).header("Authorization","Bearer "+ownerToken).param("size","101")).andExpect(status().isBadRequest());
     }
     @Test void ownerMonthlyFiltersPaidAndUnpaidSeparatelyFromIssuanceBeforePaging()throws Exception{
+        org.mockito.Mockito.doReturn(LocalDate.of(2026,12,31)).when(utilityDates).today();
         String paidId=createDraft();send(ownerToken,paidId,0).andExpect(status().isOk());
         String second=JsonPath.read(create(ownerToken,body("2026-11",2,"1200","212")).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(),"$.id");send(ownerToken,second,0).andExpect(status().isOk());
         create(ownerToken,body("2026-12",4,"1300","215")).andExpect(status().isCreated());
@@ -383,6 +386,44 @@ class BillingIntegrationTests {
         jdbc.update("INSERT INTO contract_exit_cases(contract_id,termination_state,handover_state,updated_at,version) VALUES(?,'PENDING','NONE',SYSUTCDATETIME(),0)",contract.getId());
         invoiceService.prepareScheduledRent(contract.getId());
         assertTrue(invoiceRecords.findByContractIdAndStatusNotOrderByPeriodAsc(contract.getId(),com.ancu.proptech.model.billing.RentalInvoice.Status.CANCELLED).isEmpty());
+    }
+
+
+    private static LocalDate utilityToday(){return LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));}
+    private String utilityPath(){return "/api/v1/owner/contracts/"+contract.getId();}
+    private void futureUtilityCommandsAreBlocked(String period,String code,long version)throws Exception{
+        mvc.perform(get(utilityPath()+"/billing-context").header("Authorization","Bearer "+ownerToken)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value(code));
+        String readings="{\"period\":\""+period+"\",\"baselineVersion\":"+version+",\"electricityEndReading\":\"1200\",\"waterEndReading\":\"210\"}";
+        mvc.perform(post(utilityPath()+"/meter-readings").header("Authorization","Bearer "+ownerToken).contentType("application/json").content(readings)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value(code));
+        create(ownerToken,body(period,version,"1200","210")).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value(code));
+        mvc.perform(post(utilityPath()+"/utility-invoice-suggestion").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"message\":\"TEST.101 điện cuối 1200 nước cuối 210\",\"period\":\""+period+"\",\"baselineVersion\":"+version+"}"))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value(code));
+        org.mockito.Mockito.verifyNoInteractions(utilityAi);
+    }
+    @Test void futureActiveLegacyContractCannotCloseMetersCreateOrSuggestUtilities()throws Exception{
+        var start=java.time.YearMonth.from(utilityToday()).plusMonths(1).atDay(1);contract.setStartDate(start);contract.setEndDate(start.plusYears(1));contracts.saveAndFlush(contract);
+        futureUtilityCommandsAreBlocked(java.time.YearMonth.from(start).toString(),"CONTRACT_NOT_STARTED",0);
+        assertEquals(0,invoiceRecords.findByContractIdAndStatusNotOrderByPeriodAsc(contract.getId(),com.ancu.proptech.model.billing.RentalInvoice.Status.CANCELLED).size());
+        assertEquals(0,contract.getBillingVersion());
+    }
+    @Test void nextUtilityPeriodWaitsForItsCalendarMonthThenAllowsCurrentReadings()throws Exception{
+        var month=java.time.YearMonth.from(utilityToday());contract.setStartDate(month.atDay(1));contract.setEndDate(month.plusYears(1).atEndOfMonth());contracts.saveAndFlush(contract);
+        String invoice=JsonPath.read(create(ownerToken,body(month.toString(),0,"1120","208")).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(),"$.id");send(ownerToken,invoice,0).andExpect(status().isOk());
+        futureUtilityCommandsAreBlocked(month.plusMonths(1).toString(),"UTILITY_PERIOD_IN_FUTURE",2);
+        assertEquals(2,contract.getBillingVersion());
+        org.mockito.Mockito.doReturn(month.plusMonths(1).atDay(1)).when(utilityDates).today();
+        create(ownerToken,body(month.plusMonths(1).toString(),2,"1200","210")).andExpect(status().isCreated());
+    }
+    @Test void preexistingFutureDraftCannotBeSentButCanBeCancelledAndHistoryIsReadable()throws Exception{
+        var today=utilityToday();var next=java.time.YearMonth.from(today).plusMonths(1);contract.setStartDate(next.atDay(1));contract.setEndDate(next.plusYears(1).atEndOfMonth());contracts.saveAndFlush(contract);
+        org.mockito.Mockito.doReturn(next.atDay(1)).when(utilityDates).today();
+        String invoice=JsonPath.read(create(ownerToken,body(next.toString(),0,"1120","208")).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(),"$.id");
+        org.mockito.Mockito.doReturn(today).when(utilityDates).today();
+        send(ownerToken,invoice,0).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONTRACT_NOT_STARTED"));
+        mvc.perform(get("/api/v1/invoices/"+invoice).header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DRAFT"));
+        mvc.perform(post("/api/v1/owner/invoices/"+invoice+"/cancel").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"version\":0,\"billingVersion\":1,\"reason\":\"Hủy nháp kỳ tương lai\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CANCELLED"));
+        assertEquals(0,notifications.countByInvoiceId(Long.valueOf(invoice)));
     }
 
 }

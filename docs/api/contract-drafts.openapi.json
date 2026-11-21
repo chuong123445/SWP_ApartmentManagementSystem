@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "An Cư — selection-bound contract drafts",
-    "version": "1.4.0",
-    "description": "Implemented private contract authoring, exact-party PDF and hand-drawn electronic signatures, renewal requests and expiry handover. Tenant requests renewal; Owner accepts/rejects before drafting a new agreement. Signed future renewals wait until the next start date; no automatic expiry release or provider-certified digital signature. V42 adds persistent in-app 20/10-day reminders and request state/version. Old saved snapshots remain immutable; missing legacy originals are not fabricated. See tenant-renewal-requests-v1 ADR for detailed transitions and safeguards."
+    "version": "1.6.0",
+    "description": "Implemented private contract authoring, exact-party PDF and hand-drawn electronic signatures, renewal requests and expiry handover. Tenant requests renewal; Owner accepts/rejects before drafting a new agreement. Signed future renewals wait until the next start date; no automatic expiry release or provider-certified digital signature. V42 adds persistent in-app 20/10-day reminders and request state/version. Old saved snapshots remain immutable; missing legacy originals are not fabricated. See tenant-renewal-requests-v1 ADR for detailed transitions and safeguards. 21 Nov RA02: fully signed future FIRST leases also remain technical DRAFT+SIGNED while the apartment stays CONTRACT_IN_PROGRESS; UI shows waiting for effectiveness. Automatic per-minute eligibility recheck activates on/after startDate. No new public activation command."
   },
   "servers": [
     {
@@ -1398,7 +1398,7 @@
     },
     "/contracts/{id}/signatures": {
       "post": {
-        "summary": "Exact party signs their own slot; future signed renewal waits until term start",
+        "summary": "Exact party signs own slot; fully signed future first/renewal leases wait until agreed start",
         "security": [
           {
             "bearerAuth": []
@@ -1437,7 +1437,7 @@
             }
           },
           "400": {
-            "description": "Invalid input/consent/rejection reason"
+            "description": "Invalid input/consent, or CONTRACT_START_DATE_IN_PAST at actual OTP issuance/signing time."
           },
           "401": {
             "description": "No current authenticated session"
@@ -1452,7 +1452,7 @@
             "description": "Stale version or lifecycle conflict"
           }
         },
-        "description": " Requires a single-use email OTP bound to this actor, contract, document version/hash and drawn signature. Rejected OTP leaves signature unchanged."
+        "description": " Requires a single-use email OTP bound to this actor, contract, document version/hash and drawn signature. Rejected OTP leaves signature unchanged. Start date must be today or later in Asia/Ho_Chi_Minh at this operation, even if an OTP was issued before midnight. Past starts return HTTP400 CONTRACT_START_DATE_IN_PAST; no signature is saved."
       }
     },
     "/contracts/{id}/pdf": {
@@ -1607,7 +1607,7 @@
             }
           },
           "400": {
-            "description": "Invalid input/consent/rejection reason"
+            "description": "Invalid input/consent, or CONTRACT_START_DATE_IN_PAST at actual OTP issuance/signing time."
           },
           "401": {
             "description": "No current authenticated session"
@@ -1628,7 +1628,7 @@
             "description": "SMTP/OTP unavailable"
           }
         },
-        "description": "No signature is stored by this operation. Email OTP expires in 10 minutes, max 5 wrong attempts, 60-second resend cooldown, max 3 requests per purpose/account in 15 minutes."
+        "description": "No signature is stored by this operation. Email OTP expires in 10 minutes, max 5 wrong attempts, 60-second resend cooldown, max 3 requests per purpose/account in 15 minutes. Start date must be today or later in Asia/Ho_Chi_Minh at this operation, even if an OTP was issued before midnight. Past starts return HTTP400 CONTRACT_START_DATE_IN_PAST; no signature is saved."
       }
     }
   },
@@ -1666,7 +1666,8 @@
         "properties": {
           "startDate": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Must be today or later in Asia/Ho_Chi_Minh on create/update, including renewal. Past start dates return HTTP 400 CONTRACT_START_DATE_IN_PAST. Existing saved history is unchanged."
           },
           "endDate": {
             "type": "string",
@@ -1757,7 +1758,8 @@
         "properties": {
           "startDate": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Must be today or later in Asia/Ho_Chi_Minh on create/update, including renewal. Past start dates return HTTP 400 CONTRACT_START_DATE_IN_PAST. Existing saved history is unchanged."
           },
           "endDate": {
             "type": "string",

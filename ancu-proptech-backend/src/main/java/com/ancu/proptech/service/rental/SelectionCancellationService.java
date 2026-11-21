@@ -31,7 +31,7 @@ public class SelectionCancellationService {
   var actor=access.account(jwt);var s=load(actor,id,true);var r=s.request();var root=s.cancellation();String reason=clean(command.reason());
   if(repeated(root,actor.getId(),command.action(),reason))return view(s,actor.getId());
   if(!version(s).equals(command.sourceVersion()))throw conflict("STALE_VERSION","Dữ liệu hoặc chữ ký đã thay đổi. Hãy tải lại trước khi xử lý.");
-  if(!eligible(s))throw conflict("CANCELLATION_UNAVAILABLE","Chỉ hủy lựa chọn thuê đầu đang làm hợp đồng và chưa đủ hai chữ ký. Hợp đồng có hiệu lực cần quy trình kết thúc riêng.");
+  if(!eligible(s))throw conflict("CANCELLATION_UNAVAILABLE","Chỉ hủy lựa chọn thuê đầu hoặc hợp đồng đang chờ hiệu lực. Hợp đồng đã có hiệu lực cần quy trình kết thúc riêng.");
   String before=json.writeValueAsString(snapshot(s));String action;
   if(command.action()==Action.START){
    if(reason==null)throw bad("Cần nhập lý do hủy hoặc đề nghị hủy.");
@@ -83,7 +83,7 @@ public class SelectionCancellationService {
   apartment.setAvailability(Apartment.Availability.VACANT);
   // Publication, pending requests, signatures, snapshots and money are untouched.
  }
- private boolean eligible(Selection s){return s.request().getStatus()==RentalRequest.Status.ACCEPTED&&(s.contract()==null||(s.contract().getStatus()==RentalContract.Status.DRAFT&&s.contract().getRenewalOfContractId()==null))&&signatureCount(s)<2&&s.request().getApartment().getAvailability()==Apartment.Availability.CONTRACT_IN_PROGRESS;}
+ private boolean eligible(Selection s){return s.request().getStatus()==RentalRequest.Status.ACCEPTED&&(s.contract()==null||(s.contract().getStatus()==RentalContract.Status.DRAFT&&s.contract().getRenewalOfContractId()==null))&&s.request().getApartment().getAvailability()==Apartment.Availability.CONTRACT_IN_PROGRESS;}
  private int signatureCount(Selection s){return s.draft()==null?0:(s.draft().getOwnerSignedAt()==null?0:1)+(s.draft().getCustomerSignedAt()==null?0:1);}
  private Map<String,Object> snapshot(Selection s){
   var r=s.request();var a=r.getApartment();var c=s.contract();var d=s.draft();var root=s.cancellation();var data=new LinkedHashMap<String,Object>();
