@@ -39,6 +39,8 @@ class SepayIntegrationTests {
     @Autowired com.ancu.proptech.repository.payment.SepayConnectionRepository connections;
     @Autowired com.ancu.proptech.repository.payment.InvoicePaymentRepository payments;
     @Autowired com.ancu.proptech.repository.payment.SepayEventRepository events;
+    // Utility-only: (1120 - 1000) * 3500 + (208 - 200) * 15000; rent is invoiced separately.
+    private static final String UTILITY_TOTAL="540000";
     private String key;
     @BeforeEach void fixture(){
         org.mockito.Mockito.when(bankClient.bank(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.eq("bank1"))).thenReturn(new com.ancu.proptech.dto.payment.SepayDtos.BankAccount("bank1","BIDV","970418","1234567890","NGUYEN VAN A","personal"));
@@ -73,13 +75,13 @@ class SepayIntegrationTests {
         mvc.perform(put("/api/v1/owner/payments/sepay").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"apiToken\":\"test-provider-token\",\"bankAccountId\":\"bank1\",\"enabled\":true,\"version\":0}")).andExpect(status().isBadRequest());
     }
     @Test void qrUsesVaExactServerAmountAndIdempotentCode()throws Exception{
-        String id=prepare();String response=ticket(tenantToken,id);assertTrue(JsonPath.<String>read(response,"$.qrUrl").contains("acc=96247123456789"));assertTrue(JsonPath.<String>read(response,"$.qrUrl").contains("amount=5540000"));assertEquals(JsonPath.<String>read(response,"$.paymentCode"),JsonPath.<String>read(ticket(tenantToken,id),"$.paymentCode"));
+        String id=prepare();String response=ticket(tenantToken,id);assertTrue(JsonPath.<String>read(response,"$.qrUrl").contains("acc=96247123456789"));assertTrue(JsonPath.<String>read(response,"$.qrUrl").contains("amount="+UTILITY_TOTAL));assertEquals(JsonPath.<String>read(response,"$.paymentCode"),JsonPath.<String>read(ticket(tenantToken,id),"$.paymentCode"));
         mvc.perform(get("/api/v1/invoices/"+id+"/payment").header("Authorization","Bearer "+ownerToken)).andExpect(jsonPath("$.qrUrl").isEmpty());
         mvc.perform(post("/api/v1/invoices/"+id+"/payment").header("Authorization","Bearer "+ownerToken)).andExpect(status().isForbidden());
         mvc.perform(post("/api/v1/invoices/"+id+"/payment").header("Authorization","Bearer "+token(otherTenant))).andExpect(status().isNotFound());
     }
     @Test void correctWebhookPaysOnceAndPreservesSentBillingChain()throws Exception{
-        String id=prepare();String code=JsonPath.read(ticket(tenantToken,id),"$.paymentCode");String body=webhook(80001,code,"5540000","1234567890","96247123456789","in");
+        String id=prepare();String code=JsonPath.read(ticket(tenantToken,id),"$.paymentCode");String body=webhook(80001,code,UTILITY_TOTAL,"1234567890","96247123456789","in");
         deliver(key,body).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true));deliver(key,body).andExpect(status().isOk());assertEquals(1,events.findTop20ByOwnerIdOrderByReceivedAtDescIdDesc(owner.getId()).size());assertNotNull(payments.findByInvoiceId(Long.valueOf(id)).orElseThrow().getPaidAt());
         mvc.perform(get("/api/v1/invoices/"+id).header("Authorization","Bearer "+tenantToken)).andExpect(jsonPath("$.status").value("SENT")).andExpect(jsonPath("$.paymentStatus").value("PAID"));
         mvc.perform(get("/api/v1/owner/contracts/"+contract.getId()+"/billing-context").header("Authorization","Bearer "+ownerToken)).andExpect(jsonPath("$.period").value("2026-11"));
@@ -87,7 +89,7 @@ class SepayIntegrationTests {
     }
     @Test void tenantPaymentFiltersApplyBeforePaginationAndKeepHistoryPrivate()throws Exception{
         String paidId=prepare();String code=JsonPath.read(ticket(tenantToken,paidId),"$.paymentCode");
-        deliver(key,webhook(84001,code,"5540000","1234567890","96247123456789","in")).andExpect(status().isOk());
+        deliver(key,webhook(84001,code,UTILITY_TOTAL,"1234567890","96247123456789","in")).andExpect(status().isOk());
         String unpaidId=JsonPath.read(create(ownerToken,body("2026-11",2,"1200","210")).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(),"$.id");
         send(ownerToken,unpaidId,0).andExpect(status().isOk());
         // An issued QR without paidAt is still unpaid.
@@ -106,8 +108,8 @@ class SepayIntegrationTests {
         mvc.perform(get("/api/v1/me/payments/sepay/test-payments?paymentStatus=PAID").header("Authorization","Bearer "+token(otherTenant))).andExpect(jsonPath("$.length()").value(0));
     }
     @Test void badKeyWrongAccountAmountsOutgoingAndAmbiguousCodesNeverPay()throws Exception{
-        String id=prepare();String code=JsonPath.read(ticket(tenantToken,id),"$.paymentCode");deliver("bad-key",webhook(81000,code,"5540000","1234567890","96247123456789","in")).andExpect(status().isUnauthorized());
-        String[] bodies={webhook(81001,code,"5540001","1234567890","96247123456789","in"),webhook(81002,code,"1","1234567890","96247123456789","in"),webhook(81003,code,"5540000","1234567890","wrong","in"),webhook(81004,code,"5540000","1234567890","96247123456789","out"),webhook(81005,code+" ANCU111111111111111111111111","5540000","1234567890","96247123456789","in")};
+        String id=prepare();String code=JsonPath.read(ticket(tenantToken,id),"$.paymentCode");deliver("bad-key",webhook(81000,code,UTILITY_TOTAL,"1234567890","96247123456789","in")).andExpect(status().isUnauthorized());
+        String[] bodies={webhook(81001,code,"540001","1234567890","96247123456789","in"),webhook(81002,code,"1","1234567890","96247123456789","in"),webhook(81003,code,UTILITY_TOTAL,"1234567890","wrong","in"),webhook(81004,code,UTILITY_TOTAL,"1234567890","96247123456789","out"),webhook(81005,code+" ANCU111111111111111111111111",UTILITY_TOTAL,"1234567890","96247123456789","in")};
         for(String body:bodies)deliver(key,body).andExpect(status().isOk());assertNull(payments.findByInvoiceId(Long.valueOf(id)).orElseThrow().getPaidAt());assertEquals(5,events.findTop20ByOwnerIdOrderByReceivedAtDescIdDesc(owner.getId()).size());
         mvc.perform(get("/api/v1/owner/payments/sepay/events").header("Authorization","Bearer "+token(otherOwner))).andExpect(jsonPath("$.length()").value(0));
     }
@@ -131,23 +133,23 @@ class SepayIntegrationTests {
         String id=prepare();String before=ticket(tenantToken,id);String code=JsonPath.read(before,"$.paymentCode");
         org.mockito.Mockito.when(bankClient.bank(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.eq("bank2"))).thenReturn(new com.ancu.proptech.dto.payment.SepayDtos.BankAccount("bank2","Vietcombank","970436","9999888877","LE THI B","personal"));
         setup(ownerToken,"bank2",null,connections.findByOwnerId(owner.getId()).orElseThrow().getVersion());assertEquals(JsonPath.<String>read(before,"$.qrUrl"),JsonPath.<String>read(ticket(tenantToken,id),"$.qrUrl"));
-        deliver(key,webhook(84001,code,"5540000","1234567890","96247123456789","in")).andExpect(status().isOk());assertNotNull(payments.findByInvoiceId(Long.valueOf(id)).orElseThrow().getPaidAt());
+        deliver(key,webhook(84001,code,UTILITY_TOTAL,"1234567890","96247123456789","in")).andExpect(status().isOk());assertNotNull(payments.findByInvoiceId(Long.valueOf(id)).orElseThrow().getPaidAt());
     }
     @Test void disabledConnectionStopsNewQrAndNeverSettlesWebhook()throws Exception{
         String id=prepare();String code=JsonPath.read(ticket(tenantToken,id),"$.paymentCode");long version=connections.findByOwnerId(owner.getId()).orElseThrow().getVersion();
         org.mockito.Mockito.clearInvocations(bankClient);mvc.perform(patch("/api/v1/owner/payments/sepay/status").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"enabled\":false,\"version\":"+version+"}")).andExpect(status().isOk());org.mockito.Mockito.verifyNoInteractions(bankClient);
         mvc.perform(get("/api/v1/invoices/"+id+"/payment").header("Authorization","Bearer "+tenantToken)).andExpect(jsonPath("$.status").value("NOT_CONFIGURED"));
-        deliver(key,webhook(85001,code,"5540000","1234567890","96247123456789","in")).andExpect(status().isOk());assertNull(payments.findByInvoiceId(Long.valueOf(id)).orElseThrow().getPaidAt());
+        deliver(key,webhook(85001,code,UTILITY_TOTAL,"1234567890","96247123456789","in")).andExpect(status().isOk());assertNull(payments.findByInvoiceId(Long.valueOf(id)).orElseThrow().getPaidAt());
     }
 
     @Test void anotherOwnersUnmatchedWebhookNeverConsumesTheRightOwnersTransaction()throws Exception{
-        String id=prepare();String code=JsonPath.read(ticket(tenantToken,id),"$.paymentCode");String otherKey=JsonPath.read(setup(token(otherOwner),"bank1","va1",0),"$.webhookSecret");String body=webhook(86001,code,"5540000","1234567890","96247123456789","in");
+        String id=prepare();String code=JsonPath.read(ticket(tenantToken,id),"$.paymentCode");String otherKey=JsonPath.read(setup(token(otherOwner),"bank1","va1",0),"$.webhookSecret");String body=webhook(86001,code,UTILITY_TOTAL,"1234567890","96247123456789","in");
         mvc.perform(post("/api/v1/payments/sepay/webhooks/"+otherOwner.getId()).header("Authorization","Apikey "+otherKey).contentType("application/json").content(body)).andExpect(status().isOk());assertNull(payments.findByInvoiceId(Long.valueOf(id)).orElseThrow().getPaidAt());
         deliver(key,body).andExpect(status().isOk());assertNotNull(payments.findByInvoiceId(Long.valueOf(id)).orElseThrow().getPaidAt());assertEquals("UNMATCHED",events.findTop20ByOwnerIdOrderByReceivedAtDescIdDesc(otherOwner.getId()).get(0).getResult());
     }
 
     @Test void zeroIdProviderTestAcknowledgesConnectionWithoutPayingEvenMatchingInvoice()throws Exception{
-        String id=prepare();String code=JsonPath.read(ticket(tenantToken,id),"$.paymentCode");String body=webhook(0,code,"5540000","1234567890","96247123456789","in");
+        String id=prepare();String code=JsonPath.read(ticket(tenantToken,id),"$.paymentCode");String body=webhook(0,code,UTILITY_TOTAL,"1234567890","96247123456789","in");
         deliver(key,body).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true));deliver(key,body).andExpect(status().isOk());
         assertNotNull(connections.findByOwnerId(owner.getId()).orElseThrow().getLastWebhookAt());assertTrue(events.findTop20ByOwnerIdOrderByReceivedAtDescIdDesc(owner.getId()).isEmpty());assertNull(payments.findByInvoiceId(Long.valueOf(id)).orElseThrow().getPaidAt());
         mvc.perform(get("/api/v1/invoices/"+id).header("Authorization","Bearer "+tenantToken)).andExpect(jsonPath("$.paymentStatus").value("UNPAID"));
@@ -209,7 +211,7 @@ class SepayIntegrationTests {
     }
     @Autowired jakarta.persistence.EntityManager entityManager;
     @Test void concurrentWebhookRetriesCommitOnePaymentEvent()throws Exception{
-        String id=prepare();String code=JsonPath.read(ticket(tenantToken,id),"$.paymentCode");String body=webhook(83001,code,"5540000","1234567890","96247123456789","in");TestTransaction.flagForCommit();TestTransaction.end();var pool=Executors.newFixedThreadPool(2);var gate=new CountDownLatch(1);
+        String id=prepare();String code=JsonPath.read(ticket(tenantToken,id),"$.paymentCode");String body=webhook(83001,code,UTILITY_TOTAL,"1234567890","96247123456789","in");TestTransaction.flagForCommit();TestTransaction.end();var pool=Executors.newFixedThreadPool(2);var gate=new CountDownLatch(1);
         try{Callable<Integer> task=()->{gate.await();return deliver(key,body).andReturn().getResponse().getStatus();};var a=pool.submit(task);var b=pool.submit(task);gate.countDown();assertEquals(200,a.get(15,TimeUnit.SECONDS));assertEquals(200,b.get(15,TimeUnit.SECONDS));assertEquals(1,events.findTop20ByOwnerIdOrderByReceivedAtDescIdDesc(owner.getId()).size());assertNotNull(payments.findByInvoiceId(Long.valueOf(id)).orElseThrow().getPaidAt());}
         finally{pool.shutdownNow();cleanupCommitted();}
     }
@@ -239,7 +241,7 @@ class SepayIntegrationTests {
                     .andExpect(jsonPath("$.webhookSecret").isEmpty());
             mvc.perform(get("/api/v1/owner/payments/sepay/events").header("Authorization", "Bearer " + sourceToken))
                     .andExpect(status().isForbidden());
-            deliver(key, webhook(89100, legacyCode, "5540000", "1234567890", "96247123456789", "in"))
+            deliver(key, webhook(89100, legacyCode, UTILITY_TOTAL, "1234567890", "96247123456789", "in"))
                     .andExpect(status().isOk());
             wallet(ownerToken).andExpect(jsonPath("$.received").value("0"));
 
@@ -385,7 +387,7 @@ class SepayIntegrationTests {
         accounts.saveAndFlush(owner);
         String invoice = prepare();
         String monthlyCode = JsonPath.read(ticket(tenantToken, invoice), "$.paymentCode");
-        deliver(key, webhook(89910, monthlyCode, "5540000", "1234567890", "96247123456789", "in")).andExpect(status().isOk());
+        deliver(key, webhook(89910, monthlyCode, UTILITY_TOTAL, "1234567890", "96247123456789", "in")).andExpect(status().isOk());
         String unpaid = JsonPath.read(create(ownerToken, body("2026-11", 2, "1200", "210"))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
         send(ownerToken, unpaid, 0).andExpect(status().isOk());
