@@ -2,6 +2,8 @@
 
 Source được rà soát: `4e8c809f` trên nhánh `duy/contract-start-today`, sau sửa RA01–RA03. Lượt này chỉ review và tái hiện, chưa sửa runtime. Nhật ký tóm tắt tiếp tục dùng [CHANGELOG_NGHIEP_VU.md](../../CHANGELOG_NGHIEP_VU.md).
 
+Follow-up rà sâu riêng tạo/thêm căn hộ và ba bộ file test Thu Hà: [RA14–RA16 và ma trận nghiệp vụ](apartment-creation-deep-review-2026-11-21.md). Không coi các phát hiện trong hai báo cáo là đã sửa.
+
 ## Kết quả cần xử lý
 
 ### RA10 — Cao: duyệt quyền tương lai làm mất quyền hiện tại còn hạn
