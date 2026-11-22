@@ -39,8 +39,10 @@ public class ContractPdfService {
             writer.text("Sau khi bàn bạc hai bên cùng thống nhất như sau:");
             writer.text("Bên A đồng ý cho Bên B thuê 1 "+(room?"phòng":template(draft.templateType()))+" số "+show(asset.roomNumber())+" tại địa chỉ "+show(asset.address())+".");
             writer.text("Giá thuê là: "+money(draft.monthlyRent())+" đ/tháng (Bằng chữ: "+VietnameseAmountWords.read(draft.monthlyRent())+").");
-            writer.text(draft.separateBillingAgreed()?"Tiền thuê thanh toán mỗi "+draft.rentCycleMonths()+" tháng, hạn ngày "+draft.paymentDay()+" của tháng đầu kỳ.":"Thanh toán vào ngày "+draft.paymentDay()+" hàng tháng.");
-            if(draft.separateBillingAgreed())writer.text("Tiền điện, nước và dịch vụ lập hóa đơn riêng hàng tháng. Tiền thuê chỉ tự tính tháng tròn; phần ngày lẻ do hai bên đối chiếu và xử lý riêng.");
+            if(draft.oneMonthRentPackage())writer.text("Tiền thuê trọn một tháng cho toàn bộ thời hạn hợp đồng, lập và gửi một hóa đơn; hạn thanh toán ngày bắt đầu thuê "+date(draft.startDate())+".");
+            else writer.text(draft.separateBillingAgreed()?"Tiền thuê thanh toán mỗi "+draft.rentCycleMonths()+" tháng, hạn ngày "+draft.paymentDay()+" của tháng đầu kỳ.":"Thanh toán vào ngày "+draft.paymentDay()+" hàng tháng.");
+            if(draft.separateBillingAgreed()&&!draft.oneMonthRentPackage())writer.text("Tiền điện, nước và dịch vụ lập hóa đơn riêng hàng tháng. Tiền thuê chỉ tự tính tháng tròn; phần ngày lẻ do hai bên đối chiếu và xử lý riêng.");
+            if(draft.oneMonthRentPackage())writer.text("Tiền điện, nước và dịch vụ đối chiếu riêng; không nằm trong hóa đơn tiền thuê trọn tháng.");
             writer.text("Tiền điện: "+money(draft.electricityUnitPrice())+" đ/kWh, tính theo chỉ số công tơ.");
             writer.text("Tiền nước: "+money(draft.waterUnitPrice())+("PER_PERSON".equals(draft.waterBillingMode())?" đ/người/tháng.":" đ/m³, tính theo chỉ số công tơ."));
             if(new BigDecimal(draft.internetFee()).signum()>0)writer.text("Tiền Internet: "+money(draft.internetFee())+" đ/phòng/tháng.");

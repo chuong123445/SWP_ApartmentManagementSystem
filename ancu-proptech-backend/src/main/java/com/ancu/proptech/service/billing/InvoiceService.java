@@ -122,14 +122,14 @@ public class InvoiceService {
         var c=i.getContract();
         var before=response(i);i.setStatus(RentalInvoice.Status.SENT);i.setSentAt(Instant.now());
         var n=new InvoiceNotification();n.setInvoice(i);n.setCustomer(c.getCustomer());n.setCreatedAt(i.getSentAt());notifications.save(n);
-        c.setBillingVersion(c.getBillingVersion()+1);invoices.flush();audit(i,ownerId,InvoiceEvent.Action.SENT,automatic?"Tự động gửi theo cài đặt tài sản":null,before);return response(i);
+        c.setBillingVersion(c.getBillingVersion()+1);invoices.flush();audit(i,ownerId,InvoiceEvent.Action.SENT,automatic?"Tự động gửi theo lịch thu hợp đồng":null,before);return response(i);
     }
     @Transactional public InvoiceResponse updateDraft(Jwt jwt,Long id,InvoiceDraftChange input){
         var owner=access.owner(jwt);var i=lockedInvoice(id,owner.getId());var c=i.getContract();
         requireDraft(i);versions(i,input);
         expectedSource(i);
         if(i.getKind()==RentalInvoice.Kind.RENT){
-            if(input.getDueDate().isBefore(i.getCoverageStart().withDayOfMonth(c.getRentPaymentDay())))throw bad("VALIDATION_ERROR","Hạn đóng không được trước ngày thanh toán đã thỏa thuận.");
+            if(input.getDueDate().isBefore((c.isOneMonthRentPackage()?c.getStartDate():i.getCoverageStart().withDayOfMonth(c.getRentPaymentDay()))))throw bad("VALIDATION_ERROR","Hạn đóng không được trước ngày thanh toán đã thỏa thuận.");
             var before=response(i);i.setDueDate(input.getDueDate());c.setBillingVersion(c.getBillingVersion()+1);
             invoices.flush();audit(i,owner.getId(),InvoiceEvent.Action.UPDATED,input.getReason().strip(),before);return response(i);
         }
@@ -246,7 +246,7 @@ public class InvoiceService {
         var history=invoices.findByContractIdAndStatusNotOrderByPeriodAsc(c.getId(),RentalInvoice.Status.CANCELLED);
         var draft=history.stream().filter(i->i.getKind()!=RentalInvoice.Kind.UTILITY&&i.getStatus()==RentalInvoice.Status.DRAFT).findFirst().orElse(null);
         var next=draft==null?RentSchedule.next(c,history):new RentSchedule.Period(start(draft),end(draft),draft.getRentMonths());
-        LocalDate due=next==null?null:next.start().withDayOfMonth(c.getRentPaymentDay());
+        LocalDate due=next==null?null:c.isOneMonthRentPackage()?c.getStartDate():next.start().withDayOfMonth(c.getRentPaymentDay());
         if(draft!=null)due=draft.getDueDate();
         String mode="SEND";
         return new RentBillingContext(c.getId().toString(),c.getRentCycleMonths(),next==null?null:next.start(),next==null?null:next.end(),next==null?0:next.months(),
@@ -266,8 +266,8 @@ public class InvoiceService {
         expectedSource(invoice);
         return sendLocked(invoice,owner.getId(),false);
     }
-    private static LocalDate billingToday(){return LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));}
-    private static void requireRentSendWindow(LocalDate due){
+    private LocalDate billingToday(){return utilityDates.today();}
+    private void requireRentSendWindow(LocalDate due){
         if(billingToday().isBefore(due.minusDays(7)))throw conflict("RENT_SEND_TOO_EARLY","Chỉ gửi hóa đơn tiền phòng từ 7 ngày trước hạn đóng. Ngày bắt đầu gửi: "+due.minusDays(7)+".");
     }
     private RentalInvoice createRentLocked(RentalContract c,RentBillingContext context,LocalDate due,boolean automated){
@@ -283,12 +283,24 @@ public class InvoiceService {
         c.setBillingVersion(c.getBillingVersion()+1);invoices.saveAndFlush(i);audit(i,c.getApartment().getProperty().getOwner().getId(),InvoiceEvent.Action.CREATED,automated?"Tự động lập tiền thuê theo chu kỳ hợp đồng":null,null);
         return i;
     }
+    /** Called inside activation's transaction; the contract lock and unique invoice key prevent double billing. */
+    @Transactional
+    public void prepareInitialOneMonthRent(Long id){
+        var c=contracts.lockById(id).orElseThrow(InvoiceService::missing);entities.refresh(c);
+        if(c.getStatus()!=RentalContract.Status.ACTIVE||!c.isOneMonthRentPackage()||billingToday().isBefore(c.getStartDate())||exitGuard.blocks(id))return;
+        var context=rentContext(c);
+        if(context.coverageStart()==null)return;
+        RentalInvoice invoice=context.existingDraftId()==null?createRentLocked(c,context,c.getStartDate(),true)
+            :invoices.findById(Long.valueOf(context.existingDraftId())).orElseThrow(InvoiceService::missing);
+        expectedSource(invoice);sendLocked(invoice,c.getApartment().getProperty().getOwner().getId(),true);
+    }
     @Transactional(readOnly=true)
     public java.util.List<Long> scheduledRentContracts(){return contracts.findActiveBillingIds();}
     @Transactional
     public void prepareScheduledRent(Long id){
         var c=contracts.lockById(id).orElseThrow(InvoiceService::missing);entities.refresh(c);
         if(c.getStatus()!=RentalContract.Status.ACTIVE||exitGuard.blocks(id)||c.getApartment().getProperty().getOwner().getStatus()!=com.ancu.proptech.model.auth.AuthAccount.Status.ACTIVE)return;
+        if(c.isOneMonthRentPackage()){prepareInitialOneMonthRent(id);return;}
         var context=rentContext(c);var today=billingToday();
         if(context.coverageStart()==null||today.isBefore(context.dueDate().minusDays(7))||today.isAfter(context.dueDate()))return;
         RentalInvoice invoice;

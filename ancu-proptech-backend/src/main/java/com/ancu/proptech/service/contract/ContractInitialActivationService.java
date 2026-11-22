@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 /** A fully signed first lease reserves its apartment until its agreed start date. */
 @Service @RequiredArgsConstructor
 public class ContractInitialActivationService {
+    private final com.ancu.proptech.service.billing.InvoiceService rentInvoices;
     private final ContractDraftRepository drafts;
     private final RentalContractRepository contracts;
     private final RentalRequestRepository requests;
@@ -51,6 +52,7 @@ public class ContractInitialActivationService {
         }
         contract.setStatus(RentalContract.Status.ACTIVE);apartment.setAvailability(Apartment.Availability.OCCUPIED);
         contracts.saveAndFlush(contract);apartments.flush();
+        if(contract.isOneMonthRentPackage())rentInvoices.prepareInitialOneMonthRent(contract.getId());
     }
     private static ApiException blocked(){return new ApiException(HttpStatus.CONFLICT,"CONTRACT_ACTIVATION_BLOCKED","Chưa thể chuyển hiệu lực. Cần kiểm tra lựa chọn thuê, phòng, tài khoản và quyền cho thuê.");}
 }

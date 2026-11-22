@@ -150,7 +150,7 @@ public class ContractDraftService {
         if(input.version()!=d.getContentVersion()||!contentHash(d).equals(input.contentHash()))throw stale();
         if(!input.consent())throw new ApiException(HttpStatus.BAD_REQUEST,"CONSENT_REQUIRED","Bạn cần đồng ý nội dung trước khi ký.");
         if(owner?d.getOwnerSignedAt()!=null:d.getCustomerSignedAt()!=null)throw conflict("ALREADY_SIGNED","Bạn đã ký hợp đồng này.");
-        requireStartNotPast(c.getStartDate());
+        requireRentalDates(c.getStartDate(),c.getEndDate());
         SignatureImage.normalize(input.signature());
         cancellationGuard.requireOpen(d.getRentalRequest().getId());
         return signatureOtp.issue(account.getId(),ActionOtpService.CONTRACT,
@@ -182,7 +182,7 @@ public class ContractDraftService {
         if(!input.consent()) throw new ApiException(HttpStatus.BAD_REQUEST,"CONSENT_REQUIRED","Bạn cần đồng ý nội dung trước khi ký.");
         if((owner && d.getOwnerSignedAt()!=null) || (!owner && d.getCustomerSignedAt()!=null))
             throw conflict("ALREADY_SIGNED","Bạn đã ký hợp đồng này.");
-        requireStartNotPast(c.getStartDate());
+        requireRentalDates(c.getStartDate(),c.getEndDate());
         var apartment=apartments.findForRequest(c.getApartment().getId()).orElseThrow(ContractDraftService::notFound);
         var landlord=apartment.getProperty().getOwner();
         if(landlord.getStatus()!=AuthAccount.Status.ACTIVE || !landlord.hasRole(AuthAccount.Role.OWNER) || !verification.isVerified(landlord))
@@ -228,15 +228,23 @@ public class ContractDraftService {
             : new ContractContextResponse.SuggestedRates(s.getElectricityUnitPrice().toPlainString(),s.getWaterUnitPrice().toPlainString(),s.getInternetFee().toPlainString(),s.getGarbageFee().toPlainString(),s.getWaterBillingMode().name());
     }
     void validateTerms(ContractTerms t) {
-        requireStartNotPast(t.getStartDate());
-        if(t.getStartDate().isAfter(rights.today().plusDays(90)))
+        requireRentalDates(t.getStartDate(),t.getEndDate());
+        if(ContractTermPolicy.oneMonthPackage(t.getStartDate(),t.getEndDate())&&t.getRentCycleMonths()!=1)
+            throw new ApiException(HttpStatus.BAD_REQUEST,"ONE_MONTH_RENT_CYCLE_REQUIRED","Hợp đồng trọn một tháng chỉ được chọn chu kỳ 1 tháng/lần.");
+    }
+    private void requireRentalDates(java.time.LocalDate start,java.time.LocalDate end) {
+        requireStartNotPast(start);
+        if(start.isAfter(rights.today().plusDays(90)))
             throw new ApiException(HttpStatus.BAD_REQUEST,"CONTRACT_START_DATE_TOO_FAR","Chỉ được đặt trước tối đa 90 ngày.");
-        if(!t.getEndDate().isAfter(t.getStartDate())) throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_CONTRACT_DATES","Ngày kết thúc phải sau ngày bắt đầu.");
+        if(!end.isAfter(start)) throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_CONTRACT_DATES","Ngày kết thúc phải sau ngày bắt đầu.");
+        if(!ContractTermPolicy.atLeast30Days(start,end))
+            throw new ApiException(HttpStatus.BAD_REQUEST,"CONTRACT_TERM_TOO_SHORT","Thời hạn thuê tối thiểu phải từ 30 ngày trở lên (tính cả ngày bắt đầu và kết thúc).");
     }
     private void requireStartNotPast(java.time.LocalDate start) {
         if(start.isBefore(rights.today())) throw new ApiException(HttpStatus.BAD_REQUEST,"CONTRACT_START_DATE_IN_PAST","Ngày bắt đầu hợp đồng đã qua. Hãy kiểm tra lại ngày bắt đầu; bản đã có chữ ký cần xử lý hủy theo thỏa thuận trước khi lập lại.");
     }
     void applyContract(RentalContract c,ContractTerms t) {
+        c.setOneMonthRentPackage(ContractTermPolicy.oneMonthPackage(t.getStartDate(),t.getEndDate()));
         c.setRentCycleMonths(t.getRentCycleMonths());c.setRentPaymentDay(t.getPaymentDay());c.setSeparateBillingAgreed(true);
         c.setStartDate(t.getStartDate());c.setEndDate(t.getEndDate());c.setMonthlyRent(t.getMonthlyRent());
         c.setWaterBillingMode(t.getWaterBillingMode());c.setOccupantCount(t.getOccupantCount());c.setInternetFee(t.getInternetFee());c.setGarbageFee(t.getGarbageFee());
@@ -285,7 +293,7 @@ public class ContractDraftService {
             d.getTemplateType()==null?"APARTMENT":d.getTemplateType(),
             new ContractDraftResponse.Signing(c.getApartment().getProperty().getOwner().getId().toString(),c.getCustomer().getId().toString(),contentHash(d),
                 d.getOwnerSignedAt()!=null && d.getCustomerSignedAt()!=null?"SIGNED":d.getOwnerSignedAt()!=null?"WAITING_CUSTOMER":d.getCustomerSignedAt()!=null?"WAITING_OWNER":"UNSIGNED",
-                d.getOwnerSignedAt(),d.getCustomerSignedAt(),image(d.getOwnerSignature()),image(d.getCustomerSignature()),signatureOtp.required()),lifecycle(c),c.getWaterBillingMode().name(),c.getOccupantCount(),c.getInternetFee().toPlainString(),c.getGarbageFee().toPlainString(),cancellationGuard.state(d.getRentalRequest().getId()),c.getRentCycleMonths(),c.isSeparateBillingAgreed());
+                d.getOwnerSignedAt(),d.getCustomerSignedAt(),image(d.getOwnerSignature()),image(d.getCustomerSignature()),signatureOtp.required()),lifecycle(c),c.getWaterBillingMode().name(),c.getOccupantCount(),c.getInternetFee().toPlainString(),c.getGarbageFee().toPlainString(),cancellationGuard.state(d.getRentalRequest().getId()),c.getRentCycleMonths(),c.isSeparateBillingAgreed(),c.isOneMonthRentPackage());
     }
     private ContractDraftResponse.Lifecycle lifecycle(RentalContract c) {
         var today = rights.today();
@@ -314,6 +322,7 @@ public class ContractDraftService {
         // Legacy contracts retain the exact hash when no new charges/mode were agreed.
         if(c.getWaterBillingMode()!=com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.METERED || c.getInternetFee().signum()!=0 || c.getGarbageFee().signum()!=0)
             content+="|charges-v1|"+c.getWaterBillingMode()+"|"+c.getOccupantCount()+"|"+c.getInternetFee().stripTrailingZeros().toPlainString()+"|"+c.getGarbageFee().stripTrailingZeros().toPlainString();
+        if(c.isOneMonthRentPackage())content+="|one-month-rent-package-v1";
         if(c.isSeparateBillingAgreed())content+="|rent-billing-v1|"+c.getRentCycleMonths()+"|WHOLE_MONTHS_MANUAL_PARTIAL";
         try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content.getBytes(StandardCharsets.UTF_8)));}
         catch(NoSuchAlgorithmException e){throw new IllegalStateException(e);}

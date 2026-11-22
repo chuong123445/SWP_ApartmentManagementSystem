@@ -205,7 +205,7 @@
             }
           },
           "400": {
-            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "description": "Validation/authentication/ownership/state/version conflict as applicable. Date policy: CONTRACT_START_DATE_TOO_FAR (>today+90), CONTRACT_TERM_TOO_SHORT (<30 inclusive days); ONE_MONTH_RENT_CYCLE_REQUIRED for a package cycle other than 1 on draft writes.",
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -358,7 +358,7 @@
             }
           },
           "400": {
-            "description": "Validation/authentication/ownership/state/version conflict as applicable.",
+            "description": "Validation/authentication/ownership/state/version conflict as applicable. Date policy: CONTRACT_START_DATE_TOO_FAR (>today+90), CONTRACT_TERM_TOO_SHORT (<30 inclusive days); ONE_MONTH_RENT_CYCLE_REQUIRED for a package cycle other than 1 on draft writes.",
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -1147,7 +1147,7 @@
             }
           },
           "400": {
-            "description": "Invalid input/consent/rejection reason"
+            "description": "Invalid input/consent/rejection reason Date policy: CONTRACT_START_DATE_TOO_FAR (>today+90), CONTRACT_TERM_TOO_SHORT (<30 inclusive days); ONE_MONTH_RENT_CYCLE_REQUIRED for a package cycle other than 1 on draft writes."
           },
           "401": {
             "description": "No current authenticated session"
@@ -1437,7 +1437,7 @@
             }
           },
           "400": {
-            "description": "Invalid input/consent, or CONTRACT_START_DATE_IN_PAST at actual OTP issuance/signing time."
+            "description": "Invalid input/consent, or CONTRACT_START_DATE_IN_PAST at actual OTP issuance/signing time. Date policy: CONTRACT_START_DATE_TOO_FAR (>today+90), CONTRACT_TERM_TOO_SHORT (<30 inclusive days); ONE_MONTH_RENT_CYCLE_REQUIRED for a package cycle other than 1 on draft writes."
           },
           "401": {
             "description": "No current authenticated session"
@@ -1607,7 +1607,7 @@
             }
           },
           "400": {
-            "description": "Invalid input/consent, or CONTRACT_START_DATE_IN_PAST at actual OTP issuance/signing time."
+            "description": "Invalid input/consent, or CONTRACT_START_DATE_IN_PAST at actual OTP issuance/signing time. Date policy: CONTRACT_START_DATE_TOO_FAR (>today+90), CONTRACT_TERM_TOO_SHORT (<30 inclusive days); ONE_MONTH_RENT_CYCLE_REQUIRED for a package cycle other than 1 on draft writes."
           },
           "401": {
             "description": "No current authenticated session"
@@ -1667,12 +1667,12 @@
           "startDate": {
             "type": "string",
             "format": "date",
-            "description": "Must be today or later in Asia/Ho_Chi_Minh on create/update, including renewal. Past start dates return HTTP 400 CONTRACT_START_DATE_IN_PAST. Existing saved history is unchanged. For draft create/update: today <= startDate <= today+90 days, inclusive, Asia/Ho_Chi_Minh. Existing signed content stays locked; viewing historical contracts is unaffected."
+            "description": "Must be today or later in Asia/Ho_Chi_Minh on create/update, including renewal. Past start dates return HTTP 400 CONTRACT_START_DATE_IN_PAST. Existing saved history is unchanged. For draft create/update: today <= startDate <= today+90 days, inclusive, Asia/Ho_Chi_Minh. Existing signed content stays locked; viewing historical contracts is unaffected. Date policy is also checked before issuing signature OTP and before signing, including legacy drafts."
           },
           "endDate": {
             "type": "string",
             "format": "date",
-            "description": "Strictly after startDate."
+            "description": "Strictly after startDate. Draft create/update/sign requires at least 30 days including both endpoints (endDate >= startDate+29 days)."
           },
           "monthlyRent": {
             "type": "string",
@@ -1759,12 +1759,12 @@
           "startDate": {
             "type": "string",
             "format": "date",
-            "description": "Must be today or later in Asia/Ho_Chi_Minh on create/update, including renewal. Past start dates return HTTP 400 CONTRACT_START_DATE_IN_PAST. Existing saved history is unchanged. For draft create/update: today <= startDate <= today+90 days, inclusive, Asia/Ho_Chi_Minh. Existing signed content stays locked; viewing historical contracts is unaffected."
+            "description": "Must be today or later in Asia/Ho_Chi_Minh on create/update, including renewal. Past start dates return HTTP 400 CONTRACT_START_DATE_IN_PAST. Existing saved history is unchanged. For draft create/update: today <= startDate <= today+90 days, inclusive, Asia/Ho_Chi_Minh. Existing signed content stays locked; viewing historical contracts is unaffected. Date policy is also checked before issuing signature OTP and before signing, including legacy drafts."
           },
           "endDate": {
             "type": "string",
             "format": "date",
-            "description": "Strictly after startDate."
+            "description": "Strictly after startDate. Draft create/update/sign requires at least 30 days including both endpoints (endDate >= startDate+29 days)."
           },
           "monthlyRent": {
             "type": "string",
@@ -2086,12 +2086,12 @@
           "startDate": {
             "type": "string",
             "format": "date",
-            "description": " For draft create/update: today <= startDate <= today+90 days, inclusive, Asia/Ho_Chi_Minh. Existing signed content stays locked; viewing historical contracts is unaffected."
+            "description": " For draft create/update: today <= startDate <= today+90 days, inclusive, Asia/Ho_Chi_Minh. Existing signed content stays locked; viewing historical contracts is unaffected. Date policy is also checked before issuing signature OTP and before signing, including legacy drafts."
           },
           "endDate": {
             "type": "string",
             "format": "date",
-            "description": "Strictly after startDate."
+            "description": "Strictly after startDate. Draft create/update/sign requires at least 30 days including both endpoints (endDate >= startDate+29 days)."
           },
           "monthlyRent": {
             "type": "string",
@@ -2217,6 +2217,11 @@
           "separateBillingAgreed": {
             "type": "boolean",
             "description": "New signed billing terms are hash-bound. Legacy records receive monthly operational defaults without rewriting their signed content."
+          },
+          "oneMonthRentPackage": {
+            "type": "boolean",
+            "description": "Server-owned opt-in frozen on explicit draft creation/update under date-policy v2. True for exactly 30 inclusive days or exactly one calendar month with at least 30 days. One RENT invoice covers the entire term, equals monthlyRent, due at startDate, created/sent atomically on activation. Legacy contracts default false.",
+            "readOnly": true
           }
         },
         "required": [
@@ -2703,11 +2708,13 @@
           },
           "challengeId": {
             "type": "string",
-            "maxLength": 36
+            "maxLength": 36,
+            "description": " Required only when signing.otpRequired is true."
           },
           "code": {
             "type": "string",
-            "pattern": "^[0-9]{6}$"
+            "pattern": "^[0-9]{6}$",
+            "description": " Required only when signing.otpRequired is true."
           }
         },
         "required": [
@@ -2770,11 +2777,12 @@
           "startDate": {
             "type": "string",
             "format": "date",
-            "description": " For draft create/update: today <= startDate <= today+90 days, inclusive, Asia/Ho_Chi_Minh. Existing signed content stays locked; viewing historical contracts is unaffected."
+            "description": " For draft create/update: today <= startDate <= today+90 days, inclusive, Asia/Ho_Chi_Minh. Existing signed content stays locked; viewing historical contracts is unaffected. Date policy is also checked before issuing signature OTP and before signing, including legacy drafts."
           },
           "endDate": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": " Draft create/update/sign requires at least 30 days including both endpoints (endDate >= startDate+29 days)."
           },
           "createdAt": {
             "type": "string",

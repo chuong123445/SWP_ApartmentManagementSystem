@@ -73,7 +73,7 @@ export function ContractDocument({ draft, onUpdated, onRemoved }: { draft: Contr
       </div>
       <p className="text-xs text-slate-500">PDF lấy từ bản hợp đồng đã lưu trên máy chủ. Hai bên chỉ được ký bằng chính tài khoản tham gia hợp đồng.</p>
     </div>
-    <p className="text-sm">Chu kỳ tiền thuê {draft.rentCycleMonths??1} tháng / lần · Điện nước và dịch vụ hàng tháng.</p>
+    <p className="text-sm">{draft.oneMonthRentPackage?`Tiền thuê trọn một tháng cho toàn bộ kỳ thuê · Một hóa đơn, hạn đóng ${draft.startDate}. Điện nước và dịch vụ đối chiếu riêng.`:<>Chu kỳ tiền thuê {draft.rentCycleMonths??1} tháng / lần · Điện nước và dịch vụ hàng tháng.</>}</p>
     {notice && <p role="status" className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm text-emerald-800">{notice}</p>}
     {error && <p role="alert" className="bg-rose-50 rounded-lg p-3 text-sm text-rose-700">{error}</p>}
     {pdfLoading && <p role="status" className="p-4 text-slate-500">Đang tạo và tải bản PDF...</p>}
