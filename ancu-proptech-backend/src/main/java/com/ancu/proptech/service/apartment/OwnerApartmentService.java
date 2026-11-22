@@ -41,11 +41,11 @@ public class OwnerApartmentService {
         apartments.flush();return response(a);
     }
     @Transactional public OwnerApartmentResponse createApplication(Jwt jwt,OwnerApartmentCreate input){return createInternal(jwt,input,true);}
-    @Transactional(readOnly=true) public List<OwnerApartmentResponse> selfList(Jwt jwt){return apartments.findByPropertyOwnerIdOrderByCreatedAtAscIdAsc(assetAccess.read(jwt).getId()).stream().map(this::response).toList();}
+    @Transactional(readOnly=true) public List<OwnerApartmentResponse> selfList(Jwt jwt){return apartments.findByPropertyOwnerIdOrderByCreatedAtAscIdAsc(assetAccess.read(jwt).getId()).stream().filter(a->a.getProperty().getApprovalStatus()!=com.ancu.proptech.model.property.Property.ApprovalStatus.WITHDRAWN).map(this::response).toList();}
     @Transactional(readOnly = true)
     public List<OwnerApartmentResponse> list(Jwt jwt) {
         var owner = access.owner(jwt);
-        return apartments.findByPropertyOwnerIdOrderByCreatedAtAscIdAsc(owner.getId()).stream().map(this::response).toList();
+        return apartments.findByPropertyOwnerIdOrderByCreatedAtAscIdAsc(owner.getId()).stream().filter(a->a.getProperty().getApprovalStatus()!=com.ancu.proptech.model.property.Property.ApprovalStatus.WITHDRAWN).map(this::response).toList();
     }
     @Transactional
     public OwnerApartmentResponse create(Jwt jwt, OwnerApartmentCreate input) {
@@ -66,6 +66,7 @@ public class OwnerApartmentService {
         var owner = application?applicantAccess.verified(jwt):access.owner(jwt);
         var property = properties.findOwnedForCreation(input.getPropertyId(), owner.getId()).orElseThrow(() ->
                 new ApiException(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Không tìm thấy tài sản thuộc tài khoản của bạn."));
+        if(property.getApprovalStatus()==Property.ApprovalStatus.WITHDRAWN)throw new ApiException(HttpStatus.CONFLICT,"PROPERTY_WITHDRAWN","Hồ sơ đã được rút. Hãy tạo hồ sơ tài sản mới.");
         boolean unfinishedListing=listingDrafts.existsByPropertyIdAndCompletedFalse(property.getId());
         if(unfinishedListing&&!listingCompletion)
             throw new ApiException(HttpStatus.CONFLICT,"LISTING_INCOMPLETE","Tài sản đang được soạn trong hồ sơ đăng tải. Hãy thêm hoặc sửa căn/phòng ngay trong bản nháp đó, rồi hoàn tất hồ sơ.");

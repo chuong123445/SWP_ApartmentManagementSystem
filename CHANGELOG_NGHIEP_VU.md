@@ -47,3 +47,8 @@
 - Tối thiểu30ngày tính cả hai đầu; kiểm tra khi tạo/sửa/phátOTP/ký, kể cả ký local không OTP. Đúng30ngày hoặc đúng1thánglịch đủ30ngày được lưu gói trọn tháng, chỉ chu kỳ1tháng. Khi đủ chữ ký và đến ngày thuê, giao dịch kích hoạt thuê đầu/thuê tiếp tạo+gửi1hóa đơn RENT bằng monthlyRent, bao phủ đủ kỳ, hạn đóng ngày bắt đầu; retry không thu trùng. Điện nước riêng và mục4 giữ nguyên.
 - V70 cờ mặc địnhfalse bảo toàn hợp đồng cũ; nội dung gói được đưa vào hash/PDF/giao diện. Nháp sửa rõ ràng mới áp dụng; không sửa lịch sử đã ký/hoá đơn SENT. Chi tiết [quy tắc ngày hợp đồng](docs/decisions/contract-date-policy-v2.md).
 - 130backendPASS/2scheduler-date-skipped,170frontend/TypeScript/build và4Playwrightdesktop-mobile API fixturePASS; ảnh mobile đã xem. Kiểm tra khoản tiền, phạm vi kỳ, hạn đóng, một thông báo, đúng tenant, chờ hiệu lực/gia hạn/idempotence, chống bypass ngày và hồi quy hợp đồng cũ. Local-only, không push/main, không chỉnh DB ứng dụng/gửi email thật. Mục1–2: ce35d9eb; commit mục3 tra git log theo fix(billing): thu trọn tháng cho hợp đồng đủ 30 ngày.
+
+## Xóa nháp và rút hồ sơ tài sản — 22/11/2026
+
+- Thêm nút xóa nháp/rút chờduyệt ở quản lý tài sản và hồ sơ. Property/dossier WITHDRAWN, V71 timestamp; ẩn khỏi danh sách/inventory và giải phóng suấtnháp, giữ chứng cứ/lịch sử riêng tư. Khóa cùng Admin, chống foreign/stale/reviewcũ/retry; không xóa tài sản đãduyệt/đang sửdụng. Chặn thêm căn/hoàn tất lại hồ sơ đã rút.
+- 39backendPASS (9Listing,18Dossier,7FinancialSummary,5OwnerApartment); TypeScript170frontend/8MCPdesktopmobilePASS vớiAPIfixture và cancel/409/reload/retry, ảnhmobileđãxem. Không appDB/provider/push. Xem docs/decisions/property-withdrawal-v1.md.

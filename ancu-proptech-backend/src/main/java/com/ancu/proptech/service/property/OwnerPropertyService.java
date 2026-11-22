@@ -23,7 +23,7 @@ public class OwnerPropertyService {
     private final com.ancu.proptech.repository.property.PropertyExternalImportRepository imports;
     private final PropertyApplicantAccess applicantAccess;
     private final PropertyImageService images;
-    @Transactional(readOnly=true) public List<OwnerPropertyResponse> selfList(Jwt jwt){return properties.findByOwnerIdOrderByNameAscIdAsc(assetAccess.read(jwt).getId()).stream().map(this::response).toList();}
+    @Transactional(readOnly=true) public List<OwnerPropertyResponse> selfList(Jwt jwt){return properties.findByOwnerIdOrderByNameAscIdAsc(assetAccess.read(jwt).getId()).stream().filter(p->p.getApprovalStatus()!=Property.ApprovalStatus.WITHDRAWN).map(this::response).toList();}
     @Transactional public OwnerPropertyCreated createSource(Jwt jwt,OwnerPropertyCreate input){return createInternal(jwt,input,com.ancu.proptech.model.property.PropertyDossier.RightType.OWNERSHIP);}
     @Transactional public OwnerPropertyCreated createApplication(Jwt jwt,PropertyApplicationCreate input){
         if(input.getRightType()==com.ancu.proptech.model.property.PropertyDossier.RightType.OWNERSHIP)
@@ -31,12 +31,12 @@ public class OwnerPropertyService {
         return createInternal(jwt,input,input.getRightType());
     }
     @Transactional(readOnly=true) public List<OwnerPropertyResponse> applications(Jwt jwt){
-        var a=applicantAccess.verified(jwt);return properties.findByOwnerIdOrderByNameAscIdAsc(a.getId()).stream().filter(Property::isOnboardingApplication).map(this::response).toList();
+        var a=applicantAccess.verified(jwt);return properties.findByOwnerIdOrderByNameAscIdAsc(a.getId()).stream().filter(p->p.getApprovalStatus()!=Property.ApprovalStatus.WITHDRAWN).filter(Property::isOnboardingApplication).map(this::response).toList();
     }
     @Transactional(readOnly = true)
     public List<OwnerPropertyResponse> list(Jwt jwt) {
         var owner = access.owner(jwt);
-        return properties.findByOwnerIdOrderByNameAscIdAsc(owner.getId()).stream()
+        return properties.findByOwnerIdOrderByNameAscIdAsc(owner.getId()).stream().filter(p->p.getApprovalStatus()!=Property.ApprovalStatus.WITHDRAWN)
                 .map(this::response).toList();
     }
 

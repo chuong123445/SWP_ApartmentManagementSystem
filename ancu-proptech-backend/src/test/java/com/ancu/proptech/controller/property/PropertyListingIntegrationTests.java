@@ -133,4 +133,35 @@ class PropertyListingIntegrationTests {
         mvc.perform(post("/api/v1/owner/apartments").header("Authorization","Bearer "+token).contentType("application/json").content(json.writeValueAsString(input))).andExpect(status().isBadRequest());
         assertEquals(0,apartments.countByPropertyId(id));assertFalse(drafts.findById(id).orElseThrow().isCompleted());
     }
+    private org.springframework.test.web.servlet.ResultActions withdraw(String id,String credential,long version)throws Exception{
+        return mvc.perform(post("/api/v1/me/rental-properties/"+id+"/withdraw").header("Authorization","Bearer "+credential).contentType("application/json").content("{\"version\":"+version+"}"));
+    }
+    @Test void accidentalDraftCanBeRemovedPrivatelyAndRetriedWithoutUsingDraftQuota()throws Exception{
+        String key=UUID.randomUUID().toString(),id=json.readTree(start(key)).path("propertyId").asString();
+        withdraw(id,otherToken,0).andExpect(status().isNotFound());withdraw(id,token,99).andExpect(status().isConflict());
+        withdraw(id,token,0).andExpect(status().isNoContent());withdraw(id,token,0).andExpect(status().isNoContent());
+        assertEquals("WITHDRAWN",properties.findById(Long.valueOf(id)).orElseThrow().getApprovalStatus().name());
+        assertNotNull(properties.findById(Long.valueOf(id)).orElseThrow().getWithdrawnAt());assertTrue(drafts.findById(Long.valueOf(id)).orElseThrow().isCompleted());
+        mvc.perform(get("/api/v1/me/listing-drafts").header("Authorization","Bearer "+token)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get("/api/v1/me/properties").header("Authorization","Bearer "+token)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(put("/api/v1/me/listing-drafts/"+id).header("Authorization","Bearer "+token).contentType("application/json").content("{\"version\":0,\"payload\":{}}"))
+            .andExpect(status().isNotFound());
+        mvc.perform(post("/api/v1/me/listing-drafts").header("Authorization","Bearer "+token).contentType("application/json").content(json.writeValueAsString(Map.of("requestKey",key,"rightType","AUTHORIZATION"))))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("LISTING_WITHDRAWN"));
+        start(UUID.randomUUID().toString());
+    }
+    @Test void pendingWithdrawalRetainsSubmissionAndPreventsStaleAdminApproval()throws Exception{
+        String id=json.readTree(start(UUID.randomUUID().toString())).path("propertyId").asString();var p=properties.findById(Long.valueOf(id)).orElseThrow();
+        p.setApprovalStatus(com.ancu.proptech.model.property.Property.ApprovalStatus.PENDING_APPROVAL);properties.saveAndFlush(p);
+        var d=new com.ancu.proptech.model.property.PropertyDossier();d.setProperty(p);d.setRightType(p.getRightType());d.setApplicantName(actor.getFullName());d.setBank("Test");d.setAccountNumber("123");d.setAccountHolderName(actor.getFullName());d.setStatus(com.ancu.proptech.model.property.PropertyDossier.Status.PENDING_APPROVAL);d.setSubmittedAt(java.time.Instant.now());d=dossiers.saveAndFlush(d);
+        withdraw(id,token,p.getVersion()).andExpect(status().isNoContent());assertEquals("WITHDRAWN",dossiers.findById(d.getId()).orElseThrow().getStatus().name());
+        var admin=account();admin.setRole(AuthAccount.Role.ADMIN);accounts.saveAndFlush(admin);String adminToken=auth.login(admin.getEmail(),"Listing-test!1234").tokens().accessToken();
+        mvc.perform(post("/api/v1/admin/property-dossiers/"+d.getId()+"/decisions").header("Authorization","Bearer "+adminToken).contentType("application/json").content("{\"version\":0,\"decision\":\"APPROVE\",\"rightsConfirmed\":true}"))
+            .andExpect(status().isConflict());
+        assertEquals("WITHDRAWN",p.getApprovalStatus().name());assertTrue(dossiers.existsById(d.getId()));
+    }
+    @Test void approvedPropertyCannotBeRemovedByWithdrawal()throws Exception{
+        String id=json.readTree(start(UUID.randomUUID().toString())).path("propertyId").asString();var p=properties.findById(Long.valueOf(id)).orElseThrow();p.setApprovalStatus(com.ancu.proptech.model.property.Property.ApprovalStatus.APPROVED);properties.saveAndFlush(p);
+        withdraw(id,token,p.getVersion()).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PROPERTY_ALREADY_APPROVED"));assertNull(p.getWithdrawnAt());
+    }
 }
