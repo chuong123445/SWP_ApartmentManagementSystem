@@ -50,6 +50,7 @@ export interface HandoverInput {
   electricityStartReading?: string; waterStartReading?: string;
 }
 export interface ContractSigning {
+  otpRequired?: boolean;
   ownerAccountId: string; customerAccountId: string; contentHash: string;
   state: 'UNSIGNED' | 'WAITING_OWNER' | 'WAITING_CUSTOMER' | 'SIGNED';
   ownerSignedAt: string | null; customerSignedAt: string | null;

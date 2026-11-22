@@ -29,7 +29,7 @@ import java.util.*;
 
 @Service @RequiredArgsConstructor
 public class ContractDraftService {
-    private final ActionOtpService signatureOtp;
+    private final SigningOtpPolicy signatureOtp;
     private final ContractExitGuard exitGuard;
     static final int RENEWAL_REQUEST_DAYS = 10;
     private final com.ancu.proptech.service.rental.SelectionCancellationGuard cancellationGuard;
@@ -283,7 +283,7 @@ public class ContractDraftService {
             d.getTemplateType()==null?"APARTMENT":d.getTemplateType(),
             new ContractDraftResponse.Signing(c.getApartment().getProperty().getOwner().getId().toString(),c.getCustomer().getId().toString(),contentHash(d),
                 d.getOwnerSignedAt()!=null && d.getCustomerSignedAt()!=null?"SIGNED":d.getOwnerSignedAt()!=null?"WAITING_CUSTOMER":d.getCustomerSignedAt()!=null?"WAITING_OWNER":"UNSIGNED",
-                d.getOwnerSignedAt(),d.getCustomerSignedAt(),image(d.getOwnerSignature()),image(d.getCustomerSignature())),lifecycle(c),c.getWaterBillingMode().name(),c.getOccupantCount(),c.getInternetFee().toPlainString(),c.getGarbageFee().toPlainString(),cancellationGuard.state(d.getRentalRequest().getId()),c.getRentCycleMonths(),c.isSeparateBillingAgreed());
+                d.getOwnerSignedAt(),d.getCustomerSignedAt(),image(d.getOwnerSignature()),image(d.getCustomerSignature()),signatureOtp.required()),lifecycle(c),c.getWaterBillingMode().name(),c.getOccupantCount(),c.getInternetFee().toPlainString(),c.getGarbageFee().toPlainString(),cancellationGuard.state(d.getRentalRequest().getId()),c.getRentCycleMonths(),c.isSeparateBillingAgreed());
     }
     private ContractDraftResponse.Lifecycle lifecycle(RentalContract c) {
         var today = rights.today();

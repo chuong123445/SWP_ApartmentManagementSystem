@@ -31,6 +31,7 @@ class ContractDraftIntegrationTests {
  @org.springframework.test.context.bean.override.mockito.MockitoBean com.ancu.proptech.service.auth.EmailOtpSender otpSender;
  @Autowired com.ancu.proptech.repository.auth.ActionOtpChallengeRepository otpChallenges;
  private String otpCode;
+ @org.springframework.test.context.bean.override.mockito.MockitoSpyBean com.ancu.proptech.service.contract.SigningOtpPolicy signingOtpPolicy;
  @BeforeEach void otpSetup(){org.mockito.Mockito.when(otpSender.isConfigured()).thenReturn(true);org.mockito.Mockito.doAnswer(call->{otpCode=call.getArgument(1);return null;}).when(otpSender).sendAction(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString());}
  private void expireOtpCooldown(){otpChallenges.findAll().forEach(c->{c.setCreatedAt(Instant.now().minusSeconds(1000));});otpChallenges.flush();}
 
@@ -683,4 +684,24 @@ class ContractDraftIntegrationTests {
         assertEquals("SIGNED",JsonPath.read(readContract(id(saved)),"$.signing.state"));assertEquals(JsonPath.<String>read(saved,"$.signing.contentHash"),JsonPath.<String>read(readContract(id(saved)),"$.signing.contentHash"));
     }
 
+
+    @Test void localTestModeSignsBothPartiesWithoutOtpAndStillChecksDocumentConsentAndDate()throws Exception{
+        org.mockito.Mockito.doReturn(false).when(signingOtpPolicy).required();
+        String saved=create();String cid=id(saved);String hash=JsonPath.read(saved,"$.signing.contentHash");
+        assertFalse(JsonPath.<Boolean>read(saved,"$.signing.otpRequired"));
+        var input=new LinkedHashMap<String,Object>(Map.of("version",0,"contentHash",hash,"signature",signature(),"consent",true));
+        String url="/api/v1/contracts/"+cid;
+        mvc.perform(post(url+"/signature-otp").header("Authorization",token).contentType("application/json").content(json.writeValueAsString(input))).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("SIGNING_OTP_DISABLED"));
+        input.put("consent",false);mvc.perform(post(url+"/signatures").header("Authorization",token).contentType("application/json").content(json.writeValueAsString(input))).andExpect(status().isBadRequest());
+        input.put("consent",true);input.put("contentHash","b".repeat(64));mvc.perform(post(url+"/signatures").header("Authorization",token).contentType("application/json").content(json.writeValueAsString(input))).andExpect(status().isConflict());
+        input.put("contentHash",hash);mvc.perform(post(url+"/signatures").header("Authorization",otherToken).contentType("application/json").content(json.writeValueAsString(input))).andExpect(status().isNotFound());
+        org.mockito.Mockito.doReturn(today().plusDays(1)).when(signingDates).today();
+        mvc.perform(post(url+"/signatures").header("Authorization",token).contentType("application/json").content(json.writeValueAsString(input))).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("CONTRACT_START_DATE_IN_PAST"));
+        org.mockito.Mockito.doReturn(today()).when(signingDates).today();
+        mvc.perform(post(url+"/signatures").header("Authorization",token).contentType("application/json").content(json.writeValueAsString(input))).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DRAFT"));
+        mvc.perform(post(url+"/signatures").header("Authorization",customerToken).contentType("application/json").content(json.writeValueAsString(input))).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"));
+        assertEquals(Apartment.Availability.OCCUPIED,request.getApartment().getAvailability());
+        org.mockito.Mockito.verify(otpSender,org.mockito.Mockito.never()).sendAction(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString());
+        assertTrue(otpChallenges.findAll().stream().noneMatch(c->Set.of(owner.getId(),customer.getId()).contains(c.getAccountId())));
+    }
 }

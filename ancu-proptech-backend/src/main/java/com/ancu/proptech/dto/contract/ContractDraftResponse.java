@@ -11,5 +11,5 @@ public record ContractDraftResponse(@com.fasterxml.jackson.annotation.JsonFormat
         boolean keysReturned,String conditionNotes,String depositAmount,String deductionAmount,String utilityAmount,String refundAmount,
         String extraAmountDue,Instant ownerConfirmedAt,Instant customerConfirmedAt) {}
     public record Signing(String ownerAccountId,String customerAccountId,String contentHash,String state,
-            Instant ownerSignedAt,Instant customerSignedAt,String ownerSignature,String customerSignature) {}
+            Instant ownerSignedAt,Instant customerSignedAt,String ownerSignature,String customerSignature,boolean otpRequired) {}
 }

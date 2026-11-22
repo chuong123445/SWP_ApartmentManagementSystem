@@ -25,3 +25,8 @@
 - Chưa sửa runtime: RA14 thêm căn đăng được giá thuê 0/thiếu đơn giá; RA15 publication chưa kiểm tra lại ảnh riêng; RA16 thêm căn ngoài wizard có thể làm wizard SINGLE_UNIT không hoàn tất. Cần thống nhất policy phát hành và quyền quản lý danh sách căn lúc đang soạn.
 - 55 backend đạt (52 hồi quy + 3 tái hiện), 6 Playwright desktop/mobile cho ba hình thức đạt; giấy mẫu 6 PDF đã mở lại/render/xem. Chi tiết tại [báo cáo tạo/thêm căn hộ](docs/reports/apartment-creation-deep-review-2026-11-21.md).
 - Đã tạo 3 bộ **file riêng tư để tự upload** cho Thu Hà: chính chủ, ủy quyền, thuê lại; hai bộ sau chủ gốc chuongaln. Theo lựa chọn file-only, đã gỡ ba nháp tạm và dữ liệu fixture vừa thêm có backup/guard; không để lại nháp hoặc tự duyệt/xác thực, không đưa giấy tờ cá nhân vào Git. Xem đầu ra trong báo cáo; không chạy lại helper Apply.
+
+## K? kh?ng OTP ?? ki?m th? ? 22/11/2026
+
+- Local m?c ??nh t?t OTP k? h?p ??ng/b?n giao; v? ch? k? v? ??ng ? r?i k? tr?c ti?p. B?t l?i b?ng APP_SIGNING_OTP_ENABLED=true. Ngo?i local/test lu?n b?t bu?c OTP; OTP t?i kho?n gi? nguy?n. Backend ki?m tra ??y ?? quy?n/ng?y/hash/version v? hai b?n.
+- ??t 106 backend, 162 frontend, TypeScript/build, 16 Playwright desktop/mobile v?i API fixture; kh?ng g?i email th?t hay s?a d? li?u ?ng d?ng. Xem [quy?t ??nh v? c?u h?nh](docs/decisions/test-signing-without-otp-v1.md). Commit: tra git log theo feat(contract): cho ph?p k? kh?ng OTP khi ki?m th? c?c b?.

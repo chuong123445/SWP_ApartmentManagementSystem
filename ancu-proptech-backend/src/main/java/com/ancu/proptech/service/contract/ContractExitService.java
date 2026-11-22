@@ -28,7 +28,7 @@ import java.util.*;
 
 @Service @RequiredArgsConstructor
 public class ContractExitService {
- private final ActionOtpService signatureOtp;
+ private final SigningOtpPolicy signatureOtp;
  private final ContractExitCaseRepository cases;
  private final ContractExitEventRepository events;
  private final ContractExitEvidenceRepository evidence;
@@ -195,7 +195,7 @@ public class ContractExitService {
  private Signing signing(ContractExitCase root){
   if(root.getDocumentHash()==null)return null;
   String state=root.getOwnerSignedAt()!=null&&root.getCustomerSignedAt()!=null?"SIGNED":root.getOwnerSignedAt()!=null?"WAITING_CUSTOMER":root.getCustomerSignedAt()!=null?"WAITING_OWNER":"UNSIGNED";
-  return new Signing(root.getDocumentHash(),state,root.getOwnerSignedAt(),root.getCustomerSignedAt(),image(root.getOwnerSignature()),image(root.getCustomerSignature()));
+  return new Signing(root.getDocumentHash(),state,root.getOwnerSignedAt(),root.getCustomerSignedAt(),image(root.getOwnerSignature()),image(root.getCustomerSignature()),signatureOtp.required());
  }
  private static void clearSignatures(ContractExitCase root){root.setOwnerSignature(null);root.setCustomerSignature(null);root.setOwnerSignedAt(null);root.setCustomerSignedAt(null);}
  private static String image(byte[] value){return value==null?null:"data:image/png;base64,"+Base64.getEncoder().encodeToString(value);}
