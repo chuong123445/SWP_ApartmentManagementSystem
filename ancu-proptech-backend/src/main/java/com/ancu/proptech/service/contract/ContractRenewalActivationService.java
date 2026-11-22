@@ -37,7 +37,7 @@ public class ContractRenewalActivationService {
         var oldDraft=drafts.findByContractId(c.getRenewalOfContractId()).orElseThrow();
         Long owner=c.getApartment().getProperty().getOwner().getId();
         requests.findForOwnerUpdate(oldDraft.getRentalRequest().getId(),owner).orElseThrow();
-        exitGuard.requireOpen(c.getRenewalOfContractId());
+        exitGuard.requireLeaseChangeOpen(c.getRenewalOfContractId());
         requests.findForOwnerUpdate(d.getRentalRequest().getId(),owner).orElseThrow();
         contracts.lockById(id).orElseThrow();entities.refresh(c);entities.refresh(d);
         if(c.getStatus()!=RentalContract.Status.DRAFT)return;

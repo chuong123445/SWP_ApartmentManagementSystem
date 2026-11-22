@@ -1,0 +1,13 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import {UnilateralTerminationPanel} from '../src/components/contract/UnilateralTerminationPanel';
+import type {ContractExit} from '../src/services/contract/contractExitService';
+const notice={proposerId:'1',reason:'Mất liên lạc',clauseReference:'Điều khoản đã ký',proposedAt:'2026-11-01T00:00:00Z',responseDeadline:'2026-12-01T00:00:00Z',objectionReason:null,respondedAt:null,completionNotes:null,completionEvidenceIds:[],completedAt:null};
+const base={contractId:'42',contractStatus:'ACTIVE',ownerId:'1',customerId:'2',evidence:[],history:[],unilateralState:'PENDING',unilateral:notice} as unknown as ContractExit;
+const render=(data:ContractExit,isOwner=true)=>renderToStaticMarkup(createElement(UnilateralTerminationPanel,{data,isOwner,disabled:false,onUpdated:async()=>{},onReload:()=>{},onBusyChange:()=>{}}));
+test('waiting state shows deadline but no premature finalization button',()=>{const html=render(base);assert.match(html,/30 ngày/);assert.match(html,/Hạn phản hồi/);assert.doesNotMatch(html,/>Xác nhận thu hồi phòng và kết thúc</);});
+test('tenant objection remains visible and offers no owner restart',()=>{const html=render({...base,unilateralState:'OBJECTED',unilateral:{...notice,objectionReason:'Tôi đang ở'}});assert.match(html,/Tôi đang ở/);assert.match(html,/Đã chặn kết thúc đơn phương/);assert.doesNotMatch(html,/>Gửi thông báo chờ 30 ngày</);});
+test('owner sees the blocking reason instead of losing the entry point',()=>{const html=render({...base,unilateral:null,unilateralState:'NONE'});assert.match(html,/Chưa thể gửi thông báo/);assert.equal(render({...base,unilateral:null,unilateralState:'NONE'},false),'');});
+test('older backend response does not invent unilateral permissions',()=>{assert.equal(render({...base,unilateral:undefined,unilateralState:undefined}),'');});

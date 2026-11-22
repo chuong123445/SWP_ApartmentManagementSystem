@@ -52,3 +52,8 @@
 
 - Thêm nút xóa nháp/rút chờduyệt ở quản lý tài sản và hồ sơ. Property/dossier WITHDRAWN, V71 timestamp; ẩn khỏi danh sách/inventory và giải phóng suấtnháp, giữ chứng cứ/lịch sử riêng tư. Khóa cùng Admin, chống foreign/stale/reviewcũ/retry; không xóa tài sản đãduyệt/đang sửdụng. Chặn thêm căn/hoàn tất lại hồ sơ đã rút.
 - 39backendPASS (9Listing,18Dossier,7FinancialSummary,5OwnerApartment); TypeScript170frontend/8MCPdesktopmobilePASS vớiAPIfixture và cancel/409/reload/retry, ảnhmobileđãxem. Không appDB/provider/push. Xem docs/decisions/property-withdrawal-v1.md.
+
+## Chủ nhà kết thúc khi người thuê mất liên lạc — 22/11/2026
+
+- Theo user chọn: thông báo trong app và chờ đủ30ngày, không tự kết thúc. Tenant phản đối chặn đơn phương, Owner không thể xóa/gửi lại để bỏ qua. Sau hạn Owner xác nhận thu hồi phòng+đối chiếu khoản phải thu+ảnh chứng cứ rồi mới ENDED/VACANT; giữ nợ, ngày thỏa thuận và chữ ký cũ, không giả chữ ký tenant. V72 lưu notice/deadline/closure/audit; Clockserver, khóa/version/idempotence, không bỏ qua hồ sơ thuê tiếp/bàn giao/tranh chấp.
+- Billing vẫn hoạt động trong thời gian chờ; chặn riêng thay đổi thuê tiếp/bàn giao cũ.97backend/174frontend/TypeScript/build/6PlaywrightdesktopmobilePASS (APIfixture;409khôngtựretry,reload+xácnhậnlại), ảnhmobileđãxem. Không appDB/provider/push. Chi tiết docs/decisions/unilateral-contract-exit-v1.md. Phần xóa/rút hồ sơ: c1dbe3e8; commit luồng đơn phương tra git log.

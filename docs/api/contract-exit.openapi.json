@@ -71,7 +71,7 @@
       ],
       "post": {
         "summary": "Propose/respond termination or physical handover; never move money",
-        "description": "Explicit consent and sourceVersion required. Termination/Handover payload required only for corresponding propose action. Nonempty reason for reject/dispute/cancel. Same party cannot accept its own termination proposal. No Admin adjudication or timeout. State/ownership enforced by server. PROPOSE_HANDOVER requires structured details and saves a frozen PDF document with zero signatures. Optional meters require both final readings and valid baselines. DISPUTE or replacement invalidates signatures. CONFIRM_HANDOVER is retained for compatibility but returns 409 HANDOVER_SIGNATURES_REQUIRED.",
+        "description": "Explicit consent and sourceVersion required. Termination/Handover payload required only for corresponding propose action. Nonempty reason for reject/dispute/cancel. Same party cannot accept its own termination proposal. No Admin adjudication or timeout. State/ownership enforced by server. PROPOSE_HANDOVER requires structured details and saves a frozen PDF document with zero signatures. Optional meters require both final readings and valid baselines. DISPUTE or replacement invalidates signatures. CONFIRM_HANDOVER is retained for compatibility but returns 409 HANDOVER_SIGNATURES_REQUIRED. Unilateral flow: exact Owner proposes reason/clause; one private event immediately appears in exact tenant notification feed. Server deadline = proposedAt +30x24h. Owner may withdraw while pending. Exact tenant may object until finalization, including after deadline; OBJECTED cannot be withdrawn/restarted by Owner. Owner finalization at/after deadline needs actual possession recovery, accounts review and 1-5 own private proof images; no open invoice draft, renewal/handover or competing apartment claim. Atomic ENDED/VACANT, endReason UNILATERAL_ABANDONMENT; preserve original endDate, signed contract and SENT debts. No forged tenant/handover signature or automatic payment/refund. No automatic finalization on GET/scheduler. Billing remains available while notice pending; legacy lease changes are blocked. Repeated exact-owner finalization after COMPLETED is idempotent.",
         "requestBody": {
           "required": true,
           "content": {
@@ -106,7 +106,7 @@
             "description": "Resource not in exact-party scope or absent authoring draft"
           },
           "409": {
-            "description": "Stale/source/state/competing flow/missing baseline/open draft invoice"
+            "description": "Stale/source/state/competing flow/missing baseline/open draft invoice; unilateral: UNILATERAL_UNAVAILABLE, NO_PENDING_UNILATERAL, UNILATERAL_NOT_PENDING, UNILATERAL_RESPONSE_WINDOW_OPEN, OPEN_INVOICE_DRAFT, APARTMENT_HAS_OTHER_CLAIM; stale version is rechecked under contract lock."
           },
           "413": {
             "description": "Request exceeds multipart limit"
@@ -899,6 +899,42 @@
                 "type": "null"
               }
             ]
+          },
+          "unilateralState": {
+            "enum": [
+              "NONE",
+              "PENDING",
+              "OBJECTED",
+              "WITHDRAWN",
+              "COMPLETED"
+            ],
+            "readOnly": true
+          },
+          "unilateral": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Unilateral"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "canProposeUnilateral": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "canObjectUnilateral": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "canWithdrawUnilateral": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "canFinalizeUnilateral": {
+            "type": "boolean",
+            "readOnly": true
           }
         },
         "required": [
@@ -938,7 +974,11 @@
               "PROPOSE_HANDOVER",
               "CONFIRM_HANDOVER",
               "DISPUTE_HANDOVER",
-              "CANCEL_HANDOVER"
+              "CANCEL_HANDOVER",
+              "PROPOSE_UNILATERAL_TERMINATION",
+              "OBJECT_UNILATERAL_TERMINATION",
+              "WITHDRAW_UNILATERAL_TERMINATION",
+              "FINALIZE_UNILATERAL_TERMINATION"
             ]
           },
           "sourceVersion": {
@@ -975,6 +1015,12 @@
               ]
             },
             "uniqueItems": true
+          },
+          "unilateral": {
+            "$ref": "#/components/schemas/UnilateralInput"
+          },
+          "unilateralCompletion": {
+            "$ref": "#/components/schemas/UnilateralCompletion"
           }
         },
         "required": [
@@ -1216,6 +1262,114 @@
           },
           "expiresAt": {
             "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "UnilateralInput": {
+        "type": "object",
+        "required": [
+          "reason",
+          "clauseReference"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 3000
+          },
+          "clauseReference": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 3000
+          }
+        }
+      },
+      "UnilateralCompletion": {
+        "type": "object",
+        "required": [
+          "possessionRecovered",
+          "accountsReviewed",
+          "conditionNotes",
+          "evidenceIds"
+        ],
+        "properties": {
+          "possessionRecovered": {
+            "type": "boolean",
+            "const": true
+          },
+          "accountsReviewed": {
+            "type": "boolean",
+            "const": true
+          },
+          "conditionNotes": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 3000
+          },
+          "evidenceIds": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 5,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          }
+        }
+      },
+      "Unilateral": {
+        "type": "object",
+        "readOnly": true,
+        "properties": {
+          "proposerId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "clauseReference": {
+            "type": "string"
+          },
+          "proposedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "responseDeadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "objectionReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "respondedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "completionNotes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "completionEvidenceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           }
         }

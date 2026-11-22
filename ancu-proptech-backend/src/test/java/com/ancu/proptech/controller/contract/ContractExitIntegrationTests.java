@@ -37,6 +37,11 @@ class ContractExitIntegrationTests {
  @org.springframework.test.context.bean.override.mockito.MockitoBean com.ancu.proptech.service.auth.EmailOtpSender otpSender;
  @Autowired com.ancu.proptech.repository.auth.ActionOtpChallengeRepository otpChallenges;
  private String otpCode;
+ @org.springframework.test.context.bean.override.mockito.MockitoBean Clock clock;
+ @Autowired com.ancu.proptech.service.contract.ContractExitGuard exitGuard;
+ private Instant noticeNow;
+ @BeforeEach void clockSetup(){noticeNow=Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);org.mockito.Mockito.when(clock.instant()).thenReturn(noticeNow);}
+
  @org.springframework.test.context.bean.override.mockito.MockitoSpyBean com.ancu.proptech.service.contract.SigningOtpPolicy signingOtpPolicy;
  @BeforeEach void otpSetup(){org.mockito.Mockito.when(otpSender.isConfigured()).thenReturn(true);org.mockito.Mockito.doAnswer(call->{otpCode=call.getArgument(1);return null;}).when(otpSender).sendAction(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString());}
  private void expireOtpCooldown(){otpChallenges.findAll().forEach(c->{c.setCreatedAt(Instant.now().minusSeconds(1000));});otpChallenges.flush();}
@@ -166,5 +171,65 @@ class ContractExitIntegrationTests {
   mvc.perform(post(path()+"/sign").header("Authorization",ct).contentType("application/json").content(json.writeValueAsString(input))).andExpect(status().isOk()).andExpect(jsonPath("$.contractStatus").value("ENDED"));
   assertEquals(Apartment.Availability.VACANT,apartment.getAvailability());
   org.mockito.Mockito.verify(otpSender,org.mockito.Mockito.never()).sendAction(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString());
+ }
+ private Map<String,Object> unilateralNotice(){return Map.of("unilateral",Map.of("reason","Người thuê đã rời đi, không liên lạc được.","clauseReference","Điều khoản chấm dứt và thông báo trong hợp đồng đã ký."));}
+ private void proposeUnilateral()throws Exception{act(ot,"PROPOSE_UNILATERAL_TERMINATION",unilateralNotice()).andExpect(status().isOk()).andExpect(jsonPath("$.unilateralState").value("PENDING"));}
+ private Map<String,Object> recoverRoom()throws Exception{
+  byte[] image=Base64.getDecoder().decode(signature().split(",")[1]);
+  String file=mvc.perform(multipart(path()+"/evidence").file(new MockMultipartFile("file","recovery.png","image/png",image)).header("Authorization",ot)).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+  return Map.of("unilateralCompletion",Map.of("possessionRecovered",true,"accountsReviewed",true,"conditionNotes","Đã thu hồi phòng, chìa khóa và đối chiếu các khoản phải thu.","evidenceIds",List.of(Long.valueOf(json.readTree(file).path("id").asString()))));
+ }
+ @Test void unilateralNoticeIsExactOwnerAndNotifiesOnlyTenantWithThirtyDayDeadline()throws Exception{
+  act(ct,"PROPOSE_UNILATERAL_TERMINATION",unilateralNotice()).andExpect(status().isForbidden());
+  act(xt,"PROPOSE_UNILATERAL_TERMINATION",version(ot),unilateralNotice()).andExpect(status().isNotFound());
+  proposeUnilateral();
+  mvc.perform(get(path()).header("Authorization",ct)).andExpect(status().isOk()).andExpect(jsonPath("$.canObjectUnilateral").value(true)).andExpect(jsonPath("$.canFinalizeUnilateral").value(false)).andExpect(jsonPath("$.unilateral.responseDeadline").value(noticeNow.plus(Duration.ofDays(30)).toString()));
+  mvc.perform(get("/api/v1/me/notifications").header("Authorization",ct)).andExpect(status().isOk()).andExpect(jsonPath("$.items[0].title").value("Thông báo kết thúc đơn phương"));
+  assertEquals(RentalContract.Status.ACTIVE,contract.getStatus());assertEquals(Apartment.Availability.OCCUPIED,apartment.getAvailability());
+  act(ot,"PROPOSE_UNILATERAL_TERMINATION",unilateralNotice()).andExpect(status().isConflict());
+ }
+ @Test void oneSecondBeforeDeadlineCannotEndAndDeadlineReadDoesNotAutoRelease()throws Exception{
+  proposeUnilateral();var proof=recoverRoom();org.mockito.Mockito.when(clock.instant()).thenReturn(noticeNow.plus(Duration.ofDays(30)).minusSeconds(1));
+  act(ot,"FINALIZE_UNILATERAL_TERMINATION",proof).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("UNILATERAL_RESPONSE_WINDOW_OPEN"));
+  org.mockito.Mockito.when(clock.instant()).thenReturn(noticeNow.plus(Duration.ofDays(30)));
+  mvc.perform(get(path()).header("Authorization",ot)).andExpect(status().isOk()).andExpect(jsonPath("$.canFinalizeUnilateral").value(true));
+  assertEquals(RentalContract.Status.ACTIVE,contract.getStatus());assertEquals(Apartment.Availability.OCCUPIED,apartment.getAvailability());
+ }
+ @Test void exactDeadlineOwnerRecoveryEndsOncePreservesDebtAndNeverForgesTenantHandoverSignature()throws Exception{
+  var debt=invoice(RentalInvoice.Status.SENT);var end=contract.getEndDate();byte[] tenantSignature=draft.getCustomerSignature().clone();
+  proposeUnilateral();var proof=recoverRoom();org.mockito.Mockito.when(clock.instant()).thenReturn(noticeNow.plus(Duration.ofDays(30)));
+  String source=version(ot);act(ot,"FINALIZE_UNILATERAL_TERMINATION",source,proof).andExpect(status().isOk()).andExpect(jsonPath("$.contractStatus").value("ENDED")).andExpect(jsonPath("$.unilateralState").value("COMPLETED"));
+  act(ot,"FINALIZE_UNILATERAL_TERMINATION",source,proof).andExpect(status().isOk());
+  assertEquals(Apartment.Availability.VACANT,apartment.getAvailability());assertEquals("UNILATERAL_ABANDONMENT",contract.getEndReason());assertEquals(end,contract.getEndDate());
+  assertEquals(RentalInvoice.Status.SENT,invoices.findById(debt.getId()).orElseThrow().getStatus());assertEquals(new BigDecimal("5050000"),debt.getTotalAmount());
+  assertArrayEquals(tenantSignature,draft.getCustomerSignature());assertNull(cases.findById(contract.getId()).orElseThrow().getCustomerSignedAt());
+  assertEquals(1,events.findByContractIdOrderByIdAsc(contract.getId()).stream().filter(e->e.getAction().equals("FINALIZE_UNILATERAL_TERMINATION")).count());
+ }
+ @Test void tenantObjectionEvenAfterDeadlineBlocksOwnerAndCannotBeErasedByWithdrawalOrResubmission()throws Exception{
+  proposeUnilateral();org.mockito.Mockito.when(clock.instant()).thenReturn(noticeNow.plus(Duration.ofDays(31)));String stale=version(ot);
+  act(ct,"OBJECT_UNILATERAL_TERMINATION",Map.of("reason","Tôi vẫn đang thuê và không đồng ý kết thúc.")).andExpect(status().isOk()).andExpect(jsonPath("$.unilateralState").value("OBJECTED"));
+  act(ot,"FINALIZE_UNILATERAL_TERMINATION",stale,recoverRoom()).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("STALE_VERSION"));
+  act(ot,"FINALIZE_UNILATERAL_TERMINATION",recoverRoom()).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("UNILATERAL_NOT_PENDING"));
+  act(ot,"WITHDRAW_UNILATERAL_TERMINATION",Map.of()).andExpect(status().isConflict());act(ot,"PROPOSE_UNILATERAL_TERMINATION",unilateralNotice()).andExpect(status().isConflict());
+  assertEquals(RentalContract.Status.ACTIVE,contract.getStatus());assertEquals(Apartment.Availability.OCCUPIED,apartment.getAvailability());
+ }
+ @Test void unilateralNoticeBlocksRenewalButLeavesBillingAvailableAndOwnerCanWithdraw()throws Exception{
+  proposeUnilateral();assertTrue(exitGuard.blocksLeaseChange(contract.getId()));assertFalse(exitGuard.blocks(contract.getId()));
+  mvc.perform(get("/api/v1/owner/contracts/"+contract.getId()+"/rent-billing-context").header("Authorization",ot)).andExpect(status().isOk());
+  act(ct,"WITHDRAW_UNILATERAL_TERMINATION",Map.of()).andExpect(status().isForbidden());act(ot,"OBJECT_UNILATERAL_TERMINATION",Map.of("reason","invalid")).andExpect(status().isForbidden());
+  act(ot,"WITHDRAW_UNILATERAL_TERMINATION",Map.of()).andExpect(status().isOk()).andExpect(jsonPath("$.unilateralState").value("WITHDRAWN"));assertFalse(exitGuard.blocksLeaseChange(contract.getId()));
+ }
+ @Test void recoveryNeedsProofConfirmationsAndNoOpenInvoiceDraft()throws Exception{
+  proposeUnilateral();org.mockito.Mockito.when(clock.instant()).thenReturn(noticeNow.plus(Duration.ofDays(30)));
+  act(ot,"FINALIZE_UNILATERAL_TERMINATION",Map.of()).andExpect(status().isBadRequest());
+  act(ot,"FINALIZE_UNILATERAL_TERMINATION",Map.of("unilateralCompletion",Map.of("possessionRecovered",false,"accountsReviewed",true,"conditionNotes","Test","evidenceIds",List.of(1)))) .andExpect(status().isBadRequest());
+  var proof=recoverRoom();invoice(RentalInvoice.Status.DRAFT);act(ot,"FINALIZE_UNILATERAL_TERMINATION",proof).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("OPEN_INVOICE_DRAFT"));
+  assertEquals(RentalContract.Status.ACTIVE,contract.getStatus());
+ }
+ @Test void alreadyExpiredLeaseCanStartNoticeButExistingDisputeCannotBeBypassed()throws Exception{
+  contract.setEndDate(today.minusDays(1));contracts.saveAndFlush(contract);proposeUnilateral();
+  act(ot,"WITHDRAW_UNILATERAL_TERMINATION",Map.of()).andExpect(status().isOk());
+  var root=cases.findById(contract.getId()).orElseThrow();root.setHandoverState("DISPUTED");cases.saveAndFlush(root);
+  act(ot,"PROPOSE_UNILATERAL_TERMINATION",unilateralNotice()).andExpect(status().isConflict());
  }
 }
