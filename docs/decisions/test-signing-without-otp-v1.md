@@ -1,23 +1,23 @@
-# K? kh?ng OTP ?? ki?m th? c?c b? ? 22/11/2026
+# Ký không OTP để kiểm thử cục bộ — 22/11/2026
 
-Theo y?u c?u ng??i d?ng, h?p ??ng v? bi?n b?n b?n giao c? th? k? tr?c ti?p sau khi v? ch? k? v? ??ng ? n?i dung. Backend tr? `signing.otpRequired`; giao di?n thi?u tr??ng n?y m?c ??nh v?n y?u c?u OTP.
+Theo yêu cầu người dùng, hợp đồng và biên bản bàn giao có thể ký trực tiếp sau khi vẽ chữ ký và đồng ý nội dung. Backend trả `signing.otpRequired`; giao diện thiếu trường này mặc định vẫn yêu cầu OTP.
 
-- `app.signing-otp.enabled` ??c t? `APP_SIGNING_OTP_ENABLED`.
-- Profile `local` m?c ??nh **false**: kh?ng g?i/ti?u th? OTP k?. Kh?i ??ng l?i backend v? t?i l?i frontend ?? ?p d?ng.
-- ??t `APP_SIGNING_OTP_ENABLED=true` ?? b?t l?i OTP trong local.
-- Profile `test` m?c ??nh true; c? th? ??t false cho ki?m th?.
-- Ch? ???c b? OTP n?u **t?t c?** profile hi?u l?c thu?c `local`/`test`. Profile production, staging, kh?ng nh?n di?n ho?c t? h?p c? profile kh?c lu?n b?t bu?c OTP, k? c? c?u h?nh false. Kh?ng c? API/client flag ?? t?t.
-- API ph?t OTP k? tr? 409 `SIGNING_OTP_DISABLED` khi t?t. API k? cho ph?p thi?u challenge/code ch? ? ch? ?? n?y.
+- `app.signing-otp.enabled` đọc từ `APP_SIGNING_OTP_ENABLED`.
+- Profile `local` mặc định **false**: không gửi/tiêu thụ OTP ký. Khởi động lại backend và tải lại frontend để áp dụng.
+- Đặt `APP_SIGNING_OTP_ENABLED=true` để bật lại OTP trong local.
+- Profile `test` mặc định true; có thể đặt false cho kiểm thử.
+- Chỉ được bỏ OTP nếu **tất cả** profile hiệu lực thuộc `local`/`test`. Profile production, staging, không nhận diện hoặc tổ hợp có profile khác luôn bắt buộc OTP, kể cả cấu hình false. Không có API/client flag để tắt.
+- API phát OTP ký trả 409 `SIGNING_OTP_DISABLED` khi tắt. API ký cho phép thiếu challenge/code chỉ ở chế độ này.
 
-OTP ??ng k?/x?c minh email/kh?i ph?c m?t kh?u gi? nguy?n. Quy?n ??ng hai b?n, tr?ng th?i t?i kho?n, ch? k? PNG, ??ng ? n?i dung, hash/version/ng?y b?t ??u, kh?a giao d?ch v? quy t?c k? ?? hai b?n v?n ?p d?ng. H?p ??ng t??ng lai k? ?? v?n ch? hi?u l?c; b?n giao m?t ch? k? v?n gi? ACTIVE/OCCUPIED. Tr??ng otpRequired ph?n ?nh ch?nh s?ch hi?n t?i, kh?ng x?c nh?n l?ch s? t?ng ch? k? c? OTP. Kh?ng th?m nh? cung c?p ch? k? s? ho?c tuy?n b? ch? k? c? ch?ng th?.
+OTP đăng ký/xác minh email/khôi phục mật khẩu giữ nguyên. Quyền đúng hai bên, trạng thái tài khoản, chữ ký PNG, đồng ý nội dung, hash/version/ngày bắt đầu, khóa giao dịch và quy tắc ký đủ hai bên vẫn áp dụng. Hợp đồng tương lai ký đủ vẫn chờ hiệu lực; bàn giao một chữ ký vẫn giữ ACTIVE/OCCUPIED. Trường otpRequired phản ánh chính sách hiện tại, không xác nhận lịch sử từng chữ ký có OTP. Không thêm nhà cung cấp chữ ký số hoặc tuyên bố chữ ký có chứng thư.
 
-## B?ng ch?ng ki?m tra
+## Bằng chứng kiểm tra
 
-- 106 backend ??t: ContractDraft 61, ContractExit 19, SigningOtpPolicy 14, PasswordRecovery 8, ContractPdf 3, HandoverPdf 1; kh?ng skipped. SQL d?ng database ki?m th? ri?ng, sender mock.
-- TypeScript, 162 frontend tests v? production build ??t. C?nh b?o chunk l?n v? Vite configLoader c? s?n.
-- 16 ca Playwright v?i API fixture tr?n desktop 1440/mobile 390: 8 k? tr?c ti?p Owner/Customer ? h?p ??ng/b?n giao; 4 b?n giao OTP b?t; 4 h?p ??ng v?i server c? thi?u flag v?n ?i qua OTP v? hi?n th? l?i ng?y qu? kh?. Ki?m tra consent, request/sign count, payload, console/network v? tr?n ngang. ?nh mobile ?? xem.
-- Browser d?ng fixture, kh?ng ph?i x?c nh?n g?i email th?t. Kh?ng s?a d? li?u ?ng d?ng, t?i kho?n hay l?ch s? ch? k?.
+- 106 backend đạt: ContractDraft 61, ContractExit 19, SigningOtpPolicy 14, PasswordRecovery 8, ContractPdf 3, HandoverPdf 1; không skipped. SQL dùng database kiểm thử riêng, sender mock.
+- TypeScript, 162 frontend tests và production build đạt. Cảnh báo chunk lớn và Vite configLoader có sẵn.
+- 16 ca Playwright với API fixture trên desktop 1440/mobile 390: 8 ký trực tiếp Owner/Customer × hợp đồng/bàn giao; 4 bàn giao OTP bật; 4 hợp đồng với server cũ thiếu flag vẫn đi qua OTP và hiển thị lỗi ngày quá khứ. Kiểm tra consent, request/sign count, payload, console/network và tràn ngang. Ảnh mobile đã xem.
+- Browser dùng fixture, không phải xác nhận gửi email thật. Không sửa dữ liệu ứng dụng, tài khoản hay lịch sử chữ ký.
 
-## Ph?m vi xu?t b?n
+## Phạm vi xuất bản
 
-Ch? ??y thay ??i OTP v? t?i li?u ?? c? tr?n Duy/all. C?c commit local v? ?i?u ki?n c?ng khai c?n h? v? ch?ng th?m c?n ngo?i wizard (`9c6f1c92`, `c5e732b7`) kh?ng n?m trong nh?nh ???c ??y. Kh?ng merge main.
+Chỉ đẩy thay đổi OTP và tài liệu đã có trên Duy/all. Các commit local về điều kiện công khai căn hộ và chống thêm căn ngoài wizard (`9c6f1c92`, `c5e732b7`) không nằm trong nhánh được đẩy. Không merge main.
