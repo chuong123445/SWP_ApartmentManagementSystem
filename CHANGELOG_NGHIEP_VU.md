@@ -31,3 +31,8 @@
 - RA14/RA15 đã sửa: giá thuê mới phải dương; công khai qua manual/publication/nguồn cần đủ đơn giá điện nước và ảnh riêng (ảnh phòng legacy thật vẫn dùng được). Nháp còn bổ sung giá từng bước, 0 điện/nước khai báo rõ vẫn hợp lệ; ẩn tin và công tơ để sau giữ nguyên. 69 backend + 4 Playwright desktop/mobile đạt; OpenAPI cập nhật. Các fixture test nguồn bổ sung ảnh riêng đúng từng phòng, không nới policy để qua test. Commit local được ghi trong WORK_PROGRESS; không push/PR.
 - Backlog chi tiết theo yêu cầu mới nằm ngoài Git: `../BUSINESS_ISSUES_LOCAL.md`. RA16 đang chờ bước tiếp theo; các quy tắc cần chốt và RA04 chưa tự sửa.
 - RA16 đã sửa: chặn thêm căn độc lập khi wizard còn chưa hoàn tất; chỉ luồng complete nội bộ tạo các căn được chọn, client không có cờ bỏ qua. SINGLE_UNIT/MULTI_UNIT, hoàn tất và retry đã kiểm tra: 52 backend + 6 Playwright desktop/mobile đạt. Commit local, không push/PR. RA14/15 ở `9c6f1c92`; không tạo/sửa dữ liệu ứng dụng hoặc bộ hồ sơ test của người dùng.
+
+## Ký không OTP để kiểm thử — 22/11/2026
+
+- Local mặc định tắt OTP ký hợp đồng/bàn giao; vẽ chữ ký và đồng ý rồi ký trực tiếp. Bật lại bằng APP_SIGNING_OTP_ENABLED=true. Ngoài local/test luôn bắt buộc OTP; OTP tài khoản giữ nguyên. Backend kiểm tra đầy đủ quyền/ngày/hash/version và hai bên.
+- Đạt 106 backend, 162 frontend, TypeScript/build, 16 Playwright desktop/mobile với API fixture; không gửi email thật hay sửa dữ liệu ứng dụng. Xem [quyết định và cấu hình](docs/decisions/test-signing-without-otp-v1.md). Code: `55a9bc65`; bản sửa dấu tiếng Việt tài liệu: tra git log.

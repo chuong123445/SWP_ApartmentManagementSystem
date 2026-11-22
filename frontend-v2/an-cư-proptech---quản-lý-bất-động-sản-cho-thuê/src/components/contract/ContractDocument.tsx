@@ -54,7 +54,7 @@ export function ContractDocument({ draft, onUpdated, onRemoved }: { draft: Contr
     catch (err) { setError(err instanceof Error ? err.message : 'Không thể tải lại.'); }
     finally { operation.current = false; setBusy(false); }
   };
-  const sign = async (otp: SignatureOtp) => {
+  const sign = async (otp?: SignatureOtp) => {
     if (!signature || !consent || operation.current || !canSign || !pdfUrl) return;
     operation.current = true; setBusy(true); setError(''); setNotice('');
     try { onUpdated(await signContract(draft, signature, otp)); setSignature(null); setConsent(false); setNotice('Đã lưu chữ ký của bạn vào hợp đồng.');window.dispatchEvent(new Event('ancu:tenancy-changed')); }
@@ -96,7 +96,7 @@ export function ContractDocument({ draft, onUpdated, onRemoved }: { draft: Contr
       <p className="text-sm text-slate-600">Đọc bản PDF ở trên, sau đó vẽ chữ ký của bạn vào khung. Nội dung sẽ bị khóa ngay khi có chữ ký đầu tiên.</p>
       <SignaturePad key={`${draft.id}-${draft.version}`} disabled={busy} onChange={setSignature} />
       <label className="flex gap-3 items-start text-sm"><input type="checkbox" checked={consent} disabled={busy} onChange={e => setConsent(e.target.checked)} className="mt-1" />Tôi đã đọc bản PDF và đồng ý toàn bộ nội dung hợp đồng; xác nhận sử dụng chữ ký vừa vẽ.</label>
-      <SignatureOtpConfirmation key={`${draft.id}-${draft.version}-${signature}-${consent}`} disabled={busy || !signature || !consent || !pdfUrl} label="Xác nhận ký hợp đồng" request={() => requestContractSignatureOtp(draft, signature!)} confirm={sign} />
+      <SignatureOtpConfirmation otpRequired={draft.signing?.otpRequired ?? true} key={`${draft.id}-${draft.version}-${signature}-${consent}`} disabled={busy || !signature || !consent || !pdfUrl} label="Xác nhận ký hợp đồng" request={() => requestContractSignatureOtp(draft, signature!)} confirm={sign} />
     </section>}
     <p className="rounded-lg bg-slate-50 p-3 text-sm">{externalDepositNotice}</p>
     <ContractLifecyclePanel draft={draft} onUpdated={onUpdated} />

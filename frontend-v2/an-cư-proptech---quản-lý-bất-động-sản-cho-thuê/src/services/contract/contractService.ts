@@ -47,7 +47,7 @@ export async function getContractPdf(id: string): Promise<Blob> {
   return response.blob();
 }
 export const requestContractSignatureOtp = (draft: ContractDraft, signature: string) => request<import('@/services/auth/authService').OtpChallenge>(`/api/v1/contracts/${encodeURIComponent(draft.id)}/signature-otp`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({version: draft.version, contentHash: draft.signing?.contentHash, signature, consent: true})});
-export const signContract = (draft: ContractDraft, signature: string, otp: import('@/services/auth/authService').SignatureOtp) => request<ContractDraft>(
+export const signContract = (draft: ContractDraft, signature: string, otp?: import('@/services/auth/authService').SignatureOtp) => request<ContractDraft>(
   `/api/v1/contracts/${encodeURIComponent(draft.id)}/signatures`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ version: draft.version, contentHash: draft.signing?.contentHash, signature, consent: true, ...otp }) });
 export const getDrafts = (owner: boolean, propertyId?: string) => request<ContractDraft[]>(owner ? `/api/v1/owner/contract-drafts${propertyId ? `?propertyId=${encodeURIComponent(propertyId)}` : ''}` : '/api/v1/me/contract-drafts');

@@ -290,7 +290,7 @@
       ],
       "post": {
         "summary": "Sign own side of the handover; second signature atomically ends the lease",
-        "description": "Parent request/contract locks. Fresh sourceVersion/hash and explicit consent required. Reject duplicate/invalid/foreign/stale signatures. No caller-selected signer. One signature leaves ACTIVE/OCCUPIED. Both signatures transition ENDED/VACANT without changing publication or invoice debt. Requires a single-use email OTP bound to this actor, contract, document version/hash and drawn signature. Rejected OTP leaves signature unchanged.",
+        "description": "Parent request/contract locks. Fresh sourceVersion/hash and explicit consent required. Reject duplicate/invalid/foreign/stale signatures. No caller-selected signer. One signature leaves ACTIVE/OCCUPIED. Both signatures transition ENDED/VACANT without changing publication or invoice debt. When signing.otpRequired is true, requires a single-use email OTP bound to this actor, contract, document version/hash and drawn signature. Rejected OTP leaves signature unchanged. When false, draw and consent still apply but no email OTP is issued or consumed. All party, version/hash, date and lifecycle checks remain enforced.",
         "requestBody": {
           "required": true,
           "content": {
@@ -382,7 +382,7 @@
             "description": "Resource not in exact-party scope or absent authoring draft"
           },
           "409": {
-            "description": "Stale/source/state/competing flow/missing baseline/open draft invoice"
+            "description": "Stale/source/state/competing flow/missing baseline/open draft invoice; SIGNING_OTP_DISABLED when local/test signature OTP is off. Reload current signing policy and sign directly."
           },
           "413": {
             "description": "Request exceeds multipart limit"
@@ -1057,8 +1057,15 @@
               "null"
             ],
             "description": "Normalized PNG data URL"
+          },
+          "otpRequired": {
+            "type": "boolean",
+            "description": "Current server policy, not historical signing evidence. False only with signature OTP disabled in exclusively local/test profiles. Older responses without this field must be treated as true."
           }
-        }
+        },
+        "required": [
+          "otpRequired"
+        ]
       },
       "Document": {
         "type": "object",
@@ -1135,9 +1142,7 @@
           "sourceVersion",
           "contentHash",
           "signature",
-          "consent",
-          "challengeId",
-          "code"
+          "consent"
         ],
         "properties": {
           "sourceVersion": {
@@ -1164,7 +1169,8 @@
             "type": "string",
             "pattern": "^[0-9]{6}$"
           }
-        }
+        },
+        "description": " challengeId and code are required when signing.otpRequired is true; omit both when false. Only server configuration controls this policy."
       },
       "SignatureOtpRequest": {
         "type": "object",

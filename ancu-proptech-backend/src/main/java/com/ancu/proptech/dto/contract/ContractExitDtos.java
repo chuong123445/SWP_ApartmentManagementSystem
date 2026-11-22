@@ -28,7 +28,7 @@ public final class ContractExitDtos {
  public record Document(String number,LocalDate contractStartDate,LocalDate contractEndDate,ContractSnapshot snapshot,
   LocalDate returnDate,HandDetails details,String conditionNotes,boolean keysReturned,List<String> evidenceIds,
   String electricityStartReading,String waterStartReading,String electricityReading,String waterReading,String utilityAmount){}
- public record Signing(String contentHash,String state,Instant ownerSignedAt,Instant customerSignedAt,String ownerSignature,String customerSignature){}
+ public record Signing(String contentHash,String state,Instant ownerSignedAt,Instant customerSignedAt,String ownerSignature,String customerSignature,boolean otpRequired){}
  public record SignInput(@NotBlank @Pattern(regexp="[a-f0-9]{64}") String sourceVersion,
   @NotBlank @Pattern(regexp="[a-f0-9]{64}") String contentHash,@NotBlank @Size(max=200000) String signature,@AssertTrue boolean consent,@Size(max=36) String challengeId,@Pattern(regexp="[0-9]{6}") String code){
   public SignInput(String sourceVersion,String contentHash,String signature,boolean consent){this(sourceVersion,contentHash,signature,consent,null,null);}
