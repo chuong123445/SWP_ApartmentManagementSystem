@@ -229,6 +229,8 @@ public class ContractDraftService {
     }
     void validateTerms(ContractTerms t) {
         requireStartNotPast(t.getStartDate());
+        if(t.getStartDate().isAfter(rights.today().plusDays(90)))
+            throw new ApiException(HttpStatus.BAD_REQUEST,"CONTRACT_START_DATE_TOO_FAR","Chỉ được đặt trước tối đa 90 ngày.");
         if(!t.getEndDate().isAfter(t.getStartDate())) throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_CONTRACT_DATES","Ngày kết thúc phải sau ngày bắt đầu.");
     }
     private void requireStartNotPast(java.time.LocalDate start) {

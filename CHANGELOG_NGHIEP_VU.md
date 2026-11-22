@@ -36,3 +36,8 @@
 
 - Local mặc định tắt OTP ký hợp đồng/bàn giao; vẽ chữ ký và đồng ý rồi ký trực tiếp. Bật lại bằng APP_SIGNING_OTP_ENABLED=true. Ngoài local/test luôn bắt buộc OTP; OTP tài khoản giữ nguyên. Backend kiểm tra đầy đủ quyền/ngày/hash/version và hai bên.
 - Đạt 106 backend, 162 frontend, TypeScript/build, 16 Playwright desktop/mobile với API fixture; không gửi email thật hay sửa dữ liệu ứng dụng. Xem [quyết định và cấu hình](docs/decisions/test-signing-without-otp-v1.md). Code: `55a9bc65`; bản sửa dấu tiếng Việt tài liệu: tra git log.
+
+## Hợp đồng mục 1–2 trong tài liệu Word — 22/11/2026
+
+- Nháp chưa ký có ngày bắt đầu đã qua hiển thị nhắc cập nhật và nút tới phần ngày; sửa ngày giữ các thay đổi khác. Tạo/sửa nháp giới hạn hôm nay đến +90 ngày, tính theo Việt Nam; max giao diện vẫn tôn trọng quyền cho thuê. Không sửa lịch sử có chữ ký.
+- 63 ca backend đạt qua hai lượt (62 lần đầu +1 chạy lại sau sửa kỳ vọng định dạng tiền). TypeScript/169frontend/4Playwright desktop-mobile API fixture đạt. Mục3 triển khai riêng theo lựa chọn tối thiểu30ngày.

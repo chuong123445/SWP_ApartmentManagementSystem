@@ -6,9 +6,15 @@ export function contractToday(now = new Date()): string {
 export function contractStartMinimum(rightsValidFrom?: string | null, today = contractToday()): string {
   return rightsValidFrom && rightsValidFrom > today ? rightsValidFrom : today;
 }
+export function contractStartMaximum(rightsValidUntil?: string | null, today = contractToday()): string {
+  const date = new Date(`${today}T00:00:00Z`);date.setUTCDate(date.getUTCDate() + 90);
+  const maximum = date.toISOString().slice(0, 10);
+  return rightsValidUntil && rightsValidUntil < maximum ? rightsValidUntil : maximum;
+}
 export function validateContractTerms(t: ContractTerms, today = contractToday()): string {
   if (!t.startDate || !t.endDate || t.endDate <= t.startDate) return 'Ngày kết thúc phải sau ngày bắt đầu.';
   if (t.startDate < today) return 'Ngày bắt đầu hợp đồng không được trước ngày hôm nay.';
+  if (t.startDate > contractStartMaximum(null, today)) return 'Chỉ được đặt trước tối đa 90 ngày.';
   for (const [value, positive] of [[t.monthlyRent, true], [t.deposit, false], [t.electricityUnitPrice, false], [t.waterUnitPrice, false], [t.internetFee??'0',false],[t.garbageFee??'0',false]] as const) {
     if (!/^\d{1,13}(\.\d{1,2})?$/.test(value) || (positive && Number(value) <= 0)) return 'Nhập đầy đủ số tiền hợp lệ, tối đa 2 chữ số thập phân.';
   }

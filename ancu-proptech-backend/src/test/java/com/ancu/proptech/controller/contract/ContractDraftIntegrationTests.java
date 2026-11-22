@@ -164,6 +164,20 @@ class ContractDraftIntegrationTests {
         String saved=create(token,body(context())).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         update(id(saved),0,terms().replace(today().plusYears(1).toString(),today().plusYears(1).plusDays(1).toString())).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CONTRACT_EXCEEDS_PROPERTY_RIGHTS"));
     }
+    @Test void draftBookingLimitIncludesDay90ButRejectsDay91OnCreateAndUpdate()throws Exception {
+        var input=body(context()).replace("\"startDate\":\""+today()+"\"","\"startDate\":\""+today().plusDays(91)+"\"");
+        create(token,input)
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("CONTRACT_START_DATE_TOO_FAR"));
+        String saved=create(token,body(context()).replace("\"startDate\":\""+today()+"\"","\"startDate\":\""+today().plusDays(90)+"\"")).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        update(id(saved),0,terms().replace("\"startDate\":\""+today()+"\"","\"startDate\":\""+today().plusDays(91)+"\""))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("CONTRACT_START_DATE_TOO_FAR"));
+        assertEquals(today().plusDays(90).toString(),JsonPath.read(readContract(id(saved)),"$.startDate"));
+    }
+    @Test void expiredUnsignedDraftCanBeCorrectedWithoutLosingOtherEdits()throws Exception {
+        String saved=create();var c=contracts.findById(Long.parseLong(id(saved))).orElseThrow();c.setStartDate(today().minusDays(1));contracts.saveAndFlush(c);
+        update(id(saved),0,terms().replace("\"deposit\":\"10000000\"","\"deposit\":\"9000000\""))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.startDate").value(today().toString())).andExpect(jsonPath("$.deposit").value("9000000"));
+    }
     private static LocalDate today(){return LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));}
     @Test void creatingContractWithYesterdayStartIsRejectedWithoutPersisting()throws Exception{
         String input=body(context()).replace("\"startDate\":\""+today()+"\"","\"startDate\":\""+today().minusDays(1)+"\"");

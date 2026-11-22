@@ -82,3 +82,9 @@ test('Fully signed first leases and renewals are clearly distinguished while wai
   assert.equal(contractSigningLabel({...waiting,cancellationState:'PENDING'}),'Chờ phản hồi đề nghị hủy');
   assert.equal(contractSigningLabel({...waiting,status:'CANCELLED'}),'Đã hủy trước hiệu lực');
 });
+
+test('Booking limit accepts day 90 and rejects day 91 across year boundary', () => {
+  const today = '2026-11-22';
+  assert.equal(validateContractTerms({ ...terms, startDate: '2027-02-20', endDate: '2028-02-20' }, today), '');
+  assert.equal(validateContractTerms({ ...terms, startDate: '2027-02-21', endDate: '2028-02-20' }, today), 'Chỉ được đặt trước tối đa 90 ngày.');
+});

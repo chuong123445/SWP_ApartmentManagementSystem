@@ -1667,7 +1667,7 @@
           "startDate": {
             "type": "string",
             "format": "date",
-            "description": "Must be today or later in Asia/Ho_Chi_Minh on create/update, including renewal. Past start dates return HTTP 400 CONTRACT_START_DATE_IN_PAST. Existing saved history is unchanged."
+            "description": "Must be today or later in Asia/Ho_Chi_Minh on create/update, including renewal. Past start dates return HTTP 400 CONTRACT_START_DATE_IN_PAST. Existing saved history is unchanged. For draft create/update: today <= startDate <= today+90 days, inclusive, Asia/Ho_Chi_Minh. Existing signed content stays locked; viewing historical contracts is unaffected."
           },
           "endDate": {
             "type": "string",
@@ -1759,7 +1759,7 @@
           "startDate": {
             "type": "string",
             "format": "date",
-            "description": "Must be today or later in Asia/Ho_Chi_Minh on create/update, including renewal. Past start dates return HTTP 400 CONTRACT_START_DATE_IN_PAST. Existing saved history is unchanged."
+            "description": "Must be today or later in Asia/Ho_Chi_Minh on create/update, including renewal. Past start dates return HTTP 400 CONTRACT_START_DATE_IN_PAST. Existing saved history is unchanged. For draft create/update: today <= startDate <= today+90 days, inclusive, Asia/Ho_Chi_Minh. Existing signed content stays locked; viewing historical contracts is unaffected."
           },
           "endDate": {
             "type": "string",
@@ -2085,7 +2085,8 @@
         "properties": {
           "startDate": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": " For draft create/update: today <= startDate <= today+90 days, inclusive, Asia/Ho_Chi_Minh. Existing signed content stays locked; viewing historical contracts is unaffected."
           },
           "endDate": {
             "type": "string",
@@ -2768,7 +2769,8 @@
           },
           "startDate": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": " For draft create/update: today <= startDate <= today+90 days, inclusive, Asia/Ho_Chi_Minh. Existing signed content stays locked; viewing historical contracts is unaffected."
           },
           "endDate": {
             "type": "string",
