@@ -231,7 +231,7 @@ class BillingIntegrationTests {
         assertEquals(0,jdbc.queryForObject("SELECT electricity_end_reading FROM billing_meter_readings WHERE contract_id=?",BigDecimal.class,contract.getId()).compareTo(new BigDecimal("1130.25")));
         send(ownerToken,id,1).andExpect(status().isOk());
         mvc.perform(get("/api/v1/owner/contracts/"+contract.getId()+"/billing-context").header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.period").value("2026-11")).andExpect(jsonPath("$.electricityStartReading").value("1130.25"));
-        edit(ownerToken,id,changeBody(2,3,"1140","210")).andExpect(status().isConflict());cancel(ownerToken,id,2,3).andExpect(status().isConflict());
+        edit(ownerToken,id,changeBody(2,3,"1140","210")).andExpect(status().isConflict());
         history(ownerToken,id).andExpect(jsonPath("$.length()").value(3)).andExpect(jsonPath("$[2].action").value("SENT"));
     }
     @Test void cancelledDraftIsRetainedPrivateAndCanBeRecreatedInSamePeriod()throws Exception{
@@ -383,7 +383,7 @@ class BillingIntegrationTests {
         var today=LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
         org.junit.jupiter.api.Assumptions.assumeTrue(today.getDayOfMonth()<=28);
         contract.setStartDate(today.withDayOfMonth(1));contract.setEndDate(today.withDayOfMonth(1).plusYears(1).minusDays(1));contract.setRentPaymentDay(today.getDayOfMonth());contracts.flush();
-        jdbc.update("INSERT INTO contract_exit_cases(contract_id,termination_state,handover_state,updated_at,version) VALUES(?,'PENDING','NONE',SYSUTCDATETIME(),0)",contract.getId());
+        jdbc.update("INSERT INTO contract_exit_cases(contract_id,termination_state,handover_state,unilateral_state,updated_at,version) VALUES(?,'PENDING','NONE','NONE',SYSUTCDATETIME(),0)",contract.getId());
         invoiceService.prepareScheduledRent(contract.getId());
         assertTrue(invoiceRecords.findByContractIdAndStatusNotOrderByPeriodAsc(contract.getId(),com.ancu.proptech.model.billing.RentalInvoice.Status.CANCELLED).isEmpty());
     }
@@ -426,4 +426,14 @@ class BillingIntegrationTests {
         assertEquals(0,notifications.countByInvoiceId(Long.valueOf(invoice)));
     }
 
+    @Test void sentUnpaidInvoiceCanBeCancelledAndRetainedForExactTenantWithoutBecomingDebt()throws Exception{
+        String id=createDraft();send(ownerToken,id,0).andExpect(status().isOk());
+        cancel(ownerToken,id,1,2).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CANCELLED")).andExpect(jsonPath("$.cancellable").value(false));
+        cancel(ownerToken,id,1,2).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/invoices/"+id).header("Authorization","Bearer "+tenantToken)).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CANCELLED"));
+        mvc.perform(get("/api/v1/me/invoices").header("Authorization","Bearer "+tenantToken)).andExpect(jsonPath("$.totalElements").value(1));
+        mvc.perform(get("/api/v1/me/invoices").param("paymentStatus","UNPAID").header("Authorization","Bearer "+tenantToken)).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get("/api/v1/me/notifications").header("Authorization","Bearer "+tenantToken)).andExpect(jsonPath("$.items[0].title").value("Hóa đơn đã hủy"));
+        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM invoice_events WHERE invoice_id=? AND action='CANCELLED'",Integer.class,Long.valueOf(id)));
+    }
 }

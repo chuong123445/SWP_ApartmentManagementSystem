@@ -57,3 +57,16 @@
 
 - Theo user chọn: thông báo trong app và chờ đủ30ngày, không tự kết thúc. Tenant phản đối chặn đơn phương, Owner không thể xóa/gửi lại để bỏ qua. Sau hạn Owner xác nhận thu hồi phòng+đối chiếu khoản phải thu+ảnh chứng cứ rồi mới ENDED/VACANT; giữ nợ, ngày thỏa thuận và chữ ký cũ, không giả chữ ký tenant. V72 lưu notice/deadline/closure/audit; Clockserver, khóa/version/idempotence, không bỏ qua hồ sơ thuê tiếp/bàn giao/tranh chấp.
 - Billing vẫn hoạt động trong thời gian chờ; chặn riêng thay đổi thuê tiếp/bàn giao cũ.97backend/174frontend/TypeScript/build/6PlaywrightdesktopmobilePASS (APIfixture;409khôngtựretry,reload+xácnhậnlại), ảnhmobileđãxem. Không appDB/provider/push. Chi tiết docs/decisions/unilateral-contract-exit-v1.md. Phần xóa/rút hồ sơ: c1dbe3e8; commit luồng đơn phương tra git log.
+
+## Hủy hóa đơn đã gửi chưa nhận tiền — 23/11/2026
+
+- Cho phép hủy DRAFT/SENT chưa có tiền nhận, chuyển CANCELLED và giữ lịch sử; chặn đã trả/nhận thiếu/thừa. Đồng bộ khóa với QR/webhook, QR mới bị chặn sau hủy; tiền đến muộn giữ event để Owner tự đối chiếu. Tenant thấy bản hủy đã từng gửi và thông báo, không tính thành nợ; bản nháp hủy vẫn riêng tư. Scheduler không tự gửi lại coverage đã hủy, vẫn có thể lập lại chủ động. Giữ gate chuỗi công tơ.
+-75backendPASS/1scheduler-date-skipped qua các lượt (46Billing gồm1skip,25SePay,5Notification),174frontend/TypeScript và6MCPunpaid/paid/partial desktopmobilePASS; kiểm tra thêm2ca hồi quy sửa/hủy nháp trong WORK_PROGRESS. Ảnhmobileđãxem; không appDB/provider thật. Chi tiết docs/decisions/invoice-cancellation-v2.md.
+
+- Bổ sung bảo vệ QR: tiền thiếu/thừa đang chờ đối chiếu không được tạo QR thu lại toàn bộ; refresh payment sau khóa. 4 ca SePay mục tiêu PASS, không gọi ngân hàng thật.
+
+## Tiền ngày lẻ và hóa đơn đầu tự gửi — 23/11/2026
+
+- Hợp đồng mới/nháp chưa ký được chủ động sửa thu theo tháng lịch: kỳ đầu gồm ngày lẻ + các tháng còn lại của chu kỳ; kỳ cuối chốt đúng ngày hết thuê. Giá tháng ÷ ngày thực tế × ngày thuê, cộng rồi làm tròn đến đồng HALF_UP. Kỳ đầu tự lập/gửi khi ACTIVE, hạn đóng ngày bắt đầu; tương lai chờ hiệu lực. Kỳ sau dùng ngày đến hạn đã chọn, gửi từ D-7 và bắt kịp kỳ bị bỏ lỡ. Giữ nguyên hợp đồng đã ký, gói cũ và chuỗi điện nước.
+- V73 lưu cờ chính sách và công thức hóa đơn. Lập lại chủ động bù kỳ RENT đã hủy; scheduler không tự gửi lại. Công thức hiển thị trong preview/chi tiết và chính sách có trong PDF/nội dung ký. Xem docs/decisions/calendar-rent-billing-v1.md.
+- 89backendPASS qua các lượt; 176frontend/TypeScript/buildPASS, 8Playwright desktop/mobile API fixturePASS; ảnh mobile đã xem. Không full-suite/live-provider/appDB claim. Cần restart backend áp dụng V73 và reload frontend; chưa push.

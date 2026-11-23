@@ -3,6 +3,7 @@ import com.ancu.proptech.model.payment.InvoicePayment;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 public interface InvoicePaymentRepository extends JpaRepository<InvoicePayment,Long>{
+ boolean existsByInvoiceIdAndPaidAtIsNotNull(Long invoiceId);
  Optional<InvoicePayment> findByInvoiceId(Long id);
  boolean existsByCollectionOwnerId(Long ownerId);
  Optional<InvoicePayment> findByPaymentCode(String code);

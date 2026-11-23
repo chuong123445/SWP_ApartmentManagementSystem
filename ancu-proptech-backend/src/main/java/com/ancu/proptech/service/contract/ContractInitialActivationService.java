@@ -52,7 +52,7 @@ public class ContractInitialActivationService {
         }
         contract.setStatus(RentalContract.Status.ACTIVE);apartment.setAvailability(Apartment.Availability.OCCUPIED);
         contracts.saveAndFlush(contract);apartments.flush();
-        if(contract.isOneMonthRentPackage())rentInvoices.prepareInitialOneMonthRent(contract.getId());
+        if(contract.isOneMonthRentPackage()||contract.isCalendarRentBilling())rentInvoices.prepareInitialRent(contract.getId());
     }
     private static ApiException blocked(){return new ApiException(HttpStatus.CONFLICT,"CONTRACT_ACTIVATION_BLOCKED","Chưa thể chuyển hiệu lực. Cần kiểm tra lựa chọn thuê, phòng, tài khoản và quyền cho thuê.");}
 }

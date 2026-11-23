@@ -448,4 +448,19 @@ class SepayIntegrationTests {
       mergeEntities.clear();
       mvc.perform(post("/api/v1/invoices/"+id+"/payment").header("Authorization","Bearer "+tenantToken)).andExpect(status().isOk()).andExpect(jsonPath("$.accountNumber").value("96247123456789"));
     }
+    private ResultActions cancelSent(String id)throws Exception{return mvc.perform(post("/api/v1/owner/invoices/"+id+"/cancel").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"version\":1,\"billingVersion\":2,\"reason\":\"Sai thông tin\"}"));}
+    @org.junit.jupiter.params.ParameterizedTest @org.junit.jupiter.params.provider.ValueSource(strings={"100","540000"})
+    void receivedPartialOrFullMoneyBlocksInvoiceCancellation(String amount)throws Exception{
+        String id=prepare(),code=JsonPath.read(ticket(tenantToken,id),"$.paymentCode");deliver(key,webhook(91001,code,amount,"1234567890","96247123456789","in")).andExpect(status().isOk());
+        cancelSent(id).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("INVOICE_HAS_RECEIVED_FUNDS"));
+        if(!amount.equals(UTILITY_TOTAL))mvc.perform(post("/api/v1/invoices/"+id+"/payment").header("Authorization","Bearer "+tenantToken)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PAYMENT_RECONCILIATION_REQUIRED"));
+        mvc.perform(get("/api/v1/invoices/"+id).header("Authorization","Bearer "+ownerToken)).andExpect(jsonPath("$.status").value("SENT")).andExpect(jsonPath("$.cancellable").value(false));
+    }
+    @Test void cancelledInvoiceStopsQrAndLateTransferIsRetainedWithoutResurrectingOrMarkingPaid()throws Exception{
+        String id=prepare(),code=JsonPath.read(ticket(tenantToken,id),"$.paymentCode");cancelSent(id).andExpect(status().isOk());
+        mvc.perform(post("/api/v1/invoices/"+id+"/payment").header("Authorization","Bearer "+tenantToken)).andExpect(status().isConflict());
+        deliver(key,webhook(91002,code,UTILITY_TOTAL,"1234567890","96247123456789","in")).andExpect(status().isOk());
+        assertEquals("INVOICE_NOT_SENT",events.findTop20ByOwnerIdOrderByReceivedAtDescIdDesc(owner.getId()).getFirst().getResult());assertNull(payments.findByInvoiceId(Long.valueOf(id)).orElseThrow().getPaidAt());
+        mvc.perform(get("/api/v1/invoices/"+id).header("Authorization","Bearer "+ownerToken)).andExpect(jsonPath("$.status").value("CANCELLED"));
+    }
 }

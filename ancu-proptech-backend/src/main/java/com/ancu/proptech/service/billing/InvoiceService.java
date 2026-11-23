@@ -30,6 +30,7 @@ public class InvoiceService {
     private final MeterReadingRepository readings;
     private final com.ancu.proptech.repository.property.PropertySettingsRepository settings;
     private final InvoiceEventRepository events;
+    private final com.ancu.proptech.repository.payment.SepayEventRepository paymentEvents;
     private final tools.jackson.databind.ObjectMapper json;
     private final jakarta.persistence.EntityManager entities;
     private record Source(YearMonth period,BigDecimal electric,BigDecimal water) {}
@@ -129,7 +130,7 @@ public class InvoiceService {
         requireDraft(i);versions(i,input);
         expectedSource(i);
         if(i.getKind()==RentalInvoice.Kind.RENT){
-            if(input.getDueDate().isBefore((c.isOneMonthRentPackage()?c.getStartDate():i.getCoverageStart().withDayOfMonth(c.getRentPaymentDay()))))throw bad("VALIDATION_ERROR","Hạn đóng không được trước ngày thanh toán đã thỏa thuận.");
+            if(input.getDueDate().isBefore(((c.isOneMonthRentPackage()||(c.isCalendarRentBilling()&&i.getCoverageStart().equals(c.getStartDate())))?c.getStartDate():i.getCoverageStart().withDayOfMonth(c.getRentPaymentDay()))))throw bad("VALIDATION_ERROR","Hạn đóng không được trước ngày thanh toán đã thỏa thuận.");
             var before=response(i);i.setDueDate(input.getDueDate());c.setBillingVersion(c.getBillingVersion()+1);
             invoices.flush();audit(i,owner.getId(),InvoiceEvent.Action.UPDATED,input.getReason().strip(),before);return response(i);
         }
@@ -156,7 +157,9 @@ public class InvoiceService {
             var event=events.findFirstByInvoiceIdAndActionOrderByIdDesc(id,InvoiceEvent.Action.CANCELLED).orElse(null);
             if(event!=null&&event.getActorId().equals(owner.getId())&&reason.equals(event.getReason()))return response(i);
         }
-        requireDraft(i);versions(i,input);var before=response(i);
+        if(i.getStatus()!=RentalInvoice.Status.DRAFT&&i.getStatus()!=RentalInvoice.Status.SENT)throw conflict("INVALID_STATE","Chỉ hủy hóa đơn nháp hoặc đã gửi chưa thanh toán.");
+        if(receivedFunds(i))throw conflict("INVOICE_HAS_RECEIVED_FUNDS","Hóa đơn đã nhận tiền. Chủ nhà cần tự xử lý và đối chiếu với khách thuê, không được hủy.");
+        versions(i,input);var before=response(i);
         i.setStatus(RentalInvoice.Status.CANCELLED);var c=i.getContract();c.setBillingVersion(c.getBillingVersion()+1);
         invoices.flush();audit(i,owner.getId(),InvoiceEvent.Action.CANCELLED,reason,before);return response(i);
     }
@@ -171,8 +174,19 @@ public class InvoiceService {
     }
     private void versions(RentalInvoice i,InvoiceCancel input){
         if(input.getVersion()!=i.getVersion()||input.getBillingVersion()!=i.getContract().getBillingVersion())throw conflict("VERSION_CONFLICT","Hóa đơn hoặc chuỗi chỉ số đã thay đổi. Hãy tải lại trước khi tiếp tục.");
-        boolean laterRent=i.getKind()==RentalInvoice.Kind.RENT&&invoices.findByContractIdAndStatusNotOrderByPeriodAsc(i.getContract().getId(),RentalInvoice.Status.CANCELLED).stream().anyMatch(other->other.getKind()!=RentalInvoice.Kind.UTILITY&&other.getPeriod().compareTo(i.getPeriod())>0);
-        if(laterRent||(i.getKind()!=RentalInvoice.Kind.RENT&&invoices.existsByContractIdAndPeriodGreaterThanAndKindNotAndStatusNot(i.getContract().getId(),i.getPeriod(),RentalInvoice.Kind.RENT,RentalInvoice.Status.CANCELLED)))throw conflict("BILLING_SEQUENCE_CONFLICT","Đã có hóa đơn kỳ sau. Cần kiểm tra lại chuỗi chỉ số.");
+        if(laterInvoiceBlocks(i))throw conflict("BILLING_SEQUENCE_CONFLICT","Đã có hóa đơn kỳ sau. Cần xử lý hóa đơn từ kỳ cuối trở về để giữ đúng chuỗi chỉ số.");
+    }
+    private boolean laterInvoiceBlocks(RentalInvoice i){
+        if(i.getKind()==RentalInvoice.Kind.RENT&&i.getContract().isCalendarRentBilling())return false;
+        if(i.getKind()==RentalInvoice.Kind.RENT)return invoices.findByContractIdAndStatusNotOrderByPeriodAsc(i.getContract().getId(),RentalInvoice.Status.CANCELLED).stream().anyMatch(other->other.getKind()!=RentalInvoice.Kind.UTILITY&&other.getPeriod().compareTo(i.getPeriod())>0);
+        return invoices.existsByContractIdAndPeriodGreaterThanAndKindNotAndStatusNot(i.getContract().getId(),i.getPeriod(),RentalInvoice.Kind.RENT,RentalInvoice.Status.CANCELLED);
+    }
+    private boolean receivedFunds(RentalInvoice i){return payments.existsByInvoiceIdAndPaidAtIsNotNull(i.getId())||paymentEvents.existsByInvoiceIdAndResultInAndAmountGreaterThan(i.getId(),java.util.Set.of("MATCHED","ALREADY_PAID","AMOUNT_MISMATCH","INVOICE_NOT_SENT"),BigDecimal.ZERO);}
+    private String cancellationBlockReason(RentalInvoice i){
+        if(i.getStatus()==RentalInvoice.Status.CANCELLED)return "Hóa đơn đã hủy.";
+        if(receivedFunds(i))return "Hóa đơn đã nhận tiền toàn bộ hoặc một phần; chủ nhà tự đối chiếu với khách thuê.";
+        if(laterInvoiceBlocks(i))return "Đã có hóa đơn kỳ sau. Cần giữ đúng chuỗi chỉ số và xử lý từ kỳ cuối trở về.";
+        return null;
     }
     private static void requireDraft(RentalInvoice i){if(i.getStatus()!=RentalInvoice.Status.DRAFT)throw conflict("INVALID_STATE","Chỉ được sửa, hủy hoặc gửi hóa đơn nháp.");}
     private void expectedSource(RentalInvoice i){
@@ -207,14 +221,14 @@ public class InvoiceService {
     @Transactional(readOnly=true) public PageResponse<InvoiceResponse> mine(Jwt jwt,int page,int size,InvoicePaymentFilter paymentStatus){
         ApartmentService.validatePage(page,size);var customerId=access.customer(jwt).getId();
         var result=paymentStatus==InvoicePaymentFilter.ALL
-            ? invoices.findByContractCustomerIdAndStatus(customerId,RentalInvoice.Status.SENT,paging(page,size))
+            ? invoices.customerVisibleHistory(customerId,paging(page,size))
             : invoices.findByCustomerAndPaymentStatus(customerId,RentalInvoice.Status.SENT,paymentStatus==InvoicePaymentFilter.PAID,paging(page,size));
         return PageResponse.from(result.map(this::response));
     }
     @Transactional(readOnly=true) public InvoiceResponse detail(Jwt jwt,Long id){
         var u=access.account(jwt);var i=invoices.findWithContractById(id).orElseThrow(InvoiceService::missing);var c=i.getContract();
         if(c.getApartment().getProperty().getOwner().getId().equals(u.getId())){access.owner(jwt);return response(i);}
-        if(c.getCustomer().getId().equals(u.getId())&&i.getStatus()==RentalInvoice.Status.SENT){access.customer(jwt);return response(i);}throw missing();
+        if(c.getCustomer().getId().equals(u.getId())&&(i.getStatus()==RentalInvoice.Status.SENT||(i.getStatus()==RentalInvoice.Status.CANCELLED&&i.getSentAt()!=null))){access.customer(jwt);return response(i);}throw missing();
     }
     private Source source(RentalContract c){
         if(c.getStatus()!=RentalContract.Status.ACTIVE)throw conflict("INVALID_STATE","Chỉ lập hóa đơn cho hợp đồng đang hoạt động.");
@@ -246,13 +260,15 @@ public class InvoiceService {
         var history=invoices.findByContractIdAndStatusNotOrderByPeriodAsc(c.getId(),RentalInvoice.Status.CANCELLED);
         var draft=history.stream().filter(i->i.getKind()!=RentalInvoice.Kind.UTILITY&&i.getStatus()==RentalInvoice.Status.DRAFT).findFirst().orElse(null);
         var next=draft==null?RentSchedule.next(c,history):new RentSchedule.Period(start(draft),end(draft),draft.getRentMonths());
-        LocalDate due=next==null?null:c.isOneMonthRentPackage()?c.getStartDate():next.start().withDayOfMonth(c.getRentPaymentDay());
+        LocalDate due=next==null?null:(c.isOneMonthRentPackage()||(c.isCalendarRentBilling()&&next.start().equals(c.getStartDate())))?c.getStartDate():next.start().withDayOfMonth(c.getRentPaymentDay());
         if(draft!=null)due=draft.getDueDate();
         String mode="SEND";
         return new RentBillingContext(c.getId().toString(),c.getRentCycleMonths(),next==null?null:next.start(),next==null?null:next.end(),next==null?0:next.months(),
-            str(c.getMonthlyRent()),next==null?"0":str(c.getMonthlyRent().multiply(BigDecimal.valueOf(next.months()))),due,
+            str(c.getMonthlyRent()),next==null?"0":str(RentSchedule.amount(c,next)),due,
             c.getBillingVersion(),draft==null?null:draft.getId().toString(),RentSchedule.partial(c),mode,
-            due==null?null:due.minusDays(7),due!=null&&!billingToday().isBefore(due.minusDays(7)));
+            due==null?null:c.isCalendarRentBilling()&&next.start().equals(c.getStartDate())?c.getStartDate():due.minusDays(7),
+            due!=null&&!billingToday().isBefore(c.isCalendarRentBilling()&&next.start().equals(c.getStartDate())?c.getStartDate():due.minusDays(7)),
+            draft!=null?draft.getRentCalculation():next==null?null:RentSchedule.calculation(c,next));
     }
     @Transactional
     public InvoiceResponse createRent(Jwt jwt,Long id,RentInvoiceCreate input){
@@ -271,11 +287,11 @@ public class InvoiceService {
         if(billingToday().isBefore(due.minusDays(7)))throw conflict("RENT_SEND_TOO_EARLY","Chỉ gửi hóa đơn tiền phòng từ 7 ngày trước hạn đóng. Ngày bắt đầu gửi: "+due.minusDays(7)+".");
     }
     private RentalInvoice createRentLocked(RentalContract c,RentBillingContext context,LocalDate due,boolean automated){
-        if(context.coverageStart()==null)throw conflict("BILLING_PERIOD_OUT_OF_RANGE","Đã hết tháng tròn cần thu tiền thuê. Phần ngày lẻ xử lý riêng.");
+        if(context.coverageStart()==null)throw conflict("BILLING_PERIOD_OUT_OF_RANGE","Đã hết kỳ tiền thuê cần lập hóa đơn theo lịch hợp đồng.");
         if(due.isBefore(context.dueDate()))throw bad("VALIDATION_ERROR","Hạn đóng không được trước ngày thanh toán đã thỏa thuận.");
         var i=new RentalInvoice();i.setContract(c);i.setKind(RentalInvoice.Kind.RENT);i.setAutoGenerated(automated);
         i.setPeriod(YearMonth.from(context.coverageStart()).toString());i.setCoverageStart(context.coverageStart());i.setCoverageEnd(context.coverageEnd());
-        i.setRentMonths(context.months());i.setRentUnitPrice(c.getMonthlyRent());i.setMonthlyRent(c.getMonthlyRent().multiply(BigDecimal.valueOf(context.months())));
+        i.setRentMonths(context.months());i.setRentUnitPrice(c.getMonthlyRent());i.setMonthlyRent(new BigDecimal(context.totalAmount()));i.setRentCalculation(context.rentCalculation());
         i.setDueDate(due);i.setStatus(RentalInvoice.Status.DRAFT);i.setCreatedAt(Instant.now());
         i.setElectricityStartReading(BigDecimal.ZERO);i.setElectricityEndReading(BigDecimal.ZERO);i.setElectricityQuantity(BigDecimal.ZERO);i.setElectricityUnitPrice(BigDecimal.ZERO);i.setElectricityAmount(BigDecimal.ZERO);
         i.setWaterStartReading(BigDecimal.ZERO);i.setWaterEndReading(BigDecimal.ZERO);i.setWaterQuantity(BigDecimal.ZERO);i.setWaterUnitPrice(BigDecimal.ZERO);i.setWaterAmount(BigDecimal.ZERO);
@@ -285,11 +301,11 @@ public class InvoiceService {
     }
     /** Called inside activation's transaction; the contract lock and unique invoice key prevent double billing. */
     @Transactional
-    public void prepareInitialOneMonthRent(Long id){
+    public void prepareInitialRent(Long id){
         var c=contracts.lockById(id).orElseThrow(InvoiceService::missing);entities.refresh(c);
-        if(c.getStatus()!=RentalContract.Status.ACTIVE||!c.isOneMonthRentPackage()||billingToday().isBefore(c.getStartDate())||exitGuard.blocks(id))return;
+        if(c.getStatus()!=RentalContract.Status.ACTIVE||(!c.isOneMonthRentPackage()&&!c.isCalendarRentBilling())||billingToday().isBefore(c.getStartDate())||exitGuard.blocks(id))return;
         var context=rentContext(c);
-        if(context.coverageStart()==null)return;
+        if(context.coverageStart()==null||!context.coverageStart().equals(c.getStartDate())||cancelledRentBlocksAuto(c,context))return;
         RentalInvoice invoice=context.existingDraftId()==null?createRentLocked(c,context,c.getStartDate(),true)
             :invoices.findById(Long.valueOf(context.existingDraftId())).orElseThrow(InvoiceService::missing);
         expectedSource(invoice);sendLocked(invoice,c.getApartment().getProperty().getOwner().getId(),true);
@@ -300,13 +316,20 @@ public class InvoiceService {
     public void prepareScheduledRent(Long id){
         var c=contracts.lockById(id).orElseThrow(InvoiceService::missing);entities.refresh(c);
         if(c.getStatus()!=RentalContract.Status.ACTIVE||exitGuard.blocks(id)||c.getApartment().getProperty().getOwner().getStatus()!=com.ancu.proptech.model.auth.AuthAccount.Status.ACTIVE)return;
-        if(c.isOneMonthRentPackage()){prepareInitialOneMonthRent(id);return;}
+        if(c.isOneMonthRentPackage()){prepareInitialRent(id);return;}
+        if(c.isCalendarRentBilling()&&rentContext(c).coverageStart()!=null&&rentContext(c).coverageStart().equals(c.getStartDate())){prepareInitialRent(id);return;}
         var context=rentContext(c);var today=billingToday();
-        if(context.coverageStart()==null||today.isBefore(context.dueDate().minusDays(7))||today.isAfter(context.dueDate()))return;
+        if(cancelledRentBlocksAuto(c,context))return;
+        if(context.coverageStart()==null||today.isBefore(context.dueDate().minusDays(7))||(!c.isCalendarRentBilling()&&today.isAfter(context.dueDate())))return;
         RentalInvoice invoice;
         if(context.existingDraftId()!=null){invoice=invoices.findById(Long.valueOf(context.existingDraftId())).orElseThrow(InvoiceService::missing);}
         else invoice=createRentLocked(c,context,context.dueDate(),true);
         expectedSource(invoice);sendLocked(invoice,c.getApartment().getProperty().getOwner().getId(),true);
+    }
+    private boolean cancelledRentBlocksAuto(RentalContract c,RentBillingContext context){
+        if(context.coverageStart()==null)return false;
+        return invoices.findByContractIdAndStatus(c.getId(),RentalInvoice.Status.CANCELLED).stream().filter(i->i.getKind()!=RentalInvoice.Kind.UTILITY)
+            .anyMatch(i->!end(i).isBefore(context.coverageStart())&&!start(i).isAfter(context.coverageEnd()));
     }
     private static LocalDate start(RentalInvoice i){return i.getCoverageStart()==null?YearMonth.parse(i.getPeriod()).atDay(1):i.getCoverageStart();}
     private static LocalDate end(RentalInvoice i){return i.getCoverageEnd()==null?YearMonth.parse(i.getPeriod()).atEndOfMonth():i.getCoverageEnd();}
@@ -316,5 +339,5 @@ public class InvoiceService {
     private static ApiException missing(){return new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy hóa đơn hoặc hợp đồng thuộc tài khoản của bạn.");}
     private static ApiException conflict(String code,String message){return new ApiException(HttpStatus.CONFLICT,code,message);}
     private static ApiException bad(String code,String message){return new ApiException(HttpStatus.BAD_REQUEST,code,message);}
-    private InvoiceResponse response(RentalInvoice i){var c=i.getContract();var a=c.getApartment();var payment=payments.findByInvoiceId(i.getId()).orElse(null);return new InvoiceResponse(i.getId(),c.getId(),a.getId(),c.getCustomer().getId(),a.getRoomNumber(),a.getTitle(),c.getCustomer().getFullName(),i.getPeriod(),i.getDueDate(),str(i.getMonthlyRent()),str(i.getElectricityStartReading()),str(i.getElectricityEndReading()),str(i.getElectricityQuantity()),str(i.getElectricityUnitPrice()),str(i.getElectricityAmount()),str(i.getWaterStartReading()),str(i.getWaterEndReading()),str(i.getWaterQuantity()),str(i.getWaterUnitPrice()),str(i.getWaterAmount()),str(i.getTotalAmount()),i.getStatus().name(),i.getCreatedAt(),i.getSentAt(),i.getVersion(),payment!=null&&payment.getPaidAt()!=null?"PAID":"UNPAID",payment==null?null:payment.getPaidAt(),i.getWaterBillingMode().name(),i.getOccupantCount(),str(i.getInternetFee()),str(i.getGarbageFee()),c.getBillingVersion(),i.getKind().name(),i.getCoverageStart(),i.getCoverageEnd(),i.getRentMonths(),str(i.getKind()==RentalInvoice.Kind.LEGACY?i.getMonthlyRent():i.getRentUnitPrice()));}
+    private InvoiceResponse response(RentalInvoice i){var block=cancellationBlockReason(i);var c=i.getContract();var a=c.getApartment();var payment=payments.findByInvoiceId(i.getId()).orElse(null);return new InvoiceResponse(i.getId(),c.getId(),a.getId(),c.getCustomer().getId(),a.getRoomNumber(),a.getTitle(),c.getCustomer().getFullName(),i.getPeriod(),i.getDueDate(),str(i.getMonthlyRent()),str(i.getElectricityStartReading()),str(i.getElectricityEndReading()),str(i.getElectricityQuantity()),str(i.getElectricityUnitPrice()),str(i.getElectricityAmount()),str(i.getWaterStartReading()),str(i.getWaterEndReading()),str(i.getWaterQuantity()),str(i.getWaterUnitPrice()),str(i.getWaterAmount()),str(i.getTotalAmount()),i.getStatus().name(),i.getCreatedAt(),i.getSentAt(),i.getVersion(),payment!=null&&payment.getPaidAt()!=null?"PAID":"UNPAID",payment==null?null:payment.getPaidAt(),i.getWaterBillingMode().name(),i.getOccupantCount(),str(i.getInternetFee()),str(i.getGarbageFee()),c.getBillingVersion(),i.getKind().name(),i.getCoverageStart(),i.getCoverageEnd(),i.getRentMonths(),str(i.getKind()==RentalInvoice.Kind.LEGACY?i.getMonthlyRent():i.getRentUnitPrice()),block==null,block,i.getRentCalculation());}
 }

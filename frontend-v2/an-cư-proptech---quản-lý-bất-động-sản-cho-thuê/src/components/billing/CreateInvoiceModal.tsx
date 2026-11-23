@@ -75,6 +75,7 @@ export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice, initia
           {!rent.canSend&&rent.sendAvailableFrom&&<p role="status" className="text-amber-800">Chưa đến thời gian gửi. Bắt đầu gửi từ {dossierDateDisplay(rent.sendAvailableFrom)}.</p>}
           <p>Chu kỳ đã ký: {rent.cycleMonths} tháng / lần</p>
           {rent.coverageStart?<><p>Kỳ tiền thuê: {dossierDateDisplay(rent.coverageStart)} đến {dossierDateDisplay(rent.coverageEnd)} ({rent.months} tháng)</p><p>{billingMoney(rent.monthlyRent)} / tháng · Tổng {billingMoney(rent.totalAmount)}</p></>:<p>Đã hết tháng tròn cần lập tiền thuê.</p>}
+          {rent.rentCalculation&&<p className="whitespace-pre-wrap break-words text-sm">{rent.rentCalculation}</p>}
           {rent.hasPartialDays&&<p className="text-amber-800">Hợp đồng có ngày lẻ. Hai bên đối chiếu và xử lý riêng phần này.</p>}
           {rent.existingDraftId&&<p>Đã có bản nháp tiền thuê. <Link className="underline text-emerald-800" to="/app?tab=invoices" onClick={onClose}>Mở danh sách hóa đơn</Link></p>}
           {rent.coverageStart&&!rent.existingDraftId&&<label className="block font-semibold">Hạn đóng<DossierDateInput required className={cls} min={rent.dueDate??rent.coverageStart} value={due} onChange={setDue}/></label>}
