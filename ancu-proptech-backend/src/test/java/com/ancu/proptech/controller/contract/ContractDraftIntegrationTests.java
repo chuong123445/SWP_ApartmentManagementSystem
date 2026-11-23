@@ -237,6 +237,14 @@ class ContractDraftIntegrationTests {
             .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("ONE_MONTH_RENT_CYCLE_REQUIRED"));
         create(token,input.substring(0,input.length()-1)+",\"oneMonthRentPackage\":false}").andExpect(status().isBadRequest());
     }
+    @Test void rentCycleMustBeWithinContractDuration()throws Exception {
+        var start=today().withDayOfMonth(1).plusMonths(1);
+        var end=start.plusMonths(3).minusDays(1);
+        String input=body(context()).replace(today().toString(),start.toString()).replace(today().plusYears(1).toString(),end.toString());
+        create(token,input.substring(0,input.length()-1)+",\"rentCycleMonths\":4}")
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_RENT_CYCLE"));
+        create(token,input.substring(0,input.length()-1)+",\"rentCycleMonths\":2}").andExpect(status().isCreated());
+    }
     @org.junit.jupiter.params.ParameterizedTest @org.junit.jupiter.params.provider.ValueSource(booleans={false,true})
     void legacyInvalidDatesCannotBypassPolicyAtOtpOrDirectSignature(boolean tooFar)throws Exception {
         String saved=create();var c=contracts.findById(Long.valueOf(id(saved))).orElseThrow();
@@ -830,5 +838,25 @@ class ContractDraftIntegrationTests {
         packageInvoices.prepareScheduledRent(Long.valueOf(id));assertEquals(1,rentCount(id));
         var c=contracts.findById(Long.valueOf(id)).orElseThrow();mvc.perform(post("/api/v1/owner/contracts/"+id+"/rent-invoices").header("Authorization",token).contentType("application/json").content("{\"billingVersion\":"+c.getBillingVersion()+",\"coverageStart\":\"2027-01-15\",\"dueDate\":\"2027-01-15\"}"))
             .andExpect(status().isOk());assertEquals(2,rentCount(id));packageInvoices.prepareScheduledRent(Long.valueOf(id));assertEquals(2,rentCount(id));
+    }
+    @Test void draftContractSigningExpiresAfter48HoursTimeout() throws Exception {
+        String saved = create();
+        String hash = JsonPath.read(saved, "$.signing.contentHash");
+        sign(saved, token, hash, signature(), true).andExpect(status().isOk());
+
+        Long contractId = Long.valueOf(id(saved));
+        var draft = drafts.findByContractId(contractId).orElseThrow();
+        draft.setOwnerSignedAt(Instant.now().minus(java.time.Duration.ofHours(49)));
+        drafts.saveAndFlush(draft);
+
+        sign(saved, customerToken, hash, signature(), true)
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.code").value("SIGNING_EXPIRED"));
+
+        var contract = contracts.findById(contractId).orElseThrow();
+        assertEquals(RentalContract.Status.CANCELLED, contract.getStatus());
+        var req = requests.findById(request.getId()).orElseThrow();
+        assertEquals(RentalRequest.Status.CANCELLED, req.getStatus());
+        assertEquals(Apartment.Availability.VACANT, apartments.findById(request.getApartment().getId()).orElseThrow().getAvailability());
     }
 }

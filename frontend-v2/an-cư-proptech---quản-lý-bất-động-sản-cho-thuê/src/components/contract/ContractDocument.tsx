@@ -3,7 +3,7 @@ import { externalDepositNotice } from '@/utils/depositPolicy';
 import { ContractExitPanel } from '@/components/contract/ContractExitPanel';
 import { SelectionCancellationPanel } from '@/components/rental/SelectionCancellationPanel';
 import { useEffect, useRef, useState } from 'react';
-import { Download, ExternalLink, RefreshCw, Copy, PenLine, CheckCircle2 } from 'lucide-react';
+import { Download, ExternalLink, RefreshCw, Copy, PenLine, CheckCircle2, Clock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router';
 import { getContract, requestContractSignatureOtp, getContractPdf, signContract } from '@/services/contract/contractService';
@@ -91,6 +91,17 @@ export function ContractDocument({ draft, onUpdated, onRemoved }: { draft: Contr
     {draft.status === 'CANCELLED' && <p className="rounded-lg bg-slate-50 p-3 text-sm">Hợp đồng đã hủy trước hiệu lực. Nội dung và chữ ký được giữ nguyên để xem lại; thao tác hủy không xác nhận hoàn cọc.</p>}
     {draft.cancellationState==='PENDING' && <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm">Đang chờ phản hồi đề nghị hủy; tạm khóa sửa và ký tiếp.</p>}
     {!draft.lifecycle?.previousContractId && (draft.status==='DRAFT'||draft.status==='CANCELLED') && <div className="space-y-3"><button type="button" className="text-sm text-red-700 underline" onClick={()=>setShowCancellation(v=>!v)}>Hủy / lịch sử làm hợp đồng</button>{showCancellation&&<SelectionCancellationPanel requestId={draft.rentalRequestId} onState={value=>{removed.current=value.state==='CANCELLED'&&!value.contractId;setPendingCancellation(value.state==='PENDING'||value.state==='CANCELLED');}} onChanged={async()=>{if(removed.current){if(onRemoved)onRemoved();else navigate(isOwner?'/app?tab=contracts':'/my/contracts',{replace:true});return;}onUpdated(await getContract(draft.id));setRevision(v=>v+1);}}/>}</div>}
+    {draft.status === 'DRAFT' && (signing?.ownerSignedAt || signing?.customerSignedAt) && !(signing?.ownerSignedAt && signing?.customerSignedAt) && (
+      <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 flex items-start gap-3">
+        <Clock className="w-5 h-5 mt-0.5 shrink-0 text-amber-700" />
+        <div className="space-y-1">
+          <p className="font-bold text-amber-950">Thời hạn hoàn tất chữ ký: 48 giờ</p>
+          <p>
+            Hợp đồng đã có 1 chữ ký ({signing?.ownerSignedAt ? 'Bên cho thuê' : 'Bên thuê'} đã ký vào lúc {new Date(signing?.ownerSignedAt || signing?.customerSignedAt!).toLocaleString('vi-VN')}). Hợp đồng này <strong>sẽ hết hạn vào lúc {new Date(new Date(signing?.ownerSignedAt || signing?.customerSignedAt!).getTime() + 48 * 3600 * 1000).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}</strong>. Quá thời gian trên, hợp đồng sẽ tự động hết hạn và phòng được mở lại để đón khách mới.
+          </p>
+        </div>
+      </div>
+    )}
     {canSign && <section className="p-4 sm:p-5 border border-emerald-200 rounded-xl space-y-4 bg-white">
       <h3 className="font-bold flex items-center gap-2"><PenLine size={18} />Ký xác nhận · {isOwner ? 'Bên cho thuê (Bên A)' : 'Bên thuê (Bên B)'}</h3>
       <p className="text-sm text-slate-600">Đọc bản PDF ở trên, sau đó vẽ chữ ký của bạn vào khung. Nội dung sẽ bị khóa ngay khi có chữ ký đầu tiên.</p>
