@@ -9,3 +9,5 @@ Tenant chỉ thấy CANCELLED nếu hóa đơn từng được gửi (sentAt kh�
 Scheduler không tự lập/gửi lại coverage đã hủy; Owner có thể chủ động lập lại bằng mã mới. Bản hủy cũ không chặn tự động của các kỳ khác sau khi kỳ đó đã được chủ động xử lý lại.
 
 Kiểm tra thực tế ghi trong WORK_PROGRESS/CHANGELOG: Billing, SePay, Notification integration với DBtest riêng/provider mock;6Playwright desktop/mobile unpaid/paid/partial, TypeScript/frontend. Không chuyển tiền/đổi dữ liệu ứng dụng thật.
+
+Bổ sung: nếu đã ghi nhận tiền nhưng chưa đủ điều kiện PAID, API tạo/lấy QR trả PAYMENT_RECONCILIATION_REQUIRED, tránh thu lại toàn bộ hóa đơn. Chủ nhà đối chiếu thủ công; không tự tính khoản thu bổ sung. Bốn ca SePay mục tiêu đạt sau thay đổi này.

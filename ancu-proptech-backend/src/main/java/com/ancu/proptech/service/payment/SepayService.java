@@ -134,7 +134,10 @@ public class SepayService {
   entities.refresh(invoice);
   if(invoice.getStatus()!=RentalInvoice.Status.SENT)throw new ApiException(HttpStatus.CONFLICT,"INVOICE_NOT_SENT","Hóa đơn đã hủy hoặc chưa được gửi, không thể tạo QR.");
   payment = payments.findByInvoiceId(invoiceId).orElse(null);
+  if(payment!=null)entities.refresh(payment);
   if (payment != null && payment.getPaidAt() != null) return paymentView(payment, true);
+  if(events.existsByInvoiceIdAndResultInAndAmountGreaterThan(invoiceId,java.util.Set.of("MATCHED","ALREADY_PAID","AMOUNT_MISMATCH","INVOICE_NOT_SENT"),BigDecimal.ZERO))
+   throw new ApiException(HttpStatus.CONFLICT,"PAYMENT_RECONCILIATION_REQUIRED","Đã ghi nhận tiền chuyển đến. Chủ nhà cần đối chiếu với khách thuê trước khi thu tiếp, không tạo QR thu lại toàn bộ hóa đơn.");
   if (!java.util.Objects.equals(source, collectionSource(owner, payment))) {
    throw new ApiException(HttpStatus.CONFLICT, "PAYMENT_SOURCE_CHANGED", "Khoản thanh toán vừa được tạo. Vui lòng tải lại.");
   }
