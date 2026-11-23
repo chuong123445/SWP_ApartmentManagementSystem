@@ -28,7 +28,7 @@ async function exercise(page:Page,width:number,scenario:string){
       if(req.method()==='POST')postCount++;else if(req.method()==='PUT')putCount++;else throw Error('Wrong method');
       if(scenario==='stale')return route.fulfill({status:409,json:{code:'SOURCE_CHANGED',message:'Thông tin đã thay đổi. Hãy tải lại.'}});
       if(scenario==='save-error'&&!failedSave){failedSave=true;return route.fulfill({status:503,json:{message:'Không lưu được bản nháp.'}});}
-      const body=req.postDataJSON();saved={...body,oneMonthRentPackage:true,id:'42',rentalRequestId:'31',contractNumber:'HD-42',status:'DRAFT',version:putCount,snapshot,createdAt:'2026-11-03T00:00:00Z',signing:{ownerAccountId:'3',customerAccountId:'2',contentHash:'a'.repeat(64),state:'UNSIGNED'}};
+      const body=req.postDataJSON();saved={...body,oneMonthRentPackage:false,calendarRentBilling:true,id:'42',rentalRequestId:'31',contractNumber:'HD-42',status:'DRAFT',version:putCount,snapshot,createdAt:'2026-11-03T00:00:00Z',signing:{ownerAccountId:'3',customerAccountId:'2',contentHash:'a'.repeat(64),state:'UNSIGNED'}};
       return json(saved);
     }
     if(path.endsWith('/contracts/42/pdf')){pdfCount++;if(scenario==='pdf-error'&&!failedPdf)return route.fulfill({status:503,json:{message:'Chưa tải được PDF.'}});return route.fulfill({contentType:'application/pdf',body:pdf});}
@@ -57,15 +57,15 @@ async function exercise(page:Page,width:number,scenario:string){
   await dialog.getByRole('alert').filter({hasText:'Thời hạn thuê tối thiểu phải từ 30 ngày'}).waitFor();
   if(postCount||putCount)throw Error('Short lease sent');
   await dialog.getByLabel('Ngày kết thúc',{exact:true}).fill(add(119));
-  await dialog.getByText('Tiền thuê trọn một tháng cho toàn bộ kỳ thuê; hệ thống lập và gửi một hóa đơn',{exact:false}).waitFor();
+  await dialog.getByText('Tiền thuê theo tháng lịch: kỳ đầu gồm phần tháng bắt đầu',{exact:false}).waitFor();
   await dialog.locator('option[value="3"]:disabled').waitFor({state:'attached'});
   if(await dialog.getByRole('option',{name:'3 tháng / lần',exact:true}).getAttribute('disabled')===null)throw Error('Multi-month package cycle enabled');
   await dialog.getByRole('button',{name:'Tiếp theo →',exact:true}).click();
   await dialog.getByRole('button',{name:'Rà soát và xác nhận →',exact:true}).click();
-  await dialog.getByText('Hạn đóng tiền thuê trọn một tháng',{exact:true}).waitFor();
+  await dialog.getByText('Hạn đóng kỳ đầu',{exact:true}).waitFor();
   await dialog.getByRole('button',{name:scenario==='expired'?'Xác nhận lưu thay đổi':'Xác nhận tạo hợp đồng',exact:true}).click();
   await dialog.getByTitle('Bản PDF hợp đồng HD-42').waitFor();
-  await dialog.getByText('Tiền thuê trọn một tháng cho toàn bộ kỳ thuê · Một hóa đơn',{exact:false}).waitFor();
+  await dialog.getByText('Tiền thuê theo tháng lịch, 1 tháng/lần.',{exact:false}).waitFor();
   if(saved.startDate!==add(90)||(scenario==='expired'&&saved.deposit!=='900000'))throw Error('Correction discarded edits');
   if((scenario==='expired'?putCount:postCount)!==1)throw Error('Wrong save count');
   if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Page horizontal overflow');

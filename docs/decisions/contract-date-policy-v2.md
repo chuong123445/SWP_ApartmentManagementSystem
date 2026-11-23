@@ -31,3 +31,7 @@ Khi có đủ chữ ký và đến ngày bắt đầu, giao dịch kích hoạt 
 Mục1–2: commit ce35d9eb;63 backend đạt qua hai lượt,169 frontend/TypeScript và4Playwright desktop/mobile với API fixture đạt. Mục3 và hồi quy cuối: 130 backend đạt,2 skipped theo điều kiện ngày của scheduler (71 ContractDraft,45 Billing gồm2 skipped,4 RentSchedule,4 ContractPdf,7 TermPolicy,1 HandoverPdf). TypeScript/170frontend/build đạt;4Playwright desktop/mobile tạo mới/sửa nháp kiểm tra cả90ngày/30ngày/gói thuê/hạn đóng/giữ sửa đổi, API fixture, ảnh mobile đã xem. Có cảnh báo Vite configLoader/chunk lớn có sẵn. Database test riêng; không cập nhật dữ liệu ứng dụng hoặc gửi email thật.
 
 Khởi động lại backend để Flyway chạy V70 và tải lại frontend. Các thay đổi này local-only trong nhánh duy/contract-dates-first-three; không tự push hoặc merge main.
+
+## Cập nhật 23/11/2026
+
+[Quy tắc tháng lịch](calendar-rent-billing-v1.md) thay thế gói một tháng cố định đối với hợp đồng mới/nháp chưa ký được chủ động sửa. Hợp đồng đã ký giữ nguyên chính sách cũ; không áp dụng hồi tố.

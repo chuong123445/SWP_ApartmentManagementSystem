@@ -64,3 +64,9 @@
 -75backendPASS/1scheduler-date-skipped qua các lượt (46Billing gồm1skip,25SePay,5Notification),174frontend/TypeScript và6MCPunpaid/paid/partial desktopmobilePASS; kiểm tra thêm2ca hồi quy sửa/hủy nháp trong WORK_PROGRESS. Ảnhmobileđãxem; không appDB/provider thật. Chi tiết docs/decisions/invoice-cancellation-v2.md.
 
 - Bổ sung bảo vệ QR: tiền thiếu/thừa đang chờ đối chiếu không được tạo QR thu lại toàn bộ; refresh payment sau khóa. 4 ca SePay mục tiêu PASS, không gọi ngân hàng thật.
+
+## Tiền ngày lẻ và hóa đơn đầu tự gửi — 23/11/2026
+
+- Hợp đồng mới/nháp chưa ký được chủ động sửa thu theo tháng lịch: kỳ đầu gồm ngày lẻ + các tháng còn lại của chu kỳ; kỳ cuối chốt đúng ngày hết thuê. Giá tháng ÷ ngày thực tế × ngày thuê, cộng rồi làm tròn đến đồng HALF_UP. Kỳ đầu tự lập/gửi khi ACTIVE, hạn đóng ngày bắt đầu; tương lai chờ hiệu lực. Kỳ sau dùng ngày đến hạn đã chọn, gửi từ D-7 và bắt kịp kỳ bị bỏ lỡ. Giữ nguyên hợp đồng đã ký, gói cũ và chuỗi điện nước.
+- V73 lưu cờ chính sách và công thức hóa đơn. Lập lại chủ động bù kỳ RENT đã hủy; scheduler không tự gửi lại. Công thức hiển thị trong preview/chi tiết và chính sách có trong PDF/nội dung ký. Xem docs/decisions/calendar-rent-billing-v1.md.
+- 89backendPASS qua các lượt; 176frontend/TypeScript/buildPASS, 8Playwright desktop/mobile API fixturePASS; ảnh mobile đã xem. Không full-suite/live-provider/appDB claim. Cần restart backend áp dụng V73 và reload frontend; chưa push.

@@ -184,15 +184,16 @@ class ContractDraftIntegrationTests {
         create(token,body(context()).replace(today().plusYears(1).toString(),today().plusDays(28).toString()))
             .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("CONTRACT_TERM_TOO_SHORT"));
         String saved=create(token,body(context()).replace(today().plusYears(1).toString(),today().plusDays(29).toString()))
-            .andExpect(status().isCreated()).andExpect(jsonPath("$.oneMonthRentPackage").value(true)).andReturn().getResponse().getContentAsString();
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.oneMonthRentPackage").value(false)).andReturn().getResponse().getContentAsString();
         update(id(saved),0,shortTerms).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("CONTRACT_TERM_TOO_SHORT"));
         update(id(saved),0,terms().replace(today().plusYears(1).toString(),today().plusDays(29).toString()))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.oneMonthRentPackage").value(true));
+            .andExpect(status().isOk()).andExpect(jsonPath("$.oneMonthRentPackage").value(false));
     }
     private String createOneMonth(LocalDate start)throws Exception {
         String input=body(context()).replace("\"startDate\":\""+today()+"\"","\"startDate\":\""+start+"\"")
             .replace(today().plusYears(1).toString(),start.plusDays(29).toString());
-        return create(token,input).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String result=create(token,input).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        var c=contracts.findById(Long.valueOf(id(result))).orElseThrow();c.setCalendarRentBilling(false);c.setOneMonthRentPackage(true);contracts.saveAndFlush(c);return readContract(id(result));
     }
     private int rentCount(String id){return jdbc.queryForObject("SELECT COUNT(*) FROM rental_invoices WHERE contract_id=? AND kind='RENT' AND status<>'CANCELLED'",Integer.class,Long.valueOf(id));}
     @Test void oneMonthActivationSendsExactlyOneFullRentInvoiceAndNotification()throws Exception {
@@ -204,7 +205,7 @@ class ContractDraftIntegrationTests {
         assertEquals(today().plusDays(29),((java.sql.Date)row.get("coverage_end")).toLocalDate());assertEquals(today(),((java.sql.Date)row.get("due_date")).toLocalDate());
         assertEquals(0,new BigDecimal("6200000.50").compareTo((BigDecimal)row.get("total_amount")));
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM invoice_notifications WHERE invoice_id=?",Integer.class,row.get("id")));
-        packageInvoices.prepareInitialOneMonthRent(Long.valueOf(id(saved)));packageInvoices.prepareScheduledRent(Long.valueOf(id(saved)));initialActivation.activate(Long.valueOf(id(saved)));
+        packageInvoices.prepareInitialRent(Long.valueOf(id(saved)));packageInvoices.prepareScheduledRent(Long.valueOf(id(saved)));initialActivation.activate(Long.valueOf(id(saved)));
         assertEquals(1,rentCount(id(saved)));
         mvc.perform(get("/api/v1/owner/contracts/"+id(saved)+"/rent-billing-context").header("Authorization",token)).andExpect(status().isOk()).andExpect(jsonPath("$.coverageStart").isEmpty());
         mvc.perform(get("/api/v1/invoices/"+row.get("id")).header("Authorization",customerToken)).andExpect(status().isOk());
@@ -213,14 +214,14 @@ class ContractDraftIntegrationTests {
     @Test void futureOneMonthInvoiceWaitsForActivationAndCatchesUpAfterStart()throws Exception {
         LocalDate start=today().plusDays(2);String saved=createOneMonth(start);String hash=JsonPath.read(saved,"$.signing.contentHash");
         sign(saved,token,hash,signature(),true).andExpect(status().isOk());sign(saved,customerToken,hash,signature(),true).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DRAFT"));
-        packageInvoices.prepareInitialOneMonthRent(Long.valueOf(id(saved)));assertEquals(0,rentCount(id(saved)));
+        packageInvoices.prepareInitialRent(Long.valueOf(id(saved)));assertEquals(0,rentCount(id(saved)));
         org.mockito.Mockito.doReturn(start.plusDays(1)).when(signingDates).today();initialActivation.activate(Long.valueOf(id(saved)));
         assertEquals(1,rentCount(id(saved)));assertEquals(start,jdbc.queryForObject("SELECT due_date FROM rental_invoices WHERE contract_id=? AND kind='RENT'",java.sql.Date.class,Long.valueOf(id(saved))).toLocalDate());
         packageInvoices.prepareScheduledRent(Long.valueOf(id(saved)));assertEquals(1,rentCount(id(saved)));
     }
     @Test void oneMonthRenewalBillsNewLeaseWithoutChangingPreviousInvoiceHistory()throws Exception {
         String old=expiredContract(),oldId=id(old);String input=renewalInput(oldId).replace(YearMonth.now(ZoneId.of("Asia/Ho_Chi_Minh")).plusMonths(11).atEndOfMonth().toString(),today().plusDays(29).toString());
-        String next=mvc.perform(post("/api/v1/owner/contracts/"+oldId+"/renewals").header("Authorization",token).contentType("application/json").content(input)).andExpect(status().isCreated()).andExpect(jsonPath("$.oneMonthRentPackage").value(true)).andReturn().getResponse().getContentAsString();
+        String next=mvc.perform(post("/api/v1/owner/contracts/"+oldId+"/renewals").header("Authorization",token).contentType("application/json").content(input)).andExpect(status().isCreated()).andExpect(jsonPath("$.oneMonthRentPackage").value(false)).andReturn().getResponse().getContentAsString();
         String hash=JsonPath.read(next,"$.signing.contentHash");sign(next,token,hash,signature(),true).andExpect(status().isOk());assertEquals(0,rentCount(id(next)));
         sign(next,customerToken,hash,signature(),true).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"));
         assertEquals(1,rentCount(id(next)));assertEquals("ENDED",JsonPath.read(readContract(oldId),"$.status"));
@@ -228,7 +229,7 @@ class ContractDraftIntegrationTests {
     @Test void legacyOneMonthLeaseDoesNotAcquireNewPackageOrAutomaticCharge()throws Exception {
         String saved=createOneMonth(today());var c=contracts.findById(Long.valueOf(id(saved))).orElseThrow();c.setOneMonthRentPackage(false);contracts.saveAndFlush(c);saved=readContract(id(saved));
         String hash=JsonPath.read(saved,"$.signing.contentHash");sign(saved,token,hash,signature(),true).andExpect(status().isOk());sign(saved,customerToken,hash,signature(),true).andExpect(status().isOk());
-        packageInvoices.prepareInitialOneMonthRent(c.getId());assertEquals(0,rentCount(id(saved)));assertFalse(c.isOneMonthRentPackage());
+        packageInvoices.prepareInitialRent(c.getId());assertEquals(0,rentCount(id(saved)));assertFalse(c.isOneMonthRentPackage());
     }
     @Test void packageCycleAndServerOwnedBillingPolicyCannotBeForged()throws Exception {
         String input=body(context()).replace(today().plusYears(1).toString(),today().plusDays(29).toString());
@@ -562,14 +563,15 @@ class ContractDraftIntegrationTests {
         mvc.perform(get("/api/v1/me/tenancies").header("Authorization",customerToken)).andExpect(status().isOk())
             .andExpect(jsonPath("$[0].id").value(contractId)).andExpect(jsonPath("$[0].status").value("ACTIVE"));
         mvc.perform(get("/api/v1/owner/contracts/"+contractId+"/billing-context").header("Authorization",token))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.electricityStartReading").value("200"))
-            .andExpect(jsonPath("$.waterStartReading").value("50")).andExpect(jsonPath("$.period").value("2026-11"));
+            .andExpect(status().isOk()).andExpect(jsonPath("$.electricityStartReading").value("200.00"))
+            .andExpect(jsonPath("$.waterStartReading").value("50.00")).andExpect(jsonPath("$.period").value("2026-11"));
+        long chain=contracts.findById(Long.valueOf(contractId)).orElseThrow().getBillingVersion();
         String invoice=mvc.perform(post("/api/v1/owner/contracts/"+contractId+"/invoices").header("Authorization",token)
-            .contentType("application/json").content("{\"period\":\"2026-11\",\"electricityEndReading\":\"215\",\"waterEndReading\":\"55\",\"dueDate\":\"2026-11-28\",\"baselineVersion\":0}"))
+            .contentType("application/json").content("{\"period\":\"2026-11\",\"electricityEndReading\":\"215\",\"waterEndReading\":\"55\",\"dueDate\":\"2026-11-28\",\"baselineVersion\":"+chain+"}"))
             .andExpect(status().isCreated()).andExpect(jsonPath("$.customerId").value(customer.getId().toString()))
             .andReturn().getResponse().getContentAsString();
         mvc.perform(get("/api/v1/me/invoices").header("Authorization",customerToken)).andExpect(status().isOk())
-            .andExpect(jsonPath("$.totalElements").value(0));
+            .andExpect(jsonPath("$.totalElements").value(1));
         mvc.perform(post("/api/v1/owner/invoices/"+JsonPath.read(invoice,"$.id")+"/send").header("Authorization",token)
             .contentType("application/json").content("{\"version\":"+JsonPath.read(invoice,"$.version")+"}"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("SENT"));
@@ -788,5 +790,45 @@ class ContractDraftIntegrationTests {
         assertEquals(Apartment.Availability.OCCUPIED,request.getApartment().getAvailability());
         org.mockito.Mockito.verify(otpSender,org.mockito.Mockito.never()).sendAction(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString());
         assertTrue(otpChallenges.findAll().stream().noneMatch(c->Set.of(owner.getId(),customer.getId()).contains(c.getAccountId())));
+    }
+    private String calendarQuarter(boolean future)throws Exception{
+        org.mockito.Mockito.doReturn(LocalDate.of(2027,1,future?13:15)).when(signingDates).today();
+        String input=body(context()).replace("\"startDate\":\""+today()+"\"","\"startDate\":\"2027-01-15\"")
+            .replace(today().plusYears(1).toString(),"2027-07-14").replace("6200000.50","3000000");
+        input=input.substring(0,input.length()-1)+",\"rentCycleMonths\":3}";
+        return create(token,input).andExpect(status().isCreated()).andExpect(jsonPath("$.calendarRentBilling").value(true)).andExpect(jsonPath("$.oneMonthRentPackage").value(false)).andReturn().getResponse().getContentAsString();
+    }
+    private void assertCalendarRent(String id,String start,String end,String due,String amount){
+        var row=jdbc.queryForMap("SELECT * FROM rental_invoices WHERE contract_id=? AND coverage_start=? AND status='SENT' AND kind='RENT'",Long.valueOf(id),java.sql.Date.valueOf(start));
+        assertEquals(java.sql.Date.valueOf(end),row.get("coverage_end"));assertEquals(java.sql.Date.valueOf(due),row.get("due_date"));assertEquals(0,new BigDecimal(amount).compareTo((BigDecimal)row.get("total_amount")));assertNotNull(row.get("rent_calculation"));
+    }
+    @Test void activationAutomaticallySendsFirstPartialMonthPlusTwoWholeMonthsAndScheduledCyclesCapFinalDate()throws Exception{
+        String saved=calendarQuarter(false),hash=JsonPath.read(saved,"$.signing.contentHash"),id=id(saved);
+        sign(saved,token,hash,signature(),true).andExpect(status().isOk());assertEquals(0,rentCount(id));
+        sign(saved,customerToken,hash,signature(),true).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"));
+        assertCalendarRent(id,"2027-01-15","2027-03-31","2027-01-15","7645161");assertEquals(1,rentCount(id));
+        initialActivation.activate(Long.valueOf(id));packageInvoices.prepareScheduledRent(Long.valueOf(id));assertEquals(1,rentCount(id));
+        org.mockito.Mockito.doReturn(LocalDate.of(2027,3,28)).when(signingDates).today();packageInvoices.prepareScheduledRent(Long.valueOf(id));assertEquals(1,rentCount(id));
+        org.mockito.Mockito.doReturn(LocalDate.of(2027,3,29)).when(signingDates).today();packageInvoices.prepareScheduledRent(Long.valueOf(id));assertCalendarRent(id,"2027-04-01","2027-06-30","2027-04-05","9000000");
+        org.mockito.Mockito.doReturn(LocalDate.of(2027,6,28)).when(signingDates).today();packageInvoices.prepareScheduledRent(Long.valueOf(id));assertCalendarRent(id,"2027-07-01","2027-07-14","2027-07-05","1354839");
+        packageInvoices.prepareScheduledRent(Long.valueOf(id));assertEquals(3,rentCount(id));
+    }
+    @Test void signedFutureCalendarLeaseSendsNothingUntilActivationDayThenSendsOnlyOneInvoice()throws Exception{
+        String saved=calendarQuarter(true),hash=JsonPath.read(saved,"$.signing.contentHash"),id=id(saved);
+        sign(saved,token,hash,signature(),true).andExpect(status().isOk());sign(saved,customerToken,hash,signature(),true).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DRAFT"));
+        initialActivation.activate(Long.valueOf(id));assertEquals(0,rentCount(id));
+        org.mockito.Mockito.doReturn(LocalDate.of(2027,1,15)).when(signingDates).today();initialActivation.activate(Long.valueOf(id));packageInvoices.prepareScheduledRent(Long.valueOf(id));assertEquals(1,rentCount(id));assertCalendarRent(id,"2027-01-15","2027-03-31","2027-01-15","7645161");
+    }
+    @Test void cancellingPriorUnpaidCalendarRentDoesNotAutoResendAndOwnerCanExplicitlyRecreateGap()throws Exception{
+        String saved=calendarQuarter(false),hash=JsonPath.read(saved,"$.signing.contentHash"),id=id(saved);
+        sign(saved,token,hash,signature(),true).andExpect(status().isOk());sign(saved,customerToken,hash,signature(),true).andExpect(status().isOk());
+        org.mockito.Mockito.doReturn(LocalDate.of(2027,3,29)).when(signingDates).today();packageInvoices.prepareScheduledRent(Long.valueOf(id));
+        Long invoiceId=jdbc.queryForObject("SELECT id FROM rental_invoices WHERE contract_id=? AND kind='RENT' AND coverage_start='2027-01-15'",Long.class,Long.valueOf(id));
+        String current=mvc.perform(get("/api/v1/invoices/"+invoiceId).header("Authorization",token)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        mvc.perform(post("/api/v1/owner/invoices/"+invoiceId+"/cancel").header("Authorization",token).contentType("application/json").content("{\"version\":"+JsonPath.read(current,"$.version")+",\"billingVersion\":"+JsonPath.read(current,"$.billingVersion")+",\"reason\":\"Cần lập lại\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CANCELLED"));
+        packageInvoices.prepareScheduledRent(Long.valueOf(id));assertEquals(1,rentCount(id));
+        var c=contracts.findById(Long.valueOf(id)).orElseThrow();mvc.perform(post("/api/v1/owner/contracts/"+id+"/rent-invoices").header("Authorization",token).contentType("application/json").content("{\"billingVersion\":"+c.getBillingVersion()+",\"coverageStart\":\"2027-01-15\",\"dueDate\":\"2027-01-15\"}"))
+            .andExpect(status().isOk());assertEquals(2,rentCount(id));packageInvoices.prepareScheduledRent(Long.valueOf(id));assertEquals(2,rentCount(id));
     }
 }

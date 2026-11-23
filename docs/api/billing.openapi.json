@@ -562,7 +562,7 @@
     "/api/v1/owner/contracts/{id}/rent-billing-context": {
       "get": {
         "summary": "Read next whole-month rent cycle and existing draft",
-        "description": "Exact owner only. RENT and UTILITY have independent coverage and meter chains. Uncancelled LEGACY coverage prevents double charging. Partial calendar-month days require separate manual agreement. Due date cannot precede the agreed payment day. For oneMonthRentPackage=true, exact contract dates replace whole calendar months, amount is one monthlyRent and dueDate is startDate. Automatic activation creates/sends this invoice; after it is sent there is no next rent period.",
+        "description": "Exact owner only. RENT and UTILITY have independent coverage and meter chains. Uncancelled LEGACY coverage prevents double charging. For calendarRentBilling=true, include partial first/final months using actual month days and one final whole-VND HALF_UP rounding. First coverage includes the starting partial month plus the remaining full months of the chosen cycle, capped by endDate; first invoice is created/SENT atomically at activation, due at startDate. Later periods follow calendar months and rentPaymentDay, with D-7 automatic sending and overdue catch-up. Cancelled coverage is not automatically resent; manual reissue fills the earliest missing period. Unexpected overlapping history returns RENT_HISTORY_CONFLICT. Legacy false contracts retain their original partial-day agreement. Due date cannot precede the agreed payment day. For oneMonthRentPackage=true, exact contract dates replace whole calendar months, amount is one monthlyRent and dueDate is startDate. Automatic activation creates/sends this invoice; after it is sent there is no next rent period.",
         "parameters": [
           {
             "name": "id",
@@ -600,7 +600,7 @@
     "/api/v1/owner/contracts/{id}/rent-invoices": {
       "post": {
         "summary": "Create and immediately send rent-only invoice within seven days before due date",
-        "description": "Exact owner only. RENT and UTILITY have independent coverage and meter chains. Uncancelled LEGACY coverage prevents double charging. Partial calendar-month days require separate manual agreement. Due date cannot precede the agreed payment day. Rent is created and SENT atomically, with exactly one tenant notification. Reject earlier than dueDate minus 7 days (Asia/Ho_Chi_Minh), including direct send of an old RENT draft. Due date cannot be moved earlier than agreed. Manual overdue reconciliation remains allowed. Utility draft workflow is unchanged. For oneMonthRentPackage=true, exact contract dates replace whole calendar months, amount is one monthlyRent and dueDate is startDate. Automatic activation creates/sends this invoice; after it is sent there is no next rent period.",
+        "description": "Exact owner only. RENT and UTILITY have independent coverage and meter chains. Uncancelled LEGACY coverage prevents double charging. For calendarRentBilling=true, include partial first/final months using actual month days and one final whole-VND HALF_UP rounding. First coverage includes the starting partial month plus the remaining full months of the chosen cycle, capped by endDate; first invoice is created/SENT atomically at activation, due at startDate. Later periods follow calendar months and rentPaymentDay, with D-7 automatic sending and overdue catch-up. Cancelled coverage is not automatically resent; manual reissue fills the earliest missing period. Unexpected overlapping history returns RENT_HISTORY_CONFLICT. Legacy false contracts retain their original partial-day agreement. Due date cannot precede the agreed payment day. Rent is created and SENT atomically, with exactly one tenant notification. Reject earlier than dueDate minus 7 days (Asia/Ho_Chi_Minh), including direct send of an old RENT draft. Due date cannot be moved earlier than agreed. Manual overdue reconciliation remains allowed. Utility draft workflow is unchanged. For oneMonthRentPackage=true, exact contract dates replace whole calendar months, amount is one monthlyRent and dueDate is startDate. Automatic activation creates/sends this invoice; after it is sent there is no next rent period.",
         "parameters": [
           {
             "name": "id",
@@ -978,6 +978,14 @@
               "null"
             ],
             "readOnly": true
+          },
+          "rentCalculation": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "readOnly": true,
+            "description": "Frozen per-month calendar rent calculation, actual occupied/month days and final whole-VND HALF_UP rounding. Null for legacy billing."
           }
         }
       },
@@ -1435,6 +1443,14 @@
               "null"
             ],
             "readOnly": true
+          },
+          "rentCalculation": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "readOnly": true,
+            "description": "Frozen per-month calendar rent calculation, actual occupied/month days and final whole-VND HALF_UP rounding. Null for legacy billing."
           }
         },
         "required": [

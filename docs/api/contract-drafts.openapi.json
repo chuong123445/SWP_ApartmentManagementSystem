@@ -2220,8 +2220,13 @@
           },
           "oneMonthRentPackage": {
             "type": "boolean",
-            "description": "Server-owned opt-in frozen on explicit draft creation/update under date-policy v2. True for exactly 30 inclusive days or exactly one calendar month with at least 30 days. One RENT invoice covers the entire term, equals monthlyRent, due at startDate, created/sent atomically on activation. Legacy contracts default false.",
+            "description": "Legacy frozen one-month package policy. Preserved for existing signed contracts. New or explicitly updated unsigned drafts use calendarRentBilling instead.",
             "readOnly": true
+          },
+          "calendarRentBilling": {
+            "type": "boolean",
+            "readOnly": true,
+            "description": "Server-owned calendar-cycle policy frozen in signed content on new/explicitly updated unsigned drafts. First period starts at startDate, ends at the cycle calendar-month end (capped by endDate); subsequent periods start on the first day. Sum monthlyRent × occupied days / actual month days, then round total rent to whole VND HALF_UP once. Activation automatically creates/sends the first invoice due at startDate. Existing signed contracts default false and keep their policy."
           }
         },
         "required": [

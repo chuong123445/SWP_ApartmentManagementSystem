@@ -12,6 +12,7 @@ public class RentalContract {
     @Column(nullable=false) private int rentPaymentDay=5;
     @Column(nullable=false) private boolean separateBillingAgreed;
     @Column(nullable=false) private boolean oneMonthRentPackage;
+    @Column(nullable=false) private boolean calendarRentBilling;
     public enum Status { DRAFT, ACTIVE, ENDED, CANCELLED }
     @Transient public boolean isOpen(){return status==Status.DRAFT||status==Status.ACTIVE;}
 

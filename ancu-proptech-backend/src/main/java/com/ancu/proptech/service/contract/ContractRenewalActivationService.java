@@ -56,7 +56,7 @@ public class ContractRenewalActivationService {
         var water=last.map(i->i.getWaterEndReading()).orElse(previous.getWaterBaseline());
         if(electric!=null&&water!=null){c.setElectricityBaseline(electric);c.setWaterBaseline(water);c.setBaselineDate(c.getStartDate());}
         c.setStatus(RentalContract.Status.ACTIVE);contracts.saveAndFlush(c);
-        if(c.isOneMonthRentPackage())rentInvoices.prepareInitialOneMonthRent(c.getId());
+        if(c.isOneMonthRentPackage()||c.isCalendarRentBilling())rentInvoices.prepareInitialRent(c.getId());
     }
     private static ApiException blocked(){return new ApiException(HttpStatus.CONFLICT,"RENEWAL_ACTIVATION_BLOCKED","Chưa thể chuyển kỳ thuê. Cần kiểm tra hợp đồng cũ, quyền thuê, tài khoản và hóa đơn nháp.");}
 }
