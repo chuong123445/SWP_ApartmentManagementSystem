@@ -23,6 +23,7 @@ export interface BillingContext {
 }
 export interface RentBillingContext {contractId:string;cycleMonths:number;coverageStart:string|null;coverageEnd:string|null;months:number;monthlyRent:string;totalAmount:string;dueDate:string|null;billingVersion:number;existingDraftId:string|null;hasPartialDays:boolean;automationMode:'SEND';sendAvailableFrom:string|null;canSend:boolean}
 export interface BillingInvoice {
+  cancellable?:boolean;cancellationBlockReason?:string|null;
   kind?:'LEGACY'|'RENT'|'UTILITY'|null;coverageStart?:string|null;coverageEnd?:string|null;rentMonths?:number;rentUnitPrice?:string|null;
   waterBillingMode?:'METERED'|'PER_PERSON';occupantCount?:number;internetFee?:string;garbageFee?:string;
   id: string; contractId: string; apartmentId: string; customerId: string; roomNumber: string; apartmentTitle: string;

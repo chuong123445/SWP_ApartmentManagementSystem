@@ -37,6 +37,7 @@ public class SepayService {
  private final SettlementService settlements;
  private final com.ancu.proptech.repository.contract.ContractDraftRepository contractDrafts;
  private final tools.jackson.databind.ObjectMapper json;
+ private final jakarta.persistence.EntityManager entities;
  @Value("${app.payment.public-base-url:}") private String publicBaseUrl;
  @Value("${app.payment.platform-source-email:}") private String platformSourceEmail;
  private static final SecureRandom RANDOM=new SecureRandom();
@@ -130,6 +131,8 @@ public class SepayService {
   Long source = collectionSource(owner, payment);
   var connection = source == null ? null : connections.lockOwner(source).orElse(null);
   contracts.lockById(invoice.getContract().getId()).orElseThrow(SepayService::missing);
+  entities.refresh(invoice);
+  if(invoice.getStatus()!=RentalInvoice.Status.SENT)throw new ApiException(HttpStatus.CONFLICT,"INVOICE_NOT_SENT","Hóa đơn đã hủy hoặc chưa được gửi, không thể tạo QR.");
   payment = payments.findByInvoiceId(invoiceId).orElse(null);
   if (payment != null && payment.getPaidAt() != null) return paymentView(payment, true);
   if (!java.util.Objects.equals(source, collectionSource(owner, payment))) {
@@ -275,12 +278,13 @@ public class SepayService {
     e.setInvoiceId(p.getInvoiceId());
     // BIDV VA chính thức: gốc + subAccount=VA, hoặc accountNumber chính là VA.
     boolean recipient=recipient(p.getBank(),p.getAccountNumber(),p.getVirtualAccount(),w);
+    var invoice=invoices.findWithContractById(p.getInvoiceId()).orElseThrow(SepayService::missing);
+    contracts.lockById(invoice.getContract().getId()).orElseThrow(SepayService::missing);entities.refresh(invoice);entities.refresh(p);
     if(!recipient)e.setResult("ACCOUNT_MISMATCH");
+    else if(invoice.getStatus()!=RentalInvoice.Status.SENT)e.setResult("INVOICE_NOT_SENT");
     else if(p.getAmount().compareTo(w.transferAmount())!=0)e.setResult("AMOUNT_MISMATCH");
     else {
-     var invoice=invoices.findWithContractById(p.getInvoiceId()).orElseThrow(SepayService::missing);contracts.lockById(invoice.getContract().getId()).orElseThrow(SepayService::missing);
-     if(invoice.getStatus()!=RentalInvoice.Status.SENT)e.setResult("INVOICE_NOT_SENT");
-     else if(p.getPaidAt()!=null)e.setResult("ALREADY_PAID");
+     if(p.getPaidAt()!=null)e.setResult("ALREADY_PAID");
           else {
       p.setPaidAt(e.getReceivedAt());
       if (p.getCollectionOwnerId() != null) {

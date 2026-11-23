@@ -28,6 +28,10 @@ public interface RentalInvoiceRepository extends JpaRepository<RentalInvoice,Lon
     boolean existsByContractIdAndKindNotAndStatus(Long contractId,RentalInvoice.Kind kind,RentalInvoice.Status status);
     Optional<RentalInvoice> findFirstByContractIdAndKindNotAndStatusOrderByPeriodDesc(Long contractId,RentalInvoice.Kind kind,RentalInvoice.Status status);
     List<RentalInvoice> findByContractIdAndStatusNotOrderByPeriodAsc(Long contractId,RentalInvoice.Status status);
+    @EntityGraph(attributePaths={"contract","contract.apartment","contract.apartment.property","contract.customer"})
+    @Query("select i from RentalInvoice i where i.contract.customer.id=:customerId and (i.status=com.ancu.proptech.model.billing.RentalInvoice.Status.SENT or (i.status=com.ancu.proptech.model.billing.RentalInvoice.Status.CANCELLED and i.sentAt is not null))")
+    Page<RentalInvoice> customerVisibleHistory(Long customerId,Pageable pageable);
+    List<RentalInvoice> findByContractIdAndStatus(Long contractId,RentalInvoice.Status status);
     // Fixture provisioning must also respect retained cancelled documents.
     boolean existsByContractIdAndPeriod(Long contractId,String period);
     boolean existsByContractIdAndPeriodGreaterThanAndStatusNot(Long contractId,String period,RentalInvoice.Status status);

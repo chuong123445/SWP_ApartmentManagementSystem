@@ -460,7 +460,7 @@
     },
     "/api/v1/owner/invoices/{id}/cancel": {
       "post": {
-        "description": "Owner-only DRAFT cancellation retained as CANCELLED. Same actor/reason retry is idempotent. A new invoice may be created for this period; SENT alone advances baseline/month. No refund or payment effect.",
+        "description": "Requires current invoice and billing versions plus reason. Retains CANCELLED record/audit; published cancellation remains visible to exact tenant with a private notification, but is no longer unpaid debt or payable by QR. Blocks any paidAt or positive matched/amount-mismatch incoming transfer, including partial/excess money. Meter-chain/later-invoice safeguards remain; resolve latest utility periods first. Parent contract lock serializes cancellation with QR creation and every invoice-linked incoming webhook. Late incoming money stays in payment events for manual reconciliation and does not resurrect a cancelled invoice. Automatic rent scheduler does not reissue a cancelled coverage; explicit owner creation is required.",
         "parameters": [
           {
             "name": "id",
@@ -496,7 +496,8 @@
             "$ref": "#/components/responses/Error"
           },
           "409": {
-            "$ref": "#/components/responses/Error"
+            "$ref": "#/components/responses/Error",
+            "description": "VERSION_CONFLICT, BILLING_SEQUENCE_CONFLICT, INVOICE_HAS_RECEIVED_FUNDS or invalid status."
           }
         },
         "requestBody": {
@@ -508,7 +509,8 @@
               }
             }
           }
-        }
+        },
+        "summary": "Cancel own draft or sent invoice only before any received money"
       }
     },
     "/api/v1/owner/invoices/{id}/history": {
@@ -965,6 +967,17 @@
           "rentUnitPrice": {
             "type": "string",
             "description": "Agreed monthly rent unit price. The existing monthlyRent invoice field is the aggregate rent charge on this document."
+          },
+          "cancellable": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "cancellationBlockReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "readOnly": true
           }
         }
       },
@@ -1411,6 +1424,17 @@
           "canSend": {
             "type": "boolean",
             "description": "Date window is open; existing draft/exhausted coverage and ownership/version rules still apply."
+          },
+          "cancellable": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "cancellationBlockReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "readOnly": true
           }
         },
         "required": [
