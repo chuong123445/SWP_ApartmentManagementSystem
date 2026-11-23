@@ -5,7 +5,7 @@ import { ArrowDown, ArrowUp, Check, FileText, Plus, Trash2, X } from 'lucide-rea
 import { AssetReview, PartyReview, ContractReview } from '@/components/contract/ContractReview';
 import { getContractContext, getRenewalContext, saveContract, saveRenewal } from '@/services/contract/contractService';
 import { ApiError } from '@/services/http/client';
-import { contractStartMinimum, contractStartMaximum, contractToday, contractMinimumEnd, oneMonthRentPackage, validateContractTerms, contractMaxRentCycle } from '@/utils/contract';
+import { contractStartMinimum, contractStartMaximum, contractToday, contractMinimumEnd, oneMonthRentPackage, validateContractTerms, contractMaxRentCycle, validateContractTermFields, mapContractTermErrorCode } from '@/utils/contract';
 import type { ContractContext, ContractDraft, ContractTerms } from '@/types/contract';
 import { ContractDocument } from '@/components/contract/ContractDocument';
 
@@ -29,6 +29,7 @@ export function ContractWizard({ requestId, renewalOf, onClose, onSaved }: { req
   const [existing, setExisting] = useState<ContractDraft | null>(null);
   const [step, setStep] = useState(0);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const saveInFlight = useRef(false);
   const [dirty, setDirty] = useState(false);
@@ -38,7 +39,7 @@ export function ContractWizard({ requestId, renewalOf, onClose, onSaved }: { req
   const [reloadKey, setReloadKey] = useState(0);
   useEffect(() => { dialog.current?.showModal();return () => { dialog.current?.close(); }; }, []);
   useEffect(() => {
-    let active = true;setContext(null);setError('');setConflict(false);setSavedNotice(false);
+    let active = true;setContext(null);setError('');setFieldErrors({});setConflict(false);setSavedNotice(false);
     (renewalOf ? getRenewalContext(renewalOf.id) : getContractContext(requestId!)).then(c => {
       if (!active) return;
       setContext(c);setExisting(c.existingDraft);setDirty(false);
@@ -74,25 +75,61 @@ export function ContractWizard({ requestId, renewalOf, onClose, onSaved }: { req
       return next;
     });
     setDirty(true);setSavedNotice(false);setError('');
+    setFieldErrors(prev => {
+      if (!prev[key as string] && !(key === 'startDate' && (prev.endDate || prev.rentCycleMonths)) && !(key === 'endDate' && prev.rentCycleMonths)) return prev;
+      const next = { ...prev };
+      delete next[key as string];
+      if (key === 'startDate') { delete next.endDate; delete next.rentCycleMonths; }
+      if (key === 'endDate') { delete next.rentCycleMonths; }
+      return next;
+    });
   };
   const next = () => {
     if (!terms) return;
-    if(step===3&&context?.rightsValidUntil&&((context.rightsValidFrom&&terms.startDate<context.rightsValidFrom)||terms.endDate>context.rightsValidUntil)){setError('Thời hạn hợp đồng phải nằm trong khoảng quyền cho thuê đã được duyệt.');return;}
-    if (step === 3 || step === 4) {
-      const problem = validateContractTerms(terms);
-      // Clause editing follows the commercial form; full validation is repeated before save.
-      if (problem && !(step === 3 && problem.startsWith('Mỗi điều khoản'))) { setError(problem);return; }
+    if (step === 3 && context?.rightsValidUntil && ((context.rightsValidFrom && terms.startDate < context.rightsValidFrom) || terms.endDate > context.rightsValidUntil)) {
+      const err = 'Thời hạn hợp đồng phải nằm trong khoảng quyền cho thuê đã được duyệt.';
+      setError(err);
+      setFieldErrors({ endDate: err });
+      return;
     }
-    setError('');setStep(s => Math.min(s + 1, 5));
-
+    if (step === 3 || step === 4) {
+      const fieldErrs = validateContractTermFields(terms);
+      if (step === 3) delete fieldErrs.clauses;
+      if (Object.keys(fieldErrs).length > 0) {
+        setFieldErrors(fieldErrs);
+        const problem = validateContractTerms(terms);
+        if (problem && !(step === 3 && problem.startsWith('Mỗi điều khoản'))) setError(problem);
+        return;
+      }
+    }
+    setError('');setFieldErrors({});setStep(s => Math.min(s + 1, 5));
   };
   const save = async () => {
     if (!context || !terms || saveInFlight.current) return;
-    const problem = validateContractTerms(terms);if (problem) { setError(problem);return; }
-    saveInFlight.current = true;setSaving(true);setError('');
-    try { const result = renewalOf && !existing ? await saveRenewal(renewalOf.id, context, terms) : await saveContract(context, terms, existing);setExisting(result);setTerms(extractTerms(result));setDirty(false);setSavedNotice(true);onSaved(); }
-    catch (e) { setError(e instanceof Error ? e.message : 'Không thể lưu hợp đồng.');if (e instanceof ApiError && e.status === 409) setConflict(true); }
-    finally { saveInFlight.current = false;setSaving(false); }
+    const fieldErrs = validateContractTermFields(terms);
+    if (Object.keys(fieldErrs).length > 0) {
+      setFieldErrors(fieldErrs);
+      const problem = validateContractTerms(terms);
+      if (problem) setError(problem);
+      return;
+    }
+    saveInFlight.current = true;setSaving(true);setError('');setFieldErrors({});
+    try {
+      const result = renewalOf && !existing ? await saveRenewal(renewalOf.id, context, terms) : await saveContract(context, terms, existing);
+      setExisting(result);setTerms(extractTerms(result));setDirty(false);setSavedNotice(true);onSaved();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Không thể lưu hợp đồng.';
+      setError(msg);
+      if (e instanceof ApiError) {
+        if (e.status === 409) setConflict(true);
+        const mapped = mapContractTermErrorCode(e.code || e.message);
+        if (mapped.field) {
+          setFieldErrors({ [mapped.field]: e.message });
+        }
+      }
+    } finally {
+      saveInFlight.current = false;setSaving(false);
+    }
   };
   const moveClause = (from: number, to: number) => {
     if (!terms || to < 0 || to >= terms.clauses.length) return;
@@ -116,23 +153,22 @@ export function ContractWizard({ requestId, renewalOf, onClose, onSaved }: { req
           {step === 3 && <div className="space-y-6"><AssetReview snapshot={snapshot} />
             {!existing && snapshot.evidence?.source === 'AUTH0_VNEID_SIMULATION' && <SourceReceivingAccountForm snapshot={snapshot} onSaved={async () => { const latest=await getContractContext(context.rentalRequestId);setContext(latest);setError(''); }} />}
             <section className="rounded-xl border border-slate-200 p-4 space-y-5"><h3 className="font-bold text-lg">Điều kiện thuê</h3><p className="text-xs text-slate-500">Owner xác định các điều kiện cho hợp đồng này. Giá niêm yết chỉ là gợi ý; nhập rõ đơn giá điện, nước và tiền cọc, kể cả khi bằng 0. {externalDepositNotice}</p><div className="grid sm:grid-cols-2 gap-4">
-              <label className="block text-sm font-medium">Cách tính nước<select className={input} value={terms.waterBillingMode??'METERED'} onChange={e=>change('waterBillingMode',e.target.value as 'METERED'|'PER_PERSON')}><option value="METERED">Theo m³</option><option value="PER_PERSON">Theo người / tháng</option></select></label>{terms.waterBillingMode==='PER_PERSON'&&<label className="block text-sm font-medium">Số người tính tiền nước<input className={input} type="number" min="1" max="100" step="1" required value={terms.occupantCount??1} onChange={e=>change('occupantCount',Number(e.target.value))}/></label>}{([['startDate', 'Ngày bắt đầu', 'date'], ['endDate', 'Ngày kết thúc', 'date'], ['monthlyRent', 'Tiền thuê mỗi tháng (VND)', 'number'], ['deposit', 'Tiền đặt cọc (VND)', 'number'], ['electricityUnitPrice', 'Đơn giá điện (VND/kWh)', 'number'], ['waterUnitPrice', terms.waterBillingMode==='PER_PERSON'?'Giá nước (VND/người/tháng)':'Đơn giá nước (VND/m³)', 'number'], ['internetFee','Internet (VND/phòng/tháng)','number'],['garbageFee','Vệ sinh và rác (VND/phòng/tháng)','number']] as const).map(([key, label, type]) => <label key={key} className="block text-sm font-medium space-y-2">{label}<input aria-label={label} type={type} required value={terms[key]??'0'} min={type === 'number' ? (key === 'monthlyRent' ? '0.01' : '0') : key==='startDate' ? contractStartMinimum(context.rightsValidFrom) : terms.startDate?contractMinimumEnd(terms.startDate):contractMinimumEnd(contractStartMinimum(context.rightsValidFrom))} max={type==='date'?(key==='startDate'?contractStartMaximum(context.rightsValidUntil):context.rightsValidUntil||undefined):undefined} step={type === 'number' ? '0.01' : undefined} onChange={event => change(key, event.target.value)} className={input} />{key==='startDate'&&<span className={expiredStart?'block text-sm text-rose-700':'block text-xs text-slate-500'}>{expiredStart?'Ngày bắt đầu đã qua, vui lòng cập nhật lại ngày bắt đầu.':'Chỉ được đặt trước tối đa 90 ngày (giờ Việt Nam).'}</span>}</label>)}
+              <label className="block text-sm font-medium">Cách tính nước<select className={input} value={terms.waterBillingMode??'METERED'} onChange={e=>change('waterBillingMode',e.target.value as 'METERED'|'PER_PERSON')}><option value="METERED">Theo m³</option><option value="PER_PERSON">Theo người / tháng</option></select></label>{terms.waterBillingMode==='PER_PERSON'&&<label className="block text-sm font-medium">Số người tính tiền nước<input className={`${input} ${fieldErrors.occupantCount ? 'border-rose-500' : ''}`} type="number" min="1" max="100" step="1" required value={terms.occupantCount??1} onChange={e=>change('occupantCount',Number(e.target.value))}/>{fieldErrors.occupantCount && <span role="alert" data-testid="field-error-occupantCount" className="block text-xs font-semibold text-rose-600 mt-1">{fieldErrors.occupantCount}</span>}</label>}{([['startDate', 'Ngày bắt đầu', 'date'], ['endDate', 'Ngày kết thúc', 'date'], ['monthlyRent', 'Tiền thuê mỗi tháng (VND)', 'number'], ['deposit', 'Tiền đặt cọc (VND)', 'number'], ['electricityUnitPrice', 'Đơn giá điện (VND/kWh)', 'number'], ['waterUnitPrice', terms.waterBillingMode==='PER_PERSON'?'Giá nước (VND/người/tháng)':'Đơn giá nước (VND/m³)', 'number'], ['internetFee','Internet (VND/phòng/tháng)','number'],['garbageFee','Vệ sinh và rác (VND/phòng/tháng)','number']] as const).map(([key, label, type]) => <label key={key} className="block text-sm font-medium space-y-2">{label}<input aria-label={label} type={type} required value={terms[key]??'0'} min={type === 'number' ? (key === 'monthlyRent' ? '0.01' : '0') : key==='startDate' ? contractStartMinimum(context.rightsValidFrom) : terms.startDate?contractMinimumEnd(terms.startDate):contractMinimumEnd(contractStartMinimum(context.rightsValidFrom))} max={type==='date'?(key==='startDate'?contractStartMaximum(context.rightsValidUntil):context.rightsValidUntil||undefined):undefined} step={type === 'number' ? '0.01' : undefined} onChange={event => change(key, event.target.value)} className={`${input} ${fieldErrors[key] ? 'border-rose-500' : ''}`} />{key==='startDate'&&<span className={expiredStart?'block text-sm text-rose-700':'block text-xs text-slate-500'}>{expiredStart?'Ngày bắt đầu đã qua, vui lòng cập nhật lại ngày bắt đầu.':'Chỉ được đặt trước tối đa 90 ngày (giờ Việt Nam).'}</span>}{fieldErrors[key] && <span role="alert" data-testid={`field-error-${key}`} className="block text-xs font-semibold text-rose-600 mt-1">{fieldErrors[key]}</span>}</label>)}
               <label className="block text-sm font-medium space-y-2">Chu kỳ đóng tiền thuê
-                <select className={input} value={terms.rentCycleMonths ?? 1} onChange={e => { change('rentCycleMonths', Number(e.target.value)); setCycleNotice(''); }}>
-                  {Array.from({ length: terms.startDate && terms.endDate && terms.endDate >= contractMinimumEnd(terms.startDate) ? contractMaxRentCycle(terms.startDate, terms.endDate) : 12 }, (_, i) => i + 1).map(months => (
-                    <option key={months} value={months} disabled={months !== 1 && oneMonthRentPackage(terms.startDate, terms.endDate)}>
-                      {months} tháng / lần
-                    </option>
-                  ))}
+                <select className={`${input} ${fieldErrors.rentCycleMonths ? 'border-rose-500' : ''}`} value={terms.rentCycleMonths??1} onChange={e=>{change('rentCycleMonths',Number(e.target.value));setCycleNotice('');}}>
+                  {Array.from({length: terms.startDate && terms.endDate ? contractMaxRentCycle(terms.startDate, terms.endDate) : 12}, (_, i) => i + 1).map(months =>
+                    <option key={months} value={months} disabled={months!==1&&oneMonthRentPackage(terms.startDate,terms.endDate)}>{months} tháng / lần</option>
+                  )}
                 </select>
-                {cycleNotice && <p role="status" className="text-xs text-amber-700 bg-amber-50 p-2 rounded-lg font-medium">{cycleNotice}</p>}
+                {cycleNotice && <span role="status" className="block text-xs font-semibold text-amber-700 bg-amber-50 rounded p-2">{cycleNotice}</span>}
+                {fieldErrors.rentCycleMonths && <span role="alert" data-testid="field-error-rentCycleMonths" className="block text-xs font-semibold text-rose-600 mt-1">{fieldErrors.rentCycleMonths}</span>}
               </label>
               <p className="text-sm text-slate-600">Thời hạn thuê tối thiểu 30 ngày, tính cả ngày bắt đầu và kết thúc. Tiền thuê theo tháng lịch: kỳ đầu gồm phần tháng bắt đầu và các tháng còn lại trong chu kỳ, tự lập và gửi khi hợp đồng bắt đầu hiệu lực; hạn đóng là ngày bắt đầu thuê. Ngày lẻ đầu/cuối tính theo số ngày thực tế của từng tháng, làm tròn tổng tiền thuê đến đồng. Điện nước và dịch vụ lập riêng.</p>
-              <label className="block text-sm font-medium space-y-2">Ngày đến hạn các kỳ tiếp theo (1–28)<input type="number" min={1} max={28} step={1} value={terms.paymentDay || ''} onChange={event => change('paymentDay', Number(event.target.value))} className={input} /></label>
-              <label className="block text-sm font-medium space-y-2">Phương thức thanh toán<input value={terms.paymentMethod} maxLength={300} onChange={event => change('paymentMethod', event.target.value)} className={input} /></label>
-              <label className="block text-sm font-medium space-y-2 sm:col-span-2">Mục đích thuê<input value={terms.usagePurpose} maxLength={300} onChange={event => change('usagePurpose', event.target.value)} className={input} /></label>
+              <label className="block text-sm font-medium space-y-2">Ngày đến hạn các kỳ tiếp theo (1–28)<input type="number" min={1} max={28} step={1} value={terms.paymentDay || ''} onChange={event => change('paymentDay', Number(event.target.value))} className={`${input} ${fieldErrors.paymentDay ? 'border-rose-500' : ''}`} />{fieldErrors.paymentDay && <span role="alert" data-testid="field-error-paymentDay" className="block text-xs font-semibold text-rose-600 mt-1">{fieldErrors.paymentDay}</span>}</label>
+              <label className="block text-sm font-medium space-y-2">Phương thức thanh toán<input value={terms.paymentMethod} maxLength={300} onChange={event => change('paymentMethod', event.target.value)} className={`${input} ${fieldErrors.paymentMethod ? 'border-rose-500' : ''}`} />{fieldErrors.paymentMethod && <span role="alert" data-testid="field-error-paymentMethod" className="block text-xs font-semibold text-rose-600 mt-1">{fieldErrors.paymentMethod}</span>}</label>
+              <label className="block text-sm font-medium space-y-2 sm:col-span-2">Mục đích thuê<input value={terms.usagePurpose} maxLength={300} onChange={event => change('usagePurpose', event.target.value)} className={`${input} ${fieldErrors.usagePurpose ? 'border-rose-500' : ''}`} />{fieldErrors.usagePurpose && <span role="alert" data-testid="field-error-usagePurpose" className="block text-xs font-semibold text-rose-600 mt-1">{fieldErrors.usagePurpose}</span>}</label>
             </div></section></div>}
-          {step === 4 && <section className="space-y-4"><h3 className="text-lg font-bold">Điều khoản chi tiết</h3><p className="text-sm text-slate-500">Chỉnh sửa mẫu, đổi thứ tự, xóa hoặc nhập nội dung riêng. Các điều khoản là nội dung thỏa thuận để hai bên rà soát.</p><div className="flex flex-wrap gap-2"><button type="button" className={button} onClick={() => { if (window.confirm('Thay toàn bộ điều khoản hiện tại bằng mẫu căn hộ?')) change('clauses', context.templateClauses.map(c => ({ ...c }))); }}>Dùng lại mẫu căn hộ</button><button type="button" className={button} onClick={() => { if (window.confirm('Xóa mẫu để nhập điều khoản riêng?')) change('clauses', [{ title: '', body: '' }]); }}>Sử dụng điều khoản riêng</button></div>
+          {step === 4 && <section className="space-y-4"><h3 className="text-lg font-bold">Điều khoản chi tiết</h3><p className="text-sm text-slate-500">Chỉnh sửa mẫu, đổi thứ tự, xóa hoặc nhập nội dung riêng. Các điều khoản là nội dung thỏa thuận để hai bên rà soát.</p>{fieldErrors.clauses && <div role="alert" data-testid="field-error-clauses" className="bg-rose-50 text-rose-700 p-3 rounded-lg text-xs font-semibold">{fieldErrors.clauses}</div>}<div className="flex flex-wrap gap-2"><button type="button" className={button} onClick={() => { if (window.confirm('Thay toàn bộ điều khoản hiện tại bằng mẫu căn hộ?')) change('clauses', context.templateClauses.map(c => ({ ...c }))); }}>Dùng lại mẫu căn hộ</button><button type="button" className={button} onClick={() => { if (window.confirm('Xóa mẫu để nhập điều khoản riêng?')) change('clauses', [{ title: '', body: '' }]); }}>Sử dụng điều khoản riêng</button></div>
             {terms.clauses.map((clause, index) => <section key={index} data-testid="contract-clause" className="border border-slate-200 rounded-xl p-4 space-y-3"><div className="flex justify-between gap-2"><span className="text-sm font-bold text-emerald-700">Điều {index + 1}</span><div className="flex gap-1"><button type="button" disabled={index === 0} aria-label={`Đưa điều khoản ${index + 1} lên`} onClick={() => moveClause(index, index - 1)} className="p-1 disabled:opacity-30"><ArrowUp className="w-4 h-4" /></button><button type="button" disabled={index === terms.clauses.length - 1} aria-label={`Đưa điều khoản ${index + 1} xuống`} onClick={() => moveClause(index, index + 1)} className="p-1 disabled:opacity-30"><ArrowDown className="w-4 h-4" /></button><button type="button" aria-label={`Xóa điều khoản ${index + 1}`} onClick={() => change('clauses', terms.clauses.filter((_, i) => i !== index))} className="p-1 text-rose-600"><Trash2 className="w-4 h-4" /></button></div></div>
               <label htmlFor={`clause-title-${index}`} className="block text-sm">Tiêu đề điều khoản {index + 1}</label><input id={`clause-title-${index}`} maxLength={150} value={clause.title} onChange={event => change('clauses', terms.clauses.map((c, i) => i === index ? { ...c, title: event.target.value } : c))} className={input} />
               <label htmlFor={`clause-body-${index}`} className="block text-sm">Nội dung điều khoản {index + 1}</label><textarea id={`clause-body-${index}`} rows={4} maxLength={4000} value={clause.body} onChange={event => change('clauses', terms.clauses.map((c, i) => i === index ? { ...c, body: event.target.value } : c))} className={input} />
