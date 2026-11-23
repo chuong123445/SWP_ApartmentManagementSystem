@@ -35,11 +35,11 @@ public class VneidPropertyImportService {
     private final PropertyRepository properties;
     private final ApartmentRepository apartments;
     private final OwnerPropertyService propertyService;
-    private final PropertyImageService images;
     private final com.ancu.proptech.service.apartment.OwnerApartmentService apartmentService;
     private final TransactionTemplate transactions;
     private final EntityManager em;
     private final ObjectMapper json;
+    private final com.ancu.proptech.service.apartment.ApartmentPublicationPolicy publicationPolicy;
     private record Binding(Long accountId,String issuer,String subject) {}
     public record UnitState(String externalUnitId,String apartmentId,String publicationStatus) {}
     public record Candidate(VneidAsset asset,String sourceVersion,boolean imported,String propertyId,Long propertyVersion,
@@ -102,6 +102,7 @@ public class VneidPropertyImportService {
                 var unit=apartments.findById(createdUnit.id()).orElseThrow();
                 var sourceUnit=source.units().stream().filter(u->u.code().equals(unit.getRoomNumber())).findFirst().orElseThrow();
                 var t=terms.get(sourceUnit.externalUnitId());unit.setElectricityUnitPrice(t.getElectricityUnitPrice().setScale(2));unit.setWaterUnitPrice(t.getWaterUnitPrice().setScale(2));
+                publicationPolicy.requireReady(unit);
                 unit.setPublicationStatus(Apartment.PublicationStatus.PUBLISHED);
             }
             var evidence=new PropertyExternalImport();evidence.setPropertyId(property.getId());evidence.setIssuer(binding.issuer());evidence.setSubject(binding.subject());
@@ -143,8 +144,8 @@ public class VneidPropertyImportService {
                 create.setBedrooms(unit.bedrooms());create.setBathrooms(unit.bathrooms());create.setFloor(t.getFloor());create.setMaxOccupants(t.getMaxOccupants());
                 create.setAdvertisedMonthlyRent(t.getMonthlyRent());create.setDeposit(t.getDeposit());create.setElectricityIndex(t.getElectricityIndex());create.setWaterIndex(t.getWaterIndex());
                 create.setElectricityUnitPrice(t.getElectricityUnitPrice());create.setWaterUnitPrice(t.getWaterUnitPrice());create.setPublicationStatus(Apartment.PublicationStatus.PUBLISHED);
-                var createdUnit=apartmentService.createSourceUnit(jwt,create);
-                images.bindUnit(p,createdUnit.id(),t.getImageIds());
+                create.setImageIds(t.getImageIds());
+                apartmentService.createSourceUnit(jwt,create);
             }
             apartments.flush();recordSelection(propertyId,source,terms.keySet());
             return new OwnerPropertyCreated(propertyService.list(jwt).stream().filter(x->x.id().equals(propertyId)).findFirst().orElseThrow(),

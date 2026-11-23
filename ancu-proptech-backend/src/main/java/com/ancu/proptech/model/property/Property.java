@@ -8,7 +8,7 @@ import org.hibernate.annotations.Nationalized;
 
 @Entity @Table(name = "rental_properties") @Getter @Setter @NoArgsConstructor
 public class Property {
-    public enum ApprovalStatus { DRAFT, PENDING_APPROVAL, NEEDS_INFORMATION, APPROVED, REJECTED }
+    public enum ApprovalStatus { DRAFT, PENDING_APPROVAL, NEEDS_INFORMATION, APPROVED, REJECTED, WITHDRAWN }
     public enum RentalMode { SINGLE_UNIT, MULTI_UNIT }
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "owner_id", nullable = false)
@@ -29,4 +29,5 @@ public class Property {
     private java.time.LocalDate rightsValidFrom;
     private java.time.LocalDate rightsValidUntil;
     private Long approvedRightsDossierId;
+    @Column(columnDefinition="datetime2(6)") private java.time.Instant withdrawnAt;
 }

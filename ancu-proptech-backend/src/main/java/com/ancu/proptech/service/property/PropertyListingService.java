@@ -35,6 +35,7 @@ public class PropertyListingService {
         if(previous.isPresent()){
             var d=previous.get();if(!d.getAccountId().equals(actor.getId()))throw missing();
             var p=properties.findById(d.getPropertyId()).orElseThrow(PropertyListingService::missing);
+            if(p.getApprovalStatus()==Property.ApprovalStatus.WITHDRAWN)throw new ApiException(HttpStatus.CONFLICT,"LISTING_WITHDRAWN","Bản nháp đã được xóa. Hãy bắt đầu hồ sơ mới.");
             if(p.getRightType()!=input.rightType())throw bad("Loại quyền không khớp bản nháp.");
             return view(d,p);
         }

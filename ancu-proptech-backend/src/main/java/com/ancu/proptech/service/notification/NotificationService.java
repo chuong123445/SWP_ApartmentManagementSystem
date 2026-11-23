@@ -19,7 +19,7 @@ public class NotificationService {
  public record Feed(List<Item> items,int page,int size,long totalElements,int totalPages,long unreadCount,Instant snapshotAt){}
  private static final String FEED="""
  WITH feed AS (
- SELECT CONCAT('contract-exit:',e.id) notification_key,N'Cập nhật kết thúc thuê / bàn giao' title,
+ SELECT CONCAT('contract-exit:',e.id) notification_key,CASE WHEN e.action LIKE '%UNILATERAL%' THEN N'Thông báo kết thúc đơn phương' ELSE N'Cập nhật kết thúc thuê / bàn giao' END title,
  CONCAT(N'HD-',c.id,N' — ',e.reason) message,CONCAT('/contracts/',c.id) url,e.created_at
  FROM contract_exit_events e JOIN rental_contracts c ON c.id=e.contract_id JOIN rental_apartments a ON a.id=c.apartment_id JOIN rental_properties p ON p.id=a.property_id
  WHERE e.actor_id<>:account AND (p.owner_id=:account OR c.customer_id=:account)

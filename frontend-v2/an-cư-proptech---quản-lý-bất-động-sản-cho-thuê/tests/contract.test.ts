@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { saveContract, signContract, getContractPdf, requestRenewal, decideRenewalRequest, cancelAcceptedRenewalRequest } from '../src/services/contract/contractService.ts';
-import { contractToday, contractStartMinimum, validateContractTerms } from '../src/utils/contract.ts';
+import { contractToday, contractStartMinimum, oneMonthRentPackage, validateContractTerms } from '../src/utils/contract.ts';
 import { tenancyViews } from '../src/services/billing/billingService.ts';
 import { setAccessToken } from '../src/services/http/client.ts';
 import type { ContractContext, ContractDraft, ContractTerms } from '../src/types/contract.ts';
@@ -81,4 +81,20 @@ test('Fully signed first leases and renewals are clearly distinguished while wai
   assert.equal(contractSigningLabel({...waiting,lifecycle:{previousContractId:'1'}} as ContractDraft),'Đã ký — chờ chuyển kỳ thuê');
   assert.equal(contractSigningLabel({...waiting,cancellationState:'PENDING'}),'Chờ phản hồi đề nghị hủy');
   assert.equal(contractSigningLabel({...waiting,status:'CANCELLED'}),'Đã hủy trước hiệu lực');
+});
+
+test('Booking limit accepts day 90 and rejects day 91 across year boundary', () => {
+  const today = '2026-11-22';
+  assert.equal(validateContractTerms({ ...terms, startDate: '2027-02-20', endDate: '2028-02-20' }, today), '');
+  assert.equal(validateContractTerms({ ...terms, startDate: '2027-02-21', endDate: '2028-02-20' }, today), 'Chỉ được đặt trước tối đa 90 ngày.');
+});
+
+test('Rental duration includes both endpoints and distinguishes February from 30 days', () => {
+  const from = '2027-01-15';
+  assert.match(validateContractTerms({...terms,startDate:from,endDate:'2027-02-12'},from),/30 ngày/);
+  assert.equal(validateContractTerms({...terms,startDate:from,endDate:'2027-02-13'},from),'');
+  assert.equal(oneMonthRentPackage(from,'2027-02-14'),true);
+  assert.equal(oneMonthRentPackage('2027-02-15','2027-03-14'),false);
+  assert.match(validateContractTerms({...terms,startDate:'2027-02-15',endDate:'2027-03-14'},'2027-02-15'),/30 ngày/);
+  assert.match(validateContractTerms({...terms,startDate:from,endDate:'2027-02-14',rentCycleMonths:3},from),/1 tháng/);
 });

@@ -10,6 +10,10 @@ final class RentSchedule {
     private RentSchedule() {}
     record Period(LocalDate start,LocalDate end,int months) {}
     static Period next(RentalContract contract,List<RentalInvoice> invoices) {
+        if(contract.isOneMonthRentPackage()) {
+            if(invoices.stream().anyMatch(i->i.getStatus()!=RentalInvoice.Status.CANCELLED && i.getKind()!=RentalInvoice.Kind.UTILITY))return null;
+            return new Period(contract.getStartDate(),contract.getEndDate(),1);
+        }
         LocalDate first=contract.getStartDate().withDayOfMonth(1);
         if(!first.equals(contract.getStartDate()))first=first.plusMonths(1);
         LocalDate endExclusive=contract.getEndDate().plusDays(1).withDayOfMonth(1);
@@ -22,5 +26,5 @@ final class RentSchedule {
         int months=(int)Math.min(contract.getRentCycleMonths(),ChronoUnit.MONTHS.between(next,endExclusive));
         return months<=0?null:new Period(next,next.plusMonths(months).minusDays(1),months);
     }
-    static boolean partial(RentalContract c){return c.getStartDate().getDayOfMonth()!=1||!c.getEndDate().equals(YearMonth.from(c.getEndDate()).atEndOfMonth());}
+    static boolean partial(RentalContract c){return !c.isOneMonthRentPackage()&&(c.getStartDate().getDayOfMonth()!=1||!c.getEndDate().equals(YearMonth.from(c.getEndDate()).atEndOfMonth()));}
 }

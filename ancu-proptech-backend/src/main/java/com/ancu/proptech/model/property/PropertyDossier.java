@@ -8,7 +8,7 @@ import java.time.LocalDate;
 import java.util.*;
 @Entity @Table(name="property_dossiers") @Getter @Setter @NoArgsConstructor
 public class PropertyDossier {
-    public enum Status { PENDING_APPROVAL, NEEDS_INFORMATION, APPROVED, REJECTED }
+    public enum Status { PENDING_APPROVAL, NEEDS_INFORMATION, APPROVED, REJECTED, WITHDRAWN }
     public enum RightType { OWNERSHIP, AUTHORIZATION, SUBLEASE }
     @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
     @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="property_id",nullable=false) private Property property;

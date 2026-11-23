@@ -11,3 +11,8 @@ export async function createOwnerProperty(input: PropertyCreateInput): Promise<{
   const data = await response.json();
   return { property: data.property, apartments: data.apartments.map(fromOwnerApartment) };
 }
+
+export async function withdrawProperty(id:string,version:number):Promise<void>{
+  const response=await apiFetch(`/api/v1/me/rental-properties/${encodeURIComponent(id)}/withdraw`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version})});
+  if(!response.ok)throw await readApiError(response);
+}

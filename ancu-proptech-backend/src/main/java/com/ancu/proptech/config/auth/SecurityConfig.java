@@ -103,6 +103,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/me/conversations", "/api/v1/me/conversations/*/messages", "/api/v1/me/conversations/apartments/*", "/api/v1/me/conversations/contracts/*").authenticated()
                         .requestMatchers("/api/v1/me/identity", "/api/v1/me/identity/documents/*", "/api/v1/me/identity-submissions", "/api/v1/admin/identity-submissions", "/api/v1/admin/identity-submissions/**").authenticated()
                         .requestMatchers("/api/v1/me/listing-description/suggest", "/api/v1/me/listing-drafts", "/api/v1/me/listing-drafts/*", "/api/v1/me/listing-drafts/*/complete").authenticated()
+                        .requestMatchers(HttpMethod.POST,"/api/v1/me/rental-properties/*/withdraw").authenticated()
                         .requestMatchers("/api/v1/me/rental-properties", "/api/v1/me/rental-properties/*/evidence-files", "/api/v1/me/rental-properties/*/verification-dossiers", "/api/v1/me/property-notices").authenticated()
                          .requestMatchers("/api/v1/me/security", "/api/v1/me/reauthentications", "/api/v1/me/reauthentications/*/confirm").authenticated()
                         .requestMatchers("/api/v1/me/profile", "/api/v1/me/password", "/api/v1/me/phone", "/api/v1/me/email-change", "/api/v1/me/email-changes", "/api/v1/me/email-changes/*/confirm").authenticated()

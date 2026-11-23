@@ -24,6 +24,8 @@ public class OwnerApartmentService {
     private final com.ancu.proptech.service.property.PropertyRightsPolicy rights;
     private final com.ancu.proptech.repository.rental.RentalRequestRepository requests;
     private final com.ancu.proptech.service.property.PropertyImageService images;
+    private final ApartmentPublicationPolicy publicationPolicy;
+    private final com.ancu.proptech.repository.property.PropertyListingDraftRepository listingDrafts;
     /** Cùng khóa căn hộ với gửi/nhận yêu cầu thuê để không lọt thay giá đồng thời. */
     @Transactional public OwnerApartmentResponse prices(Jwt jwt, Long id, ApartmentPrices input) {
         var owner=assetAccess.write(jwt);
@@ -39,11 +41,11 @@ public class OwnerApartmentService {
         apartments.flush();return response(a);
     }
     @Transactional public OwnerApartmentResponse createApplication(Jwt jwt,OwnerApartmentCreate input){return createInternal(jwt,input,true);}
-    @Transactional(readOnly=true) public List<OwnerApartmentResponse> selfList(Jwt jwt){return apartments.findByPropertyOwnerIdOrderByCreatedAtAscIdAsc(assetAccess.read(jwt).getId()).stream().map(this::response).toList();}
+    @Transactional(readOnly=true) public List<OwnerApartmentResponse> selfList(Jwt jwt){return apartments.findByPropertyOwnerIdOrderByCreatedAtAscIdAsc(assetAccess.read(jwt).getId()).stream().filter(a->a.getProperty().getApprovalStatus()!=com.ancu.proptech.model.property.Property.ApprovalStatus.WITHDRAWN).map(this::response).toList();}
     @Transactional(readOnly = true)
     public List<OwnerApartmentResponse> list(Jwt jwt) {
         var owner = access.owner(jwt);
-        return apartments.findByPropertyOwnerIdOrderByCreatedAtAscIdAsc(owner.getId()).stream().map(this::response).toList();
+        return apartments.findByPropertyOwnerIdOrderByCreatedAtAscIdAsc(owner.getId()).stream().filter(a->a.getProperty().getApprovalStatus()!=com.ancu.proptech.model.property.Property.ApprovalStatus.WITHDRAWN).map(this::response).toList();
     }
     @Transactional
     public OwnerApartmentResponse create(Jwt jwt, OwnerApartmentCreate input) {
@@ -51,15 +53,25 @@ public class OwnerApartmentService {
     }
     /** Called only after the source-import service validates fresh source IDs. */
     @Transactional public OwnerApartmentResponse createSourceUnit(Jwt jwt,OwnerApartmentCreate input) {
-        return createInternal(jwt,input,false,true);
+        return createInternal(jwt,input,false,true,false);
+    }
+    /** Only the locked wizard completion flow creates its selected units through this method. */
+    @Transactional public OwnerApartmentResponse createListingUnit(Jwt jwt,OwnerApartmentCreate input) {
+        return createInternal(jwt,input,true,false,true);
     }
     private OwnerApartmentResponse createInternal(Jwt jwt,OwnerApartmentCreate input,boolean application){
-        return createInternal(jwt,input,application,false);
+        return createInternal(jwt,input,application,false,false);
     }
-    private OwnerApartmentResponse createInternal(Jwt jwt,OwnerApartmentCreate input,boolean application,boolean sourceAppend){
+    private OwnerApartmentResponse createInternal(Jwt jwt,OwnerApartmentCreate input,boolean application,boolean sourceAppend,boolean listingCompletion){
         var owner = application?applicantAccess.verified(jwt):access.owner(jwt);
         var property = properties.findOwnedForCreation(input.getPropertyId(), owner.getId()).orElseThrow(() ->
                 new ApiException(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Không tìm thấy tài sản thuộc tài khoản của bạn."));
+        if(property.getApprovalStatus()==Property.ApprovalStatus.WITHDRAWN)throw new ApiException(HttpStatus.CONFLICT,"PROPERTY_WITHDRAWN","Hồ sơ đã được rút. Hãy tạo hồ sơ tài sản mới.");
+        boolean unfinishedListing=listingDrafts.existsByPropertyIdAndCompletedFalse(property.getId());
+        if(unfinishedListing&&!listingCompletion)
+            throw new ApiException(HttpStatus.CONFLICT,"LISTING_INCOMPLETE","Tài sản đang được soạn trong hồ sơ đăng tải. Hãy thêm hoặc sửa căn/phòng ngay trong bản nháp đó, rồi hoàn tất hồ sơ.");
+        if(listingCompletion&&!unfinishedListing)
+            throw new ApiException(HttpStatus.CONFLICT,"LISTING_NOT_EDITABLE","Bản nháp đăng tải không còn ở bước tạo căn/phòng.");
         boolean imported=imports.existsById(property.getId());
         if(imported&&!sourceAppend)throw new ApiException(HttpStatus.CONFLICT,"SOURCE_UNITS_MANAGED","Dùng chức năng bổ sung phòng từ Auth0 cho tài sản nguồn này.");
         if(sourceAppend&&!imported)throw new ApiException(HttpStatus.CONFLICT,"SOURCE_PROPERTY_REQUIRED","Tài sản không có liên kết nguồn.");
@@ -77,6 +89,8 @@ public class OwnerApartmentService {
             throw new ApiException(HttpStatus.CONFLICT, "SINGLE_UNIT_LIMIT", "Tài sản cho thuê nguyên căn đã có một căn cho thuê.");
         if (apartments.existsByPropertyIdAndRoomNumber(property.getId(), number))
             throw new ApiException(HttpStatus.CONFLICT, "APARTMENT_NUMBER_EXISTS", "Mã căn hộ đã tồn tại trong tài sản này.");
+        if(input.getPublicationStatus()==Apartment.PublicationStatus.PUBLISHED)
+            publicationPolicy.requirePrices(input.getAdvertisedMonthlyRent(),input.getElectricityUnitPrice(),input.getWaterUnitPrice());
         Apartment a = new Apartment();
         a.setProperty(property); a.setRoomNumber(number); a.setTitle(input.getTitle().strip());
         a.setDescription(input.getDescription().strip()); a.setFloor(input.getFloor()); a.setAreaM2(input.getAreaM2());
@@ -89,6 +103,7 @@ public class OwnerApartmentService {
         a.setCoverImagePath("/images/apartment-placeholder.svg");
         apartments.saveAndFlush(a);
         if(!input.getImageIds().isEmpty())images.bindUnit(property,a.getId(),input.getImageIds());
+        if(input.getPublicationStatus()==Apartment.PublicationStatus.PUBLISHED)publicationPolicy.requireReady(a);
         return response(a);
     }
     @Transactional
@@ -101,6 +116,7 @@ public class OwnerApartmentService {
         if (apartment.getVersion() != input.getVersion()) throw new ApiException(HttpStatus.CONFLICT,"STALE_VERSION","Căn hộ đã thay đổi. Hãy tải lại.");
         if (input.getPublicationStatus() == Apartment.PublicationStatus.PUBLISHED && property.getApprovalStatus() != Property.ApprovalStatus.APPROVED)
             throw new ApiException(HttpStatus.CONFLICT,"PROPERTY_NOT_APPROVED","Tài sản phải được Admin duyệt trước khi công khai căn hộ.");
+        if(input.getPublicationStatus()==Apartment.PublicationStatus.PUBLISHED)publicationPolicy.requireReady(apartment);
         apartment.setPublicationStatus(input.getPublicationStatus());apartments.flush();return response(apartment);
     }
     private OwnerApartmentResponse response(Apartment a) {

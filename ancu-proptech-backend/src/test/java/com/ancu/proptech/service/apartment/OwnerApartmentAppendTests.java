@@ -19,7 +19,7 @@ class OwnerApartmentAppendTests {
     @Test void approvedManualPropertyRequiresOwnImagesAndBindsThemBeforeResponse(){
         var units=mock(ApartmentRepository.class);var properties=mock(PropertyRepository.class);var access=mock(AccountAccessService.class);
         var imports=mock(PropertyExternalImportRepository.class);var rights=mock(PropertyRightsPolicy.class);var images=mock(PropertyImageService.class);
-        var service=new OwnerApartmentService(units,mock(AssetManagementAccess.class),properties,access,imports,mock(PropertyApplicantAccess.class),rights,mock(RentalRequestRepository.class),images);
+        var service=new OwnerApartmentService(units,mock(AssetManagementAccess.class),properties,access,imports,mock(PropertyApplicantAccess.class),rights,mock(RentalRequestRepository.class),images,mock(ApartmentPublicationPolicy.class),mock(PropertyListingDraftRepository.class));
         var owner=new AuthAccount();owner.setId(1L);when(access.owner(null)).thenReturn(owner);
         var property=new Property();property.setId(2L);property.setOwner(owner);property.setApprovalStatus(Property.ApprovalStatus.APPROVED);property.setRentalMode(Property.RentalMode.MULTI_UNIT);
         when(properties.findOwnedForCreation(2L,1L)).thenReturn(Optional.of(property));

@@ -23,4 +23,11 @@ class RentScheduleTests {
         var utility=new RentalInvoice();utility.setKind(RentalInvoice.Kind.UTILITY);utility.setPeriod("2026-10");
         assertEquals(LocalDate.of(2026,2,1),RentSchedule.next(contract("2026-01-01","2026-12-31",1),List.of(old,utility)).start());
     }
+    @Test void offCalendarOneMonthCoversTheWholeLeaseAndNeverAdvancesTwice(){
+        var c=contract("2027-01-15","2027-02-14",1);c.setOneMonthRentPackage(true);
+        var p=RentSchedule.next(c,List.of());assertEquals(c.getStartDate(),p.start());assertEquals(c.getEndDate(),p.end());assertEquals(1,p.months());assertFalse(RentSchedule.partial(c));
+        var billed=new RentalInvoice();billed.setKind(RentalInvoice.Kind.RENT);billed.setStatus(RentalInvoice.Status.SENT);billed.setCoverageStart(p.start());billed.setCoverageEnd(p.end());
+        assertNull(RentSchedule.next(c,List.of(billed)));
+        billed.setStatus(RentalInvoice.Status.CANCELLED);assertEquals(p,RentSchedule.next(c,List.of(billed)));
+    }
 }

@@ -1,7 +1,7 @@
 import type { OwnerProperty } from '@/types/property';
 export type EvidencePurpose = 'RIGHT_DOCUMENT' | 'SUPPORTING' | 'OWNER_IDENTITY' | 'AUTHORIZATION_DOCUMENT' | 'ORIGINAL_LEASE' | 'SUBLEASE_CONSENT';
 export interface EvidenceFile { id: string; purpose: EvidencePurpose; filename: string; contentType: string; size: number }
-export type DossierStatus = 'PENDING_APPROVAL' | 'NEEDS_INFORMATION' | 'APPROVED' | 'REJECTED';
+export type DossierStatus = 'PENDING_APPROVAL' | 'NEEDS_INFORMATION' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
 export type ReviewDecision = 'APPROVE' | 'REQUEST_ADDITIONAL_INFORMATION' | 'REJECT';
 export interface Dossier {
   id: string; propertyId: string; propertyName: string; propertyAddress: string; applicantName: string;
@@ -20,7 +20,7 @@ export interface DossierSubmit {
   certificateNumber?: string | null; certificateIssueDate?: string | null; certificateIssuePlace?: string | null; exploitationRightDescription?: string | null;
 }
 export const dossierStatusLabels: Record<DossierStatus, string> = {
-  PENDING_APPROVAL: 'Chờ duyệt', NEEDS_INFORMATION: 'Cần bổ sung hồ sơ', APPROVED: 'Đã duyệt', REJECTED: 'Bị từ chối',
+  PENDING_APPROVAL: 'Chờ duyệt', NEEDS_INFORMATION: 'Cần bổ sung hồ sơ', APPROVED: 'Đã duyệt', REJECTED: 'Bị từ chối', WITHDRAWN: 'Người nộp đã rút',
 };
 export const evidenceLabels: Record<EvidencePurpose, string> = {
   RIGHT_DOCUMENT: 'Giấy tờ sở hữu / quyền khai thác', SUPPORTING: 'Chứng từ bổ sung', OWNER_IDENTITY: 'Giấy tờ người nộp (riêng tư)',

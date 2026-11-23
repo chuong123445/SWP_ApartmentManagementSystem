@@ -108,4 +108,36 @@ class AssetManagementIntegrationTests {
   String stale=partialPrice("waterUnitPrice","18000");selfPrice(token,stale).andExpect(status().isOk());selfPrice(token,stale).andExpect(status().isConflict());
  }
 
+ String appendBody(String number,String rent,Long image,String publication){
+  var input=new LinkedHashMap<String,Object>();input.put("propertyId",apartment.getProperty().getId());input.put("roomNumber",number);input.put("title","Căn mới "+number);input.put("floor",1);input.put("areaM2","30");input.put("advertisedMonthlyRent",rent);input.put("publicationStatus",publication);
+  if(image!=null)input.put("imageIds",List.of(image));return json.writeValueAsString(input);
+ }
+ ResultActions publish(Apartment unit,String publication)throws Exception{
+  return mvc.perform(post("/api/v1/owner/apartments/"+unit.getId()+"/publication").header("Authorization",token).contentType("application/json").content(json.writeValueAsString(Map.of("version",unit.getVersion(),"publicationStatus",publication))));
+ }
+ @Test void publishedCreationRequiresPositiveRentAndExplicitUtilityRates()throws Exception{
+  Long image=PropertyImageFixtures.stage(images,owner.getId());String url="/api/v1/owner/apartments";
+  mvc.perform(post(url).header("Authorization",token).contentType("application/json").content(appendBody("NEW-1","0",image,"PUBLISHED"))).andExpect(status().isBadRequest());
+  mvc.perform(post(url).header("Authorization",token).contentType("application/json").content(appendBody("NEW-1","5000000",image,"PUBLISHED"))).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("APARTMENT_NOT_READY"));
+  assertEquals(1,apartments.countByPropertyId(apartment.getProperty().getId()));assertNull(images.findById(image).orElseThrow().getPropertyId());
+  var input=(tools.jackson.databind.node.ObjectNode)json.readTree(appendBody("NEW-1","5000000",image,"PUBLISHED"));input.put("electricityUnitPrice","0");input.put("waterUnitPrice","0");
+  mvc.perform(post(url).header("Authorization",token).contentType("application/json").content(json.writeValueAsString(input))).andExpect(status().isCreated()).andExpect(jsonPath("$.publicationStatus").value("PUBLISHED")).andExpect(jsonPath("$.electricityIndex").isEmpty());
+ }
+ @Test void incompleteDraftCanBeCompletedInStagesButCannotBePublishedWithOnlyCommonPhoto()throws Exception{
+  apartment.setPublicationStatus(Apartment.PublicationStatus.DRAFT);apartments.flush();var p=apartment.getProperty();
+  Long common=PropertyImageFixtures.stage(images,owner.getId());images.findById(common).orElseThrow().setPropertyId(p.getId());images.flush();
+  publish(apartment,"PUBLISHED").andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("APARTMENT_NOT_READY"));
+  selfPrice(token,partialPrice("electricityUnitPrice","0")).andExpect(status().isOk());
+  publish(apartment,"PUBLISHED").andExpect(status().isConflict());
+  selfPrice(token,partialPrice("waterUnitPrice","0")).andExpect(status().isOk());
+  publish(apartment,"PUBLISHED").andExpect(status().isConflict());assertEquals(Apartment.PublicationStatus.DRAFT,apartment.getPublicationStatus());
+  Long room=PropertyImageFixtures.stage(images,owner.getId());
+  mvc.perform(put("/api/v1/me/apartments/"+apartment.getId()+"/images").header("Authorization",token).contentType("application/json").content(gallery(List.of(room),apartment.getVersion()))).andExpect(status().isNoContent());
+  publish(apartment,"PUBLISHED").andExpect(status().isOk());assertNull(apartment.getElectricityIndex());assertNull(apartment.getWaterIndex());
+ }
+ @Test void hideStillWorksForIncompleteOldListingAndRealLegacyRoomCoverIsPreserved()throws Exception{
+  publish(apartment,"HIDDEN").andExpect(status().isOk());publish(apartment,"PUBLISHED").andExpect(status().isConflict());
+  apartment.setElectricityUnitPrice(BigDecimal.ZERO);apartment.setWaterUnitPrice(BigDecimal.ZERO);apartment.setCoverImagePath("/apartment/images/apartment1.jpg");apartments.flush();
+  publish(apartment,"PUBLISHED").andExpect(status().isOk());assertTrue(images.unitIds(apartment.getId()).isEmpty());
+ }
 }
