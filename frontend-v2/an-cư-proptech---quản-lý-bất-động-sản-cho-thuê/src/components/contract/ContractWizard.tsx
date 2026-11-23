@@ -5,7 +5,7 @@ import { ArrowDown, ArrowUp, Check, FileText, Plus, Trash2, X } from 'lucide-rea
 import { AssetReview, PartyReview, ContractReview } from '@/components/contract/ContractReview';
 import { getContractContext, getRenewalContext, saveContract, saveRenewal } from '@/services/contract/contractService';
 import { ApiError } from '@/services/http/client';
-import { contractStartMinimum, contractStartMaximum, contractToday, contractMinimumEnd, oneMonthRentPackage, validateContractTerms } from '@/utils/contract';
+import { contractStartMinimum, contractStartMaximum, contractToday, contractMinimumEnd, oneMonthRentPackage, validateContractTerms, contractMaxRentCycle } from '@/utils/contract';
 import type { ContractContext, ContractDraft, ContractTerms } from '@/types/contract';
 import { ContractDocument } from '@/components/contract/ContractDocument';
 
@@ -32,6 +32,7 @@ export function ContractWizard({ requestId, renewalOf, onClose, onSaved }: { req
   const [saving, setSaving] = useState(false);
   const saveInFlight = useRef(false);
   const [dirty, setDirty] = useState(false);
+  const [cycleNotice, setCycleNotice] = useState<string>('');
   const [savedNotice, setSavedNotice] = useState(false);
   const [conflict, setConflict] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -56,7 +57,23 @@ export function ContractWizard({ requestId, renewalOf, onClose, onSaved }: { req
   useEffect(() => { scrollArea.current?.scrollTo({ top: 0 }); }, [step]);
   const close = () => { if (!saving && (!dirty || window.confirm('Đóng sẽ bỏ các thay đổi chưa lưu. Bạn có muốn đóng?'))) onClose(); };
   const change = <K extends keyof ContractTerms>(key: K, value: ContractTerms[K]) => {
-    setTerms(t => t && { ...t, [key]: value });setDirty(true);setSavedNotice(false);setError('');
+    setTerms(t => {
+      if (!t) return t;
+      const next = { ...t, [key]: value };
+      if (key === 'startDate' || key === 'endDate') {
+        if (next.startDate && next.endDate && next.endDate >= contractMinimumEnd(next.startDate)) {
+          const maxCycle = contractMaxRentCycle(next.startDate, next.endDate);
+          if ((next.rentCycleMonths ?? 1) > maxCycle) {
+            next.rentCycleMonths = maxCycle;
+            setCycleNotice(`Chu kỳ đóng tiền đã tự động điều chỉnh về ${maxCycle} tháng/lần do thời hạn hợp đồng thay đổi.`);
+          } else {
+            setCycleNotice('');
+          }
+        }
+      }
+      return next;
+    });
+    setDirty(true);setSavedNotice(false);setError('');
   };
   const next = () => {
     if (!terms) return;
@@ -100,7 +117,16 @@ export function ContractWizard({ requestId, renewalOf, onClose, onSaved }: { req
             {!existing && snapshot.evidence?.source === 'AUTH0_VNEID_SIMULATION' && <SourceReceivingAccountForm snapshot={snapshot} onSaved={async () => { const latest=await getContractContext(context.rentalRequestId);setContext(latest);setError(''); }} />}
             <section className="rounded-xl border border-slate-200 p-4 space-y-5"><h3 className="font-bold text-lg">Điều kiện thuê</h3><p className="text-xs text-slate-500">Owner xác định các điều kiện cho hợp đồng này. Giá niêm yết chỉ là gợi ý; nhập rõ đơn giá điện, nước và tiền cọc, kể cả khi bằng 0. {externalDepositNotice}</p><div className="grid sm:grid-cols-2 gap-4">
               <label className="block text-sm font-medium">Cách tính nước<select className={input} value={terms.waterBillingMode??'METERED'} onChange={e=>change('waterBillingMode',e.target.value as 'METERED'|'PER_PERSON')}><option value="METERED">Theo m³</option><option value="PER_PERSON">Theo người / tháng</option></select></label>{terms.waterBillingMode==='PER_PERSON'&&<label className="block text-sm font-medium">Số người tính tiền nước<input className={input} type="number" min="1" max="100" step="1" required value={terms.occupantCount??1} onChange={e=>change('occupantCount',Number(e.target.value))}/></label>}{([['startDate', 'Ngày bắt đầu', 'date'], ['endDate', 'Ngày kết thúc', 'date'], ['monthlyRent', 'Tiền thuê mỗi tháng (VND)', 'number'], ['deposit', 'Tiền đặt cọc (VND)', 'number'], ['electricityUnitPrice', 'Đơn giá điện (VND/kWh)', 'number'], ['waterUnitPrice', terms.waterBillingMode==='PER_PERSON'?'Giá nước (VND/người/tháng)':'Đơn giá nước (VND/m³)', 'number'], ['internetFee','Internet (VND/phòng/tháng)','number'],['garbageFee','Vệ sinh và rác (VND/phòng/tháng)','number']] as const).map(([key, label, type]) => <label key={key} className="block text-sm font-medium space-y-2">{label}<input aria-label={label} type={type} required value={terms[key]??'0'} min={type === 'number' ? (key === 'monthlyRent' ? '0.01' : '0') : key==='startDate' ? contractStartMinimum(context.rightsValidFrom) : terms.startDate?contractMinimumEnd(terms.startDate):contractMinimumEnd(contractStartMinimum(context.rightsValidFrom))} max={type==='date'?(key==='startDate'?contractStartMaximum(context.rightsValidUntil):context.rightsValidUntil||undefined):undefined} step={type === 'number' ? '0.01' : undefined} onChange={event => change(key, event.target.value)} className={input} />{key==='startDate'&&<span className={expiredStart?'block text-sm text-rose-700':'block text-xs text-slate-500'}>{expiredStart?'Ngày bắt đầu đã qua, vui lòng cập nhật lại ngày bắt đầu.':'Chỉ được đặt trước tối đa 90 ngày (giờ Việt Nam).'}</span>}</label>)}
-              <label className="block text-sm font-medium space-y-2">Chu kỳ đóng tiền thuê<select className={input} value={terms.rentCycleMonths??1} onChange={e=>change('rentCycleMonths',Number(e.target.value) as 1|3|6|12)}>{[1,3,6,12].map(months=><option key={months} value={months} disabled={months!==1&&oneMonthRentPackage(terms.startDate,terms.endDate)}>{months} tháng / lần</option>)}</select></label>
+              <label className="block text-sm font-medium space-y-2">Chu kỳ đóng tiền thuê
+                <select className={input} value={terms.rentCycleMonths ?? 1} onChange={e => { change('rentCycleMonths', Number(e.target.value)); setCycleNotice(''); }}>
+                  {Array.from({ length: terms.startDate && terms.endDate && terms.endDate >= contractMinimumEnd(terms.startDate) ? contractMaxRentCycle(terms.startDate, terms.endDate) : 12 }, (_, i) => i + 1).map(months => (
+                    <option key={months} value={months} disabled={months !== 1 && oneMonthRentPackage(terms.startDate, terms.endDate)}>
+                      {months} tháng / lần
+                    </option>
+                  ))}
+                </select>
+                {cycleNotice && <p role="status" className="text-xs text-amber-700 bg-amber-50 p-2 rounded-lg font-medium">{cycleNotice}</p>}
+              </label>
               <p className="text-sm text-slate-600">Thời hạn thuê tối thiểu 30 ngày, tính cả ngày bắt đầu và kết thúc. Tiền thuê theo tháng lịch: kỳ đầu gồm phần tháng bắt đầu và các tháng còn lại trong chu kỳ, tự lập và gửi khi hợp đồng bắt đầu hiệu lực; hạn đóng là ngày bắt đầu thuê. Ngày lẻ đầu/cuối tính theo số ngày thực tế của từng tháng, làm tròn tổng tiền thuê đến đồng. Điện nước và dịch vụ lập riêng.</p>
               <label className="block text-sm font-medium space-y-2">Ngày đến hạn các kỳ tiếp theo (1–28)<input type="number" min={1} max={28} step={1} value={terms.paymentDay || ''} onChange={event => change('paymentDay', Number(event.target.value))} className={input} /></label>
               <label className="block text-sm font-medium space-y-2">Phương thức thanh toán<input value={terms.paymentMethod} maxLength={300} onChange={event => change('paymentMethod', event.target.value)} className={input} /></label>
