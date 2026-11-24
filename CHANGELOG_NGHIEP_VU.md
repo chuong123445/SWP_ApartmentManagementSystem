@@ -101,3 +101,9 @@
 
 - Chưa ký/mới ký một bên ở Yêu cầu thuê và vẫn xem/ký được; chỉ đủ hai chữ ký mới vào tab Hợp đồng của Owner/Customer, kể cả chờ hiệu lực. Customer query lọc trước phân trang, giữ lịch sử/hủy; trang chi tiết dự thảo quay lại Yêu cầu thuê. Không đổi điều kiện ký/activation.
 -74backend/175frontend/TypeScript/build/4MCPdesktopmobilePASS, ảnhmobileđãxem; SQLtest/API fixtures, không ký/đổi appDB. ADR contract-tabs-after-signing-v1. Cầnrestartbackend/reloadfrontend, chưapush. Commit fix(contract): chuyển tab hợp đồng sau khi hai bên ký đủ, hashgitlog.
+
+
+## Tích hợp origin/main vào duy/contracts-after-signing — 24/11/2026
+
+- Gộp nhánh origin/main (chu kỳ thuê linh hoạt 1-12 tháng, cảnh báo 48h hoàn tất chữ ký, tùy chọn gõ tên ký số) vào nhánh local; ưu tiên giữ trải nghiệm báo lỗi cạnh ô nhập, cuộn tới lỗi, bỏ hướng dẫn dài và điều hướng tab hợp đồng/yêu cầu thuê theo bản local.
+- 179/179 frontend tests PASS; TypeScript & Vite build đạt 100%. Commit merge: `f24c7fa3`.
