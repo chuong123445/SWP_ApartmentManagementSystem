@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
-import { createInvoice, sendInvoice, myInvoices, getInvoice, tenancyViews, billingMoney, ownerInvoices, ownerReceivedInvoices, getOwnerReceivedInvoice } from '@/services/billing/billingService';
+import { createInvoice, sendInvoice, myInvoices, getInvoice, tenancyViews, billingMoney, ownerInvoices, ownerReceivedInvoices, getOwnerReceivedInvoice,ownerInvoiceRooms } from '@/services/billing/billingService';
 import { updateInvoiceDraft, cancelInvoiceDraft, invoiceHistory, invoiceView } from '@/services/billing/billingService';
 import { isRevenueInvoice } from '@/utils/reportUtils';
 import type { BillingInvoice } from '@/types/billing';
@@ -91,4 +91,10 @@ test('Address filters send city/district/ward and address options use a public e
   await getApartments({ city: 'City', district: 'District', ward: 'Ward' });
   globalThis.fetch = async url => { assert.equal(url, '/api/v1/apartments/address-options');return Response.json([]); };
   assert.deepEqual(await getAddressOptions(), []);
+});
+
+test('Room invoice filtering uses apartment IDs on both paginated lists and read-only property-scoped room options',async()=>{
+ const urls:string[]=[];globalThis.fetch=async(url,options)=>{urls.push(String(url));assert.equal(options?.method??'GET','GET');return Response.json([]);};
+ await ownerInvoices(2,20,'2','UNPAID','17');await ownerReceivedInvoices(1,20,'2','UNPAID','17');await ownerInvoiceRooms('2');
+ const requests=urls.map(url=>new URL(url,'http://local'));assert.equal(requests[0].searchParams.get('apartmentId'),'17');assert.equal(requests[0].searchParams.get('page'),'2');assert.equal(requests[0].searchParams.get('filter'),'UNPAID');assert.equal(requests[1].searchParams.get('apartmentId'),'17');assert.equal(requests[1].searchParams.get('page'),'1');assert.equal(requests[1].searchParams.get('paymentStatus'),'UNPAID');assert.equal(requests[2].pathname,'/api/v1/owner/invoices/rooms');assert.equal(requests[2].searchParams.get('propertyId'),'2');assert.ok(urls.every(url=>!url.includes('customerId')&&!url.includes('ownerId')));
 });

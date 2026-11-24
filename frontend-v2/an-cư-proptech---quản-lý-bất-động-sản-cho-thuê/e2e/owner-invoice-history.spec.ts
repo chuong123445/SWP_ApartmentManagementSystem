@@ -23,6 +23,7 @@ for (const width of [1440, 390]) for (const scenario of ['history', 'pagination'
       if (path.endsWith('/owner/properties')) return json([{ id: '2', name: 'Tài sản A', approvalStatus: 'APPROVED' }, { id: '3', name: 'Tài sản B', approvalStatus: 'APPROVED' }]);
       if (path.endsWith('/owner/apartments')) return json([{ id: '17', propertyId: '2', propertyName: 'Tài sản A', roomNumber: 'B.101', title: 'Căn mẫu', availability: 'OCCUPIED', areaM2: '45', advertisedMonthlyRent: '5000000', amenities: [], version: 0 }]);
       if (path.endsWith('/owner/tenancies') || path.endsWith('/owner/maintenance-tickets')) return json([]);
+      if(path.endsWith('/owner/invoices/rooms'))return json([{apartmentId:'17',roomNumber:'B.101',apartmentTitle:'Căn mẫu',propertyId:'2',propertyName:'Tài sản A',unpaidInvoiceCount:1,unpaidInvoiceAmount:'5100000'}].filter(room=>!url.searchParams.get('propertyId')||room.propertyId===url.searchParams.get('propertyId')));
       if (path.endsWith('/owner/invoices')) {
         reads.push(url.search);if (scenario === 'monthly-error') return route.fulfill({ status: 503, json: { message: 'Lỗi tải hóa đơn tháng' } });
         const filter = url.searchParams.get('filter') ?? 'ALL';

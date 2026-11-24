@@ -6,7 +6,7 @@ import type { TestReceipt } from '@/services/payment/sepayService';
 
 export function OwnerAdditionalInvoices({ history, search }: { history: OwnerInvoiceHistory; search: string }) {
   const [selected, setSelected] = useState<string | null>(null);
-  useEffect(() => { setSelected(null); }, [history.filter, history.additionalPage]);
+  useEffect(() => { setSelected(null); }, [history.filter, history.additionalPage, history.apartmentId]);
   if ((history.filter === 'DRAFT' || history.filter === 'CANCELLED')) return null;
   const items = history.additional?.items.filter(item => `${item.roomNumber} ${item.tenantName} ${item.id}`.toLocaleLowerCase('vi').includes(search.toLocaleLowerCase('vi'))) ?? [];
   return <section aria-label="Phiếu thanh toán gửi người thuê" className="space-y-4">

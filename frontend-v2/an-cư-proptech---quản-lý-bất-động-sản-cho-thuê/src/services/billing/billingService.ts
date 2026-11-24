@@ -19,15 +19,17 @@ export function saveMeterReadings(id:string,input:MeterReadingInput){return requ
 export function createInvoice(id: string, input: InvoiceCreate) { return request<BillingInvoice>(`/api/v1/owner/contracts/${encodeURIComponent(id)}/invoices`, input); }
 export function sendInvoice(id: string, version: number) { return request<BillingInvoice>(`/api/v1/owner/invoices/${encodeURIComponent(id)}/send`, { version }); }
 export function getInvoice(id: string) { return request<BillingInvoice>(`/api/v1/invoices/${encodeURIComponent(id)}`); }
-export function ownerInvoices(page = 0, size = 20, propertyId?: string, filter: OwnerInvoiceFilter = 'ALL') {
+export function ownerInvoices(page = 0, size = 20, propertyId?: string, filter: OwnerInvoiceFilter = 'ALL', apartmentId?:string) {
   const query = new URLSearchParams({ page: String(page), size: String(size) });
   if (propertyId) query.set('propertyId', propertyId);
+  if (apartmentId) query.set('apartmentId',apartmentId);
   if (filter !== 'ALL') query.set('filter', filter);
   return request<PageResult<BillingInvoice>>(`/api/v1/owner/invoices?${query}`);
 }
-export function ownerReceivedInvoices(page = 0, size = 20, propertyId?: string, paymentStatus: InvoicePaymentFilter = 'ALL') {
+export function ownerReceivedInvoices(page = 0, size = 20, propertyId?: string, paymentStatus: InvoicePaymentFilter = 'ALL', apartmentId?:string) {
   const query = new URLSearchParams({ page: String(page), size: String(size), paymentStatus });
   if (propertyId) query.set('propertyId', propertyId);
+  if(apartmentId)query.set('apartmentId',apartmentId);
   return request<PageResult<TestReceipt>>(`/api/v1/owner/invoices/additional?${query}`);
 }
 export const getOwnerReceivedInvoice = (id: string) => request<TestReceipt>(`/api/v1/owner/invoices/additional/${encodeURIComponent(id)}`);
@@ -77,3 +79,6 @@ export function invoiceHistory(id: string) { return request<InvoiceHistoryEntry[
 
 export const getRentBillingContext = (id:string) => request<import('@/types/billing').RentBillingContext>(`/api/v1/owner/contracts/${encodeURIComponent(id)}/rent-billing-context`);
 export const createRentInvoice = (id:string,input:{billingVersion:number;coverageStart:string;dueDate:string}) => request<BillingInvoice>(`/api/v1/owner/contracts/${encodeURIComponent(id)}/rent-invoices`,input);
+
+export interface InvoiceRoomSummary {apartmentId:string;roomNumber:string;apartmentTitle:string;propertyId:string;propertyName:string;unpaidInvoiceCount:number;unpaidInvoiceAmount:string}
+export function ownerInvoiceRooms(propertyId?:string){const query=new URLSearchParams();if(propertyId)query.set('propertyId',propertyId);return request<InvoiceRoomSummary[]>(`/api/v1/owner/invoices/rooms?${query}`);}

@@ -13,3 +13,11 @@ Hóa đơn lưu phạm vi, tổng và công thức từng tháng; giao diện hi
 Giữ các chu kỳ hiện có 1/3/6/12 và giới hạn một tháng cho thời hạn khoảng một tháng; chưa triển khai lựa chọn 2/4 hay toàn bộ yêu cầu thời hạn khác của tài liệu Word. Không tuyên bố đã sửa mọi mục business.
 
 Kiểm tra: 89 ca backend khác nhau đạt qua các lượt (74 ContractDraft, 6 CalendarRentSchedule, 4 RentSchedule, 5 ContractPdf), 176 frontend/TypeScript/build đạt; 8 Playwright desktop/mobile gồm wizard và Owner/Tenant hóa đơn với API fixtures. SQL integration dùng DB test riêng, xác minh activation/future wait/retry/notification/các kỳ/hủy rồi lập lại. Ảnh mobile hóa đơn đã xem; PDF có kiểm tra nội dung/số trang bằng test, chưa kiểm tra trực quan bản PDF. Không đổi DB ứng dụng, gửi email hay chuyển tiền thật.
+
+## 25/11/2026 — Xem hóa đơn theo căn/phòng
+
+Chủ nhà chọn Căn/phòng tại Hóa đơn & Thu hoặc bấm số phòng trong bảng. Lọc theo apartmentId, không theo roomNumber; nhãn gồm tài sản để phân biệt số phòng trùng. GET /api/v1/owner/invoices và /api/v1/owner/invoices/additional nhận apartmentId tùy chọn, áp dụng trước phân trang cùng propertyId/trạng thái và qua mọi hợp đồng/người thuê cũ của đúng căn. Sai chủ hoặc căn không thuộc tài sản đang chọn trả404. Không truyền apartmentId giữ hành vi cũ.
+
+GET /api/v1/owner/invoices/rooms?propertyId=... cung cấp danh sách phòng của chủ nhà và tổng số/tiền hóa đơn SENT chưa có thanh toán paidAt trên toàn lịch sử căn. Không cộng DRAFT/CANCELLED/PAID hoặc phiếu gửi riêng; tổng không phụ thuộc trang, tìm chữ hay tab trạng thái. Đây là chỉ số đọc từ hóa đơn hiện có, không sinh công nợ hoặc thay đổi tiền. Phiếu gửi riêng vẫn lọc theo phòng nhưng được theo dõi độc lập như quy tắc cũ.
+
+Bộ lọc phòng nằm trong hook workspace, giữ qua tab quản lý; đổi phòng/trạng thái về trang đầu của cả hai danh sách, đổi tài sản bỏ phòng cũ ngay và không khôi phục phòng đó khi quay lại. Nhãn tìm chữ trên trang hiện tại được giữ rõ, còn lọc phòng chạy trên toàn lịch sử. Lỗi phòng có nút thử lại; giữ options cùng tài sản trong lúc tải lại/lỗi để không làm lệch lựa chọn. Chỉ có truy vấn đọc và tham số tùy chọn mới; luồng lập/gửi/hủy/thu tiền không đổi.
