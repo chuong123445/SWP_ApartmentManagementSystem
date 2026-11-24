@@ -1,7 +1,6 @@
 import {SignatureOtpConfirmation, type SignatureOtp} from './SignatureOtpConfirmation';
 import { externalDepositNotice } from '@/utils/depositPolicy';
 import { ContractExitPanel } from '@/components/contract/ContractExitPanel';
-import { SelectionCancellationPanel } from '@/components/rental/SelectionCancellationPanel';
 import { useEffect, useRef, useState } from 'react';
 import { Download, ExternalLink, RefreshCw, Copy, PenLine, CheckCircle2, Clock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,8 +25,7 @@ export function ContractDocument({ draft, onUpdated, onRemoved }: { draft: Contr
   const [signature, setSignature] = useState<string | null>(null);
   const [consent, setConsent] = useState(false);
   const [pendingCancellation,setPendingCancellation] = useState(false);
-  const [showCancellation,setShowCancellation] = useState(false);
-  const [busy, setBusy] = useState(false);
+    const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const operation = useRef(false);
@@ -36,7 +34,7 @@ export function ContractDocument({ draft, onUpdated, onRemoved }: { draft: Contr
   const isCustomer = user?.id === (signing?.customerAccountId ?? draft.snapshot.customer.id);
   const mySignedAt = isOwner ? signing?.ownerSignedAt : signing?.customerSignedAt;
   const canSign = !!signing && (isOwner || isCustomer) && !mySignedAt && draft.status === 'DRAFT' && draft.cancellationState !== 'PENDING' && !pendingCancellation;
-  useEffect(()=>{removed.current=false;setPendingCancellation(false);setShowCancellation(false);},[draft.id]);
+  useEffect(()=>{removed.current=false;setPendingCancellation(false);},[draft.id]);
   useEffect(() => {
     let active = true; let url = '';
     setPdfLoading(true); setPdfError(''); setPdfUrl('');
@@ -87,10 +85,9 @@ export function ContractDocument({ draft, onUpdated, onRemoved }: { draft: Contr
       <div className="h-28 rounded-lg border border-dashed border-slate-300 flex items-center justify-center bg-white">{image ? <img src={image} alt={`Chữ ký ${name}`} className="max-h-24 max-w-full object-contain" /> : <span className="text-sm text-slate-400">Chưa ký</span>}</div>
       {at && <p className="text-xs text-emerald-700 flex items-center gap-1"><CheckCircle2 size={13} />{new Date(at).toLocaleString('vi-VN')}</p>}
     </section>)}</div>
-    {draft.status === 'DRAFT' && signing?.state === 'SIGNED' && !draft.lifecycle?.previousContractId && <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Hợp đồng đã đủ hai chữ ký, chờ hiệu lực từ {draft.startDate}. Phòng tiếp tục được giữ; hệ thống kiểm tra điều kiện và chuyển hiệu lực khi đến ngày bắt đầu. Bạn có thể đề nghị hủy trong thời gian chờ, cần bên còn lại đồng ý.</p>}
+    {draft.status === 'DRAFT' && signing?.state === 'SIGNED' && !draft.lifecycle?.previousContractId && <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Hợp đồng đã đủ hai chữ ký, chờ hiệu lực từ {draft.startDate}. Phòng tiếp tục được giữ; hệ thống kiểm tra điều kiện và chuyển hiệu lực khi đến ngày bắt đầu.</p>}
     {draft.status === 'CANCELLED' && <p className="rounded-lg bg-slate-50 p-3 text-sm">Hợp đồng đã hủy trước hiệu lực. Nội dung và chữ ký được giữ nguyên để xem lại; thao tác hủy không xác nhận hoàn cọc.</p>}
     {draft.cancellationState==='PENDING' && <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm">Đang chờ phản hồi đề nghị hủy; tạm khóa sửa và ký tiếp.</p>}
-    {!draft.lifecycle?.previousContractId && (draft.status==='DRAFT'||draft.status==='CANCELLED') && <div className="space-y-3"><button type="button" className="text-sm text-red-700 underline" onClick={()=>setShowCancellation(v=>!v)}>Hủy / lịch sử làm hợp đồng</button>{showCancellation&&<SelectionCancellationPanel requestId={draft.rentalRequestId} onState={value=>{removed.current=value.state==='CANCELLED'&&!value.contractId;setPendingCancellation(value.state==='PENDING'||value.state==='CANCELLED');}} onChanged={async()=>{if(removed.current){if(onRemoved)onRemoved();else navigate(isOwner?'/app?tab=rental_requests':'/my/rental-requests',{replace:true});return;}onUpdated(await getContract(draft.id));setRevision(v=>v+1);}}/>}</div>}
     {draft.status === 'DRAFT' && (signing?.ownerSignedAt || signing?.customerSignedAt) && !(signing?.ownerSignedAt && signing?.customerSignedAt) && (
       <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 flex items-start gap-3">
         <Clock className="w-5 h-5 mt-0.5 shrink-0 text-amber-700" />

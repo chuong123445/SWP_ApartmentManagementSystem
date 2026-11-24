@@ -145,3 +145,5 @@
 - 25/11/2026 — Danh sách hợp đồng: gỡ bỏ nút Hủy / lịch sử làm hợp đồng và modal popup hủy trên thẻ danh sách hợp đồng (ContractDraftList). 182 frontend unit tests, TypeScript/build PASS. Commit: Gỡ nút Hủy trên thẻ danh sách hợp đồng.
 
 - 25/11/2026 — Lập biên bản bàn giao: cố định ngày bàn giao là ngày lập biên bản (hôm nay), ẩn ô chọn ngày trên biểu mẫu, hiển thị ngày trên biên bản PDF bàn giao. 29/29 ContractExitIntegrationTests và 181 frontend tests PASS.
+
+- 25/11/2026 — Rà soát nút hủy và kết thúc sớm: xóa hoàn toàn nút Hủy trên chi tiết hợp đồng chưa active (ContractDocument); hợp đồng đang trong thời hạn (ACTIVE) có nút Đề nghị kết thúc sớm trực tiếp; chỉ hiện nút Biên bản bàn giao / ký khi đã tạo biên bản bàn giao. 182 frontend tests và build PASS. Commit: Đồng bộ nút kết thúc sớm và ẩn nút hủy trên hợp đồng chưa active.
