@@ -165,7 +165,69 @@ public class InvoiceService {
     }
     @Transactional(readOnly=true) public java.util.List<InvoiceHistoryResponse> history(Jwt jwt,Long id){
         var owner=access.owner(jwt);var i=invoices.findWithContractById(id).orElseThrow(InvoiceService::missing);owned(i.getContract(),owner.getId());
-        return events.findByInvoiceIdOrderByIdAsc(id).stream().map(e->new InvoiceHistoryResponse(e.getId(),e.getActorId(),e.getAction().name(),e.getOccurredAt(),e.getReason(),e.getBeforeJson()==null?null:json.readValue(e.getBeforeJson(),InvoiceResponse.class),json.readValue(e.getAfterJson(),InvoiceResponse.class))).toList();
+        return events.findByInvoiceIdOrderByIdAsc(id).stream().map(e->new InvoiceHistoryResponse(e.getId(),e.getActorId(),e.getAction().name(),e.getOccurredAt(),e.getReason(),deserializeHistoryInvoice(e.getBeforeJson()),deserializeHistoryInvoice(e.getAfterJson()))).toList();
+    }
+    private InvoiceResponse deserializeHistoryInvoice(String payload){
+        if(payload==null||payload.isBlank())return null;
+        try{return json.readValue(payload,InvoiceResponse.class);}
+        catch(Exception ex){
+            try{
+                var tree=json.readTree(payload);
+                return parseInvoiceResponseFallback(tree);
+            }catch(Exception fallbackEx){return null;}
+        }
+    }
+    private InvoiceResponse parseInvoiceResponseFallback(tools.jackson.databind.JsonNode tree){
+        if(tree==null||tree.isNull()||!tree.isObject())return null;
+        Long id=tree.hasNonNull("id")?tree.path("id").asLong():null;
+        Long contractId=tree.hasNonNull("contractId")?tree.path("contractId").asLong():null;
+        Long apartmentId=tree.hasNonNull("apartmentId")?tree.path("apartmentId").asLong():null;
+        Long customerId=tree.hasNonNull("customerId")?tree.path("customerId").asLong():null;
+        String roomNumber=tree.path("roomNumber").asText(null);
+        String apartmentTitle=tree.path("apartmentTitle").asText(null);
+        String tenantName=tree.path("tenantName").asText(null);
+        String period=tree.path("period").asText(null);
+        LocalDate dueDate=parseDateSafe(tree.path("dueDate").asText(null));
+        String monthlyRent=tree.path("monthlyRent").asText("0");
+        String electricityStartReading=tree.path("electricityStartReading").asText("0");
+        String electricityEndReading=tree.path("electricityEndReading").asText("0");
+        String electricityQuantity=tree.path("electricityQuantity").asText("0");
+        String electricityUnitPrice=tree.path("electricityUnitPrice").asText("0");
+        String electricityAmount=tree.path("electricityAmount").asText("0");
+        String waterStartReading=tree.path("waterStartReading").asText("0");
+        String waterEndReading=tree.path("waterEndReading").asText("0");
+        String waterQuantity=tree.path("waterQuantity").asText("0");
+        String waterUnitPrice=tree.path("waterUnitPrice").asText("0");
+        String waterAmount=tree.path("waterAmount").asText("0");
+        String totalAmount=tree.path("totalAmount").asText("0");
+        String status=tree.path("status").asText("DRAFT");
+        Instant createdAt=parseInstantSafe(tree.path("createdAt").asText(null));
+        Instant sentAt=parseInstantSafe(tree.path("sentAt").asText(null));
+        long version=tree.path("version").asLong(0);
+        String paymentStatus=tree.path("paymentStatus").asText("UNPAID");
+        Instant paidAt=parseInstantSafe(tree.path("paidAt").asText(null));
+        String waterBillingMode=tree.path("waterBillingMode").asText("METERED");
+        int occupantCount=tree.path("occupantCount").asInt(1);
+        String internetFee=tree.path("internetFee").asText("0");
+        String garbageFee=tree.path("garbageFee").asText("0");
+        long billingVersion=tree.path("billingVersion").asLong(0);
+        String kind=tree.path("kind").asText("UTILITY");
+        LocalDate coverageStart=parseDateSafe(tree.path("coverageStart").asText(null));
+        LocalDate coverageEnd=parseDateSafe(tree.path("coverageEnd").asText(null));
+        int rentMonths=tree.path("rentMonths").asInt(1);
+        String rentUnitPrice=tree.path("rentUnitPrice").asText("0");
+        boolean cancellable=tree.path("cancellable").asBoolean(false);
+        String cancellationBlockReason=tree.path("cancellationBlockReason").asText(null);
+        String rentCalculation=tree.path("rentCalculation").asText(null);
+        return new InvoiceResponse(id,contractId,apartmentId,customerId,roomNumber,apartmentTitle,tenantName,period,dueDate,monthlyRent,electricityStartReading,electricityEndReading,electricityQuantity,electricityUnitPrice,electricityAmount,waterStartReading,waterEndReading,waterQuantity,waterUnitPrice,waterAmount,totalAmount,status,createdAt,sentAt,version,paymentStatus,paidAt,waterBillingMode,occupantCount,internetFee,garbageFee,billingVersion,kind,coverageStart,coverageEnd,rentMonths,rentUnitPrice,cancellable,cancellationBlockReason,rentCalculation);
+    }
+    private static LocalDate parseDateSafe(String text){
+        if(text==null||text.isBlank())return null;
+        try{return LocalDate.parse(text);}catch(Exception e){return null;}
+    }
+    private static Instant parseInstantSafe(String text){
+        if(text==null||text.isBlank())return null;
+        try{return Instant.parse(text);}catch(Exception e){return null;}
     }
     private RentalInvoice lockedInvoice(Long id,Long ownerId){
         var contractId=invoices.findContractId(id).orElseThrow(InvoiceService::missing);

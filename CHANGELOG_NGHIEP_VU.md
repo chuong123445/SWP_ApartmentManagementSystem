@@ -107,3 +107,9 @@
 
 - Gộp nhánh origin/main (chu kỳ thuê linh hoạt 1-12 tháng, cảnh báo 48h hoàn tất chữ ký, tùy chọn gõ tên ký số) vào nhánh local; ưu tiên giữ trải nghiệm báo lỗi cạnh ô nhập, cuộn tới lỗi, bỏ hướng dẫn dài và điều hướng tab hợp đồng/yêu cầu thuê theo bản local.
 - 179/179 frontend tests PASS; TypeScript & Vite build đạt 100%. Commit merge: `f24c7fa3`.
+
+
+## Tương thích parse lịch sử hóa đơn cũ — 24/11/2026
+
+- Thêm `@JsonIgnoreProperties(ignoreUnknown=true)`, giá trị mặc định cho record và cơ chế fallback an toàn khi deserialize chuỗi JSON của hóa đơn cũ trong bảng `invoice_events`; ngăn lỗi thiếu trường mới làm sập API lịch sử hóa đơn (HTTP 500). Giao diện hiển thị an toàn khi dữ liệu trước/sau thiếu.
+- 46/46 ca BillingIntegrationTests đạt, 179/179 frontend tests đạt, Vite build đạt. Commit: `fix(billing): tương thích deserialize lịch sử hóa đơn cũ và tránh lỗi 500`.
