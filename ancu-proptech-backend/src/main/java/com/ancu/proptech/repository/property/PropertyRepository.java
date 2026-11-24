@@ -3,6 +3,7 @@ import com.ancu.proptech.model.property.Property;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.*;
 public interface PropertyRepository extends JpaRepository<Property, Long> {
+    boolean existsByOwnerIdAndApprovalStatus(Long ownerId,Property.ApprovalStatus status);
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.data.jpa.repository.Query("update Property p set p.version=p.version+1 where p.id=:id")
     int bumpVersion(@org.springframework.data.repository.query.Param("id") Long id);

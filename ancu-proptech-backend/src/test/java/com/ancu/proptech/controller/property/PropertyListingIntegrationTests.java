@@ -160,6 +160,34 @@ class PropertyListingIntegrationTests {
             .andExpect(status().isConflict());
         assertEquals("WITHDRAWN",p.getApprovalStatus().name());assertTrue(dossiers.existsById(d.getId()));
     }
+    @Test void lastDraftWithdrawalRevokesOwnerEvenForExistingTokenAndPreservesCustomer()throws Exception{
+        actor.grantRole(AuthAccount.Role.OWNER);accounts.flush();
+        var ownerLogin=auth.createSession(actor);token=ownerLogin.tokens().accessToken();
+        String id=json.readTree(start(UUID.randomUUID().toString())).path("propertyId").asString();
+        withdraw(id,token,99).andExpect(status().isConflict());assertTrue(actor.hasRole(AuthAccount.Role.OWNER));
+        withdraw(id,token,0).andExpect(status().isNoContent());
+        assertEquals(List.of("CUSTOMER"),auth.refresh(ownerLogin.refreshToken()).tokens().user().roles());
+        assertEquals(Set.of(AuthAccount.Role.CUSTOMER),accounts.findById(actor.getId()).orElseThrow().getRoles());
+        mvc.perform(get("/api/v1/me").header("Authorization","Bearer "+token)).andExpect(status().isOk()).andExpect(jsonPath("$.roles.length()").value(1)).andExpect(jsonPath("$.roles[0]").value("CUSTOMER"));
+        mvc.perform(get("/api/v1/owner/properties").header("Authorization","Bearer "+token)).andExpect(status().isForbidden());
+        withdraw(id,token,0).andExpect(status().isNoContent());
+        start(UUID.randomUUID().toString()); // Customer still prepares the next dossier.
+    }
+    @Test void withdrawingDraftKeepsOwnerWhenAnotherApprovedPropertyExists()throws Exception{
+        actor.grantRole(AuthAccount.Role.OWNER);accounts.flush();
+        String approvedId=json.readTree(start(UUID.randomUUID().toString())).path("propertyId").asString();
+        var approved=properties.findById(Long.valueOf(approvedId)).orElseThrow();approved.setApprovalStatus(com.ancu.proptech.model.property.Property.ApprovalStatus.APPROVED);properties.flush();
+        String draftId=json.readTree(start(UUID.randomUUID().toString())).path("propertyId").asString();withdraw(draftId,token,0).andExpect(status().isNoContent());
+        assertTrue(accounts.findById(actor.getId()).orElseThrow().hasRole(AuthAccount.Role.OWNER));
+    }
+    @Test void anotherPendingDraftDoesNotKeepOwnerWithoutApprovedAssets()throws Exception{
+        actor.grantRole(AuthAccount.Role.OWNER);accounts.flush();
+        String id=json.readTree(start(UUID.randomUUID().toString())).path("propertyId").asString();
+        String retained=json.readTree(start(UUID.randomUUID().toString())).path("propertyId").asString();
+        withdraw(id,token,0).andExpect(status().isNoContent());
+        assertFalse(accounts.findById(actor.getId()).orElseThrow().hasRole(AuthAccount.Role.OWNER));
+        assertEquals(com.ancu.proptech.model.property.Property.ApprovalStatus.DRAFT,properties.findById(Long.valueOf(retained)).orElseThrow().getApprovalStatus());
+    }
     @Test void approvedPropertyCannotBeRemovedByWithdrawal()throws Exception{
         String id=json.readTree(start(UUID.randomUUID().toString())).path("propertyId").asString();var p=properties.findById(Long.valueOf(id)).orElseThrow();p.setApprovalStatus(com.ancu.proptech.model.property.Property.ApprovalStatus.APPROVED);properties.saveAndFlush(p);
         withdraw(id,token,p.getVersion()).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PROPERTY_ALREADY_APPROVED"));assertNull(p.getWithdrawnAt());

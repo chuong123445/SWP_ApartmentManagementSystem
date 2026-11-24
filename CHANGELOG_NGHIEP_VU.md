@@ -80,3 +80,9 @@
 
 - Cả tài khoản Auth0 và thường tạo chính chủ qua hồ sơ nhập thủ công/Admin; bỏ consent/chọn tài sản/bổ sung phòng từ nguồn và nhãn miễn duyệt. Auth0 chỉ còn đăng nhập/xác minh. API list/import/append và consentwrite cũ trả410, không gọi provider/cấpOwner/tựduyệt. Giữ tài sản và hợp đồng lịch sử; nguồn cũ bổ sung phòng bằng quy tắc thủ công chung.
 - 43backendPASS (24luồngtài sản/upgrade/manual,18login/xácminh,1manuallegacy),170frontend/TypeScript/buildPASS,8PlaywrightMCP desktop/mobile x2nguồnx2rolesPASS; không gọi API nguồn, lỗi console hay tràn ngang, ảnhmobileđãxem. API fixtures/DBtest riêng, không Auth0live/appDB mutation. Cần restartbackend vàreloadfrontend; chưa push. ADR retire-vneid-property-source-v1; commit feat(property): bỏ nguồn tài sản VNeID và dùng hồ sơ thủ công, hash tra gitlog.
+
+## Thu hồi Owner khi không còn tài sản được duyệt — 24/11/2026
+
+- Rút hồ sơ xong hoặc retry: không còn APPROVED thì Owner vềCustomer trong cùngtransaction; còn tài sản được duyệt thì giữOwner. Menu đọc lại quyền ngay, Customer không vào /app/APIowner bằngtoken cũ. Không xóa tài khoản/identity/phiên hoặc mở quyền xóa tài sản đãduyệt.
+- Thu Hà: role cũ còn sau lầncleanup trước, nhưng trong lúc audit đã có tài sản10031 Căn hộ Thu Hà đượcAPPROVED. Guard hạ quyền đãrollback, giữ tài sản/quyền mới; không tuyên bố đã hạThuHavềCustomer.
+-30backendPASS/170frontend/TypeScript/build/4MCPdesktopmobilePASS; ảnhmobileđãxem. DBtest/API fixtures; live chỉread+guardrollback. ADR owner-role-after-withdrawal-v1. Cầnrestartbackend/reloadfrontend, chưapush. Commit fix(property): đồng bộ quyền Customer sau khi rút hồ sơ, hashgitlog.
