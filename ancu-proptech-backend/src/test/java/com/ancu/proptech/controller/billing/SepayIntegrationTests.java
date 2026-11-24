@@ -87,6 +87,18 @@ class SepayIntegrationTests {
         mvc.perform(get("/api/v1/owner/contracts/"+contract.getId()+"/billing-context").header("Authorization","Bearer "+ownerToken)).andExpect(jsonPath("$.period").value("2026-11"));
         assertNull(JsonPath.read(ticket(tenantToken,id),"$.qrUrl"));
     }
+    @Test void lateBankWebhookAfterCashReceiptCannotCreditOrCollectAgain()throws Exception{
+        String id=prepare();String code=JsonPath.read(ticket(tenantToken,id),"$.paymentCode");
+        mvc.perform(post("/api/v1/owner/invoices/"+id+"/cash-payment").header("Authorization","Bearer "+ownerToken)
+            .contentType("application/json").content("{\"version\":1,\"transactionDate\":\""+LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"))+"\"}"))
+            .andExpect(status().isOk());
+        deliver(key,webhook(85001,code,UTILITY_TOTAL,"1234567890","96247123456789","in")).andExpect(status().isOk());
+        assertEquals("ALREADY_PAID",events.findTop20ByOwnerIdOrderByReceivedAtDescIdDesc(owner.getId()).getFirst().getResult());
+        assertEquals(com.ancu.proptech.model.payment.InvoicePayment.Method.CASH,payments.findByInvoiceId(Long.valueOf(id)).orElseThrow().getPaymentMethod());
+        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM cash_entries WHERE source_invoice_id=? AND status='POSTED'",Integer.class,id));
+        mvc.perform(post("/api/v1/invoices/"+id+"/payment").header("Authorization","Bearer "+tenantToken))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("PAID")).andExpect(jsonPath("$.qrUrl").isEmpty());
+    }
     @Test void tenantPaymentFiltersApplyBeforePaginationAndKeepHistoryPrivate()throws Exception{
         String paidId=prepare();String code=JsonPath.read(ticket(tenantToken,paidId),"$.paymentCode");
         deliver(key,webhook(84001,code,UTILITY_TOTAL,"1234567890","96247123456789","in")).andExpect(status().isOk());

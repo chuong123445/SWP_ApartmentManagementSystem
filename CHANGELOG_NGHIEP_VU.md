@@ -123,3 +123,5 @@
 - 24/11/2026 — Sổ quỹ sửa chữa: phiếu chi lấy toàn bộ tiền chủ nhà trả cho thợ, kể cả khách chịu 100%; phần khách được thu riêng qua hóa đơn. Giữ nguyên phiếu lịch sử. 6 backend SQL database riêng, TypeScript và 2 E2E desktop/mobile PASS. Commit: Ghi đủ tiền chủ nhà thanh toán cho thợ.
 
 - 24/11/2026 — Tháng thu phí sửa chữa: chặn tháng sau tháng kết thúc hợp đồng gốc, giữ phép chọn tháng cuối kể cả hợp đồng kết thúc giữa tháng. 3 backend SQL riêng và 2 E2E bảo trì PASS. Commit: Chặn tháng thu phí sửa chữa sau hạn hợp đồng.
+
+- 24/11/2026 — Nhận tiền mặt hóa đơn: API dành cho đúng chủ nhà, khóa giao dịch và chống xác nhận trùng; cập nhật công nợ và ghi một phiếu thu đã xác nhận trong cùng transaction, lưu người xác nhận/ghi chú, không cộng số dư SePay. Migration V75 giữ dữ liệu chuyển khoản. 5 billing (có đồng thời), 26 SePay (có webhook đến muộn), 6 sổ quỹ trên SQL test riêng PASS. Commit: Xác nhận tiền mặt và ghi sổ thu hóa đơn đồng bộ.
