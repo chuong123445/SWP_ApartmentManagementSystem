@@ -53,7 +53,9 @@ class VneidPropertyImportIntegrationTests {
     }
     ResultActions list()throws Exception{return mvc.perform(get("/api/v1/owner/properties/vneid-assets").header("Authorization","Bearer "+token));}
     String version()throws Exception{return json.readTree(list().andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).get(0).get("sourceVersion").asText();}
-    String unit(){return "{\"externalUnitId\":\"unit-1\",\"monthlyRent\":\"4500000\",\"deposit\":\"4500000\",\"electricityUnitPrice\":\"3500\",\"waterUnitPrice\":\"15000\",\"electricityIndex\":120,\"waterIndex\":30,\"floor\":2,\"maxOccupants\":4,\"description\":\"Thông tin cho thuê\"}";}
+    private final Map<String,Long> roomImages=new HashMap<>();
+    String unit(){return unit("unit-1");}
+    String unit(String externalId){return "{\"imageIds\":[\""+roomImages.computeIfAbsent(externalId,key->com.ancu.proptech.support.PropertyImageFixtures.stage(imageFiles,owner.getId()))+"\"],\"externalUnitId\":\""+externalId+"\",\"monthlyRent\":\"4500000\",\"deposit\":\"4500000\",\"electricityUnitPrice\":\"3500\",\"waterUnitPrice\":\"15000\",\"electricityIndex\":120,\"waterIndex\":30,\"floor\":2,\"maxOccupants\":4,\"description\":\"Thông tin cho thuê\"}";}
     String body(String version){return "{\"imageIds\":[\""+com.ancu.proptech.support.PropertyImageFixtures.stage(imageFiles,owner.getId())+"\"],\"externalAssetId\":\""+assetId+"\",\"sourceVersion\":\""+version+"\",\"city\":\"Đà Nẵng\",\"district\":\"Hải Châu\",\"units\":["+unit()+"]}";}
     ResultActions submit(String body)throws Exception{return mvc.perform(post("/api/v1/owner/properties/vneid-imports").header("Authorization","Bearer "+token).contentType("application/json").content(body));}
     @Test void importsAndPublishesWithSourceAuditWithoutAdminOrManualIdentity()throws Exception{
@@ -75,7 +77,7 @@ class VneidPropertyImportIntegrationTests {
     }
     @Test void multiUnitImportPublishesEveryExactSourceUnit()throws Exception{
         source=new VneidAsset(assetId,source.name(),source.address(),"MULTI_UNIT","CERT-"+assetId,null,null,List.of(source.units().get(0),new VneidAsset.Unit("unit-2","A.02",new BigDecimal("35"),1,1)));
-        when(assets.assetDetails(issuer,subject)).thenReturn(List.of(source));String body=body(version()).replace(unit(),unit()+","+unit().replace("unit-1","unit-2"));
+        when(assets.assetDetails(issuer,subject)).thenReturn(List.of(source));String body=body(version()).replace(unit(),unit()+","+unit("unit-2"));
         submit(body).andExpect(status().isCreated()).andExpect(jsonPath("$.apartments.length()").value(2)).andExpect(jsonPath("$.apartments[1].publicationStatus").value("PUBLISHED"));
     }
     @Test void duplicateImportDoesNotCreateAnotherProperty()throws Exception{String body=body(version());submit(body).andExpect(status().isCreated());long before=properties.count();submit(body).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("ASSET_ALREADY_IMPORTED"));assertEquals(before,properties.count());}
@@ -118,7 +120,7 @@ class VneidPropertyImportIntegrationTests {
         Long id=initialSelection();var old=apartments.findByPropertyIdOrderByIdAsc(id).getFirst();
         old.setPublicationStatus(com.ancu.proptech.model.apartment.Apartment.PublicationStatus.HIDDEN);apartments.flush();
         var before=evidenceResolver.resolve(old);String original=imports.findById(id).orElseThrow().getSourceSnapshot();long count=properties.count();
-        var appendBody=appendBody(id,unit().replace("unit-1","unit-2"));
+        var appendBody=appendBody(id,unit("unit-2"));
         append(id,appendBody).andExpect(status().isCreated()).andExpect(jsonPath("$.property.id").value(id.toString())).andExpect(jsonPath("$.apartments.length()").value(2));
         assertEquals(count,properties.count());assertEquals(2,sourceUnits.findByPropertyId(id).size());
         old=apartments.findById(old.getId()).orElseThrow();assertEquals("HIDDEN",old.getPublicationStatus().name());assertEquals(new BigDecimal("4500000.00"),old.getAdvertisedMonthlyRent());
@@ -128,13 +130,13 @@ class VneidPropertyImportIntegrationTests {
         assertEquals(2,apartments.countByPropertyId(id));
     }
     @Test void duplicateUnknownAndEmptyAppendSelectionsNeverCreateRooms()throws Exception{
-        Long id=initialSelection();String next=unit().replace("unit-1","unit-2");
+        Long id=initialSelection();String next=unit("unit-2");
         append(id,appendBody(id,next+","+next)).andExpect(status().isBadRequest());
         append(id,appendBody(id,unit().replace("unit-1","other-unit"))).andExpect(status().isBadRequest());
         append(id,appendBody(id,"")).andExpect(status().isBadRequest());assertEquals(1,apartments.countByPropertyId(id));
     }
     @Test void appendRejectsStalePropertyVersionAndMissingPrice()throws Exception{
-        Long id=initialSelection();String b=appendBody(id,unit().replace("unit-1","unit-2"));
+        Long id=initialSelection();String b=appendBody(id,unit("unit-2"));
         long v=properties.findById(id).orElseThrow().getVersion();append(id,b.replace("\"version\":"+v,"\"version\":"+(v+1)))
             .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("STALE_VERSION"));
         append(id,b.replace("\"deposit\":\"4500000\",","")).andExpect(status().isBadRequest());assertEquals(1,apartments.countByPropertyId(id));
@@ -142,15 +144,15 @@ class VneidPropertyImportIntegrationTests {
     @Test void changedLegalSourceAndUnreconciledLegacyRoomsBlockAppend()throws Exception{
         Long id=initialSelection();source=new VneidAsset(assetId,source.name(),source.address(),"MULTI_UNIT","CERT-CHANGED",null,null,source.units());
         when(assets.assetDetails(issuer,subject)).thenReturn(List.of(source));
-        append(id,appendBody(id,unit().replace("unit-1","unit-2"))).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("ASSET_LEGAL_SOURCE_CHANGED"));
+        append(id,appendBody(id,unit("unit-2"))).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("ASSET_LEGAL_SOURCE_CHANGED"));
         source=new VneidAsset(assetId,source.name(),source.address(),"MULTI_UNIT","CERT-"+assetId,null,null,source.units());when(assets.assetDetails(issuer,subject)).thenReturn(List.of(source));
         sourceUnits.deleteAll(sourceUnits.findByPropertyId(id));sourceUnits.flush();
         list().andExpect(jsonPath("$[0].appendBlockedReason").value("SOURCE_UNIT_RECONCILIATION_REQUIRED"));
-        append(id,appendBody(id,unit().replace("unit-1","unit-2"))).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("SOURCE_UNIT_RECONCILIATION_REQUIRED"));
+        append(id,appendBody(id,unit("unit-2"))).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("SOURCE_UNIT_RECONCILIATION_REQUIRED"));
         assertEquals(1,apartments.countByPropertyId(id));
     }
     @Test void appendRechecksSourceAndDoesNotAcceptClientOwnershipFields()throws Exception{
-        Long id=initialSelection();String b=appendBody(id,unit().replace("unit-1","unit-2"));
+        Long id=initialSelection();String b=appendBody(id,unit("unit-2"));
         append(id,b.replaceFirst("\\{","{\"ownerId\":\"999\"," )).andExpect(status().isBadRequest());
         when(assets.assetDetails(issuer,subject)).thenReturn(List.of());append(id,b).andExpect(status().isNotFound());assertEquals(1,apartments.countByPropertyId(id));
     }
@@ -158,7 +160,7 @@ class VneidPropertyImportIntegrationTests {
         Long id=initialSelection();var p=properties.findById(id).orElseThrow();var other=new AuthAccount();other.setEmail("foreign-"+com.ancu.proptech.support.TestIds.next()+"@example.invalid");other.setFullName("Other");other.setRole(AuthAccount.Role.OWNER);other.setStatus(AuthAccount.Status.ACTIVE);accounts.saveAndFlush(other);
         p.setOwner(other);properties.flush();
         list().andExpect(jsonPath("$[0].propertyId").isEmpty()).andExpect(jsonPath("$[0].unitStates.length()").value(0));
-        append(id,appendBody(id,unit().replace("unit-1","unit-2"))).andExpect(status().isNotFound());assertEquals(1,apartments.countByPropertyId(id));
+        append(id,appendBody(id,unit("unit-2"))).andExpect(status().isNotFound());assertEquals(1,apartments.countByPropertyId(id));
     }
     private void rerunMappingMigration()throws Exception{
         em.flush();var migration=new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator();migration.setSeparator("GO");
@@ -170,7 +172,7 @@ class VneidPropertyImportIntegrationTests {
         batches.deleteAll(batches.findAll().stream().filter(b->b.getPropertyId().equals(id)).toList());batches.flush();
     }
     @Test void legacyFullImportBackfillsOnceAndPreservesOriginalEvidence()throws Exception{
-        multiSource();String all=unit()+","+unit().replace("unit-1","unit-2")+","+unit().replace("unit-1","unit-3");
+        multiSource();String all=unit()+","+unit("unit-2")+","+unit("unit-3");
         var response=submit(body(version()).replace(unit(),all)).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         Long id=Long.valueOf(json.readTree(response).get("property").get("id").asText());removeMappings(id);
         var before=evidenceResolver.resolve(properties.findById(id).orElseThrow());String snapshot=imports.findById(id).orElseThrow().getSourceSnapshot();
@@ -189,13 +191,13 @@ class VneidPropertyImportIntegrationTests {
         Long id=initialSelection();var old=apartments.findByPropertyIdOrderByIdAsc(id).getFirst();var before=evidenceResolver.resolve(old);
         var units=new ArrayList<>(source.units());units.add(new VneidAsset.Unit("unit-4","A.04",new BigDecimal("32"),1,1));
         source=new VneidAsset(assetId,source.name(),source.address(),"MULTI_UNIT","CERT-"+assetId,null,null,units);when(assets.assetDetails(issuer,subject)).thenReturn(List.of(source));
-        String current=version();append(id,appendBody(id,unit().replace("unit-1","unit-4"))).andExpect(status().isCreated());
+        String current=version();append(id,appendBody(id,unit("unit-4"))).andExpect(status().isCreated());
         assertEquals(before,evidenceResolver.resolve(apartments.findById(old.getId()).orElseThrow()));
         assertEquals(current,evidenceResolver.resolve(apartments.findByPropertyIdAndRoomNumber(id,"A.04").orElseThrow()).evidence().sourceHash());
     }
     @Test @org.springframework.transaction.annotation.Transactional(propagation=org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
     void concurrentAppendCannotCreateDuplicateSourceRoom()throws Exception{
-        Long id=initialSelection();String b=appendBody(id,unit().replace("unit-1","unit-2"));
+        Long id=initialSelection();String b=appendBody(id,unit("unit-2"));
         var gate=new java.util.concurrent.CountDownLatch(1);
         try(var pool=java.util.concurrent.Executors.newFixedThreadPool(2)){
             java.util.concurrent.Callable<Integer> call=()->{gate.await();return append(id,b).andReturn().getResponse().getStatus();};
@@ -205,4 +207,15 @@ class VneidPropertyImportIntegrationTests {
         }
     }
     @Test void requiresAuthenticatedSession()throws Exception{mvc.perform(get("/api/v1/owner/properties/vneid-assets")).andExpect(status().isUnauthorized());mvc.perform(post("/api/v1/owner/properties/vneid-imports").contentType("application/json").content("{}")).andExpect(status().isUnauthorized());}
+
+    @Test void sourceImportsAndAppendRejectMissingRoomPhotosBeforeCreatingUnits()throws Exception{
+        String b=body(version());var input=(tools.jackson.databind.node.ObjectNode)json.readTree(b);
+        ((tools.jackson.databind.node.ObjectNode)input.path("units").get(0)).remove("imageIds");
+        submit(json.writeValueAsString(input)).andExpect(status().isBadRequest());
+        assertFalse(imports.existsByIssuerAndExternalAssetId(issuer,assetId));
+        Long id=initialSelection();var appendInput=(tools.jackson.databind.node.ObjectNode)json.readTree(appendBody(id,unit("unit-2")));
+        ((tools.jackson.databind.node.ObjectNode)appendInput.path("units").get(0)).putArray("imageIds");
+        append(id,json.writeValueAsString(appendInput)).andExpect(status().isBadRequest());
+        assertEquals(1,apartments.countByPropertyId(id));
+    }
 }

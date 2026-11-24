@@ -39,8 +39,12 @@ public class ContractPdfService {
             writer.text("Sau khi bàn bạc hai bên cùng thống nhất như sau:");
             writer.text("Bên A đồng ý cho Bên B thuê 1 "+(room?"phòng":template(draft.templateType()))+" số "+show(asset.roomNumber())+" tại địa chỉ "+show(asset.address())+".");
             writer.text("Giá thuê là: "+money(draft.monthlyRent())+" đ/tháng (Bằng chữ: "+VietnameseAmountWords.read(draft.monthlyRent())+").");
-            writer.text(draft.separateBillingAgreed()?"Tiền thuê thanh toán mỗi "+draft.rentCycleMonths()+" tháng, hạn ngày "+draft.paymentDay()+" của tháng đầu kỳ.":"Thanh toán vào ngày "+draft.paymentDay()+" hàng tháng.");
-            if(draft.separateBillingAgreed())writer.text("Tiền điện, nước và dịch vụ lập hóa đơn riêng hàng tháng. Tiền thuê chỉ tự tính tháng tròn; phần ngày lẻ do hai bên đối chiếu và xử lý riêng.");
+            if(draft.calendarRentBilling())writer.text("Tiền thuê thanh toán mỗi "+draft.rentCycleMonths()+" tháng theo tháng lịch. Kỳ đầu tính từ ngày bắt đầu thuê đến cuối tháng thứ "+draft.rentCycleMonths()+" (không vượt ngày kết thúc hợp đồng), hạn đóng ngày bắt đầu thuê. Các kỳ sau đến hạn ngày "+draft.paymentDay()+" của tháng đầu kỳ.");
+            else if(draft.oneMonthRentPackage())writer.text("Tiền thuê trọn một tháng cho toàn bộ thời hạn hợp đồng, lập và gửi một hóa đơn; hạn thanh toán ngày bắt đầu thuê "+date(draft.startDate())+".");
+            else writer.text(draft.separateBillingAgreed()?"Tiền thuê thanh toán mỗi "+draft.rentCycleMonths()+" tháng, hạn ngày "+draft.paymentDay()+" của tháng đầu kỳ.":"Thanh toán vào ngày "+draft.paymentDay()+" hàng tháng.");
+            if(draft.separateBillingAgreed()&&!draft.oneMonthRentPackage()&&!draft.calendarRentBilling())writer.text("Tiền điện, nước và dịch vụ lập hóa đơn riêng hàng tháng. Tiền thuê chỉ tự tính tháng tròn; phần ngày lẻ do hai bên đối chiếu và xử lý riêng.");
+            if(draft.calendarRentBilling())writer.text("Ngày lẻ tính bằng giá tháng nhân số ngày thuê thực tế chia số ngày thực tế của tháng; làm tròn tổng tiền thuê mỗi hóa đơn đến đồng. Điện nước và dịch vụ lập riêng.");
+            else if(draft.oneMonthRentPackage())writer.text("Tiền điện, nước và dịch vụ đối chiếu riêng; không nằm trong hóa đơn tiền thuê trọn tháng.");
             writer.text("Tiền điện: "+money(draft.electricityUnitPrice())+" đ/kWh, tính theo chỉ số công tơ.");
             writer.text("Tiền nước: "+money(draft.waterUnitPrice())+("PER_PERSON".equals(draft.waterBillingMode())?" đ/người/tháng.":" đ/m³, tính theo chỉ số công tơ."));
             if(new BigDecimal(draft.internetFee()).signum()>0)writer.text("Tiền Internet: "+money(draft.internetFee())+" đ/phòng/tháng.");

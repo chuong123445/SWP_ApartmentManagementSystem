@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "An Cu Tenant Billing",
-    "version": "1.1.0",
-    "description": "Implemented private monthly billing, Owner draft/send/edit/cancel with audit history, and exact Customer-as-Tenant receipt. Contract and payment flows are documented separately. See docs/decisions/invoice-draft-changes-v1.md."
+    "version": "1.2.0",
+    "description": "Implemented private monthly billing, Owner draft/send/edit/cancel with audit history, and exact Customer-as-Tenant receipt. Contract and payment flows are documented separately. See docs/decisions/invoice-draft-changes-v1.md. 21 Nov RA03: utility context, meter closing, create and send require an already-started ACTIVE contract and period no later than the current Vietnam calendar month. HTTP409 CONTRACT_NOT_STARTED or UTILITY_PERIOD_IN_FUTURE; existing future drafts remain cancellable and SENT history stays readable. RENT prepayment window is separate and unchanged. Date-policy v2: explicitly opted-in one-month contracts (30 inclusive days or one calendar month of at least 30 days) create/send one RENT invoice atomically on activation, exact start/end coverage, amount=monthlyRent, due=startDate. Future signed leases wait for activation; scheduler retries a missing invoice even after dueDate without duplicating sent invoices. UTILITY remains separate. Legacy contracts and longer-term partial-day rules remain unchanged."
   },
   "servers": [
     {
@@ -460,7 +460,7 @@
     },
     "/api/v1/owner/invoices/{id}/cancel": {
       "post": {
-        "description": "Owner-only DRAFT cancellation retained as CANCELLED. Same actor/reason retry is idempotent. A new invoice may be created for this period; SENT alone advances baseline/month. No refund or payment effect.",
+        "description": "Requires current invoice and billing versions plus reason. Retains CANCELLED record/audit; published cancellation remains visible to exact tenant with a private notification, but is no longer unpaid debt or payable by QR. Blocks any paidAt or positive matched/amount-mismatch incoming transfer, including partial/excess money. Meter-chain/later-invoice safeguards remain; resolve latest utility periods first. Parent contract lock serializes cancellation with QR creation and every invoice-linked incoming webhook. Late incoming money stays in payment events for manual reconciliation and does not resurrect a cancelled invoice. Automatic rent scheduler does not reissue a cancelled coverage; explicit owner creation is required.",
         "parameters": [
           {
             "name": "id",
@@ -496,7 +496,8 @@
             "$ref": "#/components/responses/Error"
           },
           "409": {
-            "$ref": "#/components/responses/Error"
+            "$ref": "#/components/responses/Error",
+            "description": "VERSION_CONFLICT, BILLING_SEQUENCE_CONFLICT, INVOICE_HAS_RECEIVED_FUNDS or invalid status."
           }
         },
         "requestBody": {
@@ -508,7 +509,8 @@
               }
             }
           }
-        }
+        },
+        "summary": "Cancel own draft or sent invoice only before any received money"
       }
     },
     "/api/v1/owner/invoices/{id}/history": {
@@ -560,7 +562,7 @@
     "/api/v1/owner/contracts/{id}/rent-billing-context": {
       "get": {
         "summary": "Read next whole-month rent cycle and existing draft",
-        "description": "Exact owner only. RENT and UTILITY have independent coverage and meter chains. Uncancelled LEGACY coverage prevents double charging. Partial calendar-month days require separate manual agreement. Due date cannot precede the agreed payment day.",
+        "description": "Exact owner only. RENT and UTILITY have independent coverage and meter chains. Uncancelled LEGACY coverage prevents double charging. For calendarRentBilling=true, include partial first/final months using actual month days and one final whole-VND HALF_UP rounding. First coverage includes the starting partial month plus the remaining full months of the chosen cycle, capped by endDate; first invoice is created/SENT atomically at activation, due at startDate. Later periods follow calendar months and rentPaymentDay, with D-7 automatic sending and overdue catch-up. Cancelled coverage is not automatically resent; manual reissue fills the earliest missing period. Unexpected overlapping history returns RENT_HISTORY_CONFLICT. Legacy false contracts retain their original partial-day agreement. Due date cannot precede the agreed payment day. For oneMonthRentPackage=true, exact contract dates replace whole calendar months, amount is one monthlyRent and dueDate is startDate. Automatic activation creates/sends this invoice; after it is sent there is no next rent period.",
         "parameters": [
           {
             "name": "id",
@@ -598,7 +600,7 @@
     "/api/v1/owner/contracts/{id}/rent-invoices": {
       "post": {
         "summary": "Create and immediately send rent-only invoice within seven days before due date",
-        "description": "Exact owner only. RENT and UTILITY have independent coverage and meter chains. Uncancelled LEGACY coverage prevents double charging. Partial calendar-month days require separate manual agreement. Due date cannot precede the agreed payment day. Rent is created and SENT atomically, with exactly one tenant notification. Reject earlier than dueDate minus 7 days (Asia/Ho_Chi_Minh), including direct send of an old RENT draft. Due date cannot be moved earlier than agreed. Manual overdue reconciliation remains allowed. Utility draft workflow is unchanged.",
+        "description": "Exact owner only. RENT and UTILITY have independent coverage and meter chains. Uncancelled LEGACY coverage prevents double charging. For calendarRentBilling=true, include partial first/final months using actual month days and one final whole-VND HALF_UP rounding. First coverage includes the starting partial month plus the remaining full months of the chosen cycle, capped by endDate; first invoice is created/SENT atomically at activation, due at startDate. Later periods follow calendar months and rentPaymentDay, with D-7 automatic sending and overdue catch-up. Cancelled coverage is not automatically resent; manual reissue fills the earliest missing period. Unexpected overlapping history returns RENT_HISTORY_CONFLICT. Legacy false contracts retain their original partial-day agreement. Due date cannot precede the agreed payment day. Rent is created and SENT atomically, with exactly one tenant notification. Reject earlier than dueDate minus 7 days (Asia/Ho_Chi_Minh), including direct send of an old RENT draft. Due date cannot be moved earlier than agreed. Manual overdue reconciliation remains allowed. Utility draft workflow is unchanged. For oneMonthRentPackage=true, exact contract dates replace whole calendar months, amount is one monthlyRent and dueDate is startDate. Automatic activation creates/sends this invoice; after it is sent there is no next rent period.",
         "parameters": [
           {
             "name": "id",
@@ -965,6 +967,25 @@
           "rentUnitPrice": {
             "type": "string",
             "description": "Agreed monthly rent unit price. The existing monthlyRent invoice field is the aggregate rent charge on this document."
+          },
+          "cancellable": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "cancellationBlockReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "readOnly": true
+          },
+          "rentCalculation": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "readOnly": true,
+            "description": "Frozen per-month calendar rent calculation, actual occupied/month days and final whole-VND HALF_UP rounding. Null for legacy billing."
           }
         }
       },
@@ -1411,6 +1432,25 @@
           "canSend": {
             "type": "boolean",
             "description": "Date window is open; existing draft/exhausted coverage and ownership/version rules still apply."
+          },
+          "cancellable": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "cancellationBlockReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "readOnly": true
+          },
+          "rentCalculation": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "readOnly": true,
+            "description": "Frozen per-month calendar rent calculation, actual occupied/month days and final whole-VND HALF_UP rounding. Null for legacy billing."
           }
         },
         "required": [

@@ -20,3 +20,8 @@ Phát triển An Cư PropTech thành sản phẩm thương mại cho người d�
 - Tạo/cập nhật PR cho phần hoàn thành; chỉ gộp vào `main` khi người dùng yêu cầu.
 - Tuân thủ phạm vi từng yêu cầu. Khi được yêu cầu chỉ sửa frontend, không sửa backend.
 - Không đưa mật khẩu, API key hoặc file cấu hình riêng chứa bí mật lên GitHub.
+
+
+## Nhật ký sửa nghiệp vụ dùng chung
+
+Khi tiếp tục, đọc CHANGELOG_NGHIEP_VU.md cùng WORK_PROGRESS.md và CODING_PLAN.md ở thư mục cha nếu có. Sau mỗi đơn vị sửa hoàn chỉnh, cập nhật đúng CHANGELOG_NGHIEP_VU.md bằng một dòng ngắn: ngày, mã hoặc phạm vi, thay đổi người dùng nhìn thấy, kiểm tra thực tế và commit. Ghi rõ phần đang làm hoặc cần cân nhắc; giữ các dòng cũ, không tạo nhật ký tóm tắt song song. Chi tiết kỹ thuật và bằng chứng tiếp tục đặt trong ADR/báo cáo tương ứng.

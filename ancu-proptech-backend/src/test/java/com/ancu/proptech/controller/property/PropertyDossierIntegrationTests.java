@@ -25,6 +25,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 @SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("test") @Transactional
 class PropertyDossierIntegrationTests {
+    @Autowired com.ancu.proptech.repository.property.PropertyImageRepository imageFiles;
     @Autowired MockMvc mvc;@Autowired AuthAccountRepository accounts;@Autowired PropertyRepository properties;
     @Autowired ApartmentRepository apartments;@Autowired PropertyDossierRepository dossiers;@Autowired PropertyEvidenceFileRepository files;
     @Autowired PasswordEncoder passwords;@Autowired AuthService auth;
@@ -56,7 +57,7 @@ class PropertyDossierIntegrationTests {
     private ResultActions submit(String token,Property p,String input)throws Exception{return mvc.perform(post("/api/v1/owner/properties/"+p.getId()+"/verification-dossiers").header("Authorization","Bearer "+token).contentType("application/json").content(input));}
     private String send(String file)throws Exception{return JsonPath.read(submit(ownerToken,property,body(file,property.getVersion())).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(),"$.id");}
     private ResultActions decision(String token,String id,String choice,String reason,long version)throws Exception{return mvc.perform(post("/api/v1/admin/property-dossiers/"+id+"/decisions").header("Authorization","Bearer "+token).contentType("application/json").content("{\"decision\":\""+choice+"\",\"reason\":\""+reason+"\",\"version\":"+version+"}"));}
-    private String createApartment()throws Exception{var result=mvc.perform(post("/api/v1/owner/apartments").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"propertyId\":\""+property.getId()+"\",\"roomNumber\":\"A.1\",\"title\":\"Căn kiểm thử\",\"floor\":1,\"areaM2\":\"30\",\"advertisedMonthlyRent\":\"5000000\"}")).andExpect(status().isCreated()).andReturn();return JsonPath.read(result.getResponse().getContentAsString(),"$.id");}
+    private String createApartment()throws Exception{var result=mvc.perform(post("/api/v1/owner/apartments").header("Authorization","Bearer "+ownerToken).contentType("application/json").content("{\"propertyId\":\""+property.getId()+"\",\"roomNumber\":\"A.1\",\"title\":\"Căn kiểm thử\",\"floor\":1,\"areaM2\":\"30\",\"advertisedMonthlyRent\":\"5000000\",\"electricityUnitPrice\":3500,\"waterUnitPrice\":15000,\"imageIds\":[\""+com.ancu.proptech.support.PropertyImageFixtures.stage(imageFiles,owner.getId())+"\"]}")).andExpect(status().isCreated()).andReturn();return JsonPath.read(result.getResponse().getContentAsString(),"$.id");}
     @Test void submitsAndApprovesWithoutBankAndIgnoresLegacyPaymentInput() throws Exception {
         var legacy = body(uploadRight(), property.getVersion()).replace("\"rightType\":\"OWNERSHIP\"",
             "\"rightType\":\"OWNERSHIP\",\"receivingAccount\":{\"bank\":\"Legacy bank\",\"accountNumber\":\"12345678\",\"accountHolderName\":\"Legacy owner\"}");

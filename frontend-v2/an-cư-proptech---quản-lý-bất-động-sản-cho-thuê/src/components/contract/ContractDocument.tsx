@@ -11,11 +11,9 @@ import { SignaturePad } from '@/components/contract/SignaturePad';
 import type { ContractDraft } from '@/types/contract';
 import { ContractLifecyclePanel } from '@/components/contract/ContractLifecyclePanel';
 
-export const signingLabel = (draft: ContractDraft) => draft.status === 'CANCELLED' ? 'Đã hủy trước hiệu lực' : draft.cancellationState === 'PENDING' ? 'Chờ phản hồi đề nghị hủy' : draft.status === 'ENDED' ? 'Đã kết thúc' :
-  draft.status === 'DRAFT' && draft.signing?.state === 'SIGNED' && draft.lifecycle?.previousContractId ? 'Đã ký — chờ chuyển kỳ thuê' :
-  draft.status === 'ACTIVE' && draft.lifecycle?.expired ? 'Hết hạn — chờ ký tiếp hoặc bàn giao' :
-  draft.signing?.state === 'SIGNED' ? 'Hai bên đã ký' : draft.signing?.state === 'WAITING_CUSTOMER' ? 'Chờ khách thuê ký' :
-  draft.signing?.state === 'WAITING_OWNER' ? 'Chờ chủ nhà ký' : draft.status === 'ACTIVE' ? 'Đang hiệu lực' : 'Chờ hai bên ký';
+export { contractSigningLabel as signingLabel } from '@/utils/contractDisplay';
+import { contractSigningLabel as signingLabel } from '@/utils/contractDisplay';
+
 const action = 'inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50';
 
 export function ContractDocument({ draft, onUpdated, onRemoved }: { draft: ContractDraft; onUpdated: (draft: ContractDraft) => void; onRemoved?:()=>void }) {
@@ -56,7 +54,7 @@ export function ContractDocument({ draft, onUpdated, onRemoved }: { draft: Contr
     catch (err) { setError(err instanceof Error ? err.message : 'Không thể tải lại.'); }
     finally { operation.current = false; setBusy(false); }
   };
-  const sign = async (otp: SignatureOtp) => {
+  const sign = async (otp?: SignatureOtp) => {
     if (!signature || !consent || operation.current || !canSign || !pdfUrl) return;
     operation.current = true; setBusy(true); setError(''); setNotice('');
     try { onUpdated(await signContract(draft, signature, otp)); setSignature(null); setConsent(false); setNotice('Đã lưu chữ ký của bạn vào hợp đồng.');window.dispatchEvent(new Event('ancu:tenancy-changed')); }
@@ -75,7 +73,7 @@ export function ContractDocument({ draft, onUpdated, onRemoved }: { draft: Contr
       </div>
       <p className="text-xs text-slate-500">PDF lấy từ bản hợp đồng đã lưu trên máy chủ. Hai bên chỉ được ký bằng chính tài khoản tham gia hợp đồng.</p>
     </div>
-    <p className="text-sm">Chu kỳ tiền thuê {draft.rentCycleMonths??1} tháng / lần · Điện nước và dịch vụ hàng tháng.</p>
+    <p className="text-sm">{draft.calendarRentBilling?`Tiền thuê theo tháng lịch, ${draft.rentCycleMonths??1} tháng/lần. Kỳ đầu tự lập và gửi khi bắt đầu thuê, hạn đóng ${draft.startDate}; các kỳ sau đến hạn ngày ${draft.paymentDay}. Ngày lẻ tính theo số ngày thực tế của tháng.`:draft.oneMonthRentPackage?`Tiền thuê trọn một tháng cho toàn bộ kỳ thuê · Một hóa đơn, hạn đóng ${draft.startDate}. Điện nước và dịch vụ đối chiếu riêng.`:<>Chu kỳ tiền thuê {draft.rentCycleMonths??1} tháng / lần · Điện nước và dịch vụ hàng tháng.</>}</p>
     {notice && <p role="status" className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm text-emerald-800">{notice}</p>}
     {error && <p role="alert" className="bg-rose-50 rounded-lg p-3 text-sm text-rose-700">{error}</p>}
     {pdfLoading && <p role="status" className="p-4 text-slate-500">Đang tạo và tải bản PDF...</p>}
@@ -89,6 +87,7 @@ export function ContractDocument({ draft, onUpdated, onRemoved }: { draft: Contr
       <div className="h-28 rounded-lg border border-dashed border-slate-300 flex items-center justify-center bg-white">{image ? <img src={image} alt={`Chữ ký ${name}`} className="max-h-24 max-w-full object-contain" /> : <span className="text-sm text-slate-400">Chưa ký</span>}</div>
       {at && <p className="text-xs text-emerald-700 flex items-center gap-1"><CheckCircle2 size={13} />{new Date(at).toLocaleString('vi-VN')}</p>}
     </section>)}</div>
+    {draft.status === 'DRAFT' && signing?.state === 'SIGNED' && !draft.lifecycle?.previousContractId && <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Hợp đồng đã đủ hai chữ ký, chờ hiệu lực từ {draft.startDate}. Phòng tiếp tục được giữ; hệ thống kiểm tra điều kiện và chuyển hiệu lực khi đến ngày bắt đầu. Bạn có thể đề nghị hủy trong thời gian chờ, cần bên còn lại đồng ý.</p>}
     {draft.status === 'CANCELLED' && <p className="rounded-lg bg-slate-50 p-3 text-sm">Hợp đồng đã hủy trước hiệu lực. Nội dung và chữ ký được giữ nguyên để xem lại; thao tác hủy không xác nhận hoàn cọc.</p>}
     {draft.cancellationState==='PENDING' && <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm">Đang chờ phản hồi đề nghị hủy; tạm khóa sửa và ký tiếp.</p>}
     {!draft.lifecycle?.previousContractId && (draft.status==='DRAFT'||draft.status==='CANCELLED') && <div className="space-y-3"><button type="button" className="text-sm text-red-700 underline" onClick={()=>setShowCancellation(v=>!v)}>Hủy / lịch sử làm hợp đồng</button>{showCancellation&&<SelectionCancellationPanel requestId={draft.rentalRequestId} onState={value=>{removed.current=value.state==='CANCELLED'&&!value.contractId;setPendingCancellation(value.state==='PENDING'||value.state==='CANCELLED');}} onChanged={async()=>{if(removed.current){if(onRemoved)onRemoved();else navigate(isOwner?'/app?tab=contracts':'/my/contracts',{replace:true});return;}onUpdated(await getContract(draft.id));setRevision(v=>v+1);}}/>}</div>}
@@ -97,7 +96,7 @@ export function ContractDocument({ draft, onUpdated, onRemoved }: { draft: Contr
       <p className="text-sm text-slate-600">Đọc bản PDF ở trên, sau đó vẽ chữ ký của bạn vào khung. Nội dung sẽ bị khóa ngay khi có chữ ký đầu tiên.</p>
       <SignaturePad key={`${draft.id}-${draft.version}`} disabled={busy} onChange={setSignature} />
       <label className="flex gap-3 items-start text-sm"><input type="checkbox" checked={consent} disabled={busy} onChange={e => setConsent(e.target.checked)} className="mt-1" />Tôi đã đọc bản PDF và đồng ý toàn bộ nội dung hợp đồng; xác nhận sử dụng chữ ký vừa vẽ.</label>
-      <SignatureOtpConfirmation key={`${draft.id}-${draft.version}-${signature}-${consent}`} disabled={busy || !signature || !consent || !pdfUrl} label="Xác nhận ký hợp đồng" request={() => requestContractSignatureOtp(draft, signature!)} confirm={sign} />
+      <SignatureOtpConfirmation otpRequired={draft.signing?.otpRequired ?? true} key={`${draft.id}-${draft.version}-${signature}-${consent}`} disabled={busy || !signature || !consent || !pdfUrl} label="Xác nhận ký hợp đồng" request={() => requestContractSignatureOtp(draft, signature!)} confirm={sign} />
     </section>}
     <p className="rounded-lg bg-slate-50 p-3 text-sm">{externalDepositNotice}</p>
     <ContractLifecyclePanel draft={draft} onUpdated={onUpdated} />

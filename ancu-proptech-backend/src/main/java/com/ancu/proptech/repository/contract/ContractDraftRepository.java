@@ -9,6 +9,8 @@ public interface ContractDraftRepository extends JpaRepository<ContractDraft,Lon
     java.util.List<Long> dueSignedRenewals(@org.springframework.data.repository.query.Param("today") java.time.LocalDate today);
     @org.springframework.data.jpa.repository.Query("select d.rentalRequest.id from ContractDraft d where d.contract.id=:id")
     Optional<Long> findRequestId(@org.springframework.data.repository.query.Param("id") Long id);
+    @org.springframework.data.jpa.repository.Query("select d.contract.id from ContractDraft d where d.contract.renewalOfContractId is null and d.contract.status=com.ancu.proptech.model.contract.RentalContract.Status.DRAFT and d.ownerSignedAt is not null and d.customerSignedAt is not null and d.contract.startDate<=:today and d.contract.endDate>=:today")
+    java.util.List<Long> dueSignedInitials(@org.springframework.data.repository.query.Param("today") java.time.LocalDate today);
     Optional<ContractDraft> findByRentalRequestId(Long requestId);
     Optional<ContractDraft> findByContractId(Long contractId);
     List<ContractDraft> findByContractApartmentPropertyOwnerIdOrderByCreatedAtDescIdDesc(Long ownerId);

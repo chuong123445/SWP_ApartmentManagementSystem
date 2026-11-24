@@ -47,3 +47,26 @@ Exact implemented routes/schema: `docs/api/contract-drafts.openapi.json`. T15/T2
 New contexts/drafts now use ContractPropertyEvidenceResolver: source-imported properties use immutable PropertyExternalImport source data; manual properties use their approved dossier (exact approvedRightsDossierId when present). Both return the same ContractSnapshot asset/receiving-account structure plus nullable provenance source/reference/hash/time. Auth0 imports retain rightDescription from new source reads; old snapshots without it remain missing/readable. No fake Admin review, external request on contract creation, legal claim or modification of existing saved contract snapshots.
 
 Source receiving-account fields are private owner declarations, name-matched against the exact linked verified citizen; not bank verification. New wizard step4 can save bank/account/holder with source row version, reload context/sourceVersion without clearing terms, and then snapshot it in a new draft. Source changes after context require re-review; bank changes after saved draft do not rewrite it. Missing data stays explicit, not hardcoded. See f07-f08-f09-fixes-2026-10-28 report and updated OpenAPI.
+
+
+## Override 14 November 2026 — earliest contract start
+
+Create, edit unsigned drafts and renewal authoring require startDate >= today in Asia/Ho_Chi_Minh, with endDate > startDate. Server rejects past starts with HTTP 400 CONTRACT_START_DATE_IN_PAST. The wizard applies the same rule and approved rights bounds; overdue renewal suggestions start no earlier than today. Existing contracts, historical dates, PDFs and signing flows are not rewritten or revalidated by this authoring rule.
+
+
+## Override 21 November 2026 — RA01 signing date recheck
+
+Both signature-OTP issuance and the locked signing transaction reject startDate before Asia/Ho_Chi_Minh today with HTTP400 CONTRACT_START_DATE_IN_PAST. An OTP issued before midnight does not bypass the check after midnight. No OTP is consumed or signature saved when the date check fails. Owner/Customer slots, version/hash/consent and existing saved signatures are preserved. Unsigned drafts can revise dates through the existing update route; a partly signed obsolete draft uses the existing bilateral cancellation/re-authoring flow, not an implicit edit. History and already ACTIVE contracts are not revalidated or rewritten.
+
+Validation:56ContractDraftIntegration cases PASS,4new date-boundary cases rerun PASS after scoping OTP assertions to fixture parties;4Playwright desktop/mobile Owner+Customer server-error scenarios PASS. MockitoSpyBean docs7.0.5 compared with project Framework7.0.9, no exact patch in catalog. Concise history lives in CHANGELOG_NGHIEP_VU.md.
+
+
+## Override 21 November 2026 — RA02 waiting for first lease effectiveness
+
+User explicitly selected automatic effectiveness at the agreed start date, with the apartment reserved beforehand. A first lease signed by both parties before startDate remains technical DRAFT plus signing.state=SIGNED and apartment CONTRACT_IN_PROGRESS; UI labels it Đã ký — chờ hiệu lực. No new enum/migration or public activation endpoint. These are not editable unsigned drafts and do not grant current tenancy/billing. Existing ACTIVE history is not rewritten.
+
+ContractInitialActivationService runs on/after startDate, no later than endDate, only after both signatures, accepted selection, no pending cancellation, exact apartment reservation/no other open contract, current eligible parties and approved rights covering the term. It uses request→contract→apartment locks and is idempotent. Baselines are only copied from available apartment meters at activation, never invented. Signing on the start day invokes it immediately; future agreements are retried by ContractLifecycleScheduler.activateInitialLeases after1minute at startup/every1minute by default (app.contract-lifecycle.activation-delay-ms). Renewal scheduler remains unchanged. Restart downtime catches up only still-valid signed terms, never auto-releases an expired contract.
+
+Both signed but not yet activated first leases may use the existing selection cancellation proposal/accept/reject/withdraw flow; never direct one-party cancellation after a signature. A pending proposal blocks activation, including across start day. Parent lock and sourceVersion decide races; if activation already won the parties use the active-contract exit process. Cancellation retains both signatures/hash/history, changes request/contract to CANCELLED and releases only the reserved apartment after other-claim checks. No payments/refunds implied.
+
+Validation:60ContractDraft+2TenancySummary PASS,11SelectionCancellation PASS after correcting its old tomorrow-start fixture to today for the existing immediate-activation test;165frontend/TypeScript/build/4Playwright Owner-proposal+Customer-accept at1440/390 PASS. Tests cover early/no-op vs due/idempotent activation, retained signatures/hash, current-account recheck, unavailable billing while waiting and cancellation blocking activation. SQLtestDB/API fixtures only.

@@ -27,7 +27,7 @@ public class PropertyApplicantAccess {
     }
     public Property write(Jwt jwt,Long id) {
         var a=verified(jwt);
-        return properties.findOwnedForCreation(id,a.getId()).filter(p->a.hasRole(AuthAccount.Role.OWNER) || p.isOnboardingApplication()).orElseThrow(PropertyApplicantAccess::missing);
+        return properties.findOwnedForCreation(id,a.getId()).filter(p->p.getApprovalStatus()!=Property.ApprovalStatus.WITHDRAWN).filter(p->a.hasRole(AuthAccount.Role.OWNER) || p.isOnboardingApplication()).orElseThrow(PropertyApplicantAccess::missing);
     }
     public Property read(Jwt jwt,Long id) {
         var a=access.account(jwt);

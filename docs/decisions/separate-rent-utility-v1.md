@@ -33,3 +33,12 @@ chọn chế độ và nút lưu nháp RENT, hiển thị ngày mở gửi/khóa
 sớm. Điện nước/dịch vụ (bao gồm internet/rác) vẫn có nháp và Owner kiểm tra.
 Scheduler giữ khoảng chạy15phút/khởi động sau1phút, transaction theo hợp đồng,
 khóa chống trùng/notification duy nhất và bỏ qua luồng kết thúc/bàn giao mở.
+
+
+## Override 21/11/2026 — RA03 chặn kỳ điện nước tương lai
+
+InvoiceService dùng ngày Việt Nam của PropertyRightsPolicy để kiểm tra chung: hợp đồng ACTIVE nhưng startDate còn tương lai trả409 CONTRACT_NOT_STARTED; kỳ điện nước kế tiếp vượt YearMonth hiện tại trả409 UTILITY_PERIOD_IN_FUTURE. Kiểm tra trước khi trả context/chốt chỉ số/tạo hóa đơn, và kiểm tra lại kỳ trên hóa đơn lúc gửi. Nháp tương lai có từ trước vẫn xem/hủy được, không được gửi; SENT và lịch sử thanh toán giữ nguyên. Gợi ý AI gọi cùng billing-context trước provider nên không thể vượt chốt này.
+
+Kỳ hiện tại hoặc quá khứ trong thời hạn hợp đồng vẫn được đối chiếu bằng chỉ số thực tế, cùng khóa/version và chuỗi kỳ cũ; chưa thêm điều kiện phải đợi hết tháng. RENT dùng lịch riêng, không dùng giới hạn tháng của UTILITY: các kiểm tra D-7 và kỳ thu trả trước trên hợp đồng đủ điều kiện không đổi. Hợp đồng đang chờ hiệu lực của RA02 vẫn chưa mở billing như đã mô tả ở ADR contract. Không sửa fallback mốc0 đã được chọn trước đây, đơn giá, quy tắc tháng lẻ hoặc quyết toán cuối kỳ RA04.
+
+Kiểm tra:45Billing cases (44đạt/1scheduler skipped theo assume ngày<=28),22SePay,3RentSchedule,8UtilityInvoiceAiService đạt; tổng77đạt/1skipped. Ba test mới xác minh tất cả đường ghi và AI không gọi provider khi bị chặn, mở kỳ khi sang tháng, nháp tương lai bị chặn gửi nhưng hủy được. Một fixture phân trang có3kỳ được đặt ngày test31/12 để các kỳ đều đã đến, không nới guard production.4PlaywrightMCP1440/390 xác minh hai lỗi, nút ghi bị khóa và tải lại phục hồi; không gửi command tiền/công tơ. SQLDB riêng/API fixtures, không appDB/provider thật.

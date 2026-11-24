@@ -41,6 +41,6 @@ public interface FinancialReportRepository extends Repository<RentalInvoice,Long
     @QueryHints(@jakarta.persistence.QueryHint(name="org.hibernate.fetchSize",value="100"))
     Stream<FinancialReceiptRow> receipts(@Param("ownerId") Long ownerId,@Param("propertyId") Long propertyId,@Param("from") Instant from,@Param("until") Instant until);
 
-    @Query("select new com.ancu.proptech.dto.finance.FinancialInventoryRow(p.id,p.name,count(a.id),sum(case when a.availability=com.ancu.proptech.model.apartment.Apartment.Availability.OCCUPIED then 1 else 0 end),sum(case when a.availability=com.ancu.proptech.model.apartment.Apartment.Availability.VACANT then 1 else 0 end)) from Property p left join Apartment a on a.property.id=p.id where p.owner.id=:ownerId and (:propertyId is null or p.id=:propertyId) group by p.id,p.name order by p.name,p.id")
+    @Query("select new com.ancu.proptech.dto.finance.FinancialInventoryRow(p.id,p.name,count(a.id),sum(case when a.availability=com.ancu.proptech.model.apartment.Apartment.Availability.OCCUPIED then 1 else 0 end),sum(case when a.availability=com.ancu.proptech.model.apartment.Apartment.Availability.VACANT then 1 else 0 end)) from Property p left join Apartment a on a.property.id=p.id where p.approvalStatus<>com.ancu.proptech.model.property.Property.ApprovalStatus.WITHDRAWN and p.owner.id=:ownerId and (:propertyId is null or p.id=:propertyId) group by p.id,p.name order by p.name,p.id")
     List<FinancialInventoryRow> inventory(@Param("ownerId") Long ownerId,@Param("propertyId") Long propertyId);
 }

@@ -17,6 +17,8 @@ export interface ContractTerms {
   paymentDay: number; paymentMethod: string; usagePurpose: string; clauses: ContractClause[];
 }
 export interface ContractDraft extends ContractTerms {
+  oneMonthRentPackage?: boolean;
+  calendarRentBilling?: boolean;
   separateBillingAgreed?:boolean;
   id: string; rentalRequestId: string; contractNumber: string; status: 'DRAFT' | 'ACTIVE' | 'ENDED' | 'CANCELLED'; version: number; snapshot: ContractSnapshot; createdAt: string;
   cancellationState?: 'NONE'|'PENDING'|'CANCELLED'|'REJECTED'|'WITHDRAWN';
@@ -50,6 +52,7 @@ export interface HandoverInput {
   electricityStartReading?: string; waterStartReading?: string;
 }
 export interface ContractSigning {
+  otpRequired?: boolean;
   ownerAccountId: string; customerAccountId: string; contentHash: string;
   state: 'UNSIGNED' | 'WAITING_OWNER' | 'WAITING_CUSTOMER' | 'SIGNED';
   ownerSignedAt: string | null; customerSignedAt: string | null;

@@ -16,5 +16,7 @@ public class ContractExitCase {
  @Lob @Column(columnDefinition="varbinary(max)") private byte[] customerSignature;
  @Column(columnDefinition="datetime2(6)") private Instant ownerSignedAt;
  @Column(columnDefinition="datetime2(6)") private Instant customerSignedAt;
+ @Column(nullable=false,length=20) private String unilateralState="NONE";
+ @org.hibernate.annotations.Nationalized @Column(columnDefinition="nvarchar(max)") private String unilateralJson;
  @Version private long version;
 }

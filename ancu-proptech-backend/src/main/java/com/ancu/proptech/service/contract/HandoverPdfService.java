@@ -39,7 +39,7 @@ public class HandoverPdfService {
    w.room(250);
    w.text("Bên B bàn giao lại nhà và tài sản cho Bên A theo hiện trạng ghi nhận. Hai bên đã đọc, kiểm tra và thống nhất nội dung biên bản.");
    w.text("Biên bản hoàn tất khi cả hai bên ký cùng bản nội dung. Công nợ và các thỏa thuận tiền cọc được xử lý riêng.");
-   w.signatures(show(record.snapshot().owner().fullName()),show(record.snapshot().customer().fullName()),new ContractDraftResponse.Signing(record.snapshot().owner().id(),record.snapshot().customer().id(),signing.contentHash(),signing.state(),signing.ownerSignedAt(),signing.customerSignedAt(),signing.ownerSignature(),signing.customerSignature()));
+   w.signatures(show(record.snapshot().owner().fullName()),show(record.snapshot().customer().fullName()),new ContractDraftResponse.Signing(record.snapshot().owner().id(),record.snapshot().customer().id(),signing.contentHash(),signing.state(),signing.ownerSignedAt(),signing.customerSignedAt(),signing.ownerSignature(),signing.customerSignature(),signing.otpRequired()));
    w.finish(record.number(),signing.state(),signing.contentHash());
    pdf.getDocumentInformation().setTitle(record.number()+" - Biên bản bàn giao lại nhà thuê");
    var bytes=new ByteArrayOutputStream();pdf.save(bytes);return bytes.toByteArray();

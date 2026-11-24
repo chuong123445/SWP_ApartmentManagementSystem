@@ -10,15 +10,17 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ContractPdfLayoutTests {
     private ContractDraftResponse draft(boolean longContent) {return draft(longContent,1);}
-    private ContractDraftResponse draft(boolean longContent,int cycle) {
+    private ContractDraftResponse draft(boolean longContent,int cycle) {return draft(longContent,cycle,false);}
+    private ContractDraftResponse draft(boolean longContent,int cycle,boolean pack) {return draft(longContent,cycle,pack,false);}
+    private ContractDraftResponse draft(boolean longContent,int cycle,boolean pack,boolean calendar) {
         var party=new ContractSnapshot.Party("1","Người kiểm thử","private@example.invalid","0900000000","Địa chỉ liên hệ",LocalDate.of(1990,1,1),false,
             "999000000001",LocalDate.of(2021,4,6),"Cục Cảnh sát quản lý hành chính về trật tự xã hội","Địa chỉ thường trú kiểm thử","VERIFIED",false);
         var asset=new ContractSnapshot.Asset("1","1","CATALOG PROPERTY","CATALOG TITLE","208","33 Đường kiểm thử, Đà Nẵng",null,null,null,"45",2,3,2,List.of("CATALOG AMENITY"),"APPROVED",null,"OWNERSHIP","CERTIFICATE-PRIVATE",null,"CERTIFICATE ISSUER","RIGHT DESCRIPTION",false);
         var clauses=new ArrayList<ContractClause>();
         for(int i=1;i<=7;i++)clauses.add(new ContractClause("Thỏa thuận "+i,longContent?"Hai bên thống nhất nội dung đã rà soát. ".repeat(35)+"KẾT THÚC ĐIỀU "+i:"Hai bên thống nhất giữ gìn tài sản và thực hiện đúng các khoản thanh toán đã thỏa thuận."));
-        return new ContractDraftResponse(1L,1L,"HD-1","DRAFT",0,LocalDate.of(2026,11,1),LocalDate.of(2027,11,1),"2600000","3800","50000","2600000",3,"Chuyển khoản","Để ở",clauses,
+        return new ContractDraftResponse(1L,1L,"HD-1","DRAFT",0,LocalDate.of(2026,11,1),pack?LocalDate.of(2026,11,30):LocalDate.of(2027,11,1),"2600000","3800","50000","2600000",3,"Chuyển khoản","Để ở",clauses,
             new ContractSnapshot(party,party,asset,new ContractSnapshot.ReceivingAccount("BANK-OMIT","ACCOUNT-OMIT","HOLDER-OMIT")),Instant.parse("2026-11-03T00:00:00Z"),"ROOM",
-            new ContractDraftResponse.Signing("1","2","a".repeat(64),"UNSIGNED",null,null,null,null),null,"PER_PERSON",2,"100000","30000","NONE",cycle,cycle!=1);
+            new ContractDraftResponse.Signing("1","2","a".repeat(64),"UNSIGNED",null,null,null,null,true),null,"PER_PERSON",2,"100000","30000","NONE",cycle,cycle!=1||pack||calendar,pack,calendar);
     }
     @Test void compactFormKeepsAgreedFieldsWithoutCatalogOrContactMetadata()throws Exception {
         byte[] bytes=new ContractPdfService().render(draft(false));
@@ -61,4 +63,18 @@ class ContractPdfLayoutTests {
         }
     }
 
+    @Test void oneMonthPackageShowsSingleInvoiceAndStartDateDueInsteadOfCalendarPaymentDay()throws Exception {
+        try(var pdf=Loader.loadPDF(new ContractPdfService().render(draft(false,1,true)))){
+            String text=new PDFTextStripper().getText(pdf);assertTrue(text.contains("Tiền thuê trọn một tháng"));
+            assertTrue(text.contains("01/11/2026"));assertFalse(text.contains("Tiền thuê chỉ tự tính tháng tròn"));
+        }
+    }
+    @Test void calendarPolicyStatesFirstDueActualDaysAndNoManualPartialOrDuplicateParagraph()throws Exception{
+        var bytes=new ContractPdfService().render(draft(false,3,false,true));
+        try(var pdf=Loader.loadPDF(bytes)){
+            String text=new PDFTextStripper().getText(pdf);assertTrue(text.contains("tháng theo tháng lịch"));assertTrue(text.contains("số ngày thực tế"));assertTrue(text.contains("hạn đóng ngày bắt đầu thuê"));
+            assertEquals(2,text.split("Tiền thuê thanh toán mỗi",-1).length);assertFalse(text.contains("phần ngày lẻ do hai bên"));assertTrue(pdf.getNumberOfPages()<=3);
+        }
+        java.nio.file.Files.write(java.nio.file.Path.of("target/calendar-contract.pdf"),bytes);
+    }
 }

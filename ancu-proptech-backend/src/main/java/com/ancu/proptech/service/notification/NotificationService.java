@@ -19,7 +19,7 @@ public class NotificationService {
  public record Feed(List<Item> items,int page,int size,long totalElements,int totalPages,long unreadCount,Instant snapshotAt){}
  private static final String FEED="""
  WITH feed AS (
- SELECT CONCAT('contract-exit:',e.id) notification_key,N'Cập nhật kết thúc thuê / bàn giao' title,
+ SELECT CONCAT('contract-exit:',e.id) notification_key,CASE WHEN e.action LIKE '%UNILATERAL%' THEN N'Thông báo kết thúc đơn phương' ELSE N'Cập nhật kết thúc thuê / bàn giao' END title,
  CONCAT(N'HD-',c.id,N' — ',e.reason) message,CONCAT('/contracts/',c.id) url,e.created_at
  FROM contract_exit_events e JOIN rental_contracts c ON c.id=e.contract_id JOIN rental_apartments a ON a.id=c.apartment_id JOIN rental_properties p ON p.id=a.property_id
  WHERE e.actor_id<>:account AND (p.owner_id=:account OR c.customer_id=:account)
@@ -64,6 +64,10 @@ public class NotificationService {
       ELSE '/my/rental-requests' END,e.created_at
  FROM selection_cancellation_events e JOIN rental_requests r ON r.id=e.request_id JOIN rental_apartments a ON a.id=r.apartment_id JOIN rental_properties p ON p.id=a.property_id
  WHERE e.actor_id<>:account AND (p.owner_id=:account OR r.customer_id=:account)
+ UNION ALL
+ SELECT CONCAT('invoice-cancel:',e.id),N'Hóa đơn đã hủy',CONCAT(N'Hóa đơn kỳ ',i.period,N' đã hủy. Lý do: ',e.reason),CONCAT('/my/invoices/',i.id),e.occurred_at
+ FROM invoice_events e JOIN rental_invoices i ON i.id=e.invoice_id JOIN rental_contracts c ON c.id=i.contract_id
+ WHERE e.action='CANCELLED' AND i.sent_at IS NOT NULL AND c.customer_id=:account
  UNION ALL
  SELECT CONCAT('invoice:',n.id),N'Bạn có hóa đơn mới',CONCAT(N'Hóa đơn kỳ ',i.period,N' — ',COALESCE(a.room_number,a.title)),CONCAT('/my/invoices/',i.id),n.created_at
  FROM invoice_notifications n JOIN rental_invoices i ON i.id=n.invoice_id JOIN rental_contracts c ON c.id=i.contract_id JOIN rental_apartments a ON a.id=c.apartment_id

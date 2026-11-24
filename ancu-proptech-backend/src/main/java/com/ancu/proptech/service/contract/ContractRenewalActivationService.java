@@ -20,6 +20,7 @@ import java.time.Instant;
 public class ContractRenewalActivationService {
     private final ContractExitGuard exitGuard;
     private final RentalContractRepository contracts;
+    private final com.ancu.proptech.service.billing.InvoiceService rentInvoices;
     private final ContractDraftRepository drafts;
     private final ContractHandoverRepository handovers;
     private final RentalRequestRepository requests;
@@ -36,7 +37,7 @@ public class ContractRenewalActivationService {
         var oldDraft=drafts.findByContractId(c.getRenewalOfContractId()).orElseThrow();
         Long owner=c.getApartment().getProperty().getOwner().getId();
         requests.findForOwnerUpdate(oldDraft.getRentalRequest().getId(),owner).orElseThrow();
-        exitGuard.requireOpen(c.getRenewalOfContractId());
+        exitGuard.requireLeaseChangeOpen(c.getRenewalOfContractId());
         requests.findForOwnerUpdate(d.getRentalRequest().getId(),owner).orElseThrow();
         contracts.lockById(id).orElseThrow();entities.refresh(c);entities.refresh(d);
         if(c.getStatus()!=RentalContract.Status.DRAFT)return;
@@ -55,6 +56,7 @@ public class ContractRenewalActivationService {
         var water=last.map(i->i.getWaterEndReading()).orElse(previous.getWaterBaseline());
         if(electric!=null&&water!=null){c.setElectricityBaseline(electric);c.setWaterBaseline(water);c.setBaselineDate(c.getStartDate());}
         c.setStatus(RentalContract.Status.ACTIVE);contracts.saveAndFlush(c);
+        if(c.isOneMonthRentPackage()||c.isCalendarRentBilling())rentInvoices.prepareInitialRent(c.getId());
     }
     private static ApiException blocked(){return new ApiException(HttpStatus.CONFLICT,"RENEWAL_ACTIVATION_BLOCKED","Chưa thể chuyển kỳ thuê. Cần kiểm tra hợp đồng cũ, quyền thuê, tài khoản và hóa đơn nháp.");}
 }

@@ -28,7 +28,7 @@ import java.util.*;
 
 @Service @RequiredArgsConstructor
 public class ContractExitService {
- private final ActionOtpService signatureOtp;
+ private final SigningOtpPolicy signatureOtp;
  private final ContractExitCaseRepository cases;
  private final ContractExitEventRepository events;
  private final ContractExitEvidenceRepository evidence;
@@ -44,6 +44,7 @@ public class ContractExitService {
  private final ObjectMapper json;
  private final jakarta.persistence.EntityManager entities;
  private final HandoverPdfService handoverPdf;
+ private final java.time.Clock clock;
  record Context(AuthAccount actor,ContractDraft draft,RentalContract contract,ContractExitCase exit){}
 
  @Transactional(readOnly=true) public View get(Jwt jwt,Long id){return view(load(jwt,id,false));}
@@ -64,10 +65,12 @@ public class ContractExitService {
  @Transactional public View act(Jwt jwt,Long id,Command input){
   var s=load(jwt,id,true);var c=s.contract();var root=s.exit();var actor=s.actor().getId();
   if(!input.consent())throw bad("Cần xác nhận đồng ý trước khi xử lý.");
+  if(input.action()==Action.FINALIZE_UNILATERAL_TERMINATION&&root.getUnilateralState().equals("COMPLETED")){owner(s);return view(s);}
   if(!version(s).equals(input.sourceVersion()))throw conflict("STALE_VERSION","Đề nghị, hợp đồng hoặc chỉ số đã thay đổi. Hãy tải lại và xác nhận lại.");
   if(!active(c))throw conflict("EXIT_UNAVAILABLE","Chỉ xử lý kết thúc cư trú cho hợp đồng đang hiệu lực và đã bắt đầu.");
   String before=json.writeValueAsString(snapshot(s));String reason=clean(input.reason());var t=term(root);var h=hand(root);
   switch(input.action()){
+   case PROPOSE_UNILATERAL_TERMINATION,OBJECT_UNILATERAL_TERMINATION,WITHDRAW_UNILATERAL_TERMINATION,FINALIZE_UNILATERAL_TERMINATION -> reason=unilateralAction(s,input);
    case PROPOSE_TERMINATION -> {
     if(input.termination()==null)throw bad("Cần thông tin đề nghị kết thúc sớm.");
     if(!canProposeTermination(s))throw conflict("EXIT_UNAVAILABLE","Đã có đề nghị kết thúc/bàn giao/thuê tiếp hoặc hợp đồng đã đến hạn.");
@@ -122,12 +125,61 @@ public class ContractExitService {
   var event=new ContractExitEvent();event.setContractId(id);event.setActorId(actor);event.setActorName(s.actor().getFullName());event.setAction(input.action().name());event.setReason(reason);event.setBeforeJson(before);event.setAfterJson(json.writeValueAsString(snapshot(s)));event.setCreatedAt(root.getUpdatedAt());events.saveAndFlush(event);
   return view(s);
  }
+ private Unilateral unilateral(ContractExitCase root){return root.getUnilateralJson()==null?null:json.readValue(root.getUnilateralJson(),Unilateral.class);}
+ private boolean canProposeUnilateral(Context s){
+  var r=s.exit();var h=hand(r);
+  return active(s.contract())&&Set.of("NONE","WITHDRAWN").contains(r.getUnilateralState())
+   &&!Set.of("PENDING","AGREED").contains(r.getTerminationState())&&Set.of("NONE","CANCELLED").contains(r.getHandoverState())
+   &&(h==null||h.disputedBy()==null)&&!competing(s.contract());
+ }
+ private boolean canFinalizeUnilateral(Context s){
+  var u=unilateral(s.exit());return active(s.contract())&&s.exit().getUnilateralState().equals("PENDING")&&u!=null&&!now().isBefore(u.responseDeadline())
+   &&!competing(s.contract())&&!invoices.existsByContractIdAndStatus(s.contract().getId(),RentalInvoice.Status.DRAFT);
+ }
+ private String unilateralAction(Context s,Command input){
+  var c=s.contract();var r=s.exit();var u=unilateral(r);String reason=clean(input.reason());
+  switch(input.action()){
+   case PROPOSE_UNILATERAL_TERMINATION -> {
+    owner(s);if(!canProposeUnilateral(s))throw conflict("UNILATERAL_UNAVAILABLE","Cần xử lý đề nghị/bàn giao/thuê tiếp đang mở hoặc phản đối đã ghi nhận trước khi thông báo đơn phương.");
+    var v=input.unilateral();if(v==null)throw bad("Cần lý do mất liên lạc và căn cứ/điều khoản kết thúc.");
+    var issued=now();var deadline=issued.plus(java.time.Duration.ofDays(30));
+    u=new Unilateral(s.actor().getId().toString(),v.reason().strip(),v.clauseReference().strip(),issued,deadline,null,null,null,List.of(),null);
+    r.setUnilateralState("PENDING");
+    reason="Chủ nhà gửi thông báo dự kiến kết thúc đơn phương. Hạn phản hồi: "+java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(java.time.ZoneId.of("Asia/Ho_Chi_Minh")).format(deadline)+" (giờ Việt Nam). Lý do: "+shortReason(v.reason());
+   }
+   case OBJECT_UNILATERAL_TERMINATION -> {
+    customer(s);if(!r.getUnilateralState().equals("PENDING")||u==null)throw conflict("NO_PENDING_UNILATERAL","Không có thông báo đơn phương đang chờ.");
+    if(reason.isEmpty())throw bad("Cần ghi rõ phản đối của bạn.");
+    u=new Unilateral(u.proposerId(),u.reason(),u.clauseReference(),u.proposedAt(),u.responseDeadline(),reason,now(),null,List.of(),null);r.setUnilateralState("OBJECTED");
+   }
+   case WITHDRAW_UNILATERAL_TERMINATION -> {
+    owner(s);if(!r.getUnilateralState().equals("PENDING")||u==null)throw conflict("NO_PENDING_UNILATERAL","Chỉ rút thông báo đang chờ, không xóa phản đối đã ghi nhận.");
+    r.setUnilateralState("WITHDRAWN");reason=reason.isEmpty()?"Chủ nhà rút thông báo đơn phương.":reason;
+   }
+   case FINALIZE_UNILATERAL_TERMINATION -> {
+    owner(s);if(!r.getUnilateralState().equals("PENDING")||u==null)throw conflict("UNILATERAL_NOT_PENDING","Không thể kết thúc: thông báo không còn chờ hoặc người thuê đã phản đối.");
+    if(now().isBefore(u.responseDeadline()))throw conflict("UNILATERAL_RESPONSE_WINDOW_OPEN","Chưa đủ 30 ngày kể từ khi gửi thông báo. Người thuê còn thời gian phản hồi.");
+    requireNoCompetingFlow(c);requireNoDraft(c);
+    var v=input.unilateralCompletion();if(v==null||!v.possessionRecovered()||!v.accountsReviewed())throw bad("Cần xác nhận đã thu hồi phòng và đối chiếu các khoản phải thu.");
+    var ids=selectedEvidence(s,v.evidenceIds());if(ids.isEmpty())throw bad("Cần ít nhất một ảnh chứng cứ thu hồi phòng.");
+    if(contracts.findByApartmentId(c.getApartment().getId()).stream().anyMatch(other->!other.getId().equals(c.getId())&&other.isOpen())||requests.countOtherLiveAccepted(c.getApartment().getId(),s.draft().getRentalRequest().getId())>0)
+     throw conflict("APARTMENT_HAS_OTHER_CLAIM","Phòng còn quan hệ thuê khác, chưa thể mở lại.");
+    var apartment=apartments.findForRequest(c.getApartment().getId()).orElseThrow(ContractExitService::missing);entities.refresh(apartment);
+    if(apartment.getAvailability()!=Apartment.Availability.OCCUPIED)throw conflict("APARTMENT_STATE_CHANGED","Phòng không còn ở trạng thái đang thuê.");
+    c.setStatus(RentalContract.Status.ENDED);c.setEndReason("UNILATERAL_ABANDONMENT");c.setEndedAt(now());apartment.setAvailability(Apartment.Availability.VACANT);
+    u=new Unilateral(u.proposerId(),u.reason(),u.clauseReference(),u.proposedAt(),u.responseDeadline(),null,null,v.conditionNotes().strip(),ids,now());r.setUnilateralState("COMPLETED");
+    reason="Chủ nhà xác nhận thu hồi phòng và kết thúc đơn phương sau 30 ngày không phản hồi. "+shortReason(v.conditionNotes());
+   }
+   default -> throw bad("Thao tác đơn phương không hợp lệ.");
+  }
+  r.setUnilateralJson(json.writeValueAsString(u));return reason;
+ }
  private boolean active(RentalContract c){return c.getStatus()==RentalContract.Status.ACTIVE&&!c.getStartDate().isAfter(dates.today());}
  private boolean competing(RentalContract c){return legacyHandovers.existsByContractIdAndStatus(c.getId(),ContractHandover.Status.PENDING)||contracts.findByRenewalOfContractIdAndStatusNot(c.getId(),RentalContract.Status.ENDED).stream().anyMatch(RentalContract::isOpen)||renewals.findByContractId(c.getId()).map(r->Set.of(ContractRenewalRequest.Status.PENDING,ContractRenewalRequest.Status.ACCEPTED).contains(r.getStatus())).orElse(false);}
  private void requireNoCompetingFlow(RentalContract c){if(competing(c))throw conflict("OPEN_RENEWAL_OR_HANDOVER","Cần xử lý yêu cầu thuê tiếp hoặc biên bản bàn giao cũ trước.");}
  private void requireNoDraft(RentalContract c){if(invoices.existsByContractIdAndStatus(c.getId(),RentalInvoice.Status.DRAFT))throw conflict("OPEN_INVOICE_DRAFT","Cần gửi hoặc hủy hóa đơn nháp trước khi bàn giao. Hóa đơn đã gửi còn nợ vẫn được giữ.");}
- private boolean canProposeTermination(Context s){return active(s.contract())&&dates.today().isBefore(s.contract().getEndDate())&&!Set.of("PENDING","AGREED").contains(s.exit().getTerminationState())&&!Set.of("PENDING","DISPUTED","CONFIRMED").contains(s.exit().getHandoverState())&&!competing(s.contract());}
- private boolean canProposeHandover(Context s){return active(s.contract())&&!s.exit().getTerminationState().equals("PENDING")&&(!Set.of("PENDING","CONFIRMED").contains(s.exit().getHandoverState())||(s.exit().getHandoverState().equals("PENDING")&&s.exit().getDocumentJson()==null))&&(s.exit().getTerminationState().equals("AGREED")?!term(s.exit()).returnDate().isAfter(dates.today()):!s.contract().getEndDate().isAfter(dates.today()))&&!competing(s.contract());}
+ private boolean canProposeTermination(Context s){return !s.exit().getUnilateralState().equals("PENDING")&&active(s.contract())&&dates.today().isBefore(s.contract().getEndDate())&&!Set.of("PENDING","AGREED").contains(s.exit().getTerminationState())&&!Set.of("PENDING","DISPUTED","CONFIRMED").contains(s.exit().getHandoverState())&&!competing(s.contract());}
+ private boolean canProposeHandover(Context s){return !s.exit().getUnilateralState().equals("PENDING")&&active(s.contract())&&!s.exit().getTerminationState().equals("PENDING")&&(!Set.of("PENDING","CONFIRMED").contains(s.exit().getHandoverState())||(s.exit().getHandoverState().equals("PENDING")&&s.exit().getDocumentJson()==null))&&(s.exit().getTerminationState().equals("AGREED")?!term(s.exit()).returnDate().isAfter(dates.today()):!s.contract().getEndDate().isAfter(dates.today()))&&!competing(s.contract());}
  private BigDecimal[] meter(RentalContract c,BigDecimal suppliedElectric,BigDecimal suppliedWater){
   var last=invoices.findFirstByContractIdAndKindNotAndStatusOrderByPeriodDesc(c.getId(),RentalInvoice.Kind.RENT,RentalInvoice.Status.SENT);
   var e=last.map(RentalInvoice::getElectricityEndReading).orElse(c.getElectricityBaseline());var w=last.map(RentalInvoice::getWaterEndReading).orElse(c.getWaterBaseline());
@@ -139,13 +191,14 @@ public class ContractExitService {
  private Hand hand(ContractExitCase root){return root.getHandoverJson()==null?null:json.readValue(root.getHandoverJson(),Hand.class);}
  private Map<String,Object> snapshot(Context s){
   var c=s.contract();var a=c.getApartment();var r=s.exit();var data=new LinkedHashMap<String,Object>();
+  data.put("unilateralState",r.getUnilateralState());data.put("unilateral",unilateral(r));
   data.put("contractId",c.getId().toString());data.put("ownerId",a.getProperty().getOwner().getId().toString());data.put("customerId",c.getCustomer().getId().toString());data.put("contractStatus",c.getStatus());data.put("contractVersion",c.getVersion());data.put("billingVersion",c.getBillingVersion());data.put("apartmentId",a.getId().toString());data.put("apartmentVersion",a.getVersion());data.put("apartmentStatus",a.getAvailability());data.put("terminationState",r.getTerminationState());data.put("termination",term(r));data.put("handoverState",r.getHandoverState());data.put("handover",hand(r));data.put("exitVersion",r.getVersion());data.put("document",document(r));data.put("signing",signing(r));data.put("documentHash",r.getDocumentHash());data.put("ownerSignedAt",r.getOwnerSignedAt());data.put("customerSignedAt",r.getCustomerSignedAt());return data;
  }
  private String version(Context s){return AssistanceAudit.hash(json.writeValueAsString(snapshot(s)));}
  private View view(Context s){
   var c=s.contract();var r=s.exit();var t=term(r);boolean owner=c.getApartment().getProperty().getOwner().getId().equals(s.actor().getId());boolean pending=r.getTerminationState().equals("PENDING")&&active(c);boolean proposer=t!=null&&t.proposerId().equals(s.actor().getId().toString());boolean hPending=r.getHandoverState().equals("PENDING")&&active(c);
   return new View(c.getId().toString(),c.getStatus().name(),c.getApartment().getProperty().getOwner().getId().toString(),c.getCustomer().getId().toString(),dates.today(),c.getStartDate(),c.getEndDate(),version(s),r.getTerminationState(),t,r.getHandoverState(),hand(r),canProposeTermination(s),pending&&!proposer,pending&&proposer,owner&&canProposeHandover(s),false,!owner&&hPending,owner&&active(c)&&Set.of("PENDING","DISPUTED").contains(r.getHandoverState()),
-   evidence.findByContractIdOrderByIdAsc(c.getId()).stream().map(e->new Evidence(e.getId().toString(),e.getFilename(),e.getUploaderId().toString(),e.getCreatedAt())).toList(),events.findByContractIdOrderByIdAsc(c.getId()).stream().map(e->new Event(e.getId().toString(),e.getActorId().toString(),e.getActorName(),e.getAction(),e.getReason(),e.getCreatedAt(),json.readTree(e.getBeforeJson()),json.readTree(e.getAfterJson()))).toList(),document(r),signing(r),hPending&&r.getDocumentJson()!=null&&(owner?r.getOwnerSignedAt()==null:r.getCustomerSignedAt()==null));
+   evidence.findByContractIdOrderByIdAsc(c.getId()).stream().map(e->new Evidence(e.getId().toString(),e.getFilename(),e.getUploaderId().toString(),e.getCreatedAt())).toList(),events.findByContractIdOrderByIdAsc(c.getId()).stream().map(e->new Event(e.getId().toString(),e.getActorId().toString(),e.getActorName(),e.getAction(),e.getReason(),e.getCreatedAt(),json.readTree(e.getBeforeJson()),json.readTree(e.getAfterJson()))).toList(),document(r),signing(r),hPending&&r.getDocumentJson()!=null&&(owner?r.getOwnerSignedAt()==null:r.getCustomerSignedAt()==null),r.getUnilateralState(),unilateral(r),owner&&canProposeUnilateral(s),!owner&&active(c)&&r.getUnilateralState().equals("PENDING"),owner&&active(c)&&r.getUnilateralState().equals("PENDING"),owner&&canFinalizeUnilateral(s));
  }
  @Transactional public Challenge requestSignatureOtp(Jwt jwt,Long id,SignInput input){
   var s=load(jwt,id,false);var value=view(s);
@@ -195,7 +248,7 @@ public class ContractExitService {
  private Signing signing(ContractExitCase root){
   if(root.getDocumentHash()==null)return null;
   String state=root.getOwnerSignedAt()!=null&&root.getCustomerSignedAt()!=null?"SIGNED":root.getOwnerSignedAt()!=null?"WAITING_CUSTOMER":root.getCustomerSignedAt()!=null?"WAITING_OWNER":"UNSIGNED";
-  return new Signing(root.getDocumentHash(),state,root.getOwnerSignedAt(),root.getCustomerSignedAt(),image(root.getOwnerSignature()),image(root.getCustomerSignature()));
+  return new Signing(root.getDocumentHash(),state,root.getOwnerSignedAt(),root.getCustomerSignedAt(),image(root.getOwnerSignature()),image(root.getCustomerSignature()),signatureOtp.required());
  }
  private static void clearSignatures(ContractExitCase root){root.setOwnerSignature(null);root.setCustomerSignature(null);root.setOwnerSignedAt(null);root.setCustomerSignedAt(null);}
  private static String image(byte[] value){return value==null?null:"data:image/png;base64,"+Base64.getEncoder().encodeToString(value);}
@@ -222,8 +275,9 @@ public class ContractExitService {
  @Transactional(readOnly=true) public Content download(Jwt jwt,Long contractId,Long id){load(jwt,contractId,false);var e=evidence.findById(id).filter(v->v.getContractId().equals(contractId)).orElseThrow(ContractExitService::missing);return new Content(e.getContent(),e.getContentType());}
  private void owner(Context s){if(!s.contract().getApartment().getProperty().getOwner().getId().equals(s.actor().getId()))throw forbidden();}
  private void customer(Context s){if(!s.contract().getCustomer().getId().equals(s.actor().getId()))throw forbidden();}
+ private static String shortReason(String s){var value=s.strip();return value.length()>1000?value.substring(0,1000)+"…":value;}
  private static String clean(String s){return s==null?"":s.strip();}
- private static Instant now(){return Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);}
+ private Instant now(){return clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MICROS);}
  private static void party(RentalContract c,Long id){if(!c.getCustomer().getId().equals(id)&&!c.getApartment().getProperty().getOwner().getId().equals(id))throw missing();}
  private static ApiException bad(String msg){return new ApiException(HttpStatus.BAD_REQUEST,"VALIDATION_ERROR",msg);}
  private static ApiException conflict(String code,String msg){return new ApiException(HttpStatus.CONFLICT,code,msg);}

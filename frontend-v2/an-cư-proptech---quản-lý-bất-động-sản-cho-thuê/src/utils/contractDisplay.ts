@@ -30,3 +30,12 @@ export function contractListTitle(draft: ContractDraft) {
   if (/^\[MẪU\]/iu.test(draft.snapshot.asset.title)) return `Hợp đồng thuê · ${draft.contractNumber}`;
   return `${draft.snapshot.asset.roomNumber} · ${draft.snapshot.asset.title}`;
 }
+
+export function contractSigningLabel(draft: ContractDraft) {
+  if (draft.status === 'CANCELLED') return 'Đã hủy trước hiệu lực';
+  if (draft.cancellationState === 'PENDING') return 'Chờ phản hồi đề nghị hủy';
+  if (draft.status === 'ENDED') return 'Đã kết thúc';
+  if (draft.status === 'DRAFT' && draft.signing?.state === 'SIGNED') return draft.lifecycle?.previousContractId ? 'Đã ký — chờ chuyển kỳ thuê' : 'Đã ký — chờ hiệu lực';
+  if (draft.status === 'ACTIVE' && draft.lifecycle?.expired) return 'Hết hạn — chờ ký tiếp hoặc bàn giao';
+  return draft.signing?.state === 'SIGNED' ? 'Hai bên đã ký' : draft.signing?.state === 'WAITING_CUSTOMER' ? 'Chờ khách thuê ký' : draft.signing?.state === 'WAITING_OWNER' ? 'Chờ chủ nhà ký' : draft.status === 'ACTIVE' ? 'Đang hiệu lực' : 'Chờ hai bên ký';
+}

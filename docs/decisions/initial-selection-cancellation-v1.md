@@ -32,3 +32,6 @@ Không thu/khấu trừ/hoàn cọc hoặc đánh dấu đã hoàn; cọc thực
 ## Override 13/11/2026 — nháp chưa ký bị hủy
 
 Theo yêu cầu mới, khi hủy lựa chọn thuê đầu không có chữ ký, xóa `contract_drafts` rồi `rental_contracts` trong transaction sau khi ghi audit của yêu cầu thuê. Response không còn contractId/contractStatus; không đọc lại PDF đã xóa, UI đóng wizard/quay lại danh sách. Request/root/events/lý do hủy vẫn tồn tại; giữ khóa request/contract/apartment, tính idempotent, pending requests và trạng thái công khai. Nháp đã có chữ ký vẫn giữ dữ liệu và đi qua quy trình đề nghị/đồng ý. Không xóa hàng loạt dữ liệu đã lưu: các nháp CANCELLED chưa ký cũ được loại khỏi danh sách Owner/Customer/tenancies; lịch sử cũ vẫn có thể đọc bởi đúng bên. Không áp dụng cho hợp đồng đã có hiệu lực, gia hạn hoặc thanh toán.
+
+
+21 November RA02 override: fully signed first leases still awaiting activation (DRAFT+both signatures, reserved apartment) use the same bilateral cancellation flow. Pending cancellation blocks automatic effectiveness even across the start date. No direct unilateral cancellation, no signature/history deletion or refund. ACTIVE contracts continue to require the separate exit flow.

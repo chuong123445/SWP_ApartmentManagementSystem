@@ -9,3 +9,8 @@
 - Migrations: V42__billing_meter_readings.sql, idempotent và không tự sinh dữ liệu demo.
 
 - Lập hóa đơn với useSavedReadings=true: không cần truyền lại chỉ số. Server lấy bản đã chốt và tính tổng; nếu truyền chỉ số khác bản chốt thì trả SAVED_READING_MISMATCH. baselineVersion chống lập hóa đơn bằng dữ liệu đã bị sửa. Gửi hóa đơn xong, kỳ sau tự lấy chỉ số cuối kỳ này làm đầu kỳ.
+
+
+## Cập nhật 21/11/2026
+
+Chỉ chốt/lập/gửi điện nước khi hợp đồng đã bắt đầu và kỳ không vượt tháng hiện tại theo giờ Việt Nam.409 CONTRACT_NOT_STARTED hoặc UTILITY_PERIOD_IN_FUTURE áp dụng cả API trực tiếp và trước gợi ý AI. Kỳ hiện tại vẫn cho nhập chỉ số thực tế; không ép chờ hết tháng. Nháp tương lai cũ được hủy, SENT/lịch sử giữ nguyên. RENT có lịch riêng và không dùng giới hạn kỳ UTILITY này.
