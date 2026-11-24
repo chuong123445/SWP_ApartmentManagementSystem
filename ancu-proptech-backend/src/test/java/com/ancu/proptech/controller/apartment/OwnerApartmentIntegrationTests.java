@@ -27,6 +27,7 @@ class OwnerApartmentIntegrationTests {
     @Autowired ApartmentRepository apartments;
     @Autowired PasswordEncoder passwords;
     @Autowired AuthService auth;
+    @Autowired com.ancu.proptech.repository.property.PropertyExternalImportRepository imports;
     private AuthAccount owner, other, customer;
     private Property approved, pending, foreignProperty;
     private String ownerToken;
@@ -56,6 +57,12 @@ class OwnerApartmentIntegrationTests {
     }
     private ResultActions create(String token, String body) throws Exception {
         return mvc.perform(post("/api/v1/owner/apartments").header("Authorization","Bearer "+token).contentType("application/json").content(body));
+    }
+    @Test void historicalSourcePropertyCanAddManualDraftWithoutReadingAuth0() throws Exception {
+        approved.setRentalMode(Property.RentalMode.MULTI_UNIT);properties.flush();
+        var old=new com.ancu.proptech.model.property.PropertyExternalImport();old.setPropertyId(approved.getId());old.setIssuer("https://historical.invalid/");old.setSubject("auth0|history");old.setExternalAssetId("old-"+approved.getId());old.setSource("AUTH0_VNEID_SIMULATION");old.setSourceVersion("a".repeat(64));old.setSourceSnapshot("{}");old.setImportedAt(java.time.Instant.now());imports.saveAndFlush(old);
+        create(ownerToken,body(approved,"DRAFT")).andExpect(status().isCreated()).andExpect(jsonPath("$.publicationStatus").value("DRAFT"));
+        assertTrue(imports.existsById(approved.getId()));assertEquals(Property.ApprovalStatus.APPROVED,properties.findById(approved.getId()).orElseThrow().getApprovalStatus());
     }
     @Test void sameApartmentIsManagedByOwnerAndDisplayedPubliclyWithPersistedReadings() throws Exception {
         var result = create(ownerToken,body(approved,"PUBLISHED")).andExpect(status().isCreated())

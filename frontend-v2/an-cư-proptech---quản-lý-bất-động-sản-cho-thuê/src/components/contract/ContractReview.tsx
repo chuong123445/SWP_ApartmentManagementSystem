@@ -16,7 +16,7 @@ export function AssetReview({ snapshot }: { snapshot: ContractSnapshot }) {
   const a = snapshot.asset;
   return <section className="rounded-xl border border-slate-200 p-4 space-y-4"><h3 className="font-bold">Tài sản cho thuê</h3><ReviewFields fields={[
     ['Tài sản', a.propertyName], ['Căn hộ', a.title], ['Số căn hộ', a.roomNumber], ['Địa chỉ', a.address], ['Tỉnh / thành phố', a.city], ['Quận / huyện', a.district], ['Phường / xã', a.ward], ['Diện tích (m²)', a.areaM2], ['Tầng', a.floor], ['Phòng ngủ', a.bedrooms], ['Phòng tắm', a.bathrooms], ['Tiện nghi đã lưu', a.amenities.join(', ') || null],
-    ['Duyệt tài sản', a.approvalStatus === 'APPROVED' ? snapshot.evidence?.source==='AUTH0_VNEID_SIMULATION'?'Đã xác thực nguồn VNeID':'Đã được duyệt' : a.approvalStatus], ['Quyền khai thác trong hồ sơ', a.exploitationRight === 'OWNERSHIP' ? 'Sở hữu' : a.exploitationRight === 'AUTHORIZATION' ? 'Ủy quyền / khai thác' : a.exploitationRight==='SUBLEASE'?'Cho thuê lại':null],
+    ['Duyệt tài sản', a.approvalStatus === 'APPROVED' ? snapshot.evidence?.source==='AUTH0_VNEID_SIMULATION'?'Hồ sơ tài sản đã lưu':'Đã được duyệt' : a.approvalStatus], ['Quyền khai thác trong hồ sơ', a.exploitationRight === 'OWNERSHIP' ? 'Sở hữu' : a.exploitationRight === 'AUTHORIZATION' ? 'Ủy quyền / khai thác' : a.exploitationRight==='SUBLEASE'?'Cho thuê lại':null],
     ['Căn cứ quyền khai thác', a.exploitationRightDescription], ['Số giấy chứng nhận', a.certificateNumber], ['Ngày cấp giấy chứng nhận', a.certificateIssueDate], ['Nơi cấp giấy chứng nhận', a.certificateIssuePlace],
   ]} /><p className="text-xs text-slate-500">Thông tin được chụp lại từ nguồn VNeID hoặc hồ sơ tài sản đã được duyệt tại thời điểm tạo bản nháp. Ảnh chứng từ vẫn được giữ riêng tư.</p></section>;
 }

@@ -73,7 +73,7 @@ public class OwnerApartmentService {
         if(listingCompletion&&!unfinishedListing)
             throw new ApiException(HttpStatus.CONFLICT,"LISTING_NOT_EDITABLE","Bản nháp đăng tải không còn ở bước tạo căn/phòng.");
         boolean imported=imports.existsById(property.getId());
-        if(imported&&!sourceAppend)throw new ApiException(HttpStatus.CONFLICT,"SOURCE_UNITS_MANAGED","Dùng chức năng bổ sung phòng từ Auth0 cho tài sản nguồn này.");
+        // Historical source provenance no longer forces source-based unit creation.
         if(sourceAppend&&!imported)throw new ApiException(HttpStatus.CONFLICT,"SOURCE_PROPERTY_REQUIRED","Tài sản không có liên kết nguồn.");
         if(application&&(!property.isOnboardingApplication()||property.getApprovalStatus()!=Property.ApprovalStatus.DRAFT||input.getPublicationStatus()!=Apartment.PublicationStatus.DRAFT))
             throw new ApiException(HttpStatus.CONFLICT,"APPLICATION_DRAFT_REQUIRED","Chỉ chuẩn bị căn nháp cho hồ sơ của bạn.");

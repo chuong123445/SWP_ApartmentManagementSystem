@@ -1,4 +1,3 @@
-import {allowPropertySource} from '../src/services/property/assetManagementService.ts';
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { vneidLogin, verifyVneid, confirmVneid, cancelVneid, getVneidConfig, getAccountVerification } from '../src/services/auth/vneidService.ts';
@@ -76,14 +75,4 @@ test('Citizen status is a private no-store Self read, not a caller-selected acco
     return Response.json({ emailVerified: true, vneid: { status: 'UNVERIFIED', identity: null, verifiedAt: null } });
   };
   const result = await getAccountVerification();assert.equal(result.emailVerified, true);assert.equal(result.vneid.identity, null);
-});
-test('Source consent sends only explicit consent/version and never returns Owner authority', async () => {
-  setAccessToken('internal');
-  globalThis.fetch = async (url, init) => {
-    if (url === '/api/v1/auth/csrf') return Response.json({ token: 'csrf', headerName: 'X-XSRF-TOKEN' });
-    assert.equal(url, '/api/v1/me/property-source-consent');assert.equal(init?.method, 'POST');
-    assert.equal(new Headers(init?.headers).get('Authorization'), 'Bearer internal');assert.equal(new Headers(init?.headers).get('X-XSRF-TOKEN'), 'csrf');
-    assert.deepEqual(JSON.parse(init?.body as string), { consent: true, version: 3 });return Response.json({consented:true,assetServiceAvailable:true,version:3});
-  };
-  const result=await allowPropertySource(3);assert.equal(result.consented,true);assert.equal('roles' in result,false);
 });

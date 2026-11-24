@@ -75,3 +75,8 @@
 
 - Sửa thiếu đăng ký V70–V73 trong spring.sql.init.schema-locations. Database đang có hợp đồng thiếu hai cột boolean làm truy vấn hợp đồng thất bại và ảnh hưởng tải workspace. Chỉ có file migration chưa đủ; startup phải liệt kê chúng. Đã nâng schema local có sao lưu, chạy hai lần an toàn, giữ 2 hợp đồng test và chính sách cũ. Không thay dữ liệu tài sản đã dọn.
 - Kiểm tra: 70 resource SQL resolve, SQLreadback đủ cột, rowcounts/dates/flags giữ nguyên; 6 backend integration PASS (5OwnerApartment +1ContractDraft) trên DB test riêng. Chưa xác minh lại trang Owner bằng session đăng nhập thật; đã yêu cầu backendexception log nếu tiếp tục500. Commit fix(db): chạy đầy đủ migration hợp đồng và tài sản khi khởi động; hash tra git log. Chưa push.
+
+## Bỏ nguồn tài sản VNeID/Auth0 — 24/11/2026
+
+- Cả tài khoản Auth0 và thường tạo chính chủ qua hồ sơ nhập thủ công/Admin; bỏ consent/chọn tài sản/bổ sung phòng từ nguồn và nhãn miễn duyệt. Auth0 chỉ còn đăng nhập/xác minh. API list/import/append và consentwrite cũ trả410, không gọi provider/cấpOwner/tựduyệt. Giữ tài sản và hợp đồng lịch sử; nguồn cũ bổ sung phòng bằng quy tắc thủ công chung.
+- 43backendPASS (24luồngtài sản/upgrade/manual,18login/xácminh,1manuallegacy),170frontend/TypeScript/buildPASS,8PlaywrightMCP desktop/mobile x2nguồnx2rolesPASS; không gọi API nguồn, lỗi console hay tràn ngang, ảnhmobileđãxem. API fixtures/DBtest riêng, không Auth0live/appDB mutation. Cần restartbackend vàreloadfrontend; chưa push. ADR retire-vneid-property-source-v1; commit feat(property): bỏ nguồn tài sản VNeID và dùng hồ sơ thủ công, hash tra gitlog.
