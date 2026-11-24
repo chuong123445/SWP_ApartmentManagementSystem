@@ -70,3 +70,8 @@
 - Hợp đồng mới/nháp chưa ký được chủ động sửa thu theo tháng lịch: kỳ đầu gồm ngày lẻ + các tháng còn lại của chu kỳ; kỳ cuối chốt đúng ngày hết thuê. Giá tháng ÷ ngày thực tế × ngày thuê, cộng rồi làm tròn đến đồng HALF_UP. Kỳ đầu tự lập/gửi khi ACTIVE, hạn đóng ngày bắt đầu; tương lai chờ hiệu lực. Kỳ sau dùng ngày đến hạn đã chọn, gửi từ D-7 và bắt kịp kỳ bị bỏ lỡ. Giữ nguyên hợp đồng đã ký, gói cũ và chuỗi điện nước.
 - V73 lưu cờ chính sách và công thức hóa đơn. Lập lại chủ động bù kỳ RENT đã hủy; scheduler không tự gửi lại. Công thức hiển thị trong preview/chi tiết và chính sách có trong PDF/nội dung ký. Xem docs/decisions/calendar-rent-billing-v1.md.
 - 89backendPASS qua các lượt; 176frontend/TypeScript/buildPASS, 8Playwright desktop/mobile API fixturePASS; ảnh mobile đã xem. Không full-suite/live-provider/appDB claim. Cần restart backend áp dụng V73 và reload frontend; chưa push.
+
+## Bổ sung migration khi khởi động — 24/11/2026
+
+- Sửa thiếu đăng ký V70–V73 trong spring.sql.init.schema-locations. Database đang có hợp đồng thiếu hai cột boolean làm truy vấn hợp đồng thất bại và ảnh hưởng tải workspace. Chỉ có file migration chưa đủ; startup phải liệt kê chúng. Đã nâng schema local có sao lưu, chạy hai lần an toàn, giữ 2 hợp đồng test và chính sách cũ. Không thay dữ liệu tài sản đã dọn.
+- Kiểm tra: 70 resource SQL resolve, SQLreadback đủ cột, rowcounts/dates/flags giữ nguyên; 6 backend integration PASS (5OwnerApartment +1ContractDraft) trên DB test riêng. Chưa xác minh lại trang Owner bằng session đăng nhập thật; đã yêu cầu backendexception log nếu tiếp tục500. Commit fix(db): chạy đầy đủ migration hợp đồng và tài sản khi khởi động; hash tra git log. Chưa push.
