@@ -107,3 +107,5 @@
 
 - Gộp nhánh origin/main (chu kỳ thuê linh hoạt 1-12 tháng, cảnh báo 48h hoàn tất chữ ký, tùy chọn gõ tên ký số) vào nhánh local; ưu tiên giữ trải nghiệm báo lỗi cạnh ô nhập, cuộn tới lỗi, bỏ hướng dẫn dài và điều hướng tab hợp đồng/yêu cầu thuê theo bản local.
 - 179/179 frontend tests PASS; TypeScript & Vite build đạt 100%. Commit merge: `f24c7fa3`.
+
+- 24/11/2026 — Phí bảo trì vào hóa đơn: khách nghiệm thu mới tạo khoản phải thu theo hợp đồng gốc và tháng thu; tự cộng vào hóa đơn mới/nháp, giữ nguyên hóa đơn đã gửi, hủy hóa đơn trả khoản phí về chờ thu; 7 kiểm thử SQL trên database riêng PASS. Commit: Tự động đưa chi phí sửa chữa đã nghiệm thu vào hóa đơn.

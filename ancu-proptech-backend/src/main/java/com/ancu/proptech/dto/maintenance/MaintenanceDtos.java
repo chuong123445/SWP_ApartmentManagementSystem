@@ -15,7 +15,7 @@ public record ImageContent(byte[] content,String contentType) {}
     public record Ticket(String id,String propertyId,String apartmentId,String roomNumber,String reporterName,
                          String title,String description,String category,String priority,String status,Instant createdAt,long version,
                          String technicianName,String technicianPhone,Instant scheduledAt,boolean canConfirm,String repairResult,
-                         String actualCost,String customerCost,String costResponsibility,java.util.List<History> history,java.util.List<Image> images) {}
+                         String actualCost,String customerCost,String costResponsibility,java.util.List<History> history,java.util.List<Image> images,String billingPeriod,String billingInvoiceId) {}
     public enum CostResponsibility { OWNER, CUSTOMER, SHARED }
     public enum Action { ACCEPT, REJECT, ASSIGN, CANCEL, READY, CONFIRM, REOPEN }
     public record Change(@jakarta.validation.constraints.NotNull @jakarta.validation.constraints.PositiveOrZero Long version,
@@ -24,5 +24,6 @@ public record ImageContent(byte[] content,String contentType) {}
         @jakarta.validation.constraints.Pattern(regexp="[+0-9 ()-]{6,30}") String technicianPhone,Instant scheduledAt,
         @jakarta.validation.constraints.DecimalMin("0") @jakarta.validation.constraints.Digits(integer=13,fraction=2) java.math.BigDecimal actualCost,
         CostResponsibility costResponsibility,
-        @jakarta.validation.constraints.DecimalMin("0") @jakarta.validation.constraints.Digits(integer=13,fraction=2) java.math.BigDecimal customerCost) {}
+        @jakarta.validation.constraints.DecimalMin("0") @jakarta.validation.constraints.Digits(integer=13,fraction=2) java.math.BigDecimal customerCost,
+        @jakarta.validation.constraints.Pattern(regexp="[0-9]{4}-(0[1-9]|1[0-2])") String billingPeriod) {}
 }

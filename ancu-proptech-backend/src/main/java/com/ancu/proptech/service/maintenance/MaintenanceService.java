@@ -16,6 +16,8 @@ import java.time.Instant;
 @org.springframework.stereotype.Service @RequiredArgsConstructor
 public class MaintenanceService {
     private final MaintenanceTicketRepository tickets;
+    private final com.ancu.proptech.repository.billing.MaintenanceChargeRepository charges;
+    private final com.ancu.proptech.service.billing.InvoiceService billing;
     private final AccountAccessService access;
     private final com.ancu.proptech.repository.maintenance.MaintenanceEventRepository events;
     private final jakarta.persistence.EntityManager entities;
@@ -46,6 +48,14 @@ public class MaintenanceService {
         t.setTitle(input.title().strip());t.setDescription(input.description().strip());t.setCategory(input.category());t.setPriority(input.priority());t.setStatus(MaintenanceTicket.Status.PENDING);t.setCreatedAt(Instant.now());
         if(!ownerRoute)t.setTenant(account);
         else if(apartment!=null)t.setTenant(contracts.findByApartmentId(apartment.getId()).stream().filter(c->c.getStatus()==com.ancu.proptech.model.contract.RentalContract.Status.ACTIVE).map(c->c.getCustomer()).findFirst().orElse(null));
+        if(apartment!=null&&t.getTenant()!=null) {
+            var tenantId=t.getTenant().getId();
+            var today=java.time.LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+            t.setBillingContract(contracts.findByApartmentId(apartment.getId()).stream()
+                .filter(c->c.getStatus()==com.ancu.proptech.model.contract.RentalContract.Status.ACTIVE
+                    && c.getCustomer().getId().equals(tenantId)&&!c.getStartDate().isAfter(today))
+                .findFirst().orElse(null));
+        }
         tickets.saveAndFlush(t);log(t,account.getId(),"CREATED","Đã báo sự cố");
         return view(t);
     }
@@ -70,10 +80,39 @@ public class MaintenanceService {
             if(t.getTenant()==null && input.costResponsibility()!=CostResponsibility.OWNER)throw conflict("Không có khách thuê liên quan để phân bổ chi phí.");
             var share=switch(input.costResponsibility()){case OWNER->java.math.BigDecimal.ZERO;case CUSTOMER->input.actualCost();case SHARED->input.customerCost();};
             if(share==null || share.compareTo(input.actualCost())>0)throw conflict("Phần chi phí khách chịu phải từ 0 đến tổng chi phí.");
+            if(share.signum()<0)throw conflict("Phần khách chịu không được âm.");
+            if(share.signum()>0) {
+                if(t.getBillingContract()==null&&t.getApartment()!=null&&t.getTenant()!=null) {
+                    var reported=t.getCreatedAt().atZone(java.time.ZoneId.of("Asia/Ho_Chi_Minh")).toLocalDate();
+                    var matches=contracts.findByApartmentId(t.getApartment().getId()).stream()
+                        .filter(c->c.getCustomer().getId().equals(t.getTenant().getId())
+                            &&!reported.isBefore(c.getStartDate())&&!reported.isAfter(c.getEndDate())).toList();
+                    if(matches.size()==1)t.setBillingContract(matches.getFirst());
+                }
+                if(t.getBillingContract()==null)throw conflict("Phiếu chưa liên kết hợp đồng gốc. Cần đối chiếu hợp đồng trước khi thu phí khách.");
+                String period=input.billingPeriod()==null?java.time.YearMonth.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh")).toString():input.billingPeriod();
+                var month=java.time.YearMonth.parse(period);
+                if(month.atEndOfMonth().isBefore(t.getBillingContract().getStartDate()))
+                    throw conflict("Tháng thu phí không được trước ngày bắt đầu hợp đồng.");
+                t.setBillingPeriod(period);
+            } else t.setBillingPeriod(null);
             t.setActualCost(input.actualCost());t.setCustomerCost(share);t.setCostResponsibility(input.costResponsibility().name());
             log(t,owner.getId(),"COST_RECORDED","Tổng: "+input.actualCost().toPlainString()+"; phần khách: "+share.toPlainString()+"; bên chịu: "+input.costResponsibility().name());
             t.setRepairResult(note);t.setStatus(MaintenanceTicket.Status.AWAITING_CONFIRMATION);}
-          case CONFIRM -> {if(state!=MaintenanceTicket.Status.AWAITING_CONFIRMATION)throw conflict("Phiếu chưa chờ nghiệm thu.");if(ownerRoute && t.getTenant()!=null)throw conflict("Khách thuê phải tự xác nhận kết quả bằng tài khoản của mình.");t.setStatus(MaintenanceTicket.Status.RESOLVED);}
+          case CONFIRM -> {if(state!=MaintenanceTicket.Status.AWAITING_CONFIRMATION)throw conflict("Phiếu chưa chờ nghiệm thu.");if(ownerRoute && t.getTenant()!=null)throw conflict("Khách thuê phải tự xác nhận kết quả bằng tài khoản của mình.");if(t.getCustomerCost()!=null&&t.getCustomerCost().signum()>0&&(t.getBillingContract()==null||t.getBillingPeriod()==null))
+                throw conflict("Phiếu cũ chưa có hợp đồng và tháng thu phí. Hãy yêu cầu sửa lại để chủ nhà bổ sung trước khi nghiệm thu.");
+            t.setStatus(MaintenanceTicket.Status.RESOLVED);
+            if(t.getCustomerCost()!=null&&t.getCustomerCost().signum()>0&&t.getBillingContract()!=null&&t.getBillingPeriod()!=null) {
+                var contract=contracts.lockById(t.getBillingContract().getId()).orElseThrow(MaintenanceService::missing);
+                entities.refresh(contract);
+                var charge=new com.ancu.proptech.model.billing.MaintenanceCharge();
+                charge.setTicketId(t.getId());charge.setContract(contract);charge.setTitle(t.getTitle());
+                charge.setPeriod(t.getBillingPeriod());charge.setActualCost(t.getActualCost());charge.setCustomerCost(t.getCustomerCost());
+                charges.saveAndFlush(charge);
+                contract.setBillingVersion(contract.getBillingVersion()+1);
+                billing.includeConfirmedMaintenance(contract,owner.getId());
+            }
+          }
           case REOPEN -> {if(state!=MaintenanceTicket.Status.AWAITING_CONFIRMATION || note.isBlank())throw conflict("Cần phiếu chờ xác nhận và lý do sửa lại.");if(ownerRoute && t.getTenant()!=null)throw conflict("Khách thuê cần tự gửi yêu cầu sửa lại.");t.setStatus(MaintenanceTicket.Status.IN_PROGRESS);}
         }
         tickets.saveAndFlush(t);log(t,owner.getId(),input.action().name(),note);return view(t);
@@ -99,5 +138,6 @@ public class MaintenanceService {
         t.getTechnicianName(),t.getTechnicianPhone(),t.getScheduledAt(),t.getTenant()!=null,t.getRepairResult(),
         t.getActualCost()==null?null:t.getActualCost().toPlainString(),t.getCustomerCost()==null?null:t.getCustomerCost().toPlainString(),t.getCostResponsibility(),
         events.findByTicketIdOrderByIdAsc(t.getId()).stream().map(e->new History(e.getAction(),e.getNote(),e.getCreatedAt())).toList(),
-        images.findByTicketIdOrderByIdAsc(t.getId()).stream().map(i->new Image(i.getId().toString(),i.getKind())).toList());}
+        images.findByTicketIdOrderByIdAsc(t.getId()).stream().map(i->new Image(i.getId().toString(),i.getKind())).toList(),t.getBillingPeriod(),
+        charges.findById(t.getId()).map(c->c.getInvoice()==null?null:c.getInvoice().getId().toString()).orElse(null));}
 }
