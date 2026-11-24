@@ -142,4 +142,6 @@
 
 - 24/11/2026 — Dừng làm hợp đồng inline: thay nút Hủy / lịch sử làm hợp đồng bằng nút Dừng làm hợp đồng inline; khi có đề nghị dừng hiển thị thông báo kèm 2 nút Có/Không, từ chối dừng sẽ trở lại trạng thái ban đầu; gỡ bỏ khối Lịch sử xử lý hủy khỏi giao diện. 181 frontend unit tests, TypeScript/build PASS. Commit: Hiển thị thao tác dừng làm hợp đồng inline và gỡ lịch sử hủy.
 
+- 25/11/2026 — Danh sách hợp đồng: gỡ bỏ nút Hủy / lịch sử làm hợp đồng và modal popup hủy trên thẻ danh sách hợp đồng (ContractDraftList). 182 frontend unit tests, TypeScript/build PASS. Commit: Gỡ nút Hủy trên thẻ danh sách hợp đồng.
+
 - 25/11/2026 — Lập biên bản bàn giao: cố định ngày bàn giao là ngày lập biên bản (hôm nay), ẩn ô chọn ngày trên biểu mẫu, hiển thị ngày trên biên bản PDF bàn giao. 29/29 ContractExitIntegrationTests và 181 frontend tests PASS.
