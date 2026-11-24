@@ -36,6 +36,8 @@ public class ContractLifecycleScheduler {
             try { exits.expireUnilateral(id); } catch(RuntimeException error){log.warn("Unilateral termination deferred for contract {} ({})",id,error.getClass().getSimpleName());}
         }
         try { draftService.expirePendingDrafts(); } catch(RuntimeException error){log.warn("Draft expiration deferred ({})",error.getClass().getSimpleName());}
-        try { cancellationService.expirePendingCancellations(); } catch(RuntimeException error){log.warn("Cancellation expiration deferred ({})",error.getClass().getSimpleName());}
+        for(Long id:cancellationService.pendingCancellationIds()) {
+            try { cancellationService.expireIfTimeout(id); } catch(RuntimeException error){log.warn("Cancellation expiration deferred for request {} ({})",id,error.getClass().getSimpleName());}
+        }
     }
 }

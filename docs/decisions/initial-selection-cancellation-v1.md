@@ -35,3 +35,7 @@ Theo yêu cầu mới, khi hủy lựa chọn thuê đầu không có chữ ký,
 
 
 21 November RA02 override: fully signed first leases still awaiting activation (DRAFT+both signatures, reserved apartment) use the same bilateral cancellation flow. Pending cancellation blocks automatic effectiveness even across the start date. No direct unilateral cancellation, no signature/history deletion or refund. ACTIVE contracts continue to require the separate exit flow.
+
+## Override 24/11/2026 — luôn đề nghị sau khi nhận khách, chờ 3 ngày
+
+Mọi yêu cầu thuê đã ACCEPTED đều cần gửi đề nghị hủy, kể cả chưa lập hợp đồng hoặc hợp đồng chưa có chữ ký. START chỉ chuyển PENDING, giữ phòng CONTRACT_IN_PROGRESS và khóa sửa/ký/hiệu lực. Đúng bên còn lại được ACCEPT/REJECT; người đề nghị được WITHDRAW. Nếu không phản hồi sau 72 giờ (3 ngày) từ updatedAt của đề nghị, scheduler tự hủy, giữ lịch sử và chỉ xóa bản nháp chưa ký khi việc hủy đã hoàn tất. Chưa đủ 72 giờ không được tự hủy. Phản đối/rút đề nghị ngăn tác vụ tự động. Mỗi yêu cầu được xử lý trong transaction riêng với khóa yêu cầu → hợp đồng → phòng, kiểm tra lại state sau khóa. GET chỉ đọc, không tự hủy trước khi kiểm tra bên truy cập. ACTIVE cần quy trình kết thúc thuê riêng, không áp dụng timeout này. Các bản đã hủy trước khi sửa không được tự khôi phục.
