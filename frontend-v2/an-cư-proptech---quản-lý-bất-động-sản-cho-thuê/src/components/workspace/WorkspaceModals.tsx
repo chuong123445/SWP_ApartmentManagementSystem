@@ -12,7 +12,7 @@ export function WorkspaceModals({workspace,navigation}:{workspace:RentalWorkspac
     {navigation.isAddPropertyOpen&&<Navigate to="/account/properties/new"/>}
     {navigation.isAddRoomOpen&&<AddRoomModal initialPropertyId={navigation.selectedBuildingId} buildings={workspace.buildings.filter(p=>p.legalStatus==='APPROVED'&&p.rentalMode==='MULTI_UNIT')} onClose={()=>navigation.setIsAddRoomOpen(false)} onAddRoom={workspace.handleAddRoom}/> }
     {navigation.propertyForDossierId&&<Navigate to="/account/rental-properties" state={{openPropertyId:navigation.propertyForDossierId}}/>}
-    {workspace.selectedInvoice&&<InvoiceDetailModal invoice={workspace.selectedInvoice} onClose={()=>workspace.setSelectedInvoice(null)}/>}
+    {workspace.selectedInvoice&&<InvoiceDetailModal key={workspace.selectedInvoice.id} invoice={workspace.selectedInvoice} onClose={()=>workspace.setSelectedInvoice(null)} onChanged={workspace.reloadBilling}/>}
     {navigation.isCreateInvoiceOpen&&<CreateInvoiceModal tenancies={workspace.tenancies} initialContractId={navigation.invoiceContractId} onClose={()=>{navigation.setIsCreateInvoiceOpen(false);navigation.setInvoiceContractId('');}} onCreateInvoice={workspace.handleCreateInvoice}/>}
   </>;
 }

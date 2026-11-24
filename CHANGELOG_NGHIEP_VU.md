@@ -125,3 +125,5 @@
 - 24/11/2026 — Tháng thu phí sửa chữa: chặn tháng sau tháng kết thúc hợp đồng gốc, giữ phép chọn tháng cuối kể cả hợp đồng kết thúc giữa tháng. 3 backend SQL riêng và 2 E2E bảo trì PASS. Commit: Chặn tháng thu phí sửa chữa sau hạn hợp đồng.
 
 - 24/11/2026 — Nhận tiền mặt hóa đơn: API dành cho đúng chủ nhà, khóa giao dịch và chống xác nhận trùng; cập nhật công nợ và ghi một phiếu thu đã xác nhận trong cùng transaction, lưu người xác nhận/ghi chú, không cộng số dư SePay. Migration V75 giữ dữ liệu chuyển khoản. 5 billing (có đồng thời), 26 SePay (có webhook đến muộn), 6 sổ quỹ trên SQL test riêng PASS. Commit: Xác nhận tiền mặt và ghi sổ thu hóa đơn đồng bộ.
+
+- 24/11/2026 — Giao diện thu tiền mặt: Chi tiết hóa đơn có nút Đã nhận tiền mặt, chọn ngày/ghi chú và xác nhận đã nhận đủ; cập nhật danh sách hết nợ, khách thấy phương thức tiền mặt. 175 frontend unit, TypeScript/build và 6 E2E desktop/mobile PASS; ảnh mobile đã xem. Commit: Thêm xác nhận đã nhận tiền mặt trong chi tiết hóa đơn.
