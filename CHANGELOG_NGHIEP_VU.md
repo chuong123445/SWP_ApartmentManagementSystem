@@ -13,6 +13,7 @@
 | 25/11/2026 | BIL02 | Chuyển chu kỳ tính hóa đơn tiền phòng sang chu kỳ tròn theo ngày vào ở (Anniversary Cycle); thu đủ trọn chu kỳ không cắt lẻ ở tháng đầu, chỉ tính ngày lẻ khi chu kỳ cuối không đủ chu kỳ; cập nhật hóa đơn #95 về 3.000.000 đ kỳ 25/11/2026–24/02/2027. | 10/10 backend tests (CalendarRentScheduleTests + RentScheduleTests) đạt; 182/182 frontend tests đạt; DB đã cập nhật và kiểm tra thực tế. | `7af1b3d5` |
 | 25/11/2026 | CON01 | Sửa lỗi modal đề nghị kết thúc sớm bị trắng; hiển thị trực tiếp form nhập liệu (ngày kết thúc, điều khoản, phạt/bồi thường, bên chịu, lý do và cam kết) khi mở modal từ danh sách hợp đồng. | 182/182 frontend tests và Vite build đạt; kiểm tra render JSX độc lập với initialAction. | `adb9f60e` |
 | 25/11/2026 | CON02 | Bỏ ô nhập căn cứ/điều khoản thời hạn báo trước trong form kết thúc sớm; cố định quy tắc báo trước tối thiểu 3 tuần (21 ngày) và tự động tính ngày kết thúc mặc định; cập nhật hạn kết thúc hợp đồng #26 đến 30/11/2027 để thử nghiệm. | 182/182 frontend tests và Vite build đạt. | `e5695a67` |
+| 25/11/2026 | BIL03 | Bổ sung cột 'Đơn giá / tháng' trên chi tiết hóa đơn tiền thuê để hiển thị đủ 3 mục (đơn giá - chu kỳ - thành tiền); tạo bổ sung các hóa đơn tiền phòng và điện nước cho các kỳ trước của hợp đồng HH205.RENEW (Hữu Hà & Văn Chương). | 182/182 frontend tests và Vite build đạt; DB đã cập nhật và kiểm tra thực tế. | `db8ba858` |
 
 ## Cần cân nhắc
 
