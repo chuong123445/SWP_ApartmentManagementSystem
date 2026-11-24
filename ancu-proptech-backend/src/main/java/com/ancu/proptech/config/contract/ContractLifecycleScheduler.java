@@ -16,6 +16,7 @@ public class ContractLifecycleScheduler {
     private final ContractRenewalActivationService activation;
     private final ContractInitialActivationService initialActivation;
     private final ContractDraftService draftService;
+    private final com.ancu.proptech.service.rental.SelectionCancellationService cancellationService;
     private static final org.slf4j.Logger log=org.slf4j.LoggerFactory.getLogger(ContractLifecycleScheduler.class);
     @Scheduled(initialDelayString="${app.contract-lifecycle.initial-delay-ms:60000}",fixedDelayString="${app.contract-lifecycle.delay-ms:3600000}")
     public void run() {
@@ -31,5 +32,6 @@ public class ContractLifecycleScheduler {
             try{initialActivation.activate(id);}catch(RuntimeException error){log.warn("Initial contract activation deferred for contract {} ({})",id,error.getClass().getSimpleName());}
         }
         try { draftService.expirePendingDrafts(); } catch(RuntimeException error){log.warn("Draft expiration deferred ({})",error.getClass().getSimpleName());}
+        try { cancellationService.expirePendingCancellations(); } catch(RuntimeException error){log.warn("Cancellation expiration deferred ({})",error.getClass().getSimpleName());}
     }
 }

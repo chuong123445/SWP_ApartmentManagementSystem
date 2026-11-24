@@ -36,6 +36,7 @@ class SelectionCancellationIntegrationTests {
  @BeforeEach void otpSetup(){org.mockito.Mockito.when(otpSender.isConfigured()).thenReturn(true);org.mockito.Mockito.doAnswer(call->{otpCode=call.getArgument(1);return null;}).when(otpSender).sendAction(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString());}
 
  @Autowired MockMvc mvc;@Autowired ObjectMapper json;@Autowired AuthAccountRepository accounts;@Autowired PropertyRepository properties;@Autowired ApartmentRepository apartments;@Autowired RentalRequestRepository requests;@Autowired RentalContractRepository contracts;@Autowired ContractDraftRepository drafts;@Autowired AuthService auth;@Autowired PasswordEncoder passwords;@Autowired JdbcTemplate jdbc;
+ @Autowired com.ancu.proptech.repository.rental.SelectionCancellationRepository cancellations;
  private AuthAccount owner,customer,other;private Property property;private Apartment apartment;private RentalRequest request;private String ownerToken,customerToken,otherToken;private static String hash;
  @BeforeEach void setup(){if(hash==null)hash=passwords.encode("Cancel-test!12345");owner=account(AuthAccount.Role.OWNER);customer=account(AuthAccount.Role.CUSTOMER);other=account(AuthAccount.Role.OWNER);ownerToken=token(owner);customerToken=token(customer);otherToken=token(other);
   property=new Property();property.setOwner(owner);property.setName("Cancellation test");property.setAddress("Test");property.setCity("Test");property.setDistrict("Test");property.setApprovalStatus(Property.ApprovalStatus.APPROVED);properties.saveAndFlush(property);
@@ -130,6 +131,19 @@ class SelectionCancellationIntegrationTests {
   String first=version(ownerToken);var original=request;var otherRoom=new Apartment();otherRoom.setProperty(property);otherRoom.setTitle(apartment.getTitle());otherRoom.setRoomNumber("C102");otherRoom.setDescription("Test");otherRoom.setAreaM2(apartment.getAreaM2());otherRoom.setAdvertisedMonthlyRent(apartment.getAdvertisedMonthlyRent());otherRoom.setAvailability(Apartment.Availability.CONTRACT_IN_PROGRESS);otherRoom.setPublicationStatus(Apartment.PublicationStatus.PUBLISHED);otherRoom.setCreatedAt(apartment.getCreatedAt());apartments.saveAndFlush(otherRoom);
   var second=new RentalRequest();second.setApartment(otherRoom);second.setCustomer(customer);second.setStatus(original.getStatus());second.setMessage(original.getMessage());second.setCreatedAt(original.getCreatedAt());second.setDecidedAt(original.getDecidedAt());second.setDecisionReason(original.getDecisionReason());requests.saveAndFlush(second);request=second;
   assertNotEquals(first,version(ownerToken));act(ownerToken,"START",first,"Wrong source scope").andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("STALE_VERSION"));request=original;
+ }
+ @Test void cancellationProposalAutoCancelsAfter48HoursTimeout() throws Exception {
+  String d = draft(); sign(d, ownerToken).andExpect(status().isOk());
+  String source = version(customerToken);
+  act(customerToken, "START", source, "Cannot move in").andExpect(status().isOk()).andExpect(jsonPath("$.state").value("PENDING"));
+  var root = cancellations.findById(request.getId()).orElseThrow();
+  root.setUpdatedAt(Instant.now().minus(java.time.Duration.ofHours(49)));
+  cancellations.saveAndFlush(root);
+  mvc.perform(get("/api/v1/rental-requests/" + request.getId() + "/cancellation").header("Authorization", customerToken))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.state").value("CANCELLED"))
+      .andExpect(jsonPath("$.responseReason").value("Tự động chấp thuận hủy do quá 48 giờ không có phản hồi."));
+  assertEquals(Apartment.Availability.VACANT, apartments.findById(apartment.getId()).orElseThrow().getAvailability());
  }
  private void cleanup(){Long aid=apartment.getId();jdbc.update("DELETE FROM selection_cancellation_events WHERE request_id IN(SELECT id FROM rental_requests WHERE apartment_id=?)",aid);jdbc.update("DELETE FROM selection_cancellations WHERE request_id IN(SELECT id FROM rental_requests WHERE apartment_id=?)",aid);jdbc.update("DELETE FROM contract_drafts WHERE contract_id IN(SELECT id FROM rental_contracts WHERE apartment_id=?)",aid);jdbc.update("DELETE FROM rental_contracts WHERE apartment_id=?",aid);jdbc.update("DELETE FROM rental_requests WHERE apartment_id=?",aid);jdbc.update("DELETE FROM rental_apartment_amenities WHERE apartment_id=?",aid);jdbc.update("DELETE FROM rental_apartments WHERE id=?",aid);jdbc.update("DELETE FROM rental_properties WHERE id=?",property.getId());for(var a:List.of(owner,customer,other)){jdbc.update("DELETE FROM action_otp_challenges WHERE account_id=?",a.getId());jdbc.update("DELETE FROM auth_refresh_tokens WHERE session_id IN(SELECT id FROM auth_sessions WHERE account_id=?)",a.getId());jdbc.update("DELETE FROM auth_sessions WHERE account_id=?",a.getId());jdbc.update("DELETE FROM auth_account_roles WHERE account_id=?",a.getId());jdbc.update("DELETE FROM auth_accounts WHERE id=?",a.getId());}}
 }
