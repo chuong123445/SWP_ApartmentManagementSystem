@@ -1728,12 +1728,8 @@
           },
           "rentCycleMonths": {
             "type": "integer",
-            "enum": [
-              1,
-              3,
-              6,
-              12
-            ],
+            "minimum": 1,
+            "maximum": 12,
             "default": 1
           }
         },
@@ -1816,12 +1812,8 @@
           },
           "rentCycleMonths": {
             "type": "integer",
-            "enum": [
-              1,
-              3,
-              6,
-              12
-            ],
+            "minimum": 1,
+            "maximum": 12,
             "default": 1
           }
         },
@@ -2206,12 +2198,8 @@
           },
           "rentCycleMonths": {
             "type": "integer",
-            "enum": [
-              1,
-              3,
-              6,
-              12
-            ],
+            "minimum": 1,
+            "maximum": 12,
             "default": 1
           },
           "separateBillingAgreed": {
