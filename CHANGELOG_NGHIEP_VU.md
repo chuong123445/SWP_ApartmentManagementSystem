@@ -115,3 +115,5 @@
 - 24/11/2026 — Kiểm chứng phân bổ phí bảo trì: test API tạo phiếu gắn đúng hợp đồng, chủ chia 600.000 đ thành 400.000/200.000 đ, chỉ ghi khoản phải thu sau khách nghiệm thu; database riêng PASS. Commit: Kiểm tra luồng chia tiền sửa chữa và khách nghiệm thu.
 
 - 24/11/2026 — Hiện mục Chi phí sửa chữa kể cả khi chưa có khoản thu, giải thích điều kiện nghiệm thu/tháng và thêm lối mở Sự cố & Bảo trì. TypeScript/build và 2 E2E phí sửa desktop/mobile PASS. Commit: Hiện lý do chưa có phí sửa chữa khi lập hóa đơn.
+
+- 24/11/2026 — Phân công thợ: sửa biểu thức kiểm tra điện thoại trên trình duyệt, báo lỗi ngay tại ô nhập và chặn gửi chuỗi chữ; nhập số hợp lệ phân công thành công. TypeScript/build và 2 E2E PASS. Commit: Báo lỗi điện thoại ngay trong biểu mẫu phân công thợ.
