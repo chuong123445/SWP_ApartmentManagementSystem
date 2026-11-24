@@ -86,3 +86,8 @@
 - Rút hồ sơ xong hoặc retry: không còn APPROVED thì Owner vềCustomer trong cùngtransaction; còn tài sản được duyệt thì giữOwner. Menu đọc lại quyền ngay, Customer không vào /app/APIowner bằngtoken cũ. Không xóa tài khoản/identity/phiên hoặc mở quyền xóa tài sản đãduyệt.
 - Thu Hà: role cũ còn sau lầncleanup trước, nhưng trong lúc audit đã có tài sản10031 Căn hộ Thu Hà đượcAPPROVED. Guard hạ quyền đãrollback, giữ tài sản/quyền mới; không tuyên bố đã hạThuHavềCustomer.
 -30backendPASS/170frontend/TypeScript/build/4MCPdesktopmobilePASS; ảnhmobileđãxem. DBtest/API fixtures; live chỉread+guardrollback. ADR owner-role-after-withdrawal-v1. Cầnrestartbackend/reloadfrontend, chưapush. Commit fix(property): đồng bộ quyền Customer sau khi rút hồ sơ, hashgitlog.
+
+## Lỗi cạnh ô nhập hợp đồng — 24/11/2026
+
+- Tạo/sửa/thuê tiếp: lỗi ngày, số tiền, hạn đóng, thông tin thuê và từng điều khoản hiện dưới đúng ô với viền đỏ; tự quay đúng bước và cuộn/focus lỗi đầu tiên. Sửa ô này không xóa lỗi ô khác, giữ dữ liệu; lỗi ngày server về đúng trường. Lỗi mạng/xung đột giữ thông báo chung nhưng tự cuộn tới.
+-174frontend/TypeScript/build +10MCPdesktopmobilePASS (6validation/recovery/server/network+4date-regression), ảnhmobileđãxem; APIfixtures, không backend/appDBchange. Chỉ luồng hợp đồng, không tuyên bố sửa tất cả form. ADR contract-inline-errors-v1; commit fix(ui): hiển thị lỗi hợp đồng cạnh trường nhập, hashgitlog. Chưapush.
