@@ -1,35 +1,70 @@
-import type {OwnerFinancialReport} from '@/hooks/useOwnerFinancialSummary';
-import {useEffect,useState} from 'react';
-import {downloadFinancialCsv} from '@/utils/financialCsv';
-import {FinancialCard,FinancialChart,FinancialFilters,FinancialState,money} from '@/components/finance/FinancialReportParts';
+import type { OwnerFinancialReport } from '@/hooks/useOwnerFinancialSummary';
+import { useEffect, useState } from 'react';
+import { downloadFinancialCsv } from '@/utils/financialCsv';
+import { FinancialCard, FinancialChart, FinancialFilters, FinancialState, money } from '@/components/finance/FinancialReportParts';
 
-export function ReportsPage({report,propertyName}:{report:OwnerFinancialReport;propertyName:string}){
-  const data=report.data;
-  const [exportError,setExportError]=useState('');
-  useEffect(()=>setExportError(''),[data?.year,data?.propertyId]);
-  const exportCsv=()=>{if(!data)return;setExportError('');try{downloadFinancialCsv(data);}catch{setExportError('Không thể bắt đầu tải tệp CSV. Vui lòng thử lại.');}};
+export function ReportsPage({ report, propertyName }: { report: OwnerFinancialReport; propertyName: string }) {
+  const data = report.data;
+  const [exportError, setExportError] = useState('');
+  useEffect(() => setExportError(''), [data?.year, data?.propertyId, data?.fromPeriod, data?.toPeriod]);
+  const exportCsv = () => { if (!data) return; setExportError(''); try { downloadFinancialCsv(data); } catch { setExportError('Không thể bắt đầu tải tệp CSV. Vui lòng thử lại.'); } };
+
+  const periodLabel = data?.fromPeriod && data?.toPeriod
+    ? (data.fromPeriod === data.toPeriod ? `tháng ${data.fromPeriod}` : `kỳ ${data.fromPeriod} ~ ${data.toPeriod}`)
+    : `năm ${data?.year ?? ''}`;
+
   return <div className="space-y-5 pb-12">
-    <header className="bg-white p-5 rounded-xl border border-slate-200 space-y-3"><div className="flex flex-wrap justify-between items-center gap-3"><h1 className="app-page-title">Báo cáo tài chính — {propertyName}</h1><button type="button" onClick={exportCsv} disabled={!data||report.loading} className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm disabled:opacity-50">Xuất CSV</button></div><FinancialFilters report={report}/><p className="text-xs text-slate-500">Tiền thuê được phân bổ vào từng tháng thuộc kỳ của hóa đơn đã gửi, không phụ thuộc ngày thanh toán. Tiền thực thu theo ngày nhận tiền. Số liệu theo năm và tài sản đang chọn; không bao gồm tiền cọc hoặc dự báo từ hợp đồng chưa lập hóa đơn.</p></header>
-    <FinancialState report={report}/>
-    {exportError&&<p role="alert" className="text-sm text-red-700">{exportError}</p>}
-    {data&&<>
-      <p className="text-xs text-slate-500">Ngày thống kê: {data.asOf}. Công nợ phản ánh trạng thái hiện tại trên tất cả kỳ; quy mô và lấp đầy là hiện trạng, không phải lịch sử của năm báo cáo.</p>
+    <header className="bg-white p-5 rounded-xl border border-slate-200 space-y-3">
+      <div className="flex flex-wrap justify-between items-center gap-3">
+        <h1 className="app-page-title">Báo cáo tài chính — {propertyName}</h1>
+        <button type="button" onClick={exportCsv} disabled={!data || report.loading} className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm disabled:opacity-50">Xuất CSV</button>
+      </div>
+      <FinancialFilters report={report} />
+      <p className="text-xs text-slate-500">Tiền thuê được phân bổ vào từng tháng thuộc kỳ của hóa đơn đã gửi, không phụ thuộc ngày thanh toán. Tiền thực thu theo ngày nhận tiền. Số liệu theo kỳ và tài sản đang chọn; không bao gồm tiền cọc hoặc dự báo từ hợp đồng chưa lập hóa đơn.</p>
+    </header>
+    <FinancialState report={report} />
+    {exportError && <p role="alert" className="text-sm text-red-700">{exportError}</p>}
+    {data && <>
+      <p className="text-xs text-slate-500">Ngày thống kê: {data.asOf}. Công nợ phản ánh trạng thái hiện tại trên tất cả kỳ; quy mô và lấp đầy là hiện trạng, không phải lịch sử của kỳ báo cáo.</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <FinancialCard label={`Tiền thuê phân bổ năm ${data.year}`} value={money(data.allocatedRentAmount??'0')} note="Tiền thuê thuộc các tháng trong năm, từ hóa đơn đã gửi; không phải tiền thực thu."/>
-        <FinancialCard label="Đã thanh toán theo kỳ hóa đơn" value={money(data.totals.paidInvoiceAmount)} note={`${data.totals.paidInvoiceCount} hóa đơn thuộc năm ${data.year}; tiền có thể được nhận ở năm khác.`}/>
-        <FinancialCard label="Chưa thu theo kỳ hóa đơn" value={money(data.totals.unpaidInvoiceAmount)} note={`Hóa đơn năm ${data.year} chưa ghi nhận thanh toán.`}/>
-        <FinancialCard label={`Tiền nhận trong năm ${data.year}`} value={money(data.receipts.totalAmount)} note="Theo ngày ghi nhận thanh toán của hóa đơn thuê và tiện ích và phiếu bổ sung gắn đúng người thuê."/>
+        <FinancialCard label={`Tiền thuê phân bổ ${periodLabel}`} value={money(data.allocatedRentAmount ?? '0')} note={`Tiền thuê thuộc ${periodLabel}, từ hóa đơn đã gửi; không phải tiền thực thu.`} />
+        <FinancialCard label="Đã thanh toán theo kỳ hóa đơn" value={money(data.totals.paidInvoiceAmount)} note={`${data.totals.paidInvoiceCount} hóa đơn thuộc ${periodLabel}; tiền có thể được nhận ở kỳ khác.`} />
+        <FinancialCard label="Chưa thu theo kỳ hóa đơn" value={money(data.totals.unpaidInvoiceAmount)} note={`Hóa đơn ${periodLabel} chưa ghi nhận thanh toán.`} />
+        <FinancialCard label={`Tiền nhận trong ${periodLabel}`} value={money(data.receipts.totalAmount)} note="Theo ngày ghi nhận thanh toán của hóa đơn thuê và tiện ích và phiếu bổ sung gắn đúng người thuê." />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <FinancialCard label="Đúng hạn trong số hóa đơn đã thanh toán" value={data.totals.paidInvoiceCount?`${(100*data.totals.onTimePaidInvoiceCount/data.totals.paidInvoiceCount).toLocaleString('vi-VN',{maximumFractionDigits:1})}%`:'—'} note={`${data.totals.onTimePaidInvoiceCount}/${data.totals.paidInvoiceCount} hóa đơn thuộc năm ${data.year}, nhận trước hoặc đúng ngày đến hạn theo giờ Việt Nam.`}/>
-        <FinancialCard label="Hóa đơn quá hạn — tất cả kỳ" value={money(data.arrears.overdueInvoiceAmount)} note={`${data.arrears.overdueInvoiceCount} hóa đơn chưa thu có hạn trước ${data.asOf}.`}/>
-        <FinancialCard label="Lấp đầy hiện tại" value={data.inventory.units?`${Math.round(100*data.inventory.occupied/data.inventory.units)}%`:'—'} note={`${data.inventory.occupied}/${data.inventory.units} căn đang ở, ${data.inventory.vacant} căn trống.`}/>
+        <FinancialCard label="Đúng hạn trong số hóa đơn đã thanh toán" value={data.totals.paidInvoiceCount ? `${(100 * data.totals.onTimePaidInvoiceCount / data.totals.paidInvoiceCount).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%` : '—'} note={`${data.totals.onTimePaidInvoiceCount}/${data.totals.paidInvoiceCount} hóa đơn thuộc ${periodLabel}, nhận trước hoặc đúng ngày đến hạn theo giờ Việt Nam.`} />
+        <FinancialCard label="Hóa đơn quá hạn — tất cả kỳ" value={money(data.arrears.overdueInvoiceAmount)} note={`${data.arrears.overdueInvoiceCount} hóa đơn chưa thu có hạn trước ${data.asOf}.`} />
+        <FinancialCard label="Lấp đầy hiện tại" value={data.inventory.units ? `${Math.round(100 * data.inventory.occupied / data.inventory.units)}%` : '—'} note={`${data.inventory.occupied}/${data.inventory.units} căn đang ở, ${data.inventory.vacant} căn trống.`} />
       </div>
-      <FinancialChart months={data.months}/>
-      <section className="bg-white p-5 rounded-xl border border-slate-200"><h2 className="font-bold text-sm mb-3">Thành phần hóa đơn đã gửi năm {data.year}</h2><dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">{[['Tiền thuê',data.totals.rentAmount],['Tiền điện',data.totals.electricityAmount],['Tiền nước',data.totals.waterAmount],['Internet và vệ sinh',data.totals.serviceAmount]].map(([label,value])=><div key={label}><dt className="text-slate-500">{label}</dt><dd className="font-semibold break-words mt-1">{money(value)}</dd></div>)}</dl></section>
-      <section className="bg-white rounded-xl border border-slate-200 overflow-hidden"><h2 className="p-4 font-bold text-sm">Đối chiếu tiền thuê và thực thu từng tháng năm {data.year}</h2><div className="overflow-x-auto"><table className="app-data-table w-full text-xs text-left"><thead className="bg-slate-50"><tr>{['Tháng','Số HĐ bắt đầu kỳ','Tiền thuê phân bổ','Giá trị HĐ theo tháng bắt đầu kỳ','Đã thu theo kỳ HĐ','Chưa thu theo kỳ HĐ','Nhận từ hóa đơn','Nhận từ phiếu bổ sung','Tổng tiền nhận'].map(label=><th key={label} className="p-3 whitespace-nowrap">{label}</th>)}</tr></thead><tbody>{data.months.map(month=><tr key={month.period} className="border-t"><td className="p-3 whitespace-nowrap">{month.period}</td><td className="p-3">{month.invoices.invoiceCount}</td>{[month.allocatedRentAmount??'0',month.invoices.billedAmount,month.invoices.paidInvoiceAmount,month.invoices.unpaidInvoiceAmount,month.receipts.monthlyInvoiceAmount,month.receipts.additionalAmount,month.receipts.totalAmount].map((value,index)=><td className="p-3 whitespace-nowrap" key={index}>{money(value)}</td>)}</tr>)}</tbody></table></div></section>
-      <section className="bg-white rounded-xl border border-slate-200 overflow-hidden"><h2 className="p-4 font-bold text-sm">Theo tài sản — hóa đơn và tiền nhận năm {data.year}</h2><div className="overflow-x-auto"><table className="app-data-table w-full text-xs text-left"><thead className="bg-slate-50"><tr>{['Tài sản','Đang ở / Tổng căn hiện tại','Tiền thuê phân bổ','Giá trị HĐ theo kỳ','Đã thu theo kỳ HĐ','Tiền thực thu'].map(label=><th key={label} className="p-3 whitespace-nowrap">{label}</th>)}</tr></thead><tbody>{data.properties.map(property=><tr key={property.id} className="border-t"><td className="p-3 min-w-36">{property.name}</td><td className="p-3">{property.inventory.occupied}/{property.inventory.units}</td><td className="p-3 whitespace-nowrap">{money(property.allocatedRentAmount??'0')}</td><td className="p-3 whitespace-nowrap">{money(property.invoices.billedAmount)}</td><td className="p-3 whitespace-nowrap">{money(property.invoices.paidInvoiceAmount)}</td><td className="p-3 whitespace-nowrap">{money(property.receipts.totalAmount)}</td></tr>)}{!data.properties.length&&<tr><td colSpan={6} className="p-5 text-slate-500">Chưa có tài sản trong phạm vi này.</td></tr>}</tbody></table></div></section>
-      <section className="text-xs text-slate-600 space-y-2"><p>Công nợ mọi kỳ: {money(data.arrears.monthlyInvoiceAmount)} từ {data.arrears.monthlyInvoiceCount} hóa đơn thuê và tiện ích; {money(data.arrears.additionalAmount)} từ {data.arrears.additionalCount} phiếu bổ sung chưa thu. Phiếu bổ sung chưa có quy tắc ngày đến hạn nên được theo dõi riêng.</p><p>Tiền nhận từ hóa đơn thuê và tiện ích: {money(data.receipts.monthlyInvoiceAmount)}; từ phiếu bổ sung: {money(data.receipts.additionalAmount)}. Tiền thanh toán có thể do nền tảng thu hộ; đây không phải số dư ví hoặc số tiền đã rút về ngân hàng. Tiền cọc do hai bên tự quản lý ngoài hệ thống, không tính vào báo cáo này. Sổ quỹ thủ công và rút ví được theo dõi riêng.</p><p>Chưa tính lợi nhuận vì chưa có nguồn chi phí đầy đủ và liên kết đối soát. Các khoản điện/nước trên hóa đơn là khoản phải thu, không được dùng thay chi phí thực chi.</p></section>
+      <FinancialChart months={data.months} />
+      <section className="bg-white p-5 rounded-xl border border-slate-200">
+        <h2 className="font-bold text-sm mb-3">Thành phần hóa đơn đã gửi {periodLabel}</h2>
+        <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">{[['Tiền thuê', data.totals.rentAmount], ['Tiền điện', data.totals.electricityAmount], ['Tiền nước', data.totals.waterAmount], ['Internet và vệ sinh', data.totals.serviceAmount]].map(([label, value]) => <div key={label}><dt className="text-slate-500">{label}</dt><dd className="font-semibold break-words mt-1">{money(value)}</dd></div>)}</dl>
+      </section>
+      <section className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <h2 className="p-4 font-bold text-sm">Đối chiếu tiền thuê và thực thu từng tháng {periodLabel}</h2>
+        <div className="overflow-x-auto">
+          <table className="app-data-table w-full text-xs text-left">
+            <thead className="bg-slate-50"><tr>{['Tháng', 'Số HĐ bắt đầu kỳ', 'Tiền thuê phân bổ', 'Giá trị HĐ theo tháng bắt đầu kỳ', 'Đã thu theo kỳ HĐ', 'Chưa thu theo kỳ HĐ', 'Nhận từ hóa đơn', 'Nhận từ phiếu bổ sung', 'Tổng tiền nhận'].map(label => <th key={label} className="p-3 whitespace-nowrap">{label}</th>)}</tr></thead>
+            <tbody>{data.months.map(month => <tr key={month.period} className="border-t"><td className="p-3 whitespace-nowrap">{month.period}</td><td className="p-3">{month.invoices.invoiceCount}</td>{[month.allocatedRentAmount ?? '0', month.invoices.billedAmount, month.invoices.paidInvoiceAmount, month.invoices.unpaidInvoiceAmount, month.receipts.monthlyInvoiceAmount, month.receipts.additionalAmount, month.receipts.totalAmount].map((value, index) => <td className="p-3 whitespace-nowrap" key={index}>{money(value)}</td>)}</tr>)}</tbody>
+          </table>
+        </div>
+      </section>
+      <section className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <h2 className="p-4 font-bold text-sm">Theo tài sản — hóa đơn và tiền nhận {periodLabel}</h2>
+        <div className="overflow-x-auto">
+          <table className="app-data-table w-full text-xs text-left">
+            <thead className="bg-slate-50"><tr>{['Tài sản', 'Đang ở / Tổng căn hiện tại', 'Tiền thuê phân bổ', 'Giá trị HĐ theo kỳ', 'Đã thu theo kỳ HĐ', 'Tiền thực thu'].map(label => <th key={label} className="p-3 whitespace-nowrap">{label}</th>)}</tr></thead>
+            <tbody>{data.properties.map(property => <tr key={property.id} className="border-t"><td className="p-3 min-w-36">{property.name}</td><td className="p-3">{property.inventory.occupied}/{property.inventory.units}</td><td className="p-3 whitespace-nowrap">{money(property.allocatedRentAmount ?? '0')}</td><td className="p-3 whitespace-nowrap">{money(property.invoices.billedAmount)}</td><td className="p-3 whitespace-nowrap">{money(property.invoices.paidInvoiceAmount)}</td><td className="p-3 whitespace-nowrap">{money(property.receipts.totalAmount)}</td></tr>)}{!data.properties.length && <tr><td colSpan={6} className="p-5 text-slate-500">Chưa có tài sản trong phạm vi này.</td></tr>}</tbody>
+          </table>
+        </div>
+      </section>
+      <section className="text-xs text-slate-600 space-y-2">
+        <p>Công nợ mọi kỳ: {money(data.arrears.monthlyInvoiceAmount)} từ {data.arrears.monthlyInvoiceCount} hóa đơn thuê và tiện ích; {money(data.arrears.additionalAmount)} từ {data.arrears.additionalCount} phiếu bổ sung chưa thu. Phiếu bổ sung chưa có quy tắc ngày đến hạn nên được theo dõi riêng.</p>
+        <p>Tiền nhận từ hóa đơn thuê và tiện ích: {money(data.receipts.monthlyInvoiceAmount)}; từ phiếu bổ sung: {money(data.receipts.additionalAmount)}. Tiền thanh toán có thể do nền tảng thu hộ; đây không phải số dư ví hoặc số tiền đã rút về ngân hàng. Tiền cọc do hai bên tự quản lý ngoài hệ thống, không tính vào báo cáo này. Sổ quỹ thủ công và rút ví được theo dõi riêng.</p>
+        <p>Chưa tính lợi nhuận vì chưa có nguồn chi phí đầy đủ và liên kết đối soát. Các khoản điện/nước trên hóa đơn là khoản phải thu, không được dùng thay chi phí thực chi.</p>
+      </section>
     </>}
   </div>;
 }

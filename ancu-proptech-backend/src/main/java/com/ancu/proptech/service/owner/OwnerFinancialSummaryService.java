@@ -25,12 +25,32 @@ public class OwnerFinancialSummaryService {
 
     @Transactional(readOnly=true)
     public OwnerFinancialSummary read(Jwt jwt,Long propertyId,Integer requestedYear) {
-        var ownerId=access.owner(jwt).getId();var today=dates.today();int year=requestedYear==null?today.getYear():requestedYear;
-        if(year<1900||year>9998)throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_YEAR","Năm báo cáo phải từ 1900 đến 9998.");
+        return read(jwt,propertyId,requestedYear,null,null);
+    }
+
+    @Transactional(readOnly=true)
+    public OwnerFinancialSummary read(Jwt jwt,Long propertyId,Integer requestedYear,String fromMonth,String toMonth) {
+        var ownerId=access.owner(jwt).getId();var today=dates.today();
+        YearMonth startPeriod;
+        YearMonth endPeriod;
+        if(fromMonth!=null||toMonth!=null){
+            if(fromMonth==null||toMonth==null)throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_PERIOD","Vui lòng cung cấp cả tháng bắt đầu và tháng kết thúc.");
+            try{startPeriod=YearMonth.parse(fromMonth);endPeriod=YearMonth.parse(toMonth);}
+            catch(Exception e){throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_PERIOD","Định dạng tháng phải theo chuẩn YYYY-MM.");}
+            if(startPeriod.isAfter(endPeriod))throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_PERIOD","Tháng bắt đầu không được lớn hơn tháng kết thúc.");
+            if(startPeriod.getYear()<1900||endPeriod.getYear()>9998)throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_YEAR","Năm báo cáo phải từ 1900 đến 9998.");
+            if(java.time.temporal.ChronoUnit.MONTHS.between(startPeriod,endPeriod)>60)throw new ApiException(HttpStatus.BAD_REQUEST,"PERIOD_TOO_LONG","Khoảng thời gian báo cáo tối đa là 60 tháng.");
+        } else {
+            int year=requestedYear==null?today.getYear():requestedYear;
+            if(year<1900||year>9998)throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_YEAR","Năm báo cáo phải từ 1900 đến 9998.");
+            startPeriod=YearMonth.of(year,1);endPeriod=YearMonth.of(year,12);
+        }
+        int year=endPeriod.getYear();
         if(propertyId!=null)properties.findById(propertyId).filter(p->p.getOwner().getId().equals(ownerId)).orElseThrow(()->new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy tài sản thuộc tài khoản của bạn."));
         var inventory=reports.inventory(ownerId,propertyId);var byProperty=new LinkedHashMap<Long,Accumulator>();
         inventory.forEach(row->byProperty.put(row.propertyId(),new Accumulator()));
-        var months=new LinkedHashMap<String,Accumulator>();for(int m=1;m<=12;m++)months.put(YearMonth.of(year,m).toString(),new Accumulator());
+        var months=new LinkedHashMap<String,Accumulator>();
+        for(YearMonth cur=startPeriod;!cur.isAfter(endPeriod);cur=cur.plusMonths(1))months.put(cur.toString(),new Accumulator());
         var total=new Accumulator();long[] debtCounts={0,0,0};BigDecimal[] debt={BigDecimal.ZERO,BigDecimal.ZERO,BigDecimal.ZERO};
         try(var stream=reports.invoices(ownerId,propertyId)) {
             stream.forEach(row->{
@@ -42,17 +62,19 @@ public class OwnerFinancialSummaryService {
                 if(row.paidAt()!=null){var receivedMonth=months.get(YearMonth.from(row.paidAt().atZone(ZONE)).toString());if(receivedMonth!=null){total.received=total.received.add(row.received());receivedMonth.received=receivedMonth.received.add(row.received());property.received=property.received.add(row.received());}}
             });
         }
-        var from=LocalDate.of(year,1,1).atStartOfDay(ZONE).toInstant();var until=LocalDate.of(year+1,1,1).atStartOfDay(ZONE).toInstant();
+        var from=startPeriod.atDay(1).atStartOfDay(ZONE).toInstant();
+        var until=endPeriod.plusMonths(1).atDay(1).atStartOfDay(ZONE).toInstant();
         try(var stream=reports.receipts(ownerId,propertyId,from,until)) {
             stream.forEach(row->{
                 if(row.paidAt()==null){debtCounts[2]++;debt[2]=debt[2].add(row.amount());}
-                else {var month=months.get(YearMonth.from(row.paidAt().atZone(ZONE)).toString());var property=byProperty.computeIfAbsent(row.propertyId(),id->new Accumulator());total.additional=total.additional.add(row.amount());month.additional=month.additional.add(row.amount());property.additional=property.additional.add(row.amount());}
+                else {var month=months.get(YearMonth.from(row.paidAt().atZone(ZONE)).toString());var property=byProperty.computeIfAbsent(row.propertyId(),id->new Accumulator());total.additional=total.additional.add(row.amount());if(month!=null)month.additional=month.additional.add(row.amount());property.additional=property.additional.add(row.amount());}
             });
         }
         var units=new OwnerFinancialSummary.Inventory(inventory.stream().mapToLong(FinancialInventoryRow::units).sum(),inventory.stream().mapToLong(FinancialInventoryRow::occupied).sum(),inventory.stream().mapToLong(FinancialInventoryRow::vacant).sum());
         var propertyRows=inventory.stream().map(row->{var a=byProperty.get(row.propertyId());return new OwnerFinancialSummary.Property(row.propertyId(),row.name(),new OwnerFinancialSummary.Inventory(row.units(),row.occupied(),row.vacant()),a.amounts(),a.receipts(),a.allocated.toPlainString());}).toList();
         return new OwnerFinancialSummary(propertyId,year,today,total.amounts(),total.receipts(),new OwnerFinancialSummary.Arrears(debtCounts[0],debt[0].toPlainString(),debtCounts[1],debt[1].toPlainString(),debtCounts[2],debt[2].toPlainString()),units,
-                months.entrySet().stream().map(entry->new OwnerFinancialSummary.Month(entry.getKey(),entry.getValue().amounts(),entry.getValue().receipts(),entry.getValue().allocated.toPlainString())).toList(),propertyRows,total.allocated.toPlainString());
+                months.entrySet().stream().map(entry->new OwnerFinancialSummary.Month(entry.getKey(),entry.getValue().amounts(),entry.getValue().receipts(),entry.getValue().allocated.toPlainString())).toList(),propertyRows,total.allocated.toPlainString(),
+                startPeriod.toString(),endPeriod.toString());
     }
     // Allocate only rent frozen on SENT invoices, not cash, utilities or unsigned forecasts.
     // Iterate at most twelve selected-year months, even for long historical coverage.

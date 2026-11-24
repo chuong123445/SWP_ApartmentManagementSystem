@@ -23,8 +23,11 @@ export function DashboardPage({ propertyName, report, counters, onNavigateTab }:
   counters: OwnerWorkspaceSummary | null;
   onNavigateTab: (tab: ActiveTab) => void;
 }) {
-  const { data, month, setMonth } = report;
-  const current = data?.months[month - 1];
+  const { data } = report;
+  const isSingleMonth = Boolean(data && (data.fromPeriod === data.toPeriod || data.months.length === 1));
+  const periodLabel = isSingleMonth
+    ? `tháng ${data?.fromPeriod ?? data?.months[0]?.period ?? ''}`
+    : `kỳ ${data?.fromPeriod ?? ''} ~ ${data?.toPeriod ?? ''}`;
 
   return <div className="space-y-4 pb-10">
     <header className="app-panel flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5">
@@ -42,16 +45,11 @@ export function DashboardPage({ propertyName, report, counters, onNavigateTab }:
 
     <section aria-label="Kỳ thống kê" className="flex flex-wrap items-end gap-3 px-1">
       <FinancialFilters report={report} />
-      <label className="grid gap-1 text-xs text-slate-600">Tháng thống kê
-        <select value={month} onChange={event => setMonth(Number(event.target.value))} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-          {Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={index + 1}>Tháng {index + 1}</option>)}
-        </select>
-      </label>
       {data && <p className="pb-1 text-xs text-slate-600 sm:ml-auto">Ngày thống kê {data.asOf}</p>}
     </section>
     <FinancialState report={report} />
 
-    {data && current && <>
+    {data && <>
       <section aria-label="Chỉ số tổng quan" className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 xl:grid-cols-4">
         <FinancialCard label="Lấp đầy hiện tại" icon={<Building2 size={18} />}
           value={data.inventory.units ? `${Math.round(100 * data.inventory.occupied / data.inventory.units)}%` : '—'}
@@ -59,15 +57,16 @@ export function DashboardPage({ propertyName, report, counters, onNavigateTab }:
         <FinancialCard label="Hóa đơn quá hạn · Mọi kỳ" icon={<ReceiptText size={18} />}
           value={money(data.arrears.overdueInvoiceAmount)}
           note={`${data.arrears.overdueInvoiceCount} hóa đơn cần nhắc thanh toán`} />
-        <FinancialCard label={`Thực thu tháng ${current.period}`} icon={<ArrowDownToLine size={18} />}
-          value={money(current.receipts.totalAmount)} note="Theo ngày thu từ hóa đơn và phiếu bổ sung." />
+        <FinancialCard label={isSingleMonth ? `Thực thu ${periodLabel}` : `Tổng thực thu ${periodLabel}`} icon={<ArrowDownToLine size={18} />}
+          value={money(data.receipts.totalAmount)}
+          note={isSingleMonth ? "Theo ngày thu từ hóa đơn và phiếu bổ sung." : `Tổng tiền nhận từ ${data.fromPeriod ?? ''} đến ${data.toPeriod ?? ''}.`} />
         <FinancialCard label="Hóa đơn chưa thu · Mọi kỳ" icon={<Wallet size={18} />}
           value={money(data.arrears.monthlyInvoiceAmount)}
           note={`${data.arrears.monthlyInvoiceCount} hóa đơn · ${money(data.arrears.overdueInvoiceAmount)} quá hạn`} />
       </section>
 
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(245px,1fr)]">
-        <FinancialChart mode="cash" months={data.months.slice(Math.max(0, month - 6), month)} />
+        <FinancialChart mode="cash" months={data.months} />
         <section className="app-panel p-4 sm:p-5" aria-labelledby="dashboard-followup">
           <h2 id="dashboard-followup" className="text-base font-bold">Cần theo dõi</h2>
           <dl className="mt-2 divide-y divide-slate-100 text-sm">

@@ -10,5 +10,12 @@ import org.springframework.web.bind.annotation.*;
 public class OwnerFinancialSummaryController {
     private final OwnerFinancialSummaryService reports;
     @GetMapping("/api/v1/owner/financial-summary")
-    public ResponseEntity<OwnerFinancialSummary> read(@AuthenticationPrincipal Jwt jwt,@RequestParam(required=false) Long propertyId,@RequestParam(required=false) Integer year){return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(reports.read(jwt,propertyId,year));}
+    public ResponseEntity<OwnerFinancialSummary> read(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(required=false) Long propertyId,
+            @RequestParam(required=false) Integer year,
+            @RequestParam(required=false) String fromMonth,
+            @RequestParam(required=false) String toMonth){
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(reports.read(jwt,propertyId,year,fromMonth,toMonth));
+    }
 }
