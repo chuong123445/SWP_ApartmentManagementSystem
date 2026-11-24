@@ -129,3 +129,5 @@
 - 24/11/2026 — Giao diện thu tiền mặt: Chi tiết hóa đơn có nút Đã nhận tiền mặt, chọn ngày/ghi chú và xác nhận đã nhận đủ; cập nhật danh sách hết nợ, khách thấy phương thức tiền mặt. 175 frontend unit, TypeScript/build và 6 E2E desktop/mobile PASS; ảnh mobile đã xem. Commit: Thêm xác nhận đã nhận tiền mặt trong chi tiết hóa đơn.
 
 - 24/11/2026 — Kết thúc đơn phương: thông báo mới chờ 14 ngày, hết hạn không phản đối tự kết thúc và mở lại phòng; giữ công nợ/chữ ký, thông báo rõ cả hai bên, API danh sách đề nghị chờ riêng tư. Hạn thông báo đã gửi giữ nguyên. 34 ca backend SQL riêng PASS qua hai lượt (lượt đầu 1 lỗi đồng hồ fixture, đã sửa và chạy lại PASS); giao diện đang làm.
+
+- 24/11/2026 — Sau backend 76a8f106: đề nghị kết thúc thuê hiện đầu danh sách hợp đồng, Phản hồi ngay cho đúng bên; thông báo mở thẳng phần xử lý, nhãn 14 ngày và tự mở lại phòng. 181 FE, TypeScript/build PASS; 4 Playwright inbox/deeplink hai vai trò × desktop/mobile + 6 kịch bản đơn phương PASS bằng API fixture; không ghi appDB.

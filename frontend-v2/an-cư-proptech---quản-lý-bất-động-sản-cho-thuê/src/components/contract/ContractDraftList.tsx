@@ -1,3 +1,4 @@
+import { PendingContractExitRequests } from './PendingContractExitRequests';
 import { SelectionCancellationModal } from '@/components/rental/SelectionCancellationModal';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
@@ -22,7 +23,7 @@ export function ContractDraftList({ owner = false, propertyId, onLoaded }: { own
   useEffect(() => { if (!loading && !error && focusId && focused.current !== focusId && items.some(item => item.id === focusId)) { const element = document.getElementById(`contract-${focusId}`);element?.focus({ preventScroll: true });element?.scrollIntoView({ block: 'center' });focused.current = focusId; } }, [items, loading, error, focusId]);
   const signed=items.filter(hasBothContractSignatures);
   const legacy = tenancy.tenancies.filter(contract => ['ACTIVE','ENDED'].includes(contract.status)&&!items.some(document => document.id === contract.id));
-  return <section className="space-y-4"><div className="flex flex-wrap justify-between gap-3"><h2 className="text-lg font-bold">Danh sách hợp đồng</h2><button onClick={() => setReloadKey(n => n + 1)} className="text-sm text-emerald-700">Làm mới danh sách hợp đồng</button></div>
+  return <section className="space-y-4"><PendingContractExitRequests drafts={signed} revision={reloadKey} onChanged={()=>setReloadKey(n=>n+1)}/><div className="flex flex-wrap justify-between gap-3"><h2 className="text-lg font-bold">Danh sách hợp đồng</h2><button onClick={() => setReloadKey(n => n + 1)} className="text-sm text-emerald-700">Làm mới danh sách hợp đồng</button></div>
     {error && <p role="alert" className="text-rose-700">{error}</p>}{loading && <p role="status">Đang tải hợp đồng...</p>}
     {!loading && !error && <>{!signed.length && (owner || (!tenancy.loading && !tenancy.error && !legacy.length)) && <p className="text-sm text-slate-500">Chưa có hợp đồng đã đủ chữ ký hai bên. Tiếp tục xem và ký tại mục Yêu cầu thuê.</p>}{!owner && tenancy.loading && <p role="status" className="text-sm text-slate-500">Đang tải lịch sử thuê...</p>}<div className="grid md:grid-cols-2 gap-4">{signed.map(d => {
       const actions = contractLifecycleActions(d, user?.id);
