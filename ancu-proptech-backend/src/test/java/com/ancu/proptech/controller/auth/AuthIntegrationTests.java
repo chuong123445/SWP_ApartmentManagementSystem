@@ -35,6 +35,7 @@ class AuthIntegrationTests {
     @Autowired JwtDecoder jwtDecoder;
     @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired jakarta.persistence.EntityManager entities;
+    @Autowired com.ancu.proptech.repository.property.PropertyRepository properties;
     private AuthAccount owner;
     private final String password = "Auth-test-only!123";
     private record Login(String accessToken, Cookie refresh) {}
@@ -113,6 +114,28 @@ class AuthIntegrationTests {
         assertEquals(2,jdbc.queryForObject("SELECT COUNT(*) FROM auth_account_roles WHERE account_id=?",Integer.class,owner.getId()));
     }
 
+    @Test void ownerWithoutApprovedPropertiesIsDemotedToCustomerOnLoginAndAccess() throws Exception {
+        AuthAccount emptyOwner = new AuthAccount();
+        emptyOwner.setEmail("empty-owner-" + com.ancu.proptech.support.TestIds.next() + "@example.invalid");
+        emptyOwner.setFullName("Chủ nhà không có tài sản");
+        emptyOwner.setPasswordHash(passwords.encode(password));
+        emptyOwner.setRole(AuthAccount.Role.OWNER);
+        emptyOwner.setStatus(AuthAccount.Status.ACTIVE);
+        emptyOwner.setContactVerified(true);emptyOwner.setEmailVerified(true);
+        accounts.saveAndFlush(emptyOwner);
+
+        Login login = login(emptyOwner.getEmail(), password);
+        assertEquals(List.of("CUSTOMER"), jwtDecoder.decode(login.accessToken()).getClaimAsStringList("roles"));
+
+        mvc.perform(get("/api/v1/me").header("Authorization", "Bearer " + login.accessToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.roles.length()").value(1))
+                .andExpect(jsonPath("$.roles[0]").value("CUSTOMER"));
+
+        mvc.perform(get("/api/v1/owner/apartments").header("Authorization", "Bearer " + login.accessToken()))
+                .andExpect(status().isForbidden());
+    }
+
     @Test void legacyProjectionAndOldJwtCannotGrantRemovedOwnerMembership() throws Exception {
         Login login=login(owner.getEmail(),password);Long id=owner.getId();
         owner.setRole(AuthAccount.Role.CUSTOMER);accounts.saveAndFlush(owner);
@@ -142,6 +165,15 @@ class AuthIntegrationTests {
         owner.setStatus(AuthAccount.Status.ACTIVE);
         owner.setContactVerified(true);owner.setEmailVerified(true);
         accounts.saveAndFlush(owner);
+
+        var property = new com.ancu.proptech.model.property.Property();
+        property.setOwner(owner);
+        property.setName("Tài sản kiểm thử");
+        property.setAddress("123 Kiểm thử");
+        property.setCity("TP. Hồ Chí Minh");
+        property.setDistrict("Quận 1");
+        property.setApprovalStatus(com.ancu.proptech.model.property.Property.ApprovalStatus.APPROVED);
+        properties.saveAndFlush(property);
     }
 
     private Login login(String email, String pass) throws Exception {

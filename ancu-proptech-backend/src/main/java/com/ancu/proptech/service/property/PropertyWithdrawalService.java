@@ -26,6 +26,7 @@ public class PropertyWithdrawalService {
     private final ApartmentRepository apartments;
     private final com.ancu.proptech.repository.rental.RentalRequestRepository rentalRequests;
     private final com.ancu.proptech.repository.contract.RentalContractRepository contracts;
+    private final com.ancu.proptech.service.auth.OwnerRoleReconciliationService ownerReconciliation;
     private final jakarta.persistence.EntityManager em;
 
     @Transactional public void withdraw(Jwt jwt,Long id,Input input){
@@ -35,7 +36,7 @@ public class PropertyWithdrawalService {
         accounts.findForIdentityUpdate(actor.getId()).orElseThrow(PropertyWithdrawalService::missing);
         var p=properties.findOwnedForCreation(id,actor.getId()).orElseThrow(PropertyWithdrawalService::missing);
         em.refresh(p);
-        if(p.getApprovalStatus()==Property.ApprovalStatus.WITHDRAWN){reconcileOwner(actor);return;}
+        if(p.getApprovalStatus()==Property.ApprovalStatus.WITHDRAWN){ownerReconciliation.reconcile(actor);return;}
         if(p.getVersion()!=input.version())throw conflict("STALE_VERSION","Hồ sơ đã thay đổi. Hãy tải lại trước khi xóa hoặc rút.");
         if(p.getApprovalStatus()==Property.ApprovalStatus.APPROVED||p.getApprovedRightsDossierId()!=null)
             throw conflict("PROPERTY_ALREADY_APPROVED","Không thể xóa tài sản đã được duyệt bằng thao tác rút hồ sơ.");
@@ -50,15 +51,7 @@ public class PropertyWithdrawalService {
         }
         drafts.findById(id).ifPresent(d->{d.setCompleted(true);d.setUpdatedAt(Instant.now());});
         p.setApprovalStatus(Property.ApprovalStatus.WITHDRAWN);p.setWithdrawnAt(Instant.now());properties.flush();dossiers.flush();drafts.flush();
-        reconcileOwner(actor);
-    }
-    private void reconcileOwner(com.ancu.proptech.model.auth.AuthAccount actor){
-        if(actor.hasRole(com.ancu.proptech.model.auth.AuthAccount.Role.OWNER)
-            &&!actor.hasRole(com.ancu.proptech.model.auth.AuthAccount.Role.ADMIN)
-            &&!properties.existsByOwnerIdAndApprovalStatus(actor.getId(),Property.ApprovalStatus.APPROVED)){
-            actor.setRole(com.ancu.proptech.model.auth.AuthAccount.Role.CUSTOMER);
-            accounts.flush();
-        }
+        ownerReconciliation.reconcile(actor);
     }
     private static ApiException conflict(String code,String message){return new ApiException(HttpStatus.CONFLICT,code,message);}
     private static ApiException missing(){return new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","Không tìm thấy hồ sơ thuộc tài khoản của bạn.");}

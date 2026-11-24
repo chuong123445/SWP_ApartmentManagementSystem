@@ -25,3 +25,11 @@ V72 thêm unilateral_state defaultNONE và unilateral_json nullable; không sử
 TypeScript/174frontend/productionbuildPASS,6MCPdesktop1440/mobile390 cho gửi/ phản đối/thu hồi; ảnh mobile đã xem. Ca mobile final trả409, không tự retry; reload và xác nhận lại với ảnh đã lưu thì thành công. Mỗi final có ack/hiện trạng/chứng cứ; không phát OTP ký, không có chữ ký tenant giả. Browser dùng APIfixture; backend DBtestancu_auto_rent_20261114 và sender mock, không thao tác hợp đồng thật.
 
 Local branchduy/withdraw-dossiers-unresponsive-tenant, không push/main. Restartbackend để chạy V71/V72 và reloadfrontend. Tiếp tục dùng CHANGELOG_NGHIEP_VU.md và WORK_PROGRESS cho hashes/evidence.
+
+## Override 24/11/2026 — 14 ngày và tự kết thúc
+
+Yêu cầu mới thay thế thời gian 30 ngày và bước xác nhận thu hồi thủ công cho luồng tự động. Thông báo mới của đúng chủ nhà có hạn phản hồi 14 × 24 giờ từ lúc gửi. Scheduler kiểm tra mỗi phút; hết hạn, nếu còn PENDING và không có phản đối/rút thông báo, hợp đồng ACTIVE chuyển ENDED (UNILATERAL_NO_RESPONSE), phòng OCCUPIED về VACANT. Không thay đổi trạng thái xuất bản, công nợ, ngày kết thúc gốc, tiền cọc hoặc chữ ký; không tạo biên bản bàn giao giả. Sự kiện AUTO_END_UNILATERAL có nhãn Hệ thống và thông báo đến cả hai bên. Khóa yêu cầu/hợp đồng/phòng và kiểm tra quyền giữ phòng khác trước khi mở lại; xung đột được ghi log và chờ xử lý. Hóa đơn nháp và đã gửi được giữ nguyên.
+
+Hạn của thông báo đã phát hành được giữ theo responseDeadline đã lưu, không rút ngắn âm thầm. Phản đối trước khi tác vụ kết thúc được khóa và kiểm tra sẽ chặn kết thúc tự động. Đề nghị kết thúc sớm thông thường vẫn do cả chủ và khách đề xuất, cần bên kia chấp thuận và bàn giao hai chữ ký; không tự chấp thuận.
+
+GET /api/v1/me/contract-exit-requests: danh sách đề nghị PENDING trên hợp đồng ACTIVE của đúng hai bên, gồm contractId/apartmentTitle/kind (MUTUAL hoặc UNILATERAL)/requiresResponse/reason/responseDeadline. Không trả hồ sơ hay công nợ của bên thứ ba, Cache-Control no-store. Thông báo kết thúc có tiêu đề theo thao tác và mở trực tiếp phần xử lý của hợp đồng.

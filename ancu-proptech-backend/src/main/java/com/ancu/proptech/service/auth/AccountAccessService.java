@@ -9,9 +9,14 @@ import org.springframework.stereotype.Service;
 public class AccountAccessService {
     private final AccountVerificationPolicy verification;
     private final AuthService auth;
+    private final OwnerRoleReconciliationService ownerReconciliation;
     public AuthAccount account(Jwt jwt) { return auth.authenticate(jwt); }
     public AuthAccount customer(Jwt jwt) { return require(jwt, AuthAccount.Role.CUSTOMER); }
-    public AuthAccount owner(Jwt jwt) { return require(jwt, AuthAccount.Role.OWNER); }
+    public AuthAccount owner(Jwt jwt) {
+        AuthAccount account = auth.authenticate(jwt);
+        ownerReconciliation.reconcile(account);
+        return require(jwt, AuthAccount.Role.OWNER);
+    }
     public AuthAccount admin(Jwt jwt) {
         AuthAccount account = auth.authenticate(jwt);
         if (!account.hasRole(AuthAccount.Role.ADMIN) || account.getStatus() != AuthAccount.Status.ACTIVE)

@@ -38,8 +38,7 @@ public class SelectionCancellationService {
    if(root!=null&&root.getState()==SelectionCancellation.State.PENDING)throw conflict("CANCELLATION_PENDING","Đang có đề nghị hủy chờ phản hồi.");
    if(root==null){root=new SelectionCancellation();root.setRequestId(id);root.setCreatedAt(now());}
    root.setProposerId(actor.getId());root.setReason(reason);root.setResponderId(null);root.setResponseReason(null);
-   if(signatureCount(s)==0){finish(s,reason);root.setState(SelectionCancellation.State.CANCELLED);action="DIRECT_CANCELLED";}
-   else {root.setState(SelectionCancellation.State.PENDING);action="PROPOSED";}
+   root.setState(SelectionCancellation.State.PENDING);action="PROPOSED";
   }else{
    if(root==null||root.getState()!=SelectionCancellation.State.PENDING)throw conflict("NO_PENDING_CANCELLATION","Không có đề nghị hủy đang chờ phản hồi.");
    boolean proposer=actor.getId().equals(root.getProposerId());
@@ -59,22 +58,17 @@ public class SelectionCancellationService {
   }
   return view(after,actor.getId());
  }
- public static final java.time.Duration CANCELLATION_TIMEOUT = java.time.Duration.ofHours(48);
+ public static final java.time.Duration CANCELLATION_TIMEOUT = java.time.Duration.ofHours(72);
 
  @Transactional
  public boolean expireIfTimeout(Long id) {
-  var root = cancellations.findById(id).orElse(null);
-  if (root == null || root.getState() != SelectionCancellation.State.PENDING) return false;
-  if (!now().isAfter(root.getUpdatedAt().plus(CANCELLATION_TIMEOUT))) return false;
-  var r = requests.findById(id).orElse(null);
-  if (r == null) return false;
-  var d = drafts.findByRentalRequestId(id).orElse(null);
-  var c = d == null ? null : d.getContract();
-  var s = new Selection(r, d, c, root);
-  if (!eligible(s)) return false;
+  var initial=requests.findById(id).orElse(null);if(initial==null)return false;
+  var s=load(initial.getApartment().getProperty().getOwner(),id,true);
+  var root=s.cancellation();var r=s.request();
+  if(root==null||root.getState()!=SelectionCancellation.State.PENDING||now().isBefore(root.getUpdatedAt().plus(CANCELLATION_TIMEOUT))||!eligible(s))return false;
 
   String before = json.writeValueAsString(snapshot(s));
-  String autoReason = "Tự động chấp thuận hủy do quá 48 giờ không có phản hồi.";
+  String autoReason = "Tự động chấp thuận hủy do quá 3 ngày không có phản hồi.";
   finish(s, autoReason);
   root.setState(SelectionCancellation.State.CANCELLED);
   root.setResponderId(0L);
@@ -104,20 +98,10 @@ public class SelectionCancellationService {
   return true;
  }
 
- @Transactional
- public void expirePendingCancellations() {
-  for (var c : cancellations.findByState(SelectionCancellation.State.PENDING)) {
-   try {
-    expireIfTimeout(c.getRequestId());
-   } catch (Exception ignored) {}
-  }
- }
+ @Transactional(readOnly=true)
+ public List<Long> pendingCancellationIds(){return cancellations.findByState(SelectionCancellation.State.PENDING).stream().map(SelectionCancellation::getRequestId).toList();}
 
  private Selection load(AuthAccount actor,Long id,boolean lock){
-  var preCheck = cancellations.findById(id).orElse(null);
-  if (preCheck != null && preCheck.getState() == SelectionCancellation.State.PENDING && now().isAfter(preCheck.getUpdatedAt().plus(CANCELLATION_TIMEOUT))) {
-   expireIfTimeout(id);
-  }
   var r=requests.findById(id).orElseThrow(SelectionCancellationService::missing);party(r,actor.getId());
   if(lock){r=requests.findForOwnerUpdate(id,r.getApartment().getProperty().getOwner().getId()).orElseThrow(SelectionCancellationService::missing);entities.refresh(r);party(r,actor.getId());}
   else entities.refresh(r);

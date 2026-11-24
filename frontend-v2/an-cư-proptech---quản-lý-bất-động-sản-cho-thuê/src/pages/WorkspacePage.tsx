@@ -11,7 +11,7 @@ import { useEffect } from 'react';
 
 // Owner navigation retains shared workspace data while switching management tabs.
 export function WorkspacePage() {
-  const { user, logout, isLoggingOut, error } = useAuth();
+  const { user, logout, isLoggingOut, error, reloadUser } = useAuth();
   const [params] = useSearchParams();
   const canManage = hasManagementRole(user!);
   const navigation = useWorkspaceNavigation(canManage);
@@ -39,7 +39,15 @@ export function WorkspacePage() {
     if (!workspace.inventoryLoading && !workspace.inventoryError && propertyId !== 'all' && !workspace.buildings.some(p => p.id === propertyId && p.legalStatus==='APPROVED'))
       navigation.setSelectedBuildingId('all');
   }, [workspace.inventoryLoading, workspace.inventoryError, workspace.buildings, propertyId]);
+  useEffect(() => {
+    if (!workspace.inventoryLoading && !workspace.inventoryError && workspace.buildings.filter(p => p.legalStatus === 'APPROVED').length === 0 && !user?.roles.includes('ADMIN')) {
+      reloadUser?.();
+    }
+  }, [workspace.inventoryLoading, workspace.inventoryError, workspace.buildings, user, reloadUser]);
   if (params.get('tab') === 'home') return <Navigate to="/" replace />;
+  if (!workspace.inventoryLoading && !workspace.inventoryError && workspace.buildings.filter(p => p.legalStatus === 'APPROVED').length === 0 && !user?.roles.includes('ADMIN')) {
+    return <Navigate to="/" replace />;
+  }
   return (
     <ManagementLayout
       account={user!}

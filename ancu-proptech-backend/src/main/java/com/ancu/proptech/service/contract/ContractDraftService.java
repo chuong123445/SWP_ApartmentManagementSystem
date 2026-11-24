@@ -60,8 +60,11 @@ public class ContractDraftService {
     public boolean expireIfSigningTimeout(Long contractId) {
         var d = drafts.findByContractId(contractId).orElse(null);
         if (d == null) return false;
-        var c = d.getContract();
-        if (c.getStatus() != RentalContract.Status.DRAFT) return false;
+        var selected=d.getRentalRequest();
+        requests.findForOwnerUpdate(selected.getId(),selected.getApartment().getProperty().getOwner().getId()).orElseThrow(ContractDraftService::notFound);
+        entityManager.refresh(selected);
+        var c=contracts.lockById(contractId).orElseThrow(ContractDraftService::notFound);entityManager.refresh(c);entityManager.refresh(d);
+        if (c.getStatus() != RentalContract.Status.DRAFT || cancellationGuard.state(selected.getId()).equals("PENDING")) return false;
         boolean ownerSigned = d.getOwnerSignedAt() != null;
         boolean customerSigned = d.getCustomerSignedAt() != null;
         if (ownerSigned == customerSigned) return false;

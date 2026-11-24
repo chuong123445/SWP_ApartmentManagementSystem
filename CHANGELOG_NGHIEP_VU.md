@@ -127,3 +127,13 @@
 - 24/11/2026 — Nhận tiền mặt hóa đơn: API dành cho đúng chủ nhà, khóa giao dịch và chống xác nhận trùng; cập nhật công nợ và ghi một phiếu thu đã xác nhận trong cùng transaction, lưu người xác nhận/ghi chú, không cộng số dư SePay. Migration V75 giữ dữ liệu chuyển khoản. 5 billing (có đồng thời), 26 SePay (có webhook đến muộn), 6 sổ quỹ trên SQL test riêng PASS. Commit: Xác nhận tiền mặt và ghi sổ thu hóa đơn đồng bộ.
 
 - 24/11/2026 — Giao diện thu tiền mặt: Chi tiết hóa đơn có nút Đã nhận tiền mặt, chọn ngày/ghi chú và xác nhận đã nhận đủ; cập nhật danh sách hết nợ, khách thấy phương thức tiền mặt. 175 frontend unit, TypeScript/build và 6 E2E desktop/mobile PASS; ảnh mobile đã xem. Commit: Thêm xác nhận đã nhận tiền mặt trong chi tiết hóa đơn.
+
+- 24/11/2026 — Chọn mẫu hợp đồng: bỏ lựa chọn Mặt bằng kinh doanh và Ở ghép / Share phòng; chỉ còn Nhà nguyên căn, Chung cư / Căn hộ, Phòng trọ. TypeScript/build PASS; không thay đổi dữ liệu hợp đồng cũ. Commit: Bỏ hai mẫu hợp đồng kinh doanh và ở ghép khỏi giao diện.
+
+- 24/11/2026 — Kết thúc đơn phương: thông báo mới chờ 14 ngày, hết hạn không phản đối tự kết thúc và mở lại phòng; giữ công nợ/chữ ký, thông báo rõ cả hai bên, API danh sách đề nghị chờ riêng tư. Hạn thông báo đã gửi giữ nguyên. 34 ca backend SQL riêng PASS qua hai lượt (lượt đầu 1 lỗi đồng hồ fixture, đã sửa và chạy lại PASS); giao diện đang làm.
+
+- 24/11/2026 — Sau backend 76a8f106: đề nghị kết thúc thuê hiện đầu danh sách hợp đồng, Phản hồi ngay cho đúng bên; thông báo mở thẳng phần xử lý, nhãn 14 ngày và tự mở lại phòng. 181 FE, TypeScript/build PASS; 4 Playwright inbox/deeplink hai vai trò × desktop/mobile + 6 kịch bản đơn phương PASS bằng API fixture; không ghi appDB.
+
+- 24/11/2026 — Hủy trước thuê: đã nhận khách thì luôn gửi đề nghị, kể cả chưa ký/chưa lập hợp đồng; chờ bên kia phản hồi, sau 3 ngày không trả lời mới tự hủy. Khóa giao dịch, không đổi trạng thái qua GET, chặn bộ đếm hết hạn ký 48h hủy trong lúc chờ đề nghị. 89 backend (76 hợp đồng +13 hủy), 181 FE/TypeScript/build và 6 kịch bản Playwright hủy desktop/mobile PASS. Hai lượt browser đầu sai fixture vai trò/URL redirect, đã sửa fixture và chạy lại PASS; không sửa dữ liệu đã hủy trong appDB. Backend14ngày76a8f106, UI3784b896.
+
+- 24/11/2026 — Đồng bộ vai trò chủ nhà: chỉ tài khoản có ít nhất một tài sản được duyệt mới có quyền OWNER; tài khoản không còn tài sản hợp lệ trong danh sách tự động đồng bộ về CUSTOMER, ẩn liên kết Trang quản lý và chặn vào /app. 16 Auth integration tests, 4 unit tests OwnerRoleReconciliation, 181 frontend tests và build đạt 100%.

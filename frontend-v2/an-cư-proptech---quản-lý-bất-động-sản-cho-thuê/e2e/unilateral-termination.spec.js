@@ -34,7 +34,7 @@ const scenario=async(page,baseURL,pdf,screenshot)=>{
    });
    await p.goto(baseURL+'/contracts/42');await p.getByRole('button',{name:'Kết thúc thuê / bàn giao cư trú',exact:true}).click();
    const panel=p.getByRole('region',{name:'Kết thúc khi người thuê mất liên lạc'});await panel.waitFor();
-   const action=mode==='propose'?'Gửi thông báo chờ 30 ngày':mode==='object'?'Phản đối kết thúc đơn phương':'Xác nhận thu hồi phòng và kết thúc';
+   const action=mode==='propose'?'Gửi thông báo chờ 14 ngày':mode==='object'?'Phản đối kết thúc đơn phương':'Xác nhận thu hồi phòng và kết thúc';
    await panel.getByRole('button',{name:action,exact:true}).click();let form=panel.getByRole('form',{name:'Xử lý kết thúc đơn phương'});
    const fill=async(reuse=false)=>{
     if(mode==='propose'){await form.getByLabel('Lý do người thuê mất liên lạc',{exact:true}).fill('Không liên lạc được, đã rời phòng.');await form.getByLabel('Căn cứ / điều khoản hợp đồng để kết thúc',{exact:true}).fill('Điều khoản báo trước và chấm dứt đã ký.');}
@@ -55,9 +55,9 @@ const scenario=async(page,baseURL,pdf,screenshot)=>{
     await panel.getByRole('button',{name:'Tải lại trạng thái trước khi xác nhận',exact:true}).click();await panel.getByRole('button',{name:action,exact:true}).click();form=panel.getByRole('form',{name:'Xử lý kết thúc đơn phương'});await fill(true);
     if(screenshot)await p.screenshot({path:screenshot,fullPage:true});await form.getByRole('button',{name:'Xác nhận',exact:true}).click();
    }
-   if(mode==='propose'){await panel.getByText('Đang chờ phản hồi.',{exact:false}).waitFor();if(await panel.getByRole('button',{name:'Xác nhận thu hồi phòng và kết thúc',exact:true}).count())throw Error('Premature finalize');}
+   if(mode==='propose'){await panel.getByText('Đang chờ phản hồi',{exact:false}).waitFor();if(await panel.getByRole('button',{name:'Xác nhận thu hồi phòng và kết thúc',exact:true}).count())throw Error('Premature finalize');}
    else if(mode==='object'){await panel.getByText('Người thuê đã phản đối:',{exact:false}).waitFor();if(await panel.getByRole('button',{name:'Xác nhận thu hồi phòng và kết thúc',exact:true}).count())throw Error('Objection did not block');}
-   else await panel.getByText('Chủ nhà đã xác nhận thu hồi phòng và kết thúc đơn phương',{exact:false}).waitFor();
+   else await panel.getByText('Hợp đồng đã kết thúc đơn phương',{exact:false}).waitFor();
    if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Horizontal overflow');
    if(errors.length||unknown.length)throw Error(JSON.stringify({errors,unknown}));results.push({width,mode,state,writes,uploads,staleRecovered:staleUsed});
   }finally{await ctx.close();}

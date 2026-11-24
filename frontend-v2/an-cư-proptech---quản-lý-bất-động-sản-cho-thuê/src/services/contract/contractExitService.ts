@@ -35,3 +35,6 @@ export function signHandover(id:string,sourceVersion:string,contentHash:string,s
 export async function getHandoverPdf(id:string,signal?:AbortSignal){
  const response=await apiFetch(`${path(id)}/pdf`,{cache:'no-store',signal});if(!response.ok)throw await readApiError(response);return response.blob();
 }
+
+export interface PendingExitRequest {contractId:string;apartmentTitle:string;kind:"MUTUAL"|"UNILATERAL";requiresResponse:boolean;reason:string;responseDeadline:string|null}
+export const getPendingExitRequests=(signal?:AbortSignal)=>request<PendingExitRequest[]>("/api/v1/me/contract-exit-requests",{signal});

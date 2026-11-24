@@ -27,6 +27,7 @@ import java.util.*;
 @Service @RequiredArgsConstructor
 public class AuthService {
     private final AccountVerificationPolicy verification;
+    private final OwnerRoleReconciliationService ownerReconciliation;
     public static final String ISSUER = "ancu-proptech";
     public static final String AUDIENCE = "ancu-react";
     public record LoginResult(TokenResponse tokens, String refreshToken, long refreshMaxAge) {}
@@ -100,26 +101,30 @@ public class AuthService {
         });
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthAccount authenticate(Jwt jwt) {
         try {
             Long sessionId = Long.valueOf(jwt.getClaimAsString("sid"));
             AuthSession session = sessions.findById(sessionId).orElseThrow(AuthService::unauthorized);
             requireLiveSession(session);
             if (!session.getAccount().getId().toString().equals(jwt.getSubject())) throw unauthorized();
-            return session.getAccount();
+            AuthAccount account = session.getAccount();
+            ownerReconciliation.reconcile(account);
+            return account;
         } catch (IllegalArgumentException | NullPointerException e) {
             throw unauthorized();
         }
     }
 
     public AuthUserResponse user(AuthAccount account) {
+        ownerReconciliation.reconcile(account);
         return new AuthUserResponse(account.getId(), account.getEmail(), account.getFullName(),
                 account.roleNames(), account.getStatus().name(),
                 verification.isVerified(account) ? "VERIFIED" : "UNVERIFIED", account.getVersion());
     }
 
     private LoginResult issue(AuthSession session) {
+        ownerReconciliation.reconcile(session.getAccount());
         byte[] bytes = new byte[32];
         random.nextBytes(bytes);
         String rawToken = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
