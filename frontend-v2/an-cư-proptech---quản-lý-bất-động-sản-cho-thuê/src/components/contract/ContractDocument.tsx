@@ -104,9 +104,9 @@ export function ContractDocument({ draft, onUpdated, onRemoved }: { draft: Contr
     )}
     {canSign && <section className="p-4 sm:p-5 border border-emerald-200 rounded-xl space-y-4 bg-white">
       <h3 className="font-bold flex items-center gap-2"><PenLine size={18} />Ký xác nhận · {isOwner ? 'Bên cho thuê (Bên A)' : 'Bên thuê (Bên B)'}</h3>
-      <p className="text-sm text-slate-600">Đọc bản PDF ở trên, sau đó vẽ chữ ký của bạn vào khung. Nội dung sẽ bị khóa ngay khi có chữ ký đầu tiên.</p>
-      <SignaturePad key={`${draft.id}-${draft.version}`} disabled={busy} onChange={setSignature} />
-      <label className="flex gap-3 items-start text-sm"><input type="checkbox" checked={consent} disabled={busy} onChange={e => setConsent(e.target.checked)} className="mt-1" />Tôi đã đọc bản PDF và đồng ý toàn bộ nội dung hợp đồng; xác nhận sử dụng chữ ký vừa vẽ.</label>
+      <p className="text-sm text-slate-600">Đọc bản PDF ở trên, sau đó vẽ chữ ký hoặc chọn gõ họ tên để tạo chữ ký. Nội dung sẽ bị khóa ngay khi có chữ ký đầu tiên.</p>
+      <SignaturePad key={`${draft.id}-${draft.version}`} disabled={busy} onChange={setSignature} defaultName={isOwner ? draft.snapshot.owner.fullName : draft.snapshot.customer.fullName} />
+      <label className="flex gap-3 items-start text-sm"><input type="checkbox" checked={consent} disabled={busy} onChange={e => setConsent(e.target.checked)} className="mt-1" />Tôi đã đọc bản PDF và đồng ý toàn bộ nội dung hợp đồng; xác nhận sử dụng chữ ký trên.</label>
       <SignatureOtpConfirmation otpRequired={draft.signing?.otpRequired ?? true} key={`${draft.id}-${draft.version}-${signature}-${consent}`} disabled={busy || !signature || !consent || !pdfUrl} label="Xác nhận ký hợp đồng" request={() => requestContractSignatureOtp(draft, signature!)} confirm={sign} />
     </section>}
     <p className="rounded-lg bg-slate-50 p-3 text-sm">{externalDepositNotice}</p>
