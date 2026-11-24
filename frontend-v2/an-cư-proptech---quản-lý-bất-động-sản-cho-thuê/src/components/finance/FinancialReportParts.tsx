@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
+import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { BarChart3 } from 'lucide-react';
 import { billingMoney } from '@/services/billing/billingService';
 import type { OwnerFinancialReport } from '@/hooks/useOwnerFinancialSummary';
@@ -142,51 +142,78 @@ export function FinancialCard({ label, value, note, icon }: { label: string; val
 }
 
 export function FinancialChart({ months, mode = 'comparison' }: { months: FinancialMonth[]; mode?: 'cash' | 'comparison' }) {
-  const rows = months.map(m => ({
-    period: m.period,
-    allocated: Number(m.allocatedRentAmount ?? '0') / 1000000,
-    collected: Number(m.receipts.totalAmount) / 1000000,
-  }));
-  const hasActivity = rows.some(row => (mode === 'comparison' && row.allocated !== 0) || row.collected !== 0);
-  const yDomain = hasActivity ? ([0, 'auto'] as const) : ([0, 1] as const);
+  const rows = months.map(m => {
+    const paid = Number(m.invoices.paidInvoiceAmount ?? '0') / 1000000;
+    const unpaid = Number(m.invoices.unpaidInvoiceAmount ?? '0') / 1000000;
+    const billed = Number(m.invoices.billedAmount ?? '0') / 1000000;
+    const collected = Number(m.receipts.totalAmount ?? '0') / 1000000;
+    return {
+      period: m.period,
+      paid,
+      unpaid,
+      billed,
+      collected,
+    };
+  });
+  const hasActivity = rows.some(row => (mode === 'comparison' && (row.paid !== 0 || row.unpaid !== 0)) || row.collected !== 0);
+  const maxVal = Math.max(0, ...rows.map(r => Math.max(r.paid + r.unpaid, r.collected)));
+  const yDomain = maxVal > 0 ? ([0, 'auto'] as const) : ([0, 1] as const);
 
   return (
     <section className="app-panel p-4 sm:p-5">
       <h2 className="font-bold text-base">
-        {mode === 'cash' ? 'Tiền thực thu theo tháng' : 'Tiền thuê phân bổ và thực thu theo tháng'}
+        {mode === 'cash' ? 'Tiền thực thu theo tháng' : 'Tổng hóa đơn phát sinh và dòng tiền thực thu theo tháng'}
       </h2>
       <p className="text-xs leading-relaxed text-slate-600 mt-1 mb-4">
         {mode === 'cash'
           ? 'Theo ngày ghi nhận thanh toán, gồm hóa đơn và phiếu bổ sung. Đơn vị: triệu đồng.'
-          : 'Tiền thuê phân bổ từ hóa đơn đã gửi theo từng tháng thuê; thực thu theo ngày thanh toán, gồm cả điện nước và phiếu bổ sung. Hai số liệu có thể khác nhau. Đơn vị: triệu đồng.'}
+          : 'Cột chồng thể hiện tổng giá trị hóa đơn phát sinh theo kỳ (gồm tiền phòng và điện nước/tiện ích, chia theo Đã thu và Còn nợ); đường biểu diễn dòng tiền thực tế nhận được theo ngày thanh toán. Đơn vị: triệu đồng.'}
       </p>
       {rows.length > 0 ? (
         <>
           <div className="h-64 w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={rows} margin={{ left: 0, right: 8 }}>
+              <ComposedChart data={rows} margin={{ left: 0, right: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="period" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 10 }} width={42} allowDecimals={false} domain={yDomain} />
-                <Tooltip />
+                <Tooltip
+                  formatter={(value: any, name: any) => [
+                    `${Number(value).toLocaleString('vi-VN', { maximumFractionDigits: 2 })} triệu đ`,
+                    name,
+                  ]}
+                />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                {mode === 'comparison' && (
-                  <Bar dataKey="allocated" name="Tiền thuê phân bổ" fill="#1d4ed8" radius={[3, 3, 0, 0]} />
+                {mode === 'comparison' ? (
+                  <>
+                    <Bar dataKey="paid" name="Hóa đơn đã thu" stackId="invoice" fill="#16a34a" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="unpaid" name="Hóa đơn còn nợ" stackId="invoice" fill="#ea580c" radius={[3, 3, 0, 0]} />
+                    <Line
+                      type="monotone"
+                      dataKey="collected"
+                      name="Dòng tiền thực thu"
+                      stroke="#2563eb"
+                      strokeWidth={2.5}
+                      dot={{ r: 3, fill: '#2563eb' }}
+                      activeDot={{ r: 5 }}
+                    />
+                  </>
+                ) : (
+                  <Bar dataKey="collected" name="Tiền thực thu" fill="#0284c7" radius={[3, 3, 0, 0]} />
                 )}
-                <Bar dataKey="collected" name="Tiền thực thu" fill="#0284c7" radius={[3, 3, 0, 0]} />
-              </BarChart>
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
           <p className="text-xs text-slate-500 mt-3">
             {hasActivity
               ? 'Biểu đồ làm tròn để hiển thị; số tiền chi tiết trong bảng giữ nguyên độ chính xác.'
-              : 'Chưa phát sinh tiền thuê hoặc tiền thực thu trong kỳ này. Số tiền chi tiết trong bảng giữ nguyên độ chính xác.'}
+              : 'Chưa phát sinh hóa đơn hoặc dòng tiền thực thu trong kỳ này. Số tiền chi tiết trong bảng giữ nguyên độ chính xác.'}
           </p>
         </>
       ) : (
         <div className="grid justify-items-center gap-2 rounded-xl bg-brand-50 px-4 py-8 text-center text-sm text-slate-600">
           <BarChart3 size={24} className="text-brand-700" aria-hidden="true" />
-          {mode === 'cash' ? 'Chưa có tiền thực thu trong kỳ hiển thị.' : 'Chưa có tiền thuê phân bổ hoặc tiền thực thu trong kỳ hiển thị.'}
+          {mode === 'cash' ? 'Chưa có tiền thực thu trong kỳ hiển thị.' : 'Chưa có hóa đơn phát sinh hoặc tiền thực thu trong kỳ hiển thị.'}
         </div>
       )}
     </section>

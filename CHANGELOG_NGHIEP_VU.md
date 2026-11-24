@@ -7,7 +7,8 @@
 | 21/11/2026 | RA01 | Chặn ngày bắt đầu đã qua ở cả phát OTP và ký; OTP qua nửa đêm không ký được, giữ nguyên chữ ký cũ. | 56 backend đạt; 4 biên ngày chạy lại đạt; 4 Playwright Owner/Customer desktop/mobile đạt. | `5f5f0082` |
 | 21/11/2026 | RA02 | Ký đủ trước ngày thuê: giữ phòng, hiển thị chờ hiệu lực, tự kiểm tra/chuyển đúng ngày; hỗ trợ hủy song phương khi đang chờ. | 73 backend đạt qua các lượt; 165 frontend/TypeScript/build và 4 Playwright desktop/mobile đạt. | `fdc5caa7` |
 | 21/11/2026 | RA03 | Chặn điện nước khi hợp đồng chưa bắt đầu hoặc kỳ vượt tháng hiện tại, dùng chung cho chỉ số/tạo/gửi/AI; nháp cũ vẫn hủy được. | 77 backend đạt, 1 scheduler skipped; 4 Playwright desktop/mobile đạt; RENT D-7 giữ nguyên. | `b5d22553` |
-| 25/11/2026 | FIN01 | Sửa biểu đồ báo cáo tài chính bị lỗi domain [0, 0] không hiện cột; chuẩn hóa màu SVG cột, tăng chiều rộng ô chọn tháng và đồng nhất phạm vi tiền nhận theo kỳ. | 7/7 backend OwnerFinancialSummaryIntegrationTests đạt; 182/182 frontend tests và Vite build đạt. | `edbb1a69` |
+| 25/11/2026 | FIN01 | Sửa biểu đồ báo cáo tài chính bị lỗi domain [0, 0] không hiện cột; chuẩn hóa màu SVG cột, tăng chiều rộng ô chọn tháng và đồng nhất phạm vi tiền nhận theo kỳ. | 7/7 backend OwnerFinancialSummaryIntegrationTests đạt; 182/182 frontend tests và Vite build đạt. | `f849006c` |
+| 25/11/2026 | FIN02 | Chuyển đổi biểu đồ báo cáo tài chính sang Combo Chart (Cột chồng Đã thu & Còn nợ + Đường Dòng tiền thực thu). | 182/182 frontend tests và Vite build đạt. | `c75323e8` |
 
 ## Cần cân nhắc
 
@@ -148,3 +149,5 @@
 - 25/11/2026 — Lập biên bản bàn giao: cố định ngày bàn giao là ngày lập biên bản (hôm nay), ẩn ô chọn ngày trên biểu mẫu, hiển thị ngày trên biên bản PDF bàn giao. 29/29 ContractExitIntegrationTests và 181 frontend tests PASS.
 
 - 25/11/2026 — Rà soát nút hủy và kết thúc sớm: xóa hoàn toàn nút Hủy trên chi tiết hợp đồng chưa active (ContractDocument); hợp đồng đang trong thời hạn (ACTIVE) có nút Đề nghị kết thúc sớm trực tiếp; chỉ hiện nút Biên bản bàn giao / ký khi đã tạo biên bản bàn giao. 182 frontend tests và build PASS. Commit: Đồng bộ nút kết thúc sớm và ẩn nút hủy trên hợp đồng chưa active.
+
+- 25/11/2026 — Quy trình đăng tải tài sản 3 bước: bỏ bước 4 (Xem trước & gửi); ở bước 3 (Căn/phòng) có nút Gửi hồ sơ kiểm duyệt trực tiếp kèm ghi chú duyệt; 182 frontend tests, TypeScript/build và E2E PASS. Commit: Rút gọn quy trình đăng tải tài sản về 3 bước và gửi duyệt tại bước Căn phòng.
