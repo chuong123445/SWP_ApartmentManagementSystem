@@ -8,7 +8,8 @@
 | 21/11/2026 | RA02 | Ký đủ trước ngày thuê: giữ phòng, hiển thị chờ hiệu lực, tự kiểm tra/chuyển đúng ngày; hỗ trợ hủy song phương khi đang chờ. | 73 backend đạt qua các lượt; 165 frontend/TypeScript/build và 4 Playwright desktop/mobile đạt. | `fdc5caa7` |
 | 21/11/2026 | RA03 | Chặn điện nước khi hợp đồng chưa bắt đầu hoặc kỳ vượt tháng hiện tại, dùng chung cho chỉ số/tạo/gửi/AI; nháp cũ vẫn hủy được. | 77 backend đạt, 1 scheduler skipped; 4 Playwright desktop/mobile đạt; RENT D-7 giữ nguyên. | `b5d22553` |
 | 25/11/2026 | FIN01 | Sửa biểu đồ báo cáo tài chính bị lỗi domain [0, 0] không hiện cột; chuẩn hóa màu SVG cột, tăng chiều rộng ô chọn tháng và đồng nhất phạm vi tiền nhận theo kỳ. | 7/7 backend OwnerFinancialSummaryIntegrationTests đạt; 182/182 frontend tests và Vite build đạt. | `f849006c` |
-| 25/11/2026 | FIN02 | Chuẩn hóa Combo Chart trải đều doanh thu tiền phòng phân bổ và tiền điện nước theo từng tháng sử dụng thực tế. | 182/182 frontend tests và Vite build đạt. | `d9144b84` |
+| 25/11/2026 | FIN02 | Chuẩn hóa Combo Chart trải đều doanh thu tiền phòng phân bổ và tiền điện nước theo từng tháng sử dụng thực tế. | 182/182 frontend tests và Vite build đạt. | `577edb66` |
+| 25/11/2026 | BIL01 | Ẩn khối công thức toán 'Cách tính tiền thuê' rườm rà; đổi tên cột thành 'Chu kỳ' và hiển thị số tháng chu kỳ rõ ràng trên chi tiết hóa đơn. | 182/182 frontend tests và Vite build đạt. | `cb5badaa` |
 
 ## Cần cân nhắc
 
