@@ -165,6 +165,26 @@ class BillingIntegrationTests {
             .andExpect(jsonPath("$.maintenanceCharges[0].period").value("2026-10"));
     }
 
+
+    @Test void maintenanceReportBindsOriginalLeaseAndSharedCostQueuesOnlyAfterTenantConsent()throws Exception {
+        String created=mvc.perform(post("/api/v1/owner/maintenance-tickets").header("Authorization","Bearer "+ownerToken)
+            .contentType("application/json").content("{\"apartmentId\":"+apartment.getId()+",\"title\":\"Sửa điều hòa\",\"description\":\"Không mát\",\"category\":\"AIRCON\",\"priority\":\"NORMAL\"}"))
+            .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String id=JsonPath.read(created,"$.id");
+        var ticket=repairTickets.findById(Long.valueOf(id)).orElseThrow();
+        assertEquals(contract.getId(),ticket.getBillingContract().getId());
+        ticket.setStatus(com.ancu.proptech.model.maintenance.MaintenanceTicket.Status.IN_PROGRESS);repairTickets.saveAndFlush(ticket);
+        mvc.perform(post("/api/v1/owner/maintenance-tickets/"+id+"/actions").header("Authorization","Bearer "+ownerToken)
+            .contentType("application/json").content("{\"version\":"+ticket.getVersion()+",\"action\":\"READY\",\"note\":\"Đã thay linh kiện\",\"actualCost\":\"600000\",\"customerCost\":\"200000\",\"costResponsibility\":\"SHARED\",\"billingPeriod\":\"2026-11\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.billingPeriod").value("2026-11"));
+        assertTrue(repairCharges.findById(ticket.getId()).isEmpty());
+        confirmRepair(ticket);
+        var charge=repairCharges.findById(ticket.getId()).orElseThrow();
+        assertEquals(0,new BigDecimal("200000").compareTo(charge.getCustomerCost()));
+        assertEquals(0,new BigDecimal("600000").compareTo(charge.getActualCost()));
+        assertEquals("2026-11",charge.getPeriod());
+    }
+
     @BeforeEach void fixture(){
         owner=account(AuthAccount.Role.OWNER);tenant=account(AuthAccount.Role.CUSTOMER);otherOwner=account(AuthAccount.Role.OWNER);otherTenant=account(AuthAccount.Role.CUSTOMER);
         property=new Property();property.setOwner(owner);property.setName("Billing test");property.setAddress("Test address");property.setCity("Test city");property.setDistrict("District");property.setWard("Ward");property.setApprovalStatus(Property.ApprovalStatus.APPROVED);property=properties.saveAndFlush(property);
