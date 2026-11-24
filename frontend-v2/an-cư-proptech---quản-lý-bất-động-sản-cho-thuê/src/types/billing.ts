@@ -1,3 +1,11 @@
+export interface MaintenanceCharge {
+  ticketId: string; title: string; period: string;
+  actualCost: string; ownerCost: string; customerCost: string;
+}
+export interface MaintenanceCharges {
+  maintenanceCharges?: MaintenanceCharge[];
+  maintenanceAmount?: string;
+}
 export interface Tenancy {
   rentCycleMonths?:number;
   contractDeposit?: string | null;
@@ -12,7 +20,7 @@ export interface Tenancy {
 }
 export interface BillingTariff { electricityUnitPrice:string;waterUnitPrice:string;waterBillingMode:'METERED'|'PER_PERSON';internetFee:string;garbageFee:string;version:number; }
 export interface MeterReadingInput {period:string;baselineVersion:number;electricityEndReading:string;waterEndReading:string;applyPropertyRates:boolean;keepSavedTariff?:boolean;settingsVersion?:number;}
-export interface BillingContext {
+export interface BillingContext extends MaintenanceCharges {
   estimate?:{electricityQuantity:string;electricityAmount:string;waterQuantity:string;waterAmount:string;totalAmount:string}|null;
   savedReading?:{electricityEndReading:string;waterEndReading:string;propertyRates:boolean;savedAt:string}|null;
   propertyTariff?:BillingTariff|null;contractTariff?:BillingTariff;
@@ -21,8 +29,8 @@ export interface BillingContext {
   monthlyRent: string; electricityStartReading: string; electricityUnitPrice: string;
   waterStartReading: string; waterUnitPrice: string; baselineVersion: number;
 }
-export interface RentBillingContext {rentCalculation?:string|null;contractId:string;cycleMonths:number;coverageStart:string|null;coverageEnd:string|null;months:number;monthlyRent:string;totalAmount:string;dueDate:string|null;billingVersion:number;existingDraftId:string|null;hasPartialDays:boolean;automationMode:'SEND';sendAvailableFrom:string|null;canSend:boolean}
-export interface BillingInvoice {
+export interface RentBillingContext extends MaintenanceCharges {rentCalculation?:string|null;contractId:string;cycleMonths:number;coverageStart:string|null;coverageEnd:string|null;months:number;monthlyRent:string;totalAmount:string;dueDate:string|null;billingVersion:number;existingDraftId:string|null;hasPartialDays:boolean;automationMode:'SEND';sendAvailableFrom:string|null;canSend:boolean}
+export interface BillingInvoice extends MaintenanceCharges {
   rentCalculation?:string|null;
   cancellable?:boolean;cancellationBlockReason?:string|null;
   kind?:'LEGACY'|'RENT'|'UTILITY'|null;coverageStart?:string|null;coverageEnd?:string|null;rentMonths?:number;rentUnitPrice?:string|null;

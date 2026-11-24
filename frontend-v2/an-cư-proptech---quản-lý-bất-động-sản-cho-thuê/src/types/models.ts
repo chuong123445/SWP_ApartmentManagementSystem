@@ -145,6 +145,8 @@ export interface MaintenanceTicket {
   scheduledAt?: string | null;
   canConfirm?: boolean;
   repairResult?: string | null;
+  billingPeriod?: string | null;
+  billingInvoiceId?: string | null;
   actualCost?: string | null;
   customerCost?: string | null;
   costResponsibility?: string | null;
