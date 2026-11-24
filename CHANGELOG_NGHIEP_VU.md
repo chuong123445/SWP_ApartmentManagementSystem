@@ -158,3 +158,5 @@
 - 25/11/2026 — Rà soát nút hủy và kết thúc sớm: xóa hoàn toàn nút Hủy trên chi tiết hợp đồng chưa active (ContractDocument); hợp đồng đang trong thời hạn (ACTIVE) có nút Đề nghị kết thúc sớm trực tiếp; chỉ hiện nút Biên bản bàn giao / ký khi đã tạo biên bản bàn giao. 182 frontend tests và build PASS. Commit: Đồng bộ nút kết thúc sớm và ẩn nút hủy trên hợp đồng chưa active.
 
 - 25/11/2026 — Quy trình đăng tải tài sản 3 bước: bỏ bước 4 (Xem trước & gửi); ở bước 3 (Căn/phòng) có nút Gửi hồ sơ kiểm duyệt trực tiếp kèm ghi chú duyệt; 182 frontend tests, TypeScript/build và E2E PASS. Commit: Rút gọn quy trình đăng tải tài sản về 3 bước và gửi duyệt tại bước Căn phòng.
+
+- 25/11/2026 — Sửa hộp thoại kết thúc sớm: đã có đề nghị chờ thì chỉ hiện trạng thái/ngày/lý do, không mở form hay cho gửi trùng; chọn thao tác, submit và hiển thị form đều theo quyền hiện tại từ server. Giữ thông báo lỗi thực. 182 FE, TypeScript/build và 4 Playwright (chủ/khách ×1440/390; gửi mới/mở lại/đã chờ) PASS. Commit: Chặn gửi trùng đề nghị kết thúc sớm đang chờ.
