@@ -69,6 +69,122 @@ class BillingIntegrationTests {
         mvc.perform(get("/api/v1/owner/invoices").header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(3));
         mvc.perform(get("/api/v1/owner/invoices").header("Authorization","Bearer "+token(otherOwner)).param("filter","PAID")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
     }
+
+    @Autowired com.ancu.proptech.repository.maintenance.MaintenanceTicketRepository repairTickets;
+    @Autowired com.ancu.proptech.repository.billing.MaintenanceChargeRepository repairCharges;
+    @Autowired com.ancu.proptech.service.maintenance.MaintenanceService repairs;
+
+    private com.ancu.proptech.model.maintenance.MaintenanceTicket repair(String amount,String period) {
+        var ticket=new com.ancu.proptech.model.maintenance.MaintenanceTicket();
+        ticket.setProperty(property);ticket.setApartment(apartment);ticket.setReporter(tenant);ticket.setTenant(tenant);
+        ticket.setBillingContract(contract);ticket.setBillingPeriod(period);
+        ticket.setTitle("Sửa điều hòa");ticket.setDescription("Kiểm tra tiền sửa trên hóa đơn");
+        ticket.setCategory(com.ancu.proptech.model.maintenance.MaintenanceTicket.Category.AIRCON);
+        ticket.setPriority(com.ancu.proptech.model.maintenance.MaintenanceTicket.Priority.NORMAL);
+        ticket.setStatus(com.ancu.proptech.model.maintenance.MaintenanceTicket.Status.AWAITING_CONFIRMATION);
+        ticket.setCreatedAt(java.time.Instant.now());ticket.setActualCost(new BigDecimal("600000"));
+        ticket.setCustomerCost(new BigDecimal(amount));ticket.setCostResponsibility("SHARED");
+        return repairTickets.saveAndFlush(ticket);
+    }
+    private void confirmRepair(com.ancu.proptech.model.maintenance.MaintenanceTicket ticket)throws Exception {
+        mvc.perform(post("/api/v1/me/maintenance-tickets/"+ticket.getId()+"/actions")
+            .header("Authorization","Bearer "+tenantToken).contentType("application/json")
+            .content("{\"version\":"+ticket.getVersion()+",\"action\":\"CONFIRM\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("RESOLVED"));
+    }
+    @Test void maintenanceIsConfirmedBeforeBillingAndNotChargedToAnotherLease()throws Exception {
+        var ticket=repair("200000","2026-10");
+        mvc.perform(get("/api/v1/owner/contracts/"+contract.getId()+"/billing-context").header("Authorization","Bearer "+ownerToken))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.maintenanceAmount").value(org.hamcrest.Matchers.matchesPattern("0([.]0+)?")));
+        confirmRepair(ticket);
+        mvc.perform(get("/api/v1/owner/contracts/"+contract.getId()+"/billing-context").header("Authorization","Bearer "+ownerToken))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.maintenanceAmount").value(org.hamcrest.Matchers.matchesPattern("200000([.]0+)?")))
+            .andExpect(jsonPath("$.maintenanceCharges[0].ownerCost").value(org.hamcrest.Matchers.matchesPattern("400000([.]0+)?")));
+        var charge=repairCharges.findById(ticket.getId()).orElseThrow();
+        assertEquals(contract.getId(),charge.getContract().getId());
+        mvc.perform(get("/api/v1/owner/contracts/"+contract.getId()+"/billing-context").header("Authorization","Bearer "+token(otherOwner)))
+            .andExpect(status().isNotFound());
+        var invoice=create(ownerToken,body("2026-10",contract.getBillingVersion(),"1120","208"))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.maintenanceAmount").value(org.hamcrest.Matchers.matchesPattern("200000([.]0+)?")))
+            .andExpect(jsonPath("$.totalAmount").value(org.hamcrest.Matchers.matchesPattern("740000([.]0+)?"))).andReturn().getResponse().getContentAsString();
+        assertEquals(JsonPath.read(invoice,"$.id"),charge.getInvoice().getId().toString());
+    }
+    @Test void maintenanceCancellationReleasesChargeAndRecreationDoesNotDuplicateIt()throws Exception {
+        var ticket=repair("200000","2026-10");confirmRepair(ticket);
+        var first=create(ownerToken,body("2026-10",contract.getBillingVersion(),"1120","208"))
+            .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String id=JsonPath.read(first,"$.id");
+        mvc.perform(post("/api/v1/owner/invoices/"+id+"/cancel").header("Authorization","Bearer "+ownerToken)
+            .contentType("application/json").content("{\"version\":"+JsonPath.read(first,"$.version")+",\"billingVersion\":"+contract.getBillingVersion()+",\"reason\":\"Lập lại kỳ thu\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.maintenanceAmount").value(org.hamcrest.Matchers.matchesPattern("200000([.]0+)?")));
+        assertNull(repairCharges.findById(ticket.getId()).orElseThrow().getInvoice());
+        create(ownerToken,body("2026-10",contract.getBillingVersion(),"1120","208"))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.maintenanceCharges.length()").value(1))
+            .andExpect(jsonPath("$.totalAmount").value(org.hamcrest.Matchers.matchesPattern("740000([.]0+)?")));
+    }
+    @Test void maintenanceOnlyIncludesDueChargesAndRentCollectsThemOnce()throws Exception {
+        org.mockito.Mockito.doReturn(LocalDate.of(2026,10,1)).when(utilityDates).today();
+        var now=repair("200000","2026-10");confirmRepair(now);
+        var future=repair("100000","2026-11");confirmRepair(future);
+        String rent=mvc.perform(get("/api/v1/owner/contracts/"+contract.getId()+"/rent-billing-context").header("Authorization","Bearer "+ownerToken))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalAmount").value(org.hamcrest.Matchers.matchesPattern("5200000([.]0+)?")))
+            .andExpect(jsonPath("$.maintenanceCharges.length()").value(1)).andReturn().getResponse().getContentAsString();
+        mvc.perform(post("/api/v1/owner/contracts/"+contract.getId()+"/rent-invoices").header("Authorization","Bearer "+ownerToken)
+            .contentType("application/json").content("{\"billingVersion\":"+contract.getBillingVersion()+",\"coverageStart\":\"2026-10-01\",\"dueDate\":\"2026-10-05\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.monthlyRent").value(org.hamcrest.Matchers.matchesPattern("5000000([.]0+)?")))
+            .andExpect(jsonPath("$.totalAmount").value(org.hamcrest.Matchers.matchesPattern("5200000([.]0+)?")));
+        create(ownerToken,body("2026-10",contract.getBillingVersion(),"1120","208"))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.maintenanceCharges").isEmpty())
+            .andExpect(jsonPath("$.totalAmount").value(org.hamcrest.Matchers.matchesPattern("540000([.]0+)?")));
+        assertNull(repairCharges.findById(future.getId()).orElseThrow().getInvoice());
+    }
+
+
+    @Test void maintenanceConfirmedAfterDraftAutomaticallyUpdatesThatDraft()throws Exception {
+        var first=create(ownerToken,body("2026-10",contract.getBillingVersion(),"1120","208"))
+            .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String id=JsonPath.read(first,"$.id");
+        var ticket=repair("200000","2026-10");confirmRepair(ticket);
+        mvc.perform(get("/api/v1/invoices/"+id).header("Authorization","Bearer "+ownerToken))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.maintenanceCharges.length()").value(1))
+            .andExpect(jsonPath("$.totalAmount").value(org.hamcrest.Matchers.matchesPattern("740000([.]0+)?")));
+        assertEquals(id,repairCharges.findById(ticket.getId()).orElseThrow().getInvoice().getId().toString());
+    }
+    @Test void maintenanceConfirmedAfterSentWaitsForNextBillOfSameTenant()throws Exception {
+        org.mockito.Mockito.doReturn(LocalDate.of(2026,11,30)).when(utilityDates).today();
+        var first=create(ownerToken,body("2026-10",contract.getBillingVersion(),"1120","208"))
+            .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String id=JsonPath.read(first,"$.id");
+        send(ownerToken,id,((Number)JsonPath.read(first,"$.version")).longValue()).andExpect(status().isOk());
+        var ticket=repair("200000","2026-10");confirmRepair(ticket);
+        assertNull(repairCharges.findById(ticket.getId()).orElseThrow().getInvoice());
+        mvc.perform(get("/api/v1/invoices/"+id).header("Authorization","Bearer "+ownerToken))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.maintenanceCharges").isEmpty());
+        create(ownerToken,body("2026-11",contract.getBillingVersion(),"1200","212"))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.maintenanceCharges.length()").value(1))
+            .andExpect(jsonPath("$.maintenanceCharges[0].period").value("2026-10"));
+    }
+
+
+    @Test void maintenanceReportBindsOriginalLeaseAndSharedCostQueuesOnlyAfterTenantConsent()throws Exception {
+        String created=mvc.perform(post("/api/v1/owner/maintenance-tickets").header("Authorization","Bearer "+ownerToken)
+            .contentType("application/json").content("{\"apartmentId\":"+apartment.getId()+",\"title\":\"Sửa điều hòa\",\"description\":\"Không mát\",\"category\":\"AIRCON\",\"priority\":\"NORMAL\"}"))
+            .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String id=JsonPath.read(created,"$.id");
+        var ticket=repairTickets.findById(Long.valueOf(id)).orElseThrow();
+        assertEquals(contract.getId(),ticket.getBillingContract().getId());
+        ticket.setStatus(com.ancu.proptech.model.maintenance.MaintenanceTicket.Status.IN_PROGRESS);repairTickets.saveAndFlush(ticket);
+        mvc.perform(post("/api/v1/owner/maintenance-tickets/"+id+"/actions").header("Authorization","Bearer "+ownerToken)
+            .contentType("application/json").content("{\"version\":"+ticket.getVersion()+",\"action\":\"READY\",\"note\":\"Đã thay linh kiện\",\"actualCost\":\"600000\",\"customerCost\":\"200000\",\"costResponsibility\":\"SHARED\",\"billingPeriod\":\"2026-11\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.billingPeriod").value("2026-11"));
+        assertTrue(repairCharges.findById(ticket.getId()).isEmpty());
+        confirmRepair(ticket);
+        var charge=repairCharges.findById(ticket.getId()).orElseThrow();
+        assertEquals(0,new BigDecimal("200000").compareTo(charge.getCustomerCost()));
+        assertEquals(0,new BigDecimal("600000").compareTo(charge.getActualCost()));
+        assertEquals("2026-11",charge.getPeriod());
+    }
+
     @BeforeEach void fixture(){
         owner=account(AuthAccount.Role.OWNER);tenant=account(AuthAccount.Role.CUSTOMER);otherOwner=account(AuthAccount.Role.OWNER);otherTenant=account(AuthAccount.Role.CUSTOMER);
         property=new Property();property.setOwner(owner);property.setName("Billing test");property.setAddress("Test address");property.setCity("Test city");property.setDistrict("District");property.setWard("Ward");property.setApprovalStatus(Property.ApprovalStatus.APPROVED);property=properties.saveAndFlush(property);

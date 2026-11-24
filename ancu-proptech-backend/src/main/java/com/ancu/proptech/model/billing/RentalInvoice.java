@@ -17,6 +17,8 @@ public class RentalInvoice {
     @Column(nullable=false) private int rentMonths=1;
     @Column(nullable=false,precision=15,scale=2) private BigDecimal rentUnitPrice=BigDecimal.ZERO;
     @org.hibernate.annotations.Nationalized @Column(length=4000) private String rentCalculation;
+    @Column(nullable=false,precision=31,scale=4) private BigDecimal maintenanceAmount=BigDecimal.ZERO;
+    @org.hibernate.annotations.Nationalized @Column(columnDefinition="nvarchar(max)") private String maintenanceItemsJson;
     public enum Status { DRAFT, SENT, CANCELLED }
 
     @Enumerated(EnumType.STRING) @Column(nullable=false,length=16) private com.ancu.proptech.model.property.PropertySettings.WaterBillingMode waterBillingMode=com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.METERED;

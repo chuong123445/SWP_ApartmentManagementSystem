@@ -1,3 +1,5 @@
+import { MaintenanceChargeList } from './MaintenanceChargeList';
+import { utilityInvoiceTotal } from '@/utils/invoicePreview';
 import {DossierDateInput} from '@/components/property/DossierDateInput';
 import {dossierDateDisplay} from '@/utils/dossierDates';
 import { useEffect, useRef, useState } from 'react';
@@ -60,6 +62,7 @@ export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice, initia
     } catch (e) { setError(e instanceof Error ? e.message : 'Không thể lưu/gửi hóa đơn.'); }
     finally { submitting.current=false;setSaving(false); }
   };
+  const previewTotal=context?utilityInvoiceTotal(context,electricity,water):null;
   const cls = 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm';
   return <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4"><section role="dialog" aria-label="Lập hóa đơn" className="bg-white rounded-2xl p-6 max-w-xl w-full max-h-[90vh] overflow-auto">
     <div className="flex justify-between items-center"><h2 className="text-lg font-bold">Lập hóa đơn cho người thuê</h2><button onClick={onClose} disabled={saving} aria-label="Đóng"><X /></button></div>
@@ -75,7 +78,7 @@ export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice, initia
           {!rent.canSend&&rent.sendAvailableFrom&&<p role="status" className="text-amber-800">Chưa đến thời gian gửi. Bắt đầu gửi từ {dossierDateDisplay(rent.sendAvailableFrom)}.</p>}
           <p>Chu kỳ đã ký: {rent.cycleMonths} tháng / lần</p>
           {rent.coverageStart?<><p>Kỳ tiền thuê: {dossierDateDisplay(rent.coverageStart)} đến {dossierDateDisplay(rent.coverageEnd)} ({rent.months} tháng)</p><p>{billingMoney(rent.monthlyRent)} / tháng · Tổng {billingMoney(rent.totalAmount)}</p></>:<p>Đã hết tháng tròn cần lập tiền thuê.</p>}
-          {rent.rentCalculation&&<p className="whitespace-pre-wrap break-words text-sm">{rent.rentCalculation}</p>}
+          <MaintenanceChargeList items={rent.maintenanceCharges} period={rent.coverageStart?.slice(0,7)} onReview={onClose}/>{rent.rentCalculation&&<p className="whitespace-pre-wrap break-words text-sm">{rent.rentCalculation}</p>}
           {rent.hasPartialDays&&<p className="text-amber-800">Hợp đồng có ngày lẻ. Hai bên đối chiếu và xử lý riêng phần này.</p>}
           {rent.existingDraftId&&<p>Đã có bản nháp tiền thuê. <Link className="underline text-emerald-800" to="/app?tab=invoices" onClick={onClose}>Mở danh sách hóa đơn</Link></p>}
           {rent.coverageStart&&!rent.existingDraftId&&<label className="block font-semibold">Hạn đóng<DossierDateInput required className={cls} min={rent.dueDate??rent.coverageStart} value={due} onChange={setDue}/></label>}
@@ -91,6 +94,8 @@ export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice, initia
               <label className="text-sm font-semibold">Chỉ số nước cuối kỳ (m³)<input className={`${cls} mt-1`} required type="number" min={context.waterStartReading} max="9999999999999.99" step="0.01" value={water} onChange={e=>setWater(e.target.value)}/><span className="block mt-1 text-xs text-slate-500">Đơn giá: {billingMoney(context.waterUnitPrice)}/m³</span></label>
             </>}
           </div>
+          <MaintenanceChargeList items={context.maintenanceCharges} period={context.period} onReview={onClose}/>
+          {previewTotal!==null&&<p aria-live="polite" className="text-right text-lg font-bold text-brand-900">Tổng dự kiến: {billingMoney(previewTotal)}</p>}
           <div><label htmlFor="invoice-due-date" className="text-sm font-semibold">Hạn đóng</label><input id="invoice-due-date" required type="date" min={`${context.period}-01`} value={due} onChange={e => setDue(e.target.value)} className={cls} /></div></>}
       </fieldset>
       {created && <p className="text-sm text-amber-700">Đã lưu bản nháp. Bạn có thể thử gửi lại hóa đơn này.</p>}
