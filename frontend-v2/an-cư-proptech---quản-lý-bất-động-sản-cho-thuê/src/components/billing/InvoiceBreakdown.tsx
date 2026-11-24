@@ -5,11 +5,21 @@ export function InvoiceBreakdown({ invoice: i }: { invoice: BillingInvoice }) {
   const isRent = i.kind === 'RENT';
   const unitPrice = i.rentUnitPrice || (i.monthlyRent && i.rentMonths ? String(Math.round(Number(i.monthlyRent) / i.rentMonths)) : i.monthlyRent);
 
+  let cycleDisplay = `${i.rentMonths || 1} tháng`;
+  if (isRent && i.coverageStart && i.coverageEnd) {
+    const start = new Date(i.coverageStart + 'T00:00:00');
+    const end = new Date(i.coverageEnd + 'T00:00:00');
+    const totalDays = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+    if (totalDays > 0 && totalDays < 28) {
+      cycleDisplay = `${totalDays} ngày`;
+    }
+  }
+
   return <div className="space-y-4">
     <div><h2 className="font-bold text-lg">{i.kind==='RENT'?'Hóa đơn tiền thuê':i.kind==='UTILITY'?'Hóa đơn điện nước và dịch vụ':'Hóa đơn tổng hợp'} · {i.roomNumber}</h2><p className="text-sm text-slate-500">{i.tenantName} · Kỳ {i.kind==='RENT'?`${dossierDateDisplay(i.coverageStart)} – ${dossierDateDisplay(i.coverageEnd)}`:i.period} · Hạn đóng {dossierDateDisplay(i.dueDate)}</p>
       <span className="text-xs text-emerald-700">{i.status === 'SENT' ? 'Đã gửi người thuê' : i.status === 'CANCELLED' ? 'Đã hủy' : 'Bản nháp'}</span></div>
     <table className="w-full text-sm"><thead className="bg-slate-50"><tr><th className="p-3 text-left">Khoản thu</th>{isRent && <th className="p-3 text-right">Đơn giá / tháng</th>}<th className="p-3 text-right">{isRent ? 'Chu kỳ' : 'Số lượng / Đơn giá'}</th><th className="p-3 text-right">Thành tiền</th></tr></thead>
-      <tbody>{i.kind!=='UTILITY'&&<tr><td className="p-3">Tiền thuê</td>{isRent && <td className="p-3 text-right text-slate-600">{billingMoney(unitPrice)}</td>}<td className="p-3 text-right">{i.rentMonths || 1} tháng</td><td className="p-3 text-right font-medium">{billingMoney(i.monthlyRent)}</td></tr>}
+      <tbody>{i.kind!=='UTILITY'&&<tr><td className="p-3">Tiền thuê</td>{isRent && <td className="p-3 text-right text-slate-600">{billingMoney(unitPrice)}</td>}<td className="p-3 text-right">{cycleDisplay}</td><td className="p-3 text-right font-medium">{billingMoney(i.monthlyRent)}</td></tr>}
         {i.kind!=='RENT'&&<><tr><td className="p-3">Điện <span className="block text-xs text-slate-500">{i.electricityStartReading} → {i.electricityEndReading} kWh</span></td><td className="p-3 text-right">{i.electricityQuantity} × {billingMoney(i.electricityUnitPrice)}</td><td className="p-3 text-right">{billingMoney(i.electricityAmount)}</td></tr>
         <tr><td className="p-3">Nước {i.waterBillingMode==='PER_PERSON'?'(theo người/tháng)':''}<span className="block text-xs text-slate-500">{i.waterBillingMode==='PER_PERSON'?String(i.occupantCount)+' người':i.waterStartReading+' → '+i.waterEndReading+' m³'}</span></td><td className="p-3 text-right">{i.waterQuantity} × {billingMoney(i.waterUnitPrice)}</td><td className="p-3 text-right">{billingMoney(i.waterAmount)}</td></tr></>}{Number(i.internetFee??0)>0&&<tr><td className="p-3">Internet</td>{isRent && <td className="p-3 text-right text-slate-600">{billingMoney(i.internetFee!)}</td>}<td className="p-3 text-right">1 tháng</td><td className="p-3 text-right">{billingMoney(i.internetFee!)}</td></tr>}{Number(i.garbageFee??0)>0&&<tr><td className="p-3">Vệ sinh và rác</td>{isRent && <td className="p-3 text-right text-slate-600">{billingMoney(i.garbageFee!)}</td>}<td className="p-3 text-right">1 tháng</td><td className="p-3 text-right">{billingMoney(i.garbageFee!)}</td></tr>}{i.maintenanceCharges?.map(charge=><tr key={charge.ticketId} className="border-t border-brand-100"><td className="p-3 break-words">Sửa chữa: {charge.title}<span className="block text-xs text-slate-500">Sự cố #{charge.ticketId} · Tháng {charge.period}</span></td>{isRent && <td className="p-3 text-right text-xs text-slate-600">—</td>}<td className="p-3 text-right text-xs text-slate-600">Phần khách chịu<br/>Chủ nhà: {billingMoney(charge.ownerCost)}</td><td className="p-3 text-right">{billingMoney(charge.customerCost)}</td></tr>)}</tbody>
     </table>
