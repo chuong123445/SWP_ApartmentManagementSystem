@@ -78,7 +78,7 @@ export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice, initia
           {!rent.canSend&&rent.sendAvailableFrom&&<p role="status" className="text-amber-800">Chưa đến thời gian gửi. Bắt đầu gửi từ {dossierDateDisplay(rent.sendAvailableFrom)}.</p>}
           <p>Chu kỳ đã ký: {rent.cycleMonths} tháng / lần</p>
           {rent.coverageStart?<><p>Kỳ tiền thuê: {dossierDateDisplay(rent.coverageStart)} đến {dossierDateDisplay(rent.coverageEnd)} ({rent.months} tháng)</p><p>{billingMoney(rent.monthlyRent)} / tháng · Tổng {billingMoney(rent.totalAmount)}</p></>:<p>Đã hết tháng tròn cần lập tiền thuê.</p>}
-          <MaintenanceChargeList items={rent.maintenanceCharges}/>{rent.rentCalculation&&<p className="whitespace-pre-wrap break-words text-sm">{rent.rentCalculation}</p>}
+          <MaintenanceChargeList items={rent.maintenanceCharges} period={rent.coverageStart?.slice(0,7)} onReview={onClose}/>{rent.rentCalculation&&<p className="whitespace-pre-wrap break-words text-sm">{rent.rentCalculation}</p>}
           {rent.hasPartialDays&&<p className="text-amber-800">Hợp đồng có ngày lẻ. Hai bên đối chiếu và xử lý riêng phần này.</p>}
           {rent.existingDraftId&&<p>Đã có bản nháp tiền thuê. <Link className="underline text-emerald-800" to="/app?tab=invoices" onClick={onClose}>Mở danh sách hóa đơn</Link></p>}
           {rent.coverageStart&&!rent.existingDraftId&&<label className="block font-semibold">Hạn đóng<DossierDateInput required className={cls} min={rent.dueDate??rent.coverageStart} value={due} onChange={setDue}/></label>}
@@ -94,7 +94,7 @@ export function CreateInvoiceModal({ tenancies, onClose, onCreateInvoice, initia
               <label className="text-sm font-semibold">Chỉ số nước cuối kỳ (m³)<input className={`${cls} mt-1`} required type="number" min={context.waterStartReading} max="9999999999999.99" step="0.01" value={water} onChange={e=>setWater(e.target.value)}/><span className="block mt-1 text-xs text-slate-500">Đơn giá: {billingMoney(context.waterUnitPrice)}/m³</span></label>
             </>}
           </div>
-          <MaintenanceChargeList items={context.maintenanceCharges}/>
+          <MaintenanceChargeList items={context.maintenanceCharges} period={context.period} onReview={onClose}/>
           {previewTotal!==null&&<p aria-live="polite" className="text-right text-lg font-bold text-brand-900">Tổng dự kiến: {billingMoney(previewTotal)}</p>}
           <div><label htmlFor="invoice-due-date" className="text-sm font-semibold">Hạn đóng</label><input id="invoice-due-date" required type="date" min={`${context.period}-01`} value={due} onChange={e => setDue(e.target.value)} className={cls} /></div></>}
       </fieldset>

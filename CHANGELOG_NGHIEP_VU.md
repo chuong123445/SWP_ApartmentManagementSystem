@@ -113,3 +113,5 @@
 - 24/11/2026 — Giao diện phí sửa chữa: chọn tháng và phần khách chịu khi báo sửa xong; khách xác nhận cả khoản phí; lập hóa đơn thấy sẵn từng sự cố và tổng dự kiến; hóa đơn chi tiết hiện phí riêng. TypeScript/build, 175 unit và 8 E2E desktop/mobile PASS. Commit: Hiện chi phí sửa chữa và tổng tiền trong hóa đơn tháng.
 
 - 24/11/2026 — Kiểm chứng phân bổ phí bảo trì: test API tạo phiếu gắn đúng hợp đồng, chủ chia 600.000 đ thành 400.000/200.000 đ, chỉ ghi khoản phải thu sau khách nghiệm thu; database riêng PASS. Commit: Kiểm tra luồng chia tiền sửa chữa và khách nghiệm thu.
+
+- 24/11/2026 — Hiện mục Chi phí sửa chữa kể cả khi chưa có khoản thu, giải thích điều kiện nghiệm thu/tháng và thêm lối mở Sự cố & Bảo trì. TypeScript/build và 2 E2E phí sửa desktop/mobile PASS. Commit: Hiện lý do chưa có phí sửa chữa khi lập hóa đơn.
