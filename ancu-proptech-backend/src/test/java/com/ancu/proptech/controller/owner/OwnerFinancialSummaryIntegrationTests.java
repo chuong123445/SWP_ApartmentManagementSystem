@@ -176,6 +176,29 @@ class OwnerFinancialSummaryIntegrationTests {
         money(json, "$[3].unpaidAmount", "200");
     }
 
+    @Test void customPeriodAndSingleMonthRangeWork() throws Exception {
+        var owner = account(AuthAccount.Role.OWNER);
+        var p = property(owner);
+        var c = contract(p, account(AuthAccount.Role.CUSTOMER));
+        var i1 = invoice(c, "2026-10", "1000000", "0", LocalDate.of(2026, 10, 31), RentalInvoice.Status.SENT);
+        var i2 = invoice(c, "2026-11", "2000000", "0", LocalDate.of(2026, 11, 30), RentalInvoice.Status.SENT);
+        paid(i2, "2026-11-05T10:00:00Z");
+
+        String t = token(owner);
+        var req = get(URL).header("Authorization", t).param("propertyId", p.getId().toString())
+                .param("fromMonth", "2026-11").param("toMonth", "2026-11");
+        String json = mvc.perform(req).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertEquals(1, JsonPath.<List<?>>read(json, "$.months").size());
+        assertEquals("2026-11", JsonPath.<String>read(json, "$.fromPeriod"));
+        assertEquals("2026-11", JsonPath.<String>read(json, "$.toPeriod"));
+        money(json, "$.totals.billedAmount", "2000000");
+        money(json, "$.totals.paidInvoiceAmount", "2000000");
+
+        mvc.perform(get(URL).header("Authorization", t).param("fromMonth", "2026-12").param("toMonth", "2026-11"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Tháng bắt đầu không được lớn hơn tháng kết thúc."));
+    }
+
     @Test void yearAndOwnerPropertyAccessAreValidated()throws Exception{
         var owner=account(AuthAccount.Role.OWNER);var other=account(AuthAccount.Role.OWNER);var p=property(other);var t=token(owner);
         mvc.perform(get(URL)).andExpect(status().isUnauthorized());mvc.perform(get(URL).header("Authorization",token(account(AuthAccount.Role.CUSTOMER)))).andExpect(status().isForbidden());

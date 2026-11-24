@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { ArrowDownToLine, ArrowUpRight, Building2, Clock3, FileText, LayoutGrid, ReceiptText, Wallet, Wrench, Zap } from 'lucide-react';
 import type { ActiveTab } from '@/types';
 import type { OwnerFinancialReport } from '@/hooks/useOwnerFinancialSummary';
@@ -23,8 +24,19 @@ export function DashboardPage({ propertyName, report, counters, onNavigateTab }:
   counters: OwnerWorkspaceSummary | null;
   onNavigateTab: (tab: ActiveTab) => void;
 }) {
-  const { data, month, setMonth } = report;
-  const current = data?.months[month - 1];
+  const { data } = report;
+  const availableMonths = data?.months ?? [];
+  const [selectedPeriod, setSelectedPeriod] = useState<string>('');
+
+  useEffect(() => {
+    if (availableMonths.length > 0) {
+      if (!selectedPeriod || !availableMonths.some(m => m.period === selectedPeriod)) {
+        setSelectedPeriod(availableMonths[availableMonths.length - 1].period);
+      }
+    }
+  }, [availableMonths, selectedPeriod]);
+
+  const current = availableMonths.find(m => m.period === selectedPeriod) ?? availableMonths[availableMonths.length - 1];
 
   return <div className="space-y-4 pb-10">
     <header className="app-panel flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5">
@@ -42,11 +54,22 @@ export function DashboardPage({ propertyName, report, counters, onNavigateTab }:
 
     <section aria-label="Kỳ thống kê" className="flex flex-wrap items-end gap-3 px-1">
       <FinancialFilters report={report} />
-      <label className="grid gap-1 text-xs text-slate-600">Tháng thống kê
-        <select value={month} onChange={event => setMonth(Number(event.target.value))} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-          {Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={index + 1}>Tháng {index + 1}</option>)}
-        </select>
-      </label>
+      {availableMonths.length > 1 && (
+        <label className="grid gap-1 text-xs text-slate-600">
+          Tháng xem chi tiết
+          <select
+            value={current?.period ?? ''}
+            onChange={event => setSelectedPeriod(event.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            {availableMonths.map(m => (
+              <option key={m.period} value={m.period}>
+                Tháng {m.period}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       {data && <p className="pb-1 text-xs text-slate-600 sm:ml-auto">Ngày thống kê {data.asOf}</p>}
     </section>
     <FinancialState report={report} />
@@ -67,7 +90,7 @@ export function DashboardPage({ propertyName, report, counters, onNavigateTab }:
       </section>
 
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(245px,1fr)]">
-        <FinancialChart mode="cash" months={data.months.slice(Math.max(0, month - 6), month)} />
+        <FinancialChart mode="cash" months={availableMonths} />
         <section className="app-panel p-4 sm:p-5" aria-labelledby="dashboard-followup">
           <h2 id="dashboard-followup" className="text-base font-bold">Cần theo dõi</h2>
           <dl className="mt-2 divide-y divide-slate-100 text-sm">

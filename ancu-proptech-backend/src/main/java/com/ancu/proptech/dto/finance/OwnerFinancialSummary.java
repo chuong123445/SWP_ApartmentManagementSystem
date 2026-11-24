@@ -3,7 +3,11 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDate;
 import java.util.List;
 public record OwnerFinancialSummary(@JsonFormat(shape=JsonFormat.Shape.STRING) Long propertyId,int year,LocalDate asOf,
-        Amounts totals,Receipts receipts,Arrears arrears,Inventory inventory,List<Month> months,List<Property> properties,String allocatedRentAmount) {
+        Amounts totals,Receipts receipts,Arrears arrears,Inventory inventory,List<Month> months,List<Property> properties,String allocatedRentAmount,
+        String fromPeriod,String toPeriod) {
+    public OwnerFinancialSummary(Long propertyId,int year,LocalDate asOf,Amounts totals,Receipts receipts,Arrears arrears,Inventory inventory,List<Month> months,List<Property> properties,String allocatedRentAmount){
+        this(propertyId,year,asOf,totals,receipts,arrears,inventory,months,properties,allocatedRentAmount,null,null);
+    }
     public record Amounts(long invoiceCount,long paidInvoiceCount,long onTimePaidInvoiceCount,String billedAmount,String paidInvoiceAmount,
             String unpaidInvoiceAmount,String rentAmount,String electricityAmount,String waterAmount,String serviceAmount) {}
     public record Receipts(String monthlyInvoiceAmount,String additionalAmount,String totalAmount) {}
