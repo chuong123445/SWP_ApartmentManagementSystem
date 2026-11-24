@@ -73,13 +73,25 @@ class ContractDraftIntegrationTests {
         mvc.perform(get("/api/v1/owner/contracts/"+id(saved)+"/billing-context").header("Authorization",customerToken)).andExpect(status().isNotFound());
         assertEquals(Set.of(AuthAccount.Role.OWNER,AuthAccount.Role.CUSTOMER),customer.getRoles());
     }
-    @Test void customerRequestInboxExcludesConvertedSelectionsBeforePagingButKeepsTheirDocuments()throws Exception {
+    @Test void customerRequestInboxKeepsUnsignedDraftUntilBothSignaturesBeforePaging()throws Exception {
         String saved=create();
         for(var state:List.of(RentalRequest.Status.REJECTED,RentalRequest.Status.CANCELLED)){
             var r=new RentalRequest();r.setApartment(request.getApartment());r.setCustomer(customer);r.setStatus(state);r.setMessage("Request history without a contract");r.setCreatedAt(Instant.now());requests.saveAndFlush(r);
         }
-        for(int page=0;page<2;page++)mvc.perform(get("/api/v1/me/rental-requests").header("Authorization",customerToken).param("size","1").param("page",Integer.toString(page)))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2)).andExpect(jsonPath("$.totalPages").value(2)).andExpect(jsonPath("$.items.length()").value(1)).andExpect(jsonPath("$.items[0].contractId").isEmpty());
+        for(int phase=0;phase<2;phase++){
+            var ids=new HashSet<String>();
+            for(int page=0;page<3;page++){
+                var result=mvc.perform(get("/api/v1/me/rental-requests").header("Authorization",customerToken).param("size","1").param("page",Integer.toString(page)))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(3)).andExpect(jsonPath("$.totalPages").value(3)).andExpect(jsonPath("$.items.length()").value(1)).andReturn().getResponse().getContentAsString();
+                ids.add(JsonPath.read(result,"$.items[0].id"));
+            }
+            assertTrue(ids.contains(request.getId().toString()));assertEquals(3,ids.size());
+            if(phase==0)saved=sign(saved,token,JsonPath.read(saved,"$.signing.contentHash"),signature(),true).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        }
+        mvc.perform(get("/api/v1/contracts/"+id(saved)).header("Authorization",customerToken)).andExpect(status().isOk());
+        saved=sign(saved,customerToken,JsonPath.read(saved,"$.signing.contentHash"),signature(),true).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        mvc.perform(get("/api/v1/me/rental-requests").header("Authorization",customerToken).param("size","1"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2)).andExpect(jsonPath("$.totalPages").value(2)).andExpect(jsonPath("$.items[0].contractId").isEmpty());
         mvc.perform(get("/api/v1/me/rental-requests").header("Authorization",otherToken)).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
         mvc.perform(get("/api/v1/me/contract-drafts").header("Authorization",customerToken)).andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(id(saved)));
         assertTrue(requests.existsById(request.getId()));

@@ -96,3 +96,8 @@
 
 - Chỉ kiểm tra khi bấm Tiếp theo/rá soát/lưu; vào bước và nhập chưa hiện lỗi đỏ. Sửa ngày trống bị nhầm là quá khứ, bỏ hint đỏ trùng; mỗi ô một thông báo. Nhập chỉ xóa thông báo cũ liên quan, không tự validate. Xóa nguyên đoạn giải thích30ngày/thánglịch/ngàylẻ theo yêu cầu, giữ quy tắc nghiệp vụ.
 -174frontend/TypeScript/build và10MCPdesktopmobilePASS; thêm kiểm tra entry/blurkhônglỗi,Nextmớibáo/khôngtrùng. APIfixtures, không backend/DBchange. Commit fix(ui): chỉ báo lỗi hợp đồng khi tiếp tục và rút gọn hướng dẫn; hashgitlog. Chưapush.
+
+## Hợp đồng chuyển tab sau hai chữ ký — 24/11/2026
+
+- Chưa ký/mới ký một bên ở Yêu cầu thuê và vẫn xem/ký được; chỉ đủ hai chữ ký mới vào tab Hợp đồng của Owner/Customer, kể cả chờ hiệu lực. Customer query lọc trước phân trang, giữ lịch sử/hủy; trang chi tiết dự thảo quay lại Yêu cầu thuê. Không đổi điều kiện ký/activation.
+-74backend/175frontend/TypeScript/build/4MCPdesktopmobilePASS, ảnhmobileđãxem; SQLtest/API fixtures, không ký/đổi appDB. ADR contract-tabs-after-signing-v1. Cầnrestartbackend/reloadfrontend, chưapush. Commit fix(contract): chuyển tab hợp đồng sau khi hai bên ký đủ, hashgitlog.

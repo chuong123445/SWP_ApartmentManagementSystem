@@ -19,7 +19,7 @@ export function ContractsPage({ contracts, propertyId, onChooseRequest }: Contra
     <header className="flex flex-wrap justify-between items-start gap-4 bg-white border border-slate-200 rounded-2xl p-5">
       <div><h1 className="app-page-title flex items-center gap-2"><FileCheck2 className="text-emerald-700" />Hợp đồng thuê</h1>
         <p className="text-sm text-slate-500 mt-2">Tạo hợp đồng từ yêu cầu đã chấp nhận, xem PDF và ký xác nhận bằng tài khoản của mỗi bên.</p>
-        <p className="text-xs text-slate-500 mt-2">{contracts.length} hợp đồng trong tài sản đang chọn. Bản có chữ ký được khóa nội dung.</p>
+        <p className="text-xs text-slate-500 mt-2">Chỉ hiển thị hợp đồng đã đủ chữ ký hai bên. Dự thảo được xử lý tại Yêu cầu thuê.</p>
       </div>
       <button type="button" id="btn-add-contract" onClick={onChooseRequest} disabled={!onChooseRequest}
         className="inline-flex items-center gap-2 rounded-xl bg-brand-700 text-white px-4 py-3 font-semibold text-sm disabled:opacity-50">

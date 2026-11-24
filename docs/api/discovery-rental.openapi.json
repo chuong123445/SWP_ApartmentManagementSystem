@@ -265,7 +265,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "description": "Exact authenticated renter request inbox. Requests already linked to a saved contract document are excluded in SQL before paging/count; documents and original selection records remain available through private contract APIs. ACCEPTED requests awaiting document creation remain here. Ended/cancelled documents are not moved back into this inbox."
+        "description": "Exact customer request history. Draft creation or a single signature keeps the rental request here with contractId for private review/signing. Only after BOTH ownerSignedAt and customerSignedAt are present is the selection excluded, before pagination/counting. Rejected/cancelled and unfinished contract history remains. The original request is retained in storage."
       }
     },
     "/api/v1/owner/rental-requests": {
