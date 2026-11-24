@@ -10,6 +10,7 @@
 | 25/11/2026 | FIN01 | Sửa biểu đồ báo cáo tài chính bị lỗi domain [0, 0] không hiện cột; chuẩn hóa màu SVG cột, tăng chiều rộng ô chọn tháng và đồng nhất phạm vi tiền nhận theo kỳ. | 7/7 backend OwnerFinancialSummaryIntegrationTests đạt; 182/182 frontend tests và Vite build đạt. | `f849006c` |
 | 25/11/2026 | FIN02 | Chuẩn hóa Combo Chart trải đều doanh thu tiền phòng phân bổ và tiền điện nước theo từng tháng sử dụng thực tế. | 182/182 frontend tests và Vite build đạt. | `577edb66` |
 | 25/11/2026 | BIL01 | Ẩn khối công thức toán 'Cách tính tiền thuê' rườm rà; đổi tên cột thành 'Chu kỳ' và hiển thị số tháng chu kỳ rõ ràng trên chi tiết hóa đơn. | 182/182 frontend tests và Vite build đạt. | `cb5badaa` |
+| 25/11/2026 | BIL02 | Chuyển chu kỳ tính hóa đơn tiền phòng sang chu kỳ tròn theo ngày vào ở (Anniversary Cycle); thu đủ trọn chu kỳ không cắt lẻ ở tháng đầu, chỉ tính ngày lẻ khi chu kỳ cuối không đủ chu kỳ; cập nhật hóa đơn #95 về 3.000.000 đ kỳ 25/11/2026–24/02/2027. | 10/10 backend tests (CalendarRentScheduleTests + RentScheduleTests) đạt; 182/182 frontend tests đạt; DB đã cập nhật và kiểm tra thực tế. | `7af1b3d5` |
 
 ## Cần cân nhắc
 
