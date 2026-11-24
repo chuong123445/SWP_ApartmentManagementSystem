@@ -41,6 +41,7 @@ class BillingIntegrationTests {
         p.setPaymentCode("ANCUTEST"+UUID.randomUUID().toString().replace("-","").substring(0,24));p.setBank("MB");p.setAccountNumber("12345678");p.setAccountHolderName("Owner");p.setAmount(new BigDecimal("2000"));p.setCreatedAt(java.time.Instant.now());if(paid)p.setPaidAt(java.time.Instant.now());return receipts.saveAndFlush(p);
     }
     @Test void ownerReceivedHistoryIncludesOlderPaidReceiptsAndEnforcesScopeBeforePaging()throws Exception{
+        roomProperty(otherOwner,"Other eligible owner");
         var first=receipt(true,true);for(int i=0;i<20;i++)receipt(true,true);receipt(false,true);var ownerOnly=receipt(true,false);
         var mismatched=receipt(true,true);mismatched.setCustomerId(otherTenant.getId());receipts.saveAndFlush(mismatched);
         String path="/api/v1/owner/invoices/additional";
@@ -59,6 +60,7 @@ class BillingIntegrationTests {
         mvc.perform(get(path).header("Authorization","Bearer "+ownerToken).param("size","101")).andExpect(status().isBadRequest());
     }
     @Test void ownerMonthlyFiltersPaidAndUnpaidSeparatelyFromIssuanceBeforePaging()throws Exception{
+        roomProperty(otherOwner,"Other eligible owner");
         org.mockito.Mockito.doReturn(LocalDate.of(2026,12,31)).when(utilityDates).today();
         String paidId=createDraft();send(ownerToken,paidId,0).andExpect(status().isOk());
         String second=JsonPath.read(create(ownerToken,body("2026-11",2,"1200","212")).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(),"$.id");send(ownerToken,second,0).andExpect(status().isOk());
@@ -619,4 +621,43 @@ class BillingIntegrationTests {
         mvc.perform(get("/api/v1/me/notifications").header("Authorization","Bearer "+tenantToken)).andExpect(jsonPath("$.items[0].title").value("Hóa đơn đã hủy"));
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM invoice_events WHERE invoice_id=? AND action='CANCELLED'",Integer.class,Long.valueOf(id)));
     }
+    private Property roomProperty(AuthAccount account,String name){var p=new Property();p.setOwner(account);p.setName(name);p.setAddress("Room test");p.setCity("Test");p.setDistrict("Test");p.setApprovalStatus(Property.ApprovalStatus.APPROVED);return properties.saveAndFlush(p);}
+    private Apartment invoiceRoom(Property p){var a=new Apartment();a.setProperty(p);a.setTitle("Room invoice fixture");a.setRoomNumber(apartment.getRoomNumber());a.setDescription("Test");a.setAreaM2(new BigDecimal("30"));a.setAdvertisedMonthlyRent(new BigDecimal("5000000"));a.setAvailability(Apartment.Availability.OCCUPIED);a.setPublicationStatus(Apartment.PublicationStatus.PUBLISHED);a.setCreatedAt(java.time.Instant.now());return apartments.saveAndFlush(a);}
+    private RentalContract roomContract(Apartment a,AuthAccount customer,boolean ended){var c=new RentalContract();c.setApartment(a);c.setCustomer(customer);c.setStatus(ended?RentalContract.Status.ENDED:RentalContract.Status.ACTIVE);c.setStartDate(ended?LocalDate.of(2025,1,1):contract.getStartDate());c.setEndDate(ended?LocalDate.of(2026,9,30):contract.getEndDate());c.setMonthlyRent(contract.getMonthlyRent());c.setElectricityUnitPrice(contract.getElectricityUnitPrice());c.setWaterUnitPrice(contract.getWaterUnitPrice());return contracts.saveAndFlush(c);}
+    private com.ancu.proptech.model.billing.RentalInvoice roomInvoice(RentalContract c,String period,com.ancu.proptech.model.billing.RentalInvoice.Status state,int amount){
+      var i=new com.ancu.proptech.model.billing.RentalInvoice();i.setContract(c);i.setPeriod(period);i.setDueDate(LocalDate.parse(period+"-28"));i.setStatus(state);i.setCreatedAt(java.time.Instant.now());if(state==com.ancu.proptech.model.billing.RentalInvoice.Status.SENT)i.setSentAt(java.time.Instant.now());
+      i.setMonthlyRent(BigDecimal.valueOf(amount));i.setTotalAmount(BigDecimal.valueOf(amount));i.setElectricityStartReading(BigDecimal.ZERO);i.setElectricityEndReading(BigDecimal.ZERO);i.setElectricityQuantity(BigDecimal.ZERO);i.setElectricityUnitPrice(BigDecimal.ZERO);i.setElectricityAmount(BigDecimal.ZERO);i.setWaterStartReading(BigDecimal.ZERO);i.setWaterEndReading(BigDecimal.ZERO);i.setWaterQuantity(BigDecimal.ZERO);i.setWaterUnitPrice(BigDecimal.ZERO);i.setWaterAmount(BigDecimal.ZERO);return invoiceRecords.saveAndFlush(i);
+    }
+    @Test void invoicesByRoomFilterBeforePagingAcrossPastTenantsAndSummarizeOnlySentUnpaid()throws Exception{
+        roomProperty(otherOwner,"Other eligible owner");
+      var sent=com.ancu.proptech.model.billing.RentalInvoice.Status.SENT;var draft=com.ancu.proptech.model.billing.RentalInvoice.Status.DRAFT;var cancelled=com.ancu.proptech.model.billing.RentalInvoice.Status.CANCELLED;
+      roomInvoice(contract,"2026-10",sent,100);var paid=roomInvoice(contract,"2026-11",sent,200);roomInvoice(contract,"2026-12",draft,300);roomInvoice(contract,"2027-01",cancelled,400);
+      jdbc.update("INSERT INTO invoice_payments(invoice_id,owner_id,payment_code,bank,account_number,account_holder_name,amount,paid_at) VALUES(?,?,?,'MB','12345678','Owner',200,SYSUTCDATETIME())",paid.getId(),owner.getId(),"ANCU"+UUID.randomUUID().toString().replace("-","").substring(0,24));
+      var old=roomContract(apartment,otherTenant,true);roomInvoice(old,"2026-09",sent,50);
+      var secondProperty=roomProperty(owner,"Other property");var secondRoom=invoiceRoom(secondProperty);roomInvoice(roomContract(secondRoom,tenant,false),"2026-10",sent,999);
+      String path="/api/v1/owner/invoices";
+      mvc.perform(get(path).header("Authorization","Bearer "+ownerToken).param("apartmentId",apartment.getId().toString()).param("filter","UNPAID").param("page","1").param("size","1")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(2)).andExpect(jsonPath("$.totalPages").value(2)).andExpect(jsonPath("$.items.length()").value(1)).andExpect(jsonPath("$.items[0].apartmentId").value(apartment.getId().toString()));
+      for(String filter:List.of("DRAFT","CANCELLED","PAID"))mvc.perform(get(path).header("Authorization","Bearer "+ownerToken).param("apartmentId",apartment.getId().toString()).param("filter",filter)).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1));
+      mvc.perform(get(path).header("Authorization","Bearer "+ownerToken).param("apartmentId",apartment.getId().toString())).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(5));
+      String roomsPath=path+"/rooms";var rows=JsonPath.<List<Map<String,Object>>>read(mvc.perform(get(roomsPath).header("Authorization","Bearer "+ownerToken)).andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store")).andReturn().getResponse().getContentAsString(),"$");
+      assertEquals(2,rows.size());var row=rows.stream().filter(v->v.get("apartmentId").equals(apartment.getId().toString())).findFirst().orElseThrow();assertEquals(2,((Number)row.get("unpaidInvoiceCount")).intValue());assertEquals(0,new BigDecimal("150").compareTo(new BigDecimal(row.get("unpaidInvoiceAmount").toString())));
+      mvc.perform(get(roomsPath).header("Authorization","Bearer "+ownerToken).param("propertyId",property.getId().toString())).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
+      mvc.perform(get(roomsPath).header("Authorization","Bearer "+tenantToken)).andExpect(status().isForbidden());mvc.perform(get(roomsPath)).andExpect(status().isUnauthorized());
+      mvc.perform(get(roomsPath).header("Authorization","Bearer "+token(otherOwner))).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+      var foreign=invoiceRoom(roomProperty(otherOwner,"Foreign property"));
+      for(String endpoint:List.of(path,path+"/additional")){
+        mvc.perform(get(endpoint).header("Authorization","Bearer "+ownerToken).param("apartmentId",foreign.getId().toString())).andExpect(status().isNotFound());
+        mvc.perform(get(endpoint).header("Authorization","Bearer "+ownerToken).param("apartmentId",apartment.getId().toString()).param("propertyId",secondProperty.getId().toString())).andExpect(status().isNotFound());
+      }
+    }
+    @Test void receivedInvoicesByRoomIncludePastTenantsButExcludeOtherRoomsAndOwnerOnlyTests()throws Exception{
+      receipt(false,true);receipt(true,true);receipt(true,false);var old=roomContract(apartment,otherTenant,true);var oldReceipt=receipt(true,true);oldReceipt.setContractId(old.getId());oldReceipt.setCustomerId(otherTenant.getId());receipts.saveAndFlush(oldReceipt);
+      var otherRoom=invoiceRoom(roomProperty(owner,"Other property"));var other=receipt(false,true);other.setContractId(roomContract(otherRoom,tenant,false).getId());receipts.saveAndFlush(other);
+      String path="/api/v1/owner/invoices/additional";
+      mvc.perform(get(path).header("Authorization","Bearer "+ownerToken).param("apartmentId",apartment.getId().toString()).param("size","1").param("page","2")).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(3)).andExpect(jsonPath("$.items.length()").value(1));
+      for(String filter:List.of("PAID","UNPAID"))mvc.perform(get(path).header("Authorization","Bearer "+ownerToken).param("apartmentId",apartment.getId().toString()).param("paymentStatus",filter)).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(filter.equals("PAID")?2:1));
+      mvc.perform(get(path).header("Authorization","Bearer "+ownerToken).param("apartmentId",otherRoom.getId().toString())).andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1));
+      mvc.perform(get("/api/v1/owner/invoices/rooms").header("Authorization","Bearer "+ownerToken).param("propertyId",property.getId().toString())).andExpect(status().isOk()).andExpect(jsonPath("$[0].unpaidInvoiceCount").value(0)).andExpect(jsonPath("$[0].unpaidInvoiceAmount").value("0.0000"));
+    }
+
 }

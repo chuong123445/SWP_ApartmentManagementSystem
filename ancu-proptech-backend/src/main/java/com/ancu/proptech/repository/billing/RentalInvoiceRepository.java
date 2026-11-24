@@ -15,6 +15,9 @@ public interface RentalInvoiceRepository extends JpaRepository<RentalInvoice,Lon
         @org.springframework.data.repository.query.Param("propertyId") Long propertyId,
         @org.springframework.data.repository.query.Param("status") RentalInvoice.Status status,
         @org.springframework.data.repository.query.Param("paid") Boolean paid,Pageable page);
+    @EntityGraph(attributePaths={"contract","contract.apartment","contract.apartment.property","contract.apartment.property.owner","contract.customer"})
+    @Query(value="select i"+OWNER_HISTORY+" and (:apartmentId is null or i.contract.apartment.id=:apartmentId)",countQuery="select count(i)"+OWNER_HISTORY+" and (:apartmentId is null or i.contract.apartment.id=:apartmentId)")
+    Page<RentalInvoice> ownerRoomHistory(@org.springframework.data.repository.query.Param("ownerId") Long ownerId,@org.springframework.data.repository.query.Param("propertyId") Long propertyId,@org.springframework.data.repository.query.Param("status") RentalInvoice.Status status,@org.springframework.data.repository.query.Param("paid") Boolean paid,@org.springframework.data.repository.query.Param("apartmentId") Long apartmentId,Pageable page);
     @Query("select count(i)"+OWNER_HISTORY)
     long countOwnerHistory(@org.springframework.data.repository.query.Param("ownerId") Long ownerId,
         @org.springframework.data.repository.query.Param("propertyId") Long propertyId,

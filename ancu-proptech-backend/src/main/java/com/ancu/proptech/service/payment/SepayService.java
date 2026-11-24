@@ -25,6 +25,7 @@ import java.util.*;
 import java.util.regex.Pattern;
 @Service @RequiredArgsConstructor
 public class SepayService {
+ private final com.ancu.proptech.service.billing.InvoiceRoomService roomScope;
  private final SepayConnectionRepository connections;
  private final InvoicePaymentRepository payments;
  private final SepayEventRepository events;
@@ -216,10 +217,12 @@ public class SepayService {
   var p=new TestPayment();p.setContractId(contract==null?null:contract.getId());p.setCustomerId(contract==null?null:contract.getCustomer().getId());p.setOwnerId(owner);if(platform)p.setCollectionOwnerId(source);p.setAmount(input.amount());p.setPaymentCode("ANCUTEST"+randomHex(12));p.setBank(c.getBank());p.setAccountNumber(c.getAccountNumber());p.setVirtualAccount(c.getVirtualAccount());p.setAccountHolderName(c.getAccountHolderName());p.setCreatedAt(Instant.now());testPayments.saveAndFlush(p);return testView(p);
  }
  @Transactional(readOnly=true) public List<TestReceipt> testHistory(Jwt jwt){return testPayments.findTop20ByOwnerIdOrderByIdDesc(access.owner(jwt).getId()).stream().map(this::testView).toList();}
- @Transactional(readOnly=true) public com.ancu.proptech.dto.common.PageResponse<TestReceipt> ownerReceivedHistory(Jwt jwt,int page,int size,Long propertyId,com.ancu.proptech.dto.billing.InvoicePaymentFilter paymentStatus){
+ @Transactional(readOnly=true) public com.ancu.proptech.dto.common.PageResponse<TestReceipt> ownerReceivedHistory(Jwt jwt,int page,int size,Long propertyId,com.ancu.proptech.dto.billing.InvoicePaymentFilter paymentStatus){return ownerReceivedHistory(jwt,page,size,propertyId,paymentStatus,null);}
+ @Transactional(readOnly=true) public com.ancu.proptech.dto.common.PageResponse<TestReceipt> ownerReceivedHistory(Jwt jwt,int page,int size,Long propertyId,com.ancu.proptech.dto.billing.InvoicePaymentFilter paymentStatus,Long apartmentId){
   com.ancu.proptech.service.apartment.ApartmentService.validatePage(page,size);
+  var owner=access.owner(jwt).getId();roomScope.requireRoom(owner,propertyId,apartmentId);
   Boolean paid=paymentStatus==com.ancu.proptech.dto.billing.InvoicePaymentFilter.PAID?Boolean.TRUE:paymentStatus==com.ancu.proptech.dto.billing.InvoicePaymentFilter.UNPAID?Boolean.FALSE:null;
-  var items=testPayments.ownerReceived(access.owner(jwt).getId(),propertyId,paid,org.springframework.data.domain.PageRequest.of(page,size,org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,"createdAt","id")));
+  var items=testPayments.ownerReceivedForRoom(owner,propertyId,paid,apartmentId,org.springframework.data.domain.PageRequest.of(page,size,org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,"createdAt","id")));
   return com.ancu.proptech.dto.common.PageResponse.from(items.map(this::testView));
  }
  @Transactional(readOnly=true) public TestReceipt ownerReceivedDetail(Jwt jwt,Long id){return testView(testPayments.ownerReceivedDetail(access.owner(jwt).getId(),null,null,id).orElseThrow(SepayService::missing));}

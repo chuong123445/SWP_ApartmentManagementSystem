@@ -20,6 +20,7 @@ import java.time.format.DateTimeParseException;
 
 @Service @RequiredArgsConstructor
 public class InvoiceService {
+    private final InvoiceRoomService roomScope;
     private final RentalContractRepository contracts;
     private final MaintenanceBillingService maintenance;
     private final com.ancu.proptech.service.contract.ContractExitGuard exitGuard;
@@ -212,10 +213,11 @@ public class InvoiceService {
     @Transactional(readOnly=true) public PageResponse<InvoiceResponse> owner(Jwt jwt,int page,int size,Long propertyId){
         return owner(jwt,page,size,propertyId,OwnerInvoiceFilter.ALL);
     }
-    @Transactional(readOnly=true) public PageResponse<InvoiceResponse> owner(Jwt jwt,int page,int size,Long propertyId,OwnerInvoiceFilter filter){
-        ApartmentService.validatePage(page,size);var ownerId=access.owner(jwt).getId();
+    @Transactional(readOnly=true) public PageResponse<InvoiceResponse> owner(Jwt jwt,int page,int size,Long propertyId,OwnerInvoiceFilter filter){return owner(jwt,page,size,propertyId,filter,null);}
+    @Transactional(readOnly=true) public PageResponse<InvoiceResponse> owner(Jwt jwt,int page,int size,Long propertyId,OwnerInvoiceFilter filter,Long apartmentId){
+        ApartmentService.validatePage(page,size);var ownerId=access.owner(jwt).getId();roomScope.requireRoom(ownerId,propertyId,apartmentId);
         Boolean paid=filter==OwnerInvoiceFilter.PAID?Boolean.TRUE:filter==OwnerInvoiceFilter.UNPAID?Boolean.FALSE:null;
-        var result=invoices.ownerHistory(ownerId,propertyId,filter==OwnerInvoiceFilter.DRAFT?RentalInvoice.Status.DRAFT:filter==OwnerInvoiceFilter.CANCELLED?RentalInvoice.Status.CANCELLED:null,paid,paging(page,size));
+        var result=invoices.ownerRoomHistory(ownerId,propertyId,filter==OwnerInvoiceFilter.DRAFT?RentalInvoice.Status.DRAFT:filter==OwnerInvoiceFilter.CANCELLED?RentalInvoice.Status.CANCELLED:null,paid,apartmentId,paging(page,size));
         return PageResponse.from(result.map(this::response));
     }
     @Transactional(readOnly=true) public PageResponse<InvoiceResponse> mine(Jwt jwt,int page,int size){return mine(jwt,page,size,InvoicePaymentFilter.ALL);}

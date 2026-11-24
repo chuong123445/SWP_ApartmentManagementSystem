@@ -715,6 +715,16 @@
               ],
               "default": "ALL"
             }
+          },
+          {
+            "name": "apartmentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Mã căn/phòng, lọc toàn bộ lịch sử trước phân trang và qua các khách thuê/hợp đồng cũ; phải thuộc chủ nhà và propertyId đang chọn nếu có."
           }
         ],
         "responses": {

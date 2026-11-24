@@ -175,3 +175,5 @@
 - 25/11/2026 — Gộp sửa gửi trùng, thông báo theo bên và thẻ kết quả vào main theo yêu cầu; giữ đầy đủ nhật ký và thay đổi tài chính sẵn có. Chỉ xung đột nhật ký, không xung đột mã nguồn; mã chạy trùng nhánh đã kiểm tra backend/Playwright. 188 frontend tests, TypeScript/build trên main PASS. Từ nay làm trực tiếp main, không tự chia nhánh.
 
 - 25/11/2026 — Khung kết quả đề nghị chỉ hiện cho bên nhận phản hồi: ẩn với người vừa đồng ý/từ chối, áp dụng cả chủ/khách và dừng làm hợp đồng/kết thúc sớm, kể cả thẻ hợp đồng chờ hiệu lực. Giữ trạng thái chờ/rút/tự chấp thuận, lịch sử và quyền đọc. 190 FE, TypeScript/build, 4 Playwright hai vai trò ×desktop/mobile PASS; frontend-only, không đổi API hay nghiệp vụ.
+
+- 25/11/2026 — API hóa đơn theo phòng: thêm apartmentId cho hóa đơn tiền thuê/điện nước và phiếu gửi riêng, lọc trước phân trang/qua khách cũ; chặn sai chủ hoặc sai tài sản. API danh sách phòng có tổng SENT chưa trả, không cộng nháp/hủy/đã trả/phiếu riêng. 4 backend SQL test PASS (lượt đầu 3 fixture Owner đối chứng không có tài sản bị hạ vai trò, sửa fixture đúng quy tắc và chạy lại PASS). UI đang kiểm tra.
