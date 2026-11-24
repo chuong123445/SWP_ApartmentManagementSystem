@@ -150,12 +150,11 @@ export function FinancialChart({ months, mode = 'comparison' }: { months: Financ
         Number(m.invoices.waterAmount ?? '0') +
         Number(m.invoices.serviceAmount ?? '0')) /
       1000000;
-    const unpaidUtility = Math.min(utility, Number(m.invoices.unpaidInvoiceAmount ?? '0') / 1000000);
-    const paidUtility = Math.max(0, utility - unpaidUtility);
-
-    const paid = allocatedRent + paidUtility;
-    const unpaid = unpaidUtility;
-    const billed = paid + unpaid;
+    const totalRevenue = allocatedRent + utility;
+    const totalUnpaid = Number(m.invoices.unpaidInvoiceAmount ?? '0') / 1000000;
+    const unpaid = Math.min(totalRevenue, totalUnpaid);
+    const paid = Math.max(0, totalRevenue - unpaid);
+    const billed = totalRevenue;
     const collected = Number(m.receipts.totalAmount ?? '0') / 1000000;
     return {
       period: m.period,
