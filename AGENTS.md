@@ -16,8 +16,8 @@ Phát triển An Cư PropTech thành sản phẩm thương mại cho người d�
 
 - Giao tiếp và viết commit bằng tiếng Việt.
 - Làm từng phần nhỏ có ý nghĩa, kiểm tra rồi commit và push ngay trước khi làm phần khác.
-- Dùng nhánh tổng hợp `Duy/all`; nhánh chức năng mới bắt đầu bằng `duy/`, sau đó tích hợp về `Duy/all`.
-- Tạo/cập nhật PR cho phần hoàn thành; chỉ gộp vào `main` khi người dùng yêu cầu.
+- Theo yêu cầu ngày 25/11/2026, làm trực tiếp trên nhánh `main`; không tự tạo nhánh chức năng hay chuyển sang `Duy/all`.
+- Commit từng đơn vị hoàn chỉnh sau kiểm tra trên `main`; không bắt buộc tạo PR hoặc chia nhánh cho công việc thường ngày. Giữ nguyên công việc đang dở của người dùng.
 - Tuân thủ phạm vi từng yêu cầu. Khi được yêu cầu chỉ sửa frontend, không sửa backend.
 - Không đưa mật khẩu, API key hoặc file cấu hình riêng chứa bí mật lên GitHub.
 

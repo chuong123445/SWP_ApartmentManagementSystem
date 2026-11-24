@@ -1,0 +1,15 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import {LeaseRequestResultCard} from '../src/components/rental/LeaseRequestResultCard';
+import {cancellationResult,resultActorRole} from '../src/utils/leaseRequestResults';
+import type {LeaseRequestResult} from '../src/services/contract/contractTerminationResults';
+import type {SelectionCancellation} from '../src/services/rental/selectionCancellationService';
+const base:LeaseRequestResult={id:'26',kind:'TERMINATION',state:'REJECTED',proposalReason:'Chuyển nơi ở',returnDate:'2026-11-26',event:{id:'2',action:'REJECT_TERMINATION',actorId:'3',actorName:'Nguyễn Văn Chương',actorRole:'OWNER',createdAt:'2026-11-25T01:00:00Z',reason:'Cần trao đổi thêm'}};
+const render=(result:LeaseRequestResult,contractEnded=false)=>renderToStaticMarkup(createElement(LeaseRequestResultCard,{result,contractEnded}));
+test('rejected result shows the decision actor, timestamp, original reason and reply on the card',()=>{const html=render(base);for(const text of ['đã bị từ chối','Chủ nhà Nguyễn Văn Chương','Xử lý lúc','Chuyển nơi ở','Cần trao đổi thêm','26/11/2026','Xem chi tiết và lịch sử'])assert.ok(html.includes(text),text);assert.equal(render(base),html);});
+test('agreement explicitly requires handover while lease remains open',()=>{assert.match(render({...base,state:'AGREED'}),/chỉ kết thúc sau khi hoàn tất bàn giao/);assert.doesNotMatch(render({...base,state:'AGREED'},true),/chỉ kết thúc sau khi hoàn tất bàn giao/);});
+test('withdrawn and automatically accepted cancellation results remain visible with their real actor',()=>{assert.match(render({...base,kind:'CANCELLATION',state:'WITHDRAWN'}),/đã được rút/);const html=render({...base,kind:'CANCELLATION',state:'CANCELLED',event:{...base.event,actorId:'0',actorRole:'SYSTEM',actorName:'Hệ thống'}});assert.match(html,/đã được chấp thuận/);assert.match(html,/Người xử lý: Hệ thống/);});
+test('cancellation result uses the last event without dropping rejected or withdrawn records',()=>{const data={requestId:'71',state:'REJECTED',reason:'Chuyển nơi ở',history:[{...base.event,action:'PROPOSED',before:{ownerId:'3'},after:{}},{...base.event,action:'REJECTED',before:{ownerId:'3'},after:{}}]} as unknown as SelectionCancellation;assert.equal(cancellationResult(data)?.event.action,'REJECTED');assert.equal(cancellationResult(data)?.event.actorRole,'OWNER');assert.equal(cancellationResult({...data,state:'WITHDRAWN'})?.state,'WITHDRAWN');assert.equal(cancellationResult({...data,state:'NONE'}),null);});
+test('party labels use the contract relationship rather than account authority',()=>{assert.equal(resultActorRole({actorId:'2',after:{ownerId:'3'}}),'CUSTOMER');assert.equal(resultActorRole({actorId:'3'},'3'),'OWNER');assert.equal(resultActorRole({actorId:'0'}),'SYSTEM');});

@@ -39,3 +39,12 @@ Phần này thay thế cơ chế hoàn tất bàn giao một bước ở trên.
 - V63 bổ sung document_json/hash, hai chữ ký PNG và thời gian ký nullable vào contract_exit_cases. Hợp đồng thuê gốc và chữ ký thuê giữ nguyên.
 - Endpoint xác nhận cũ không còn kết thúc hợp đồng, trả HANDOVER_SIGNATURES_REQUIRED sau các kiểm tra quyền và trạng thái. Biên bản legacy còn đọc và hủy được.
 - PDF và ký chỉ dành đúng các bên, no-store. Chữ ký sử dụng bộ kiểm tra ảnh đang dùng cho hợp đồng, cùng hash/sourceVersion, parent lock và kiểm tra competing claim/invoice draft.
+
+## 25/11/2026 — Diễn đạt thông báo theo hai bên
+Thông báo đề nghị/kết quả kết thúc thuê sớm và dừng làm hợp đồng ghi rõ vai trò người thực hiện theo quan hệ tài sản/hợp đồng (không dựa vào role toàn cục). Đồng ý/từ chối thông báo cho bên đề nghị dùng “Chủ nhà/Người thuê đã … đề nghị … của bạn”; rút đề nghị nêu người rút. Nội dung kèm tên người thực hiện, mã và lý do. Giữ khóa sự kiện, trạng thái đã đọc, phạm vi người nhận và liên kết; không tạo lại thông báo hoặc thay trạng thái nghiệp vụ. Đề xuất kết quả trên thẻ chỉ là khuyến nghị, chưa thêm màn hình hay thẻ kết quả.
+
+## 25/11/2026 — Kết quả trên thẻ đã triển khai
+
+Thẻ yêu cầu thuê giữ kết quả dừng làm hợp đồng (PENDING/CANCELLED/REJECTED/WITHDRAWN) ngay cả sau phản hồi hoặc tải lại, từ hồ sơ và sự kiện riêng tư đã lưu. Thẻ hợp đồng giữ kết quả đề nghị kết thúc sớm (PENDING/AGREED/REJECTED/WITHDRAWN), lấy sự kiện mới nhất theo ID trên từng hợp đồng qua GET /api/v1/me/contract-termination-results?ids=... (1–100 mã mỗi lượt, chỉ hai bên). Hợp đồng DRAFT đã đủ chữ ký hoặc CANCELLED giữ thêm kết quả dừng làm hợp đồng, không thêm lại nút hủy đã bị gỡ trước đây.
+
+Mỗi kết quả gồm trạng thái, vai trò/tên người gửi hoặc người xử lý, thời điểm theo giờ Việt Nam, ngày đề nghị trả phòng nếu có, lý do ban đầu và phản hồi. Xem chi tiết và lịch sử mở ngay trên thẻ, chỉ đọc; lịch sử hợp đồng tải khi mở, không đọc toàn bộ hồ sơ cho mọi thẻ. Kết quả trên thẻ làm mới khi có sự kiện thay đổi, quay lại cửa sổ hoặc mỗi 10 giây khi trang hiển thị. Lỗi tải có nút thử lại, không giả định không có kết quả. Đã chấp thuận kết thúc sớm chưa kết thúc hợp đồng nếu chưa bàn giao; giao diện nói rõ điều này. Nút khi PENDING/AGREED là Xem đề nghị kết thúc sớm; sau từ chối/rút có thể gửi lại theo quyền server. Không thay đổi nghiệp vụ, tiền/cọc, lịch hợp đồng, trạng thái phòng hay chữ ký.

@@ -160,3 +160,15 @@
 - 25/11/2026 — Rà soát nút hủy và kết thúc sớm: xóa hoàn toàn nút Hủy trên chi tiết hợp đồng chưa active (ContractDocument); hợp đồng đang trong thời hạn (ACTIVE) có nút Đề nghị kết thúc sớm trực tiếp; chỉ hiện nút Biên bản bàn giao / ký khi đã tạo biên bản bàn giao. 182 frontend tests và build PASS. Commit: Đồng bộ nút kết thúc sớm và ẩn nút hủy trên hợp đồng chưa active.
 
 - 25/11/2026 — Quy trình đăng tải tài sản 3 bước: bỏ bước 4 (Xem trước & gửi); ở bước 3 (Căn/phòng) có nút Gửi hồ sơ kiểm duyệt trực tiếp kèm ghi chú duyệt; 182 frontend tests, TypeScript/build và E2E PASS. Commit: Rút gọn quy trình đăng tải tài sản về 3 bước và gửi duyệt tại bước Căn phòng.
+
+- 25/11/2026 — Sửa hộp thoại kết thúc sớm: đã có đề nghị chờ thì chỉ hiện trạng thái/ngày/lý do, không mở form hay cho gửi trùng; chọn thao tác, submit và hiển thị form đều theo quyền hiện tại từ server. Giữ thông báo lỗi thực. 182 FE, TypeScript/build và 4 Playwright (chủ/khách ×1440/390; gửi mới/mở lại/đã chờ) PASS. Commit: Chặn gửi trùng đề nghị kết thúc sớm đang chờ.
+
+- 25/11/2026 — Thông báo dừng làm hợp đồng/kết thúc thuê sớm: ghi rõ Chủ nhà/Người thuê đã đồng ý/từ chối đề nghị của bạn hoặc đã rút đề nghị; kèm tên người xử lý, mã yêu cầu/hợp đồng/phòng và lý do. Giữ mã thông báo, người nhận, liên kết và trạng thái đã đọc. 36 backend SQL riêng +4 Playwright hai vai trò ×desktop/mobile PASS. Vị trí hiển thị kết quả trên thẻ mới là đề xuất, chưa triển khai theo phạm vi yêu cầu.
+
+- 25/11/2026 — API kết quả kết thúc sớm trên thẻ: đọc sự kiện mới nhất của đúng hai bên, giữ cả chấp thuận/từ chối/rút; giới hạn 100 ID mỗi lượt, chỉ metadata người xử lý/thời gian/lý do. Không đổi trạng thái hợp đồng/phòng. 30 ContractExit integration tests trên SQL riêng PASS; UI đang triển khai.
+
+- 25/11/2026 — Kết quả kết thúc sớm: đọc timestamp SQL theo UTC trước khi hiển thị giờ Việt Nam, tránh phụ thuộc timezone JVM. Ca API kết quả kiểm tra timestamp chính xác PASS. API trước đó: d68053e6.
+
+- 25/11/2026 — Kết quả ngay trên thẻ: dừng làm hợp đồng tại Yêu cầu thuê, kết thúc sớm tại Hợp đồng; giữ cả chờ/chấp thuận/từ chối/rút, người xử lý/thời gian/lý do và nút Xem chi tiết và lịch sử. Hợp đồng chờ hiệu lực/đã dừng có kết quả dừng riêng; chấp thuận kết thúc sớm vẫn nhắc cần bàn giao. Nút đang chờ/đã đồng ý đổi thành Xem đề nghị. 182 FE (gồm 5 ca mới), TypeScript/build, 8 Playwright chủ/khách ×desktop/mobile PASS; API30 backend PASS, ca UTC chạy lại PASS. Không ghi appDB hay thay quy tắc thuê/tiền. Backend d68053e6/e81ecca0.
+
+- 25/11/2026 — Gộp sửa gửi trùng, thông báo theo bên và thẻ kết quả vào main theo yêu cầu; giữ đầy đủ nhật ký và thay đổi tài chính sẵn có. Chỉ xung đột nhật ký, không xung đột mã nguồn; mã chạy trùng nhánh đã kiểm tra backend/Playwright. 188 frontend tests, TypeScript/build trên main PASS. Từ nay làm trực tiếp main, không tự chia nhánh.

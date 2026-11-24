@@ -85,4 +85,42 @@ class NotificationIntegrationTests {
       jdbc.update("INSERT INTO maintenance_events(ticket_id,actor_id,action,note,created_at) VALUES(?,?,'ACCEPT',N'',SYSUTCDATETIME())",id,owner.getId());
       assertEquals(1,JsonPath.<Integer>read(feed(tenantToken),"$.unreadCount"));assertEquals(1,JsonPath.<Integer>read(feed(ownerToken),"$.unreadCount"));
     }
+    private void assertNotification(String recipient,String key,String title,String name)throws Exception{
+      java.util.List<java.util.Map<String,Object>> items=JsonPath.read(feed(recipient),"$.items");
+      var item=items.stream().filter(v->v.get("id").toString().equals(key)).findFirst().orElseThrow();
+      assertEquals(title,item.get("title"));assertTrue(item.get("message").toString().contains(name));assertTrue(item.get("message").toString().contains("Lý do / nội dung: Kiểm thử"));
+    }
+    @Test void earlyTerminationNotificationsIdentifyActorAndYourProposalInBothDirections()throws Exception{
+      for(boolean byOwner:java.util.List.of(true,false)){
+        var actor=byOwner?owner:tenant;String role=byOwner?"Chủ nhà":"Người thuê",recipient=byOwner?tenantToken:ownerToken;
+        for(String action:java.util.List.of("PROPOSE_TERMINATION","ACCEPT_TERMINATION","REJECT_TERMINATION","WITHDRAW_TERMINATION")){
+          jdbc.update("INSERT INTO contract_exit_events(contract_id,actor_id,actor_name,action,reason,before_json,after_json,created_at) VALUES(?,?,?, ?,N'Kiểm thử',N'{}',N'{}',SYSUTCDATETIME())",contract.getId(),actor.getId(),role+" kiểm thử",action);
+          Long id=jdbc.queryForObject("SELECT MAX(id) FROM contract_exit_events WHERE contract_id=?",Long.class,contract.getId());
+          String title=role+switch(action){case "PROPOSE_TERMINATION"->" đề nghị kết thúc thuê sớm — cần bạn phản hồi";case "ACCEPT_TERMINATION"->" đã đồng ý đề nghị kết thúc thuê sớm của bạn";case "REJECT_TERMINATION"->" đã từ chối đề nghị kết thúc thuê sớm của bạn";default->" đã rút đề nghị kết thúc thuê sớm";};
+          assertNotification(recipient,"contract-exit:"+id,title,role+" kiểm thử");
+          // Updating labels must not replace the event identity or reset its read state.
+          mvc.perform(post("/api/v1/me/notifications/contract-exit:"+id+"/read").header("Authorization","Bearer "+recipient)).andExpect(status().isNoContent());
+          java.util.List<java.util.Map<String,Object>> rows=JsonPath.read(feed(recipient),"$.items");assertEquals(true,rows.stream().filter(v->v.get("id").equals("contract-exit:"+id)).findFirst().orElseThrow().get("read"));
+        }
+      }
+      assertEquals(0,JsonPath.<Integer>read(feed(token(otherTenant)),"$.totalElements"));assertEquals(0,JsonPath.<Integer>read(feed(token(otherOwner)),"$.totalElements"));
+    }
+    @Test void preLeaseCancellationNotificationsIdentifyActorAndAutomaticTimeout()throws Exception{
+      jdbc.update("INSERT INTO rental_requests(apartment_id,customer_id,message,status,created_at,version) VALUES(?,?,N'Kiểm thử','ACCEPTED',SYSUTCDATETIME(),0)",apartment.getId(),tenant.getId());
+      Long request=jdbc.queryForObject("SELECT MAX(id) FROM rental_requests WHERE apartment_id=?",Long.class,apartment.getId());
+      for(boolean byOwner:java.util.List.of(true,false)){
+        var actor=byOwner?owner:tenant;String role=byOwner?"Chủ nhà":"Người thuê",recipient=byOwner?tenantToken:ownerToken;
+        for(String action:java.util.List.of("PROPOSED","ACCEPTED","REJECTED","WITHDRAWN")){
+          jdbc.update("INSERT INTO selection_cancellation_events(request_id,actor_id,actor_name,action,reason,before_json,after_json,created_at) VALUES(?,?,?, ?,N'Kiểm thử',N'{}',N'{}',SYSUTCDATETIME())",request,actor.getId(),role+" kiểm thử",action);
+          Long id=jdbc.queryForObject("SELECT MAX(id) FROM selection_cancellation_events WHERE request_id=?",Long.class,request);
+          String title=role+switch(action){case "PROPOSED"->" đề nghị hủy quá trình làm hợp đồng — cần bạn phản hồi";case "ACCEPTED"->" đã đồng ý đề nghị hủy làm hợp đồng của bạn";case "REJECTED"->" đã từ chối đề nghị hủy làm hợp đồng của bạn";default->" đã rút đề nghị hủy quá trình làm hợp đồng";};
+          assertNotification(recipient,"selection-cancel:"+id,title,role+" kiểm thử");
+        }
+      }
+      jdbc.update("INSERT INTO selection_cancellation_events(request_id,actor_id,actor_name,action,reason,before_json,after_json,created_at) VALUES(?,0,N'Hệ thống','AUTO_ACCEPTED',N'Kiểm thử',N'{}',N'{}',SYSUTCDATETIME())",request);
+      Long id=jdbc.queryForObject("SELECT MAX(id) FROM selection_cancellation_events WHERE request_id=?",Long.class,request);
+      for(String recipient:java.util.List.of(ownerToken,tenantToken))assertNotification(recipient,"selection-cancel:"+id,"Đề nghị hủy làm hợp đồng được tự chấp thuận sau 3 ngày không phản hồi","Hệ thống");
+      assertEquals(0,JsonPath.<Integer>read(feed(token(otherTenant)),"$.totalElements"));assertEquals(0,JsonPath.<Integer>read(feed(token(otherOwner)),"$.totalElements"));
+    }
+
 }

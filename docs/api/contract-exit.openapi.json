@@ -443,6 +443,87 @@
           }
         }
       }
+    },
+    "/api/v1/me/contract-termination-results": {
+      "get": {
+        "summary": "Kết quả đề nghị kết thúc sớm mới nhất trên thẻ hợp đồng",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ids",
+            "in": "query",
+            "required": true,
+            "description": "Từ 1 đến 100 ID hợp đồng, lọc theo đúng hai bên; không có sự kiện thì bỏ khỏi kết quả.",
+            "schema": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 100,
+              "items": {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 1
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Danh sách riêng tư/no-store, chỉ metadata kết quả; không ảnh, chữ ký hoặc snapshot hồ sơ.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "contractId": {
+                        "type": "string"
+                      },
+                      "state": {
+                        "type": "string"
+                      },
+                      "action": {
+                        "type": "string"
+                      },
+                      "actorId": {
+                        "type": "string"
+                      },
+                      "actorName": {
+                        "type": "string"
+                      },
+                      "actorRole": {
+                        "type": "string"
+                      },
+                      "updatedAt": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "proposalReason": {
+                        "type": "string"
+                      },
+                      "returnDate": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "IDs không hợp lệ hoặc vượt giới hạn"
+          },
+          "401": {
+            "description": "Chưa đăng nhập"
+          }
+        }
+      }
     }
   },
   "components": {
