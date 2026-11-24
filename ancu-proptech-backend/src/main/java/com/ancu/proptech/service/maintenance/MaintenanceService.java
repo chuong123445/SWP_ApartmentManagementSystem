@@ -16,6 +16,7 @@ import java.time.Instant;
 @org.springframework.stereotype.Service @RequiredArgsConstructor
 public class MaintenanceService {
     private final MaintenanceTicketRepository tickets;
+    private final java.time.Clock clock;
     private final com.ancu.proptech.repository.billing.MaintenanceChargeRepository charges;
     private final com.ancu.proptech.service.billing.InvoiceService billing;
     private final AccountAccessService access;
@@ -74,6 +75,7 @@ public class MaintenanceService {
           case CANCEL -> {if(state!=MaintenanceTicket.Status.PENDING && state!=MaintenanceTicket.Status.ACCEPTED)throw conflict("Không thể hủy phiếu đã bắt đầu sửa.");if(note.isBlank())throw conflict("Cần nhập lý do hủy.");t.setStatus(MaintenanceTicket.Status.CANCELLED);}
           case ASSIGN -> {if(state!=MaintenanceTicket.Status.ACCEPTED && state!=MaintenanceTicket.Status.IN_PROGRESS)throw conflict("Cần tiếp nhận trước khi giao thợ.");
             if(input.technicianName()==null || input.technicianName().isBlank() || input.technicianPhone()==null || input.scheduledAt()==null)throw conflict("Cần tên thợ, số điện thoại và lịch hẹn.");
+            if(!input.scheduledAt().isAfter(Instant.now(clock)))throw conflict("Lịch hẹn phải sau thời điểm hiện tại. Vui lòng chọn lại ngày và giờ.");
             t.setTechnicianName(input.technicianName().strip());t.setTechnicianPhone(input.technicianPhone());t.setScheduledAt(input.scheduledAt());t.setStatus(MaintenanceTicket.Status.IN_PROGRESS);}
           case READY -> {if(state!=MaintenanceTicket.Status.IN_PROGRESS || note.isBlank())throw conflict("Cần phiếu đang sửa và kết quả sửa chữa.");
             if(input.actualCost()==null || input.costResponsibility()==null)throw conflict("Cần nhập chi phí thực tế và bên chịu phí (nhập 0 nếu không phát sinh).");

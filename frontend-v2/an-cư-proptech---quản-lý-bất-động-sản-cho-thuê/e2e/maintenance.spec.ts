@@ -32,8 +32,13 @@ async function setup(page:Page,owner:boolean){
 test('Chủ nhà tiếp nhận, giao thợ và gửi kết quả cho khách nghiệm thu',async({page},info)=>{
  await setup(page,true);await page.goto('/app');await page.locator('#nav-maintenance').click();
  const card=page.getByRole('article').filter({hasText:'Vòi nước bị rò'});await expect(card).toBeVisible();
+ const future=await page.evaluate(()=>{const d=new Date(Date.now()+3600000);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);});
  await card.getByRole('button',{name:'Tiếp nhận',exact:true}).click();await card.getByRole('button',{name:'Xác nhận',exact:true}).click();
- await card.getByRole('button',{name:'Phân công thợ',exact:true}).click();await card.getByLabel('Tên thợ').fill('Thợ kiểm thử');await card.getByLabel('Điện thoại thợ').fill('fffff');await card.getByLabel('Lịch hẹn').fill('2026-11-01T09:00');await card.getByRole('button',{name:'Xác nhận',exact:true}).click();await expect(card.getByRole('alert')).toContainText('Nhập số điện thoại thợ');await expect(card.getByText('Đã tiếp nhận',{exact:true})).toBeVisible();await card.getByLabel('Điện thoại thợ').fill('0900000000');await card.getByRole('button',{name:'Xác nhận',exact:true}).click();
+ await card.getByRole('button',{name:'Phân công thợ',exact:true}).click();await card.getByLabel('Tên thợ').fill('Thợ kiểm thử');await card.getByLabel('Điện thoại thợ').fill('fffff');await card.getByLabel('Lịch hẹn').fill(future);await card.getByRole('button',{name:'Xác nhận',exact:true}).click();await expect(card.getByRole('alert')).toContainText('Nhập số điện thoại thợ');await expect(card.getByText('Đã tiếp nhận',{exact:true})).toBeVisible();await card.getByLabel('Điện thoại thợ').fill('0900000000');
+ await card.getByLabel('Lịch hẹn').fill('2000-01-01T09:00');await card.getByRole('button',{name:'Xác nhận',exact:true}).click();
+ await expect(card.getByRole('alert')).toContainText('Lịch hẹn phải sau thời điểm hiện tại');
+ await expect(card.getByText('Đã tiếp nhận',{exact:true})).toBeVisible();
+ await card.getByLabel('Lịch hẹn').fill(future);await card.getByRole('button',{name:'Xác nhận',exact:true}).click();
  await card.getByRole('button',{name:'Báo sửa xong',exact:true}).click();await card.getByLabel('Kết quả sửa chữa').fill('Đã thay gioăng');await card.getByLabel('Chi phí thực tế (đ)').fill('150000');await card.getByRole('button',{name:'Xác nhận',exact:true}).click();
  await expect(card).toContainText('Chờ khách thuê kiểm tra và xác nhận kết quả.');await expect(card.getByRole('button',{name:'Xác nhận hoàn tất',exact:true})).toHaveCount(0);
  await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:info.outputPath('chu-nha-cho-nghiem-thu.png'),fullPage:true});

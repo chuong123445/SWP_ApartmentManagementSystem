@@ -117,3 +117,5 @@
 - 24/11/2026 — Hiện mục Chi phí sửa chữa kể cả khi chưa có khoản thu, giải thích điều kiện nghiệm thu/tháng và thêm lối mở Sự cố & Bảo trì. TypeScript/build và 2 E2E phí sửa desktop/mobile PASS. Commit: Hiện lý do chưa có phí sửa chữa khi lập hóa đơn.
 
 - 24/11/2026 — Phân công thợ: sửa biểu thức kiểm tra điện thoại trên trình duyệt, báo lỗi ngay tại ô nhập và chặn gửi chuỗi chữ; nhập số hợp lệ phân công thành công. TypeScript/build và 2 E2E PASS. Commit: Báo lỗi điện thoại ngay trong biểu mẫu phân công thợ.
+
+- 24/11/2026 — Phân công thợ: chặn ngày giờ hẹn đã qua tại trình duyệt và server theo thời điểm thực, báo lỗi cạnh lịch hẹn; giữ nguyên lịch sử cũ. 2 backend SQL riêng, 2 E2E, TypeScript/build PASS. Commit: Chặn lịch phân công thợ trong quá khứ.
