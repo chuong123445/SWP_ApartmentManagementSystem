@@ -17,8 +17,6 @@ const templates = [
   { id: 'HOUSE', title: 'Nhà nguyên căn', description: 'Thuê nhà riêng, nhà phố, biệt thự.' },
   { id: 'APARTMENT', title: 'Chung cư / Căn hộ', description: 'Thuê căn hộ chung cư.' },
   { id: 'ROOM', title: 'Phòng trọ', description: 'Thuê phòng trọ, nhà trọ.' },
-  { id: 'BUSINESS', title: 'Mặt bằng kinh doanh', description: 'Thuê mặt bằng; cần rà soát quyền và mục đích sử dụng phù hợp.' },
-  { id: 'SHARED', title: 'Ở ghép / Share phòng', description: 'Thuê phòng ở ghép, chia sẻ không gian.' },
 ] as const;
 
 export function ContractWizard({ requestId, renewalOf, onClose, onSaved }: { requestId?: string; renewalOf?: ContractDraft; onClose: () => void; onSaved: () => void }) {
