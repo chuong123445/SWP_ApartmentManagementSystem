@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { saveContract, signContract, getContractPdf, requestRenewal, decideRenewalRequest, cancelAcceptedRenewalRequest } from '../src/services/contract/contractService.ts';
-import { contractToday, contractStartMinimum, oneMonthRentPackage, validateContractTerms } from '../src/utils/contract.ts';
+import { contractToday, contractStartMinimum, oneMonthRentPackage, validateContractTerms, contractWholeMonths, contractMaxRentCycle, validateContractTermFields, mapContractTermErrorCode } from '../src/utils/contract.ts';
 import { tenancyViews } from '../src/services/billing/billingService.ts';
 import { setAccessToken } from '../src/services/http/client.ts';
 import type { ContractContext, ContractDraft, ContractTerms } from '../src/types/contract.ts';
@@ -97,4 +97,48 @@ test('Rental duration includes both endpoints and distinguishes February from 30
   assert.equal(oneMonthRentPackage('2027-02-15','2027-03-14'),false);
   assert.match(validateContractTerms({...terms,startDate:'2027-02-15',endDate:'2027-03-14'},'2027-02-15'),/30 ngày/);
   assert.match(validateContractTerms({...terms,startDate:from,endDate:'2027-02-14',rentCycleMonths:3},from),/1 tháng/);
+});
+
+test('Rent cycles support any N up to whole months of contract, with max 12', () => {
+  assert.equal(contractWholeMonths('2027-01-01', '2027-03-31'), 3);
+  assert.equal(contractMaxRentCycle('2027-01-01', '2027-03-31'), 3);
+  assert.equal(contractWholeMonths('2027-01-15', '2027-06-30'), 5);
+  assert.equal(contractMaxRentCycle('2027-01-15', '2027-06-30'), 5);
+  assert.equal(contractWholeMonths('2027-01-01', '2028-02-29'), 14);
+  assert.equal(contractMaxRentCycle('2027-01-01', '2028-02-29'), 12);
+
+  const base = { ...terms, startDate: '2027-01-01', endDate: '2027-05-31' };
+  for (const c of [1, 2, 3, 4, 5]) {
+    assert.equal(validateContractTerms({ ...base, rentCycleMonths: c }, '2027-01-01'), '');
+  }
+  assert.match(validateContractTerms({ ...base, rentCycleMonths: 6 }, '2027-01-01'), /không được vượt quá số tháng tròn/);
+  assert.match(validateContractTerms({ ...base, rentCycleMonths: 0 }, '2027-01-01'), /từ 1 đến 12/);
+  assert.match(validateContractTerms({ ...base, rentCycleMonths: 13 }, '2027-01-01'), /từ 1 đến 12/);
+});
+
+test('Field-level validation maps rules to specific inputs and binds server error codes', () => {
+  const emptyTerms = { ...terms, startDate: '', endDate: '' };
+  const fieldErrs = validateContractTermFields(emptyTerms, '2026-11-01');
+  assert.equal(fieldErrs.startDate, 'Vui lòng chọn ngày bắt đầu.');
+  assert.equal(fieldErrs.endDate, 'Vui lòng chọn ngày kết thúc.');
+
+  const pastStartErrs = validateContractTermFields({ ...terms, startDate: '2026-10-31' }, '2026-11-01');
+  assert.match(fieldErrs.startDate, /chọn ngày bắt đầu/);
+  assert.match(pastStartErrs.startDate, /không được trước ngày hôm nay/);
+
+  const shortTermErrs = validateContractTermFields({ ...terms, startDate: '2027-01-01', endDate: '2027-01-10' }, '2026-11-01');
+  assert.match(shortTermErrs.endDate, /tối thiểu phải từ 30 ngày/);
+
+  const cycleExceededErrs = validateContractTermFields({ ...terms, startDate: '2027-01-01', endDate: '2027-03-31', rentCycleMonths: 4 }, '2026-11-01');
+  assert.match(cycleExceededErrs.rentCycleMonths, /không được vượt quá số tháng tròn/);
+
+  // Server error code mapping
+  assert.deepEqual(mapContractTermErrorCode('CONTRACT_START_DATE_IN_PAST'), { field: 'startDate', code: 'CONTRACT_START_DATE_IN_PAST' });
+  assert.deepEqual(mapContractTermErrorCode('CONTRACT_START_DATE_TOO_FAR'), { field: 'startDate', code: 'CONTRACT_START_DATE_TOO_FAR' });
+  assert.deepEqual(mapContractTermErrorCode('INVALID_START_DATE'), { field: 'startDate', code: 'INVALID_START_DATE' });
+  assert.deepEqual(mapContractTermErrorCode('INVALID_CONTRACT_DATES'), { field: 'endDate', code: 'INVALID_CONTRACT_DATES' });
+  assert.deepEqual(mapContractTermErrorCode('INVALID_END_DATE'), { field: 'endDate', code: 'INVALID_END_DATE' });
+  assert.deepEqual(mapContractTermErrorCode('CONTRACT_TERM_TOO_SHORT'), { field: 'endDate', code: 'CONTRACT_TERM_TOO_SHORT' });
+  assert.deepEqual(mapContractTermErrorCode('INVALID_RENT_CYCLE'), { field: 'rentCycleMonths', code: 'INVALID_RENT_CYCLE' });
+  assert.deepEqual(mapContractTermErrorCode('ONE_MONTH_RENT_CYCLE_REQUIRED'), { field: 'rentCycleMonths', code: 'ONE_MONTH_RENT_CYCLE_REQUIRED' });
 });

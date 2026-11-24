@@ -21,8 +21,8 @@ public class ContractTerms {
     @NotNull @PositiveOrZero @Digits(integer=13,fraction=2) private BigDecimal deposit;
     @NotNull @Min(1) @Max(28) private Integer paymentDay;
     @NotNull private Integer rentCycleMonths=1;
-    @AssertTrue(message="Chu kỳ tiền thuê phải là 1, 3, 6 hoặc 12 tháng.")
-    public boolean isRentCycleValid(){return rentCycleMonths!=null&&java.util.Set.of(1,3,6,12).contains(rentCycleMonths);}
+    @AssertTrue(message="Chu kỳ tiền thuê phải từ 1 đến 12 tháng.")
+    public boolean isRentCycleValid(){return rentCycleMonths!=null&&rentCycleMonths>=1&&rentCycleMonths<=12;}
     @NotBlank @Size(max=300) private String paymentMethod;
     @NotBlank @Size(max=300) private String usagePurpose;
     @NotNull @Size(min=1,max=30) @Valid private List<@NotNull ContractClause> clauses;

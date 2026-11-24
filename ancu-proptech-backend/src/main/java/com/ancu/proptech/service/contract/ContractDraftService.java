@@ -54,9 +54,48 @@ public class ContractDraftService {
     @jakarta.persistence.PersistenceContext private jakarta.persistence.EntityManager entityManager;
 
     // The parent request row serializes create/reopen for the same accepted selection.
+    public static final java.time.Duration SIGNING_TIMEOUT = java.time.Duration.ofHours(48);
+
+    @Transactional
+    public boolean expireIfSigningTimeout(Long contractId) {
+        var d = drafts.findByContractId(contractId).orElse(null);
+        if (d == null) return false;
+        var c = d.getContract();
+        if (c.getStatus() != RentalContract.Status.DRAFT) return false;
+        boolean ownerSigned = d.getOwnerSignedAt() != null;
+        boolean customerSigned = d.getCustomerSignedAt() != null;
+        if (ownerSigned == customerSigned) return false;
+        Instant signedAt = ownerSigned ? d.getOwnerSignedAt() : d.getCustomerSignedAt();
+        if (!Instant.now().isAfter(signedAt.plus(SIGNING_TIMEOUT))) return false;
+
+        c.setStatus(RentalContract.Status.CANCELLED);
+        var r = d.getRentalRequest();
+        r.setStatus(RentalRequest.Status.CANCELLED);
+        r.setDecidedAt(Instant.now());
+        r.setDecisionReason("Hợp đồng hết hạn ký do quá 48 giờ không có đủ chữ ký.");
+        var a = c.getApartment();
+        if (a.getAvailability() == Apartment.Availability.CONTRACT_IN_PROGRESS) {
+            a.setAvailability(Apartment.Availability.VACANT);
+            apartments.saveAndFlush(a);
+        }
+        contracts.saveAndFlush(c);
+        requests.saveAndFlush(r);
+        return true;
+    }
+
+    @Transactional
+    public void expirePendingDrafts() {
+        for (Long contractId : drafts.singleSignedDraftContractIds()) {
+            try {
+                expireIfSigningTimeout(contractId);
+            } catch (Exception ignored) {}
+        }
+    }
+
     @Transactional
     public ContractContextResponse context(Jwt jwt,Long requestId) {
         var owner=access.owner(jwt);
+        drafts.findByRentalRequestId(requestId).ifPresent(d -> expireIfSigningTimeout(d.getContract().getId()));
         var request=requests.findForOwnerUpdate(requestId,owner.getId()).orElseThrow(ContractDraftService::notFound);
         entityManager.refresh(request);
         if(request.getStatus()!=RentalRequest.Status.ACCEPTED) throw conflict("REQUEST_NOT_ACCEPTED","Chỉ tạo hợp đồng từ yêu cầu đã chấp nhận.");
@@ -106,9 +145,10 @@ public class ContractDraftService {
         return drafts.findByContractCustomerIdOrderByCreatedAtDescIdDesc(access.customer(jwt).getId()).stream().filter(this::visibleInList).map(this::response).toList();
     }
     private boolean visibleInList(ContractDraft d){return !(d.getContract().getStatus()==RentalContract.Status.CANCELLED&&d.getContract().getRenewalOfContractId()==null&&d.getOwnerSignedAt()==null&&d.getCustomerSignedAt()==null);}
-    @Transactional(readOnly=true)
+    @Transactional
     public ContractDraftResponse get(Jwt jwt,Long id) {
         var account=access.account(jwt);
+        expireIfSigningTimeout(id);
         var d=drafts.findByContractId(id).orElseThrow(ContractDraftService::notFound);
         var c=d.getContract();
         if(!c.getApartment().getProperty().getOwner().getId().equals(account.getId()) && !c.getCustomer().getId().equals(account.getId())) throw notFound();
@@ -142,6 +182,7 @@ public class ContractDraftService {
     @Transactional
     public Challenge requestSignatureOtp(Jwt jwt,Long id,ContractSignatureRequest input) {
         var account=access.account(jwt);
+        if(expireIfSigningTimeout(id)) throw conflict("SIGNING_EXPIRED","Thời hạn ký hợp đồng (48 giờ) đã hết. Hợp đồng đã bị hủy.");
         var d=drafts.findByContractId(id).orElseThrow(ContractDraftService::notFound);
         var c=d.getContract();
         boolean owner=c.getApartment().getProperty().getOwner().getId().equals(account.getId());
@@ -160,6 +201,7 @@ public class ContractDraftService {
     @Transactional(noRollbackFor=AuthException.class)
     public ContractDraftResponse sign(Jwt jwt,Long id,ContractSignatureRequest input) {
         var account=access.account(jwt);
+        if(expireIfSigningTimeout(id)) throw conflict("SIGNING_EXPIRED","Thời hạn ký hợp đồng (48 giờ) đã hết. Hợp đồng đã bị hủy.");
         var d=drafts.findByContractId(id).orElseThrow(ContractDraftService::notFound);
         var c=d.getContract();
         Long ownerId=c.getApartment().getProperty().getOwner().getId();
@@ -231,6 +273,9 @@ public class ContractDraftService {
         requireRentalDates(t.getStartDate(),t.getEndDate());
         if(ContractTermPolicy.oneMonthPackage(t.getStartDate(),t.getEndDate())&&t.getRentCycleMonths()!=1)
             throw new ApiException(HttpStatus.BAD_REQUEST,"ONE_MONTH_RENT_CYCLE_REQUIRED","Hợp đồng trọn một tháng chỉ được chọn chu kỳ 1 tháng/lần.");
+        int maxCycle=ContractTermPolicy.maxRentCycle(t.getStartDate(),t.getEndDate());
+        if(t.getRentCycleMonths()<1 || t.getRentCycleMonths()>maxCycle)
+            throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_RENT_CYCLE","Chu kỳ thanh toán không được vượt quá số tháng tròn của hợp đồng ("+maxCycle+" tháng).");
     }
     private void requireRentalDates(java.time.LocalDate start,java.time.LocalDate end) {
         requireStartNotPast(start);
