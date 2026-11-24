@@ -64,7 +64,7 @@ export function ContractExitPanel({draft,onChanged,initialOpen=false,documentPag
     </>}
     {!data&&!error&&<p role="status" className="text-sm text-slate-500">Đang tải trạng thái...</p>}
     {error&&<p role="alert" className="text-red-700 text-sm break-words">{error}</p>}
-    {notice&&<p role="status" className="text-emerald-800 text-sm">{notice}</p>}
+    {!initialAction&&notice&&<p role="status" className="text-emerald-800 text-sm">{notice}</p>}
     {blocked&&<p className="text-sm">Hãy tải lại và xem trạng thái mới trước khi xác nhận lại. Hệ thống không tự gửi lại thao tác.</p>}
 
     {data&&<>
@@ -81,7 +81,29 @@ export function ContractExitPanel({draft,onChanged,initialOpen=false,documentPag
         <div className="flex flex-wrap gap-2">{available.filter(action=>!documentPage||action!=='PROPOSE_HANDOVER').map(action=><button type="button" key={action} className={button} disabled={busy||blocked} onClick={()=>choose(action)}>{labels[action]}</button>)}</div>
       </>}
 
-      {initialAction==='PROPOSE_TERMINATION'&&!data.canProposeTermination&&<div className="rounded-lg bg-amber-50 p-4 text-sm text-amber-800 space-y-1"><p className="font-semibold">Không thể gửi đề nghị kết thúc sớm ở thời điểm này.</p><p>Trạng thái kết thúc: {termLabels[data.terminationState]}.</p></div>}
+      {initialAction==='PROPOSE_TERMINATION'&&data.terminationState==='PENDING'&&(
+        <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-sm text-emerald-900 space-y-1">
+          <p className="font-semibold text-base text-emerald-800">Đề nghị kết thúc sớm đã được gửi</p>
+          <p className="text-emerald-700">Chờ bên còn lại xác nhận.</p>
+          {data.termination && (
+            <div className="mt-2 pt-2 border-t border-emerald-200 text-xs text-emerald-800 space-y-0.5">
+              <p>Ngày đề nghị kết thúc: <strong>{dossierDateDisplay(data.termination.returnDate)}</strong></p>
+              {data.termination.reason && <p>Lý do: {data.termination.reason}</p>}
+            </div>
+          )}
+        </div>
+      )}
+      {initialAction==='PROPOSE_TERMINATION'&&data.terminationState==='AGREED'&&(
+        <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-sm text-emerald-900 space-y-1">
+          <p className="font-semibold text-base text-emerald-800">Hai bên đã thống nhất kết thúc sớm</p>
+          <p className="text-emerald-700">Ngày kết thúc: <strong>{dossierDateDisplay(data.termination?.returnDate ?? '')}</strong>. Có thể tiến hành lập biên bản bàn giao.</p>
+        </div>
+      )}
+      {initialAction==='PROPOSE_TERMINATION'&&!data.canProposeTermination&&data.terminationState!=='PENDING'&&data.terminationState!=='AGREED'&&(
+        <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-700">
+          <p>Trạng thái kết thúc: {termLabels[data.terminationState]}.</p>
+        </div>
+      )}
       {initialAction==='PROPOSE_HANDOVER'&&!data.canProposeHandover&&<div className="rounded-lg bg-amber-50 p-4 text-sm text-amber-800 space-y-1"><p className="font-semibold">Không thể lập biên bản bàn giao ở thời điểm này.</p><p>Trạng thái bàn giao: {handLabels[data.handoverState]}.</p></div>}
 
       {selected&&!blocked&&<form ref={form} aria-label={handing?'Thông tin bàn giao cư trú':'Xử lý kết thúc thuê'} onSubmit={e=>{e.preventDefault();void perform();}} className={`${initialAction ? '' : 'border rounded-xl p-3'} space-y-4`}>
@@ -109,7 +131,6 @@ export function ContractExitPanel({draft,onChanged,initialOpen=false,documentPag
        </div>
       </form>}
       {!initialAction&&data.evidence.length>0&&<details><summary className="font-semibold text-sm cursor-pointer">Chứng cứ đã lưu ({data.evidence.length})</summary><ul className="space-y-2 mt-2">{data.evidence.map(e=><li key={e.id} className="text-sm break-words"><button type="button" className="text-emerald-800 underline" onClick={()=>void downloadExitEvidence(draft.id,e).catch(err=>setError(err.message))}>{e.filename}</button> · #{e.id}{data.handover?.evidenceIds.includes(e.id)?' · Biên bản hiện tại':data.handover?.disputeEvidenceIds.includes(e.id)?' · Phản hồi bất đồng':''}</li>)}</ul></details>}
-      {!initialAction&&data.history.length>0&&<details><summary className="font-semibold cursor-pointer">Lịch sử kết thúc thuê / bàn giao ({data.history.length})</summary><ol className="space-y-3 mt-3">{data.history.map(e=><li key={e.id} className="border rounded-lg p-3 text-sm break-words"><strong>{labels[e.action as ExitAction]??e.action}</strong><p>{e.actorName} · {new Date(e.createdAt).toLocaleString('vi-VN')}</p>{!e.action.startsWith('SIGN_HANDOVER_')&&<p className="whitespace-pre-wrap">{e.reason}</p>}</li>)}</ol></details>}
     </>}
    </>}
   </section>;
