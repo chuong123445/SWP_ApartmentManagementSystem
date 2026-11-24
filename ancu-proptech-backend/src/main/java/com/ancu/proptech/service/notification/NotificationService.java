@@ -20,17 +20,17 @@ public class NotificationService {
  private static final String FEED="""
  WITH feed AS (
  SELECT CONCAT('contract-exit:',e.id) notification_key,CASE e.action
- WHEN 'PROPOSE_TERMINATION' THEN N'Yêu cầu kết thúc thuê sớm — cần phản hồi'
- WHEN 'ACCEPT_TERMINATION' THEN N'Đã đồng ý kết thúc thuê sớm'
- WHEN 'REJECT_TERMINATION' THEN N'Đã từ chối kết thúc thuê sớm'
- WHEN 'WITHDRAW_TERMINATION' THEN N'Đã rút yêu cầu kết thúc thuê sớm'
+ WHEN 'PROPOSE_TERMINATION' THEN CONCAT(CASE WHEN e.actor_id=p.owner_id THEN N'Chủ nhà' ELSE N'Người thuê' END,N' đề nghị kết thúc thuê sớm — cần bạn phản hồi')
+ WHEN 'ACCEPT_TERMINATION' THEN CONCAT(CASE WHEN e.actor_id=p.owner_id THEN N'Chủ nhà' ELSE N'Người thuê' END,N' đã đồng ý đề nghị kết thúc thuê sớm của bạn')
+ WHEN 'REJECT_TERMINATION' THEN CONCAT(CASE WHEN e.actor_id=p.owner_id THEN N'Chủ nhà' ELSE N'Người thuê' END,N' đã từ chối đề nghị kết thúc thuê sớm của bạn')
+ WHEN 'WITHDRAW_TERMINATION' THEN CONCAT(CASE WHEN e.actor_id=p.owner_id THEN N'Chủ nhà' ELSE N'Người thuê' END,N' đã rút đề nghị kết thúc thuê sớm')
  WHEN 'PROPOSE_UNILATERAL_TERMINATION' THEN N'Thông báo kết thúc đơn phương — cần phản hồi'
  WHEN 'OBJECT_UNILATERAL_TERMINATION' THEN N'Người thuê phản đối kết thúc đơn phương'
  WHEN 'WITHDRAW_UNILATERAL_TERMINATION' THEN N'Chủ nhà đã rút thông báo đơn phương'
  WHEN 'AUTO_END_UNILATERAL' THEN N'Hợp đồng tự kết thúc do không phản hồi'
  WHEN 'FINALIZE_UNILATERAL_TERMINATION' THEN N'Hợp đồng đã kết thúc đơn phương'
  ELSE N'Cập nhật bàn giao cư trú' END title,
- CONCAT(N'HD-',c.id,N' — ',e.reason) message,CONCAT('/contracts/',c.id,'?section=termination') url,e.created_at
+ CONCAT(N'HD-',c.id,N' · ',COALESCE(a.room_number,a.title),N' — ',CASE WHEN e.action='AUTO_END_UNILATERAL' THEN N'Hệ thống' ELSE CONCAT(CASE WHEN e.actor_id=p.owner_id THEN N'Chủ nhà' ELSE N'Người thuê' END,N' ',e.actor_name) END,N'. Lý do / nội dung: ',e.reason) message,CONCAT('/contracts/',c.id,'?section=termination') url,e.created_at
  FROM contract_exit_events e JOIN rental_contracts c ON c.id=e.contract_id JOIN rental_apartments a ON a.id=c.apartment_id JOIN rental_properties p ON p.id=a.property_id
  WHERE (e.actor_id<>:account OR e.action='AUTO_END_UNILATERAL') AND (p.owner_id=:account OR c.customer_id=:account)
  UNION ALL
@@ -67,8 +67,14 @@ public class NotificationService {
  WHERE p.owner_id=:account AND r.customer_id<>:account AND r.status='CANCELLED' AND r.decided_at IS NOT NULL AND NOT EXISTS(SELECT 1 FROM selection_cancellations sc WHERE sc.request_id=r.id)
  UNION ALL
  SELECT CONCAT('selection-cancel:',e.id),
- CASE e.action WHEN 'PROPOSED' THEN N'Có đề nghị hủy quá trình làm hợp đồng' WHEN 'REJECTED' THEN N'Đề nghị hủy đã bị từ chối' WHEN 'WITHDRAWN' THEN N'Đề nghị hủy đã được rút' ELSE N'Quá trình làm hợp đồng đã hủy' END,
- CONCAT(a.title,N' — ',COALESCE(e.reason,N'Đã ghi nhận phản hồi')),
+ CASE e.action
+ WHEN 'PROPOSED' THEN CONCAT(CASE WHEN e.actor_id=p.owner_id THEN N'Chủ nhà' ELSE N'Người thuê' END,N' đề nghị hủy quá trình làm hợp đồng — cần bạn phản hồi')
+ WHEN 'ACCEPTED' THEN CONCAT(CASE WHEN e.actor_id=p.owner_id THEN N'Chủ nhà' ELSE N'Người thuê' END,N' đã đồng ý đề nghị hủy làm hợp đồng của bạn')
+ WHEN 'REJECTED' THEN CONCAT(CASE WHEN e.actor_id=p.owner_id THEN N'Chủ nhà' ELSE N'Người thuê' END,N' đã từ chối đề nghị hủy làm hợp đồng của bạn')
+ WHEN 'WITHDRAWN' THEN CONCAT(CASE WHEN e.actor_id=p.owner_id THEN N'Chủ nhà' ELSE N'Người thuê' END,N' đã rút đề nghị hủy quá trình làm hợp đồng')
+ WHEN 'AUTO_ACCEPTED' THEN N'Đề nghị hủy làm hợp đồng được tự chấp thuận sau 3 ngày không phản hồi'
+ ELSE CONCAT(CASE WHEN e.actor_id=p.owner_id THEN N'Chủ nhà' ELSE N'Người thuê' END,N' đã hủy quá trình làm hợp đồng') END,
+ CONCAT(N'Yêu cầu thuê #',r.id,N' · ',a.title,N' — ',CASE WHEN e.action='AUTO_ACCEPTED' THEN N'Hệ thống' ELSE CONCAT(CASE WHEN e.actor_id=p.owner_id THEN N'Chủ nhà' ELSE N'Người thuê' END,N' ',e.actor_name) END,N'. Lý do / nội dung: ',COALESCE(e.reason,N'Đã ghi nhận phản hồi')),
  CASE WHEN JSON_VALUE(e.after_json,'$.contractId') IS NOT NULL THEN CONCAT('/contracts/',JSON_VALUE(e.after_json,'$.contractId'))
       WHEN p.owner_id=:account THEN CONCAT('/app?tab=rental_requests&propertyId=',p.id)
       ELSE '/my/rental-requests' END,e.created_at

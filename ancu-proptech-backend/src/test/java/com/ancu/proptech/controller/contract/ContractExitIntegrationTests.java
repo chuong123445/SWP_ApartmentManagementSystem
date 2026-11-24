@@ -258,7 +258,7 @@ class ContractExitIntegrationTests {
   mvc.perform(get("/api/v1/me/contract-exit-requests").header("Authorization",ot)).andExpect(status().isOk()).andExpect(jsonPath("$[0].requiresResponse").value(false));
   mvc.perform(get("/api/v1/me/contract-exit-requests").header("Authorization",xt)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
   mvc.perform(get("/api/v1/me/contract-exit-requests")).andExpect(status().isUnauthorized());
-  mvc.perform(get("/api/v1/me/notifications").header("Authorization",ct)).andExpect(status().isOk()).andExpect(jsonPath("$.items[0].title").value("Yêu cầu kết thúc thuê sớm — cần phản hồi")).andExpect(jsonPath("$.items[0].url").value("/contracts/"+contract.getId()+"?section=termination"));
+  mvc.perform(get("/api/v1/me/notifications").header("Authorization",ct)).andExpect(status().isOk()).andExpect(jsonPath("$.items[0].title").value("Chủ nhà đề nghị kết thúc thuê sớm — cần bạn phản hồi")).andExpect(jsonPath("$.items[0].url").value("/contracts/"+contract.getId()+"?section=termination"));
   org.mockito.Mockito.when(clock.instant()).thenReturn(noticeNow.plus(Duration.ofDays(40)));assertFalse(exitService.expireUnilateral(contract.getId()));assertEquals("PENDING",cases.findById(contract.getId()).orElseThrow().getTerminationState());
  }
 

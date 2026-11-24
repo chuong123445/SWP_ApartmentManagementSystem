@@ -39,3 +39,6 @@ Phần này thay thế cơ chế hoàn tất bàn giao một bước ở trên.
 - V63 bổ sung document_json/hash, hai chữ ký PNG và thời gian ký nullable vào contract_exit_cases. Hợp đồng thuê gốc và chữ ký thuê giữ nguyên.
 - Endpoint xác nhận cũ không còn kết thúc hợp đồng, trả HANDOVER_SIGNATURES_REQUIRED sau các kiểm tra quyền và trạng thái. Biên bản legacy còn đọc và hủy được.
 - PDF và ký chỉ dành đúng các bên, no-store. Chữ ký sử dụng bộ kiểm tra ảnh đang dùng cho hợp đồng, cùng hash/sourceVersion, parent lock và kiểm tra competing claim/invoice draft.
+
+## 25/11/2026 — Diễn đạt thông báo theo hai bên
+Thông báo đề nghị/kết quả kết thúc thuê sớm và dừng làm hợp đồng ghi rõ vai trò người thực hiện theo quan hệ tài sản/hợp đồng (không dựa vào role toàn cục). Đồng ý/từ chối thông báo cho bên đề nghị dùng “Chủ nhà/Người thuê đã … đề nghị … của bạn”; rút đề nghị nêu người rút. Nội dung kèm tên người thực hiện, mã và lý do. Giữ khóa sự kiện, trạng thái đã đọc, phạm vi người nhận và liên kết; không tạo lại thông báo hoặc thay trạng thái nghiệp vụ. Đề xuất kết quả trên thẻ chỉ là khuyến nghị, chưa thêm màn hình hay thẻ kết quả.
