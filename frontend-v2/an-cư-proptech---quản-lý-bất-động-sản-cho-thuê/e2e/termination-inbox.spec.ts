@@ -11,6 +11,7 @@ for(const width of [1440,390])for(const owner of [false,true])test(`Termination 
  await page.route('**/api/**',async route=>{if(owner){const summary=ownerSummaryFixture(route);if(summary)return summary;}const p=new URL(route.request().url()).pathname,send=(json:unknown)=>route.fulfill({json});
   if(p.endsWith('/csrf'))return send({token:'fixture',headerName:'X-XSRF-TOKEN'});if(p.endsWith('/vneid-config'))return send({enabled:false});if(p.endsWith('/refresh'))return send({accessToken:'fixture',tokenType:'Bearer',expiresIn:900,user});if(p==='/api/v1/me')return send(user);
   if(p.endsWith('/contract-exit-requests'))return send(pending?[{contractId:'42',apartmentTitle:'Phòng kiểm thử',kind:'MUTUAL',requiresResponse:true,reason:'Cần kết thúc sớm',responseDeadline:null}]:[]);
+  if(p.endsWith('/contract-termination-results'))return send([]);
   if(p.endsWith('/contract-drafts'))return send([doc]);if(p.endsWith('/owner/properties'))return send([{id:'4',name:'Tài sản kiểm thử',approvalStatus:'APPROVED'}]);
   if(p.endsWith('/tenancies')||p.endsWith('/owner/apartments')||p.endsWith('/owner/maintenance-tickets'))return send([]);
   if(p.includes('/notifications')||p.includes('/conversations')||p.endsWith('/rental-requests')||p.endsWith('/owner/renewal-requests')||p.endsWith('/owner/invoices'))return send({items:[],unreadCount:0,totalElements:0,totalPages:0});

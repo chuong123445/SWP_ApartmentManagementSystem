@@ -1,3 +1,5 @@
+import {LeaseRequestResultCard} from './LeaseRequestResultCard';
+import {cancellationResult,resultActorRole} from '@/utils/leaseRequestResults';
 import { useEffect, useState } from 'react';
 import type { RentalRequest } from '@/types/rental';
 import {
@@ -6,14 +8,18 @@ import {
   type SelectionCancellation,
 } from '@/services/rental/selectionCancellationService';
 
-export function RequestCancellationAction({
+function RequestCancellationControls({
   request,
   owner = false,
   onChanged,
+  onLoaded,
+  onLoadError,
 }: {
   request: RentalRequest;
   owner?: boolean;
   onChanged?: () => void;
+  onLoaded:(value:SelectionCancellation)=>void;
+  onLoadError:(message:string)=>void;
 }) {
   const [data, setData] = useState<SelectionCancellation | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -24,23 +30,26 @@ export function RequestCancellationAction({
   const load = (signal?: AbortSignal) => {
     getSelectionCancellation(request.id, signal)
       .then(value => {
-        setData(value);
+        if(signal?.aborted)return;setData(value);onLoaded(value);onLoadError('');
       })
-      .catch(() => {});
+      .catch(err => {if(!signal?.aborted)onLoadError(err instanceof Error?err.message:'Không tải được kết quả dừng làm hợp đồng.');});
   };
 
   useEffect(() => {
     const c = new AbortController();
     load(c.signal);
-    const refresh = () => load();
+    const refresh = () => {if(document.visibilityState==='visible')load(c.signal);};
+    const timer=window.setInterval(refresh,10000);
+    window.addEventListener('focus',refresh);
     window.addEventListener('ancu:tenancy-changed', refresh);
     return () => {
-      c.abort();
+      c.abort();window.clearInterval(timer);window.removeEventListener('focus',refresh);
       window.removeEventListener('ancu:tenancy-changed', refresh);
     };
   }, [request.id]);
 
-  if (request.status === 'CANCELLED' || data?.state === 'CANCELLED') {
+  if (data?.state === 'CANCELLED') return null;
+  if (request.status === 'CANCELLED') {
     return (
       <div className="mt-3 text-xs text-slate-500 font-medium">
         Đã dừng quá trình làm hợp đồng.
@@ -59,7 +68,7 @@ export function RequestCancellationAction({
     setError('');
     try {
       const updated = await actOnSelectionCancellation(request.id, 'START', data.sourceVersion, reason.trim());
-      setData(updated);
+      setData(updated);onLoaded(updated);
       setShowForm(false);
       setReason('');
       window.dispatchEvent(new Event('ancu:tenancy-changed'));
@@ -83,7 +92,7 @@ export function RequestCancellationAction({
         data.sourceVersion,
         action === 'REJECT' ? rejectReason : ''
       );
-      setData(updated);
+      setData(updated);onLoaded(updated);
       window.dispatchEvent(new Event('ancu:tenancy-changed'));
       onChanged?.();
     } catch (err) {
@@ -99,7 +108,7 @@ export function RequestCancellationAction({
     setError('');
     try {
       const updated = await actOnSelectionCancellation(request.id, 'WITHDRAW', data.sourceVersion, '');
-      setData(updated);
+      setData(updated);onLoaded(updated);
       window.dispatchEvent(new Event('ancu:tenancy-changed'));
       onChanged?.();
     } catch (err) {
@@ -111,7 +120,7 @@ export function RequestCancellationAction({
 
   // 1. Bên kia mong muốn dừng làm hợp đồng
   if (data?.canRespond) {
-    const proposerTitle = owner ? 'Khách thuê' : 'Chủ thuê';
+    const proposerTitle = owner ? 'Người thuê' : 'Chủ nhà';
     return (
       <section aria-label="Yêu cầu dừng làm hợp đồng" className="mt-3 p-3.5 bg-amber-50 border border-amber-200 rounded-xl space-y-2 text-sm">
         <p className="font-semibold text-amber-950">
@@ -230,4 +239,9 @@ export function RequestCancellationAction({
       )}
     </div>
   );
+}
+
+export function RequestCancellationAction(props:{request:RentalRequest;owner?:boolean;onChanged?:()=>void}){
+ const [data,setData]=useState<SelectionCancellation|null>(null),[loadError,setLoadError]=useState('');const result=cancellationResult(data);
+ return <>{loadError&&<p role="alert" className="mt-3 text-xs text-rose-700">Chưa tải được kết quả dừng làm hợp đồng. {loadError} <button className="underline" onClick={()=>window.dispatchEvent(new Event('ancu:tenancy-changed'))}>Thử lại</button></p>}{result&&<LeaseRequestResultCard result={result} history={data!.history.map(event=>({...event,actorRole:resultActorRole(event)}))}/>}<RequestCancellationControls {...props} onLoaded={setData} onLoadError={setLoadError}/></>;
 }

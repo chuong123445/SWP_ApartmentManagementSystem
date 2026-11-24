@@ -1,3 +1,9 @@
+import {ReadOnlyCancellationResult} from '@/components/rental/ReadOnlyCancellationResult';
+import {useContractTerminationResults} from '@/hooks/useContractTerminationResults';
+import {contractTerminationResult} from '@/services/contract/contractTerminationResults';
+import {getContractExit} from '@/services/contract/contractExitService';
+import {LeaseRequestResultCard} from '@/components/rental/LeaseRequestResultCard';
+import {resultActorRole} from '@/utils/leaseRequestResults';
 import { PendingContractExitRequests } from './PendingContractExitRequests';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
@@ -20,15 +26,19 @@ export function ContractDraftList({ owner = false, propertyId, onLoaded }: { own
   useEffect(() => { const refresh = () => { if (document.visibilityState === 'visible') setReloadKey(value => value + 1); };window.addEventListener('ancu:tenancy-changed', refresh);window.addEventListener('focus', refresh);return () => { window.removeEventListener('ancu:tenancy-changed', refresh);window.removeEventListener('focus', refresh); }; }, []);
   useEffect(() => { if (!loading && !error && focusId && focused.current !== focusId && items.some(item => item.id === focusId)) { const element = document.getElementById(`contract-${focusId}`);element?.focus({ preventScroll: true });element?.scrollIntoView({ block: 'center' });focused.current = focusId; } }, [items, loading, error, focusId]);
   const signed=items.filter(hasBothContractSignatures);
+  const terminationResults=useContractTerminationResults(signed.map(item=>item.id),reloadKey);
   const legacy = tenancy.tenancies.filter(contract => ['ACTIVE','ENDED'].includes(contract.status)&&!items.some(document => document.id === contract.id));
   return <section className="space-y-4"><PendingContractExitRequests drafts={signed} revision={reloadKey} onChanged={()=>setReloadKey(n=>n+1)}/><div className="flex flex-wrap justify-between gap-3"><h2 className="text-lg font-bold">Danh sách hợp đồng</h2><button onClick={() => setReloadKey(n => n + 1)} className="text-sm text-emerald-700">Làm mới danh sách hợp đồng</button></div>
+    {terminationResults.error&&<p role="alert" className="text-rose-700 text-sm">Chưa tải được kết quả kết thúc thuê. {terminationResults.error} <button className="underline" onClick={terminationResults.reload}>Thử lại</button></p>}
     {error && <p role="alert" className="text-rose-700">{error}</p>}{loading && <p role="status">Đang tải hợp đồng...</p>}
     {!loading && !error && <>{!signed.length && (owner || (!tenancy.loading && !tenancy.error && !legacy.length)) && <p className="text-sm text-slate-500">Chưa có hợp đồng đã đủ chữ ký hai bên. Tiếp tục xem và ký tại mục Yêu cầu thuê.</p>}{!owner && tenancy.loading && <p role="status" className="text-sm text-slate-500">Đang tải lịch sử thuê...</p>}<div className="grid md:grid-cols-2 gap-4">{signed.map(d => {
       const actions = contractLifecycleActions(d, user?.id);
       return <article key={d.id} id={`contract-${d.id}`} tabIndex={-1} data-testid="contract-draft-card" className={`bg-white border rounded-xl p-5 space-y-3 min-w-0 ${focusId === d.id ? 'border-emerald-600 ring-2 ring-emerald-100' : 'border-slate-200'}`}>
         <span className="text-xs rounded-full px-3 py-1 bg-amber-50 text-amber-800">{signingLabel(d)}</span><h3 className="font-bold">{contractListTitle(d)}</h3><p className="text-sm text-slate-500 break-words">{owner ? d.snapshot.customer.fullName : d.snapshot.owner.fullName}</p><p className="text-sm">{d.startDate} → {d.endDate}</p><p className="font-semibold text-emerald-700">{formatRent(d.monthlyRent)} / tháng</p><p className="text-xs text-slate-500 break-all">{d.contractNumber}</p>
+        {['DRAFT','CANCELLED'].includes(d.status)&&<ReadOnlyCancellationResult requestId={d.rentalRequestId}/>}
+        {terminationResults.results[d.id]&&<LeaseRequestResultCard result={contractTerminationResult(terminationResults.results[d.id])} contractEnded={d.status==='ENDED'} loadHistory={async()=>{const value=await getContractExit(d.id);return value.history.filter(event=>['PROPOSE_TERMINATION','ACCEPT_TERMINATION','REJECT_TERMINATION','WITHDRAW_TERMINATION'].includes(event.action)).map(event=>({...event,actorRole:resultActorRole(event,value.ownerId)}));}}/>}
         <div className="flex flex-wrap items-center gap-3">{owner && d.status === 'DRAFT' && d.cancellationState !== 'PENDING' && !d.signing?.ownerSignedAt && !d.signing?.customerSignedAt ? <button onClick={() => setRequestId(d.rentalRequestId)} className="text-sm font-semibold text-emerald-700">{contractActionLabel(d, user?.id)}</button> : <Link to={`/contracts/${d.id}`} className="text-sm font-semibold text-emerald-700">{contractActionLabel(d, user?.id)} →</Link>}
-          {d.status === 'ACTIVE' && !d.lifecycle?.expired && <button type="button" className="text-sm font-semibold text-rose-700 hover:text-rose-800 underline" onClick={() => setAction({ id: d.id, kind: 'termination' })}>Đề nghị kết thúc sớm</button>}
+          {d.status === 'ACTIVE' && !d.lifecycle?.expired && <button type="button" className="text-sm font-semibold text-rose-700 hover:text-rose-800 underline" onClick={() => setAction({ id: d.id, kind: 'termination' })}>{['PENDING','AGREED'].includes(terminationResults.results[d.id]?.state)?'Xem đề nghị kết thúc sớm':terminationResults.results[d.id]?'Gửi lại đề nghị kết thúc sớm':'Đề nghị kết thúc sớm'}</button>}
           {!owner && actions.canRequest && <button className="rounded-lg bg-brand-700 text-white px-4 py-2 text-sm font-semibold" onClick={() => setAction({ id: d.id, kind: 'renewal' })}>Gửi yêu cầu thuê tiếp</button>}
           {owner && actions.canHandover && <button className="rounded-lg bg-brand-700 text-white px-4 py-2 text-sm font-semibold" onClick={() => setAction({ id: d.id, kind: 'handover' })}>Lập biên bản bàn giao</button>}
         </div>

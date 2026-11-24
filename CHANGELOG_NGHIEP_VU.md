@@ -167,3 +167,5 @@
 - 25/11/2026 — API kết quả kết thúc sớm trên thẻ: đọc sự kiện mới nhất của đúng hai bên, giữ cả chấp thuận/từ chối/rút; giới hạn 100 ID mỗi lượt, chỉ metadata người xử lý/thời gian/lý do. Không đổi trạng thái hợp đồng/phòng. 30 ContractExit integration tests trên SQL riêng PASS; UI đang triển khai.
 
 - 25/11/2026 — Kết quả kết thúc sớm: đọc timestamp SQL theo UTC trước khi hiển thị giờ Việt Nam, tránh phụ thuộc timezone JVM. Ca API kết quả kiểm tra timestamp chính xác PASS. API trước đó: d68053e6.
+
+- 25/11/2026 — Kết quả ngay trên thẻ: dừng làm hợp đồng tại Yêu cầu thuê, kết thúc sớm tại Hợp đồng; giữ cả chờ/chấp thuận/từ chối/rút, người xử lý/thời gian/lý do và nút Xem chi tiết và lịch sử. Hợp đồng chờ hiệu lực/đã dừng có kết quả dừng riêng; chấp thuận kết thúc sớm vẫn nhắc cần bàn giao. Nút đang chờ/đã đồng ý đổi thành Xem đề nghị. 182 FE (gồm 5 ca mới), TypeScript/build, 8 Playwright chủ/khách ×desktop/mobile PASS; API30 backend PASS, ca UTC chạy lại PASS. Không ghi appDB hay thay quy tắc thuê/tiền. Backend d68053e6/e81ecca0.
