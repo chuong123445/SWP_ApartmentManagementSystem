@@ -137,7 +137,7 @@ export function ContractWizard({ requestId, renewalOf, onClose, onSaved }: { req
   };
   const snapshot = existing?.snapshot ?? context?.snapshot;
   const locked = !!existing && (existing.status !== 'DRAFT' || !!existing.signing?.ownerSignedAt || !!existing.signing?.customerSignedAt);
-  const expiredStart = !!terms && terms.startDate < contractToday();
+  const expiredStart = !!terms?.startDate && terms.startDate < contractToday();
   return <dialog ref={dialog} aria-labelledby="contract-wizard-title" onCancel={event => { event.preventDefault();close(); }} className="m-auto p-0 rounded-2xl w-[calc(100%-1rem)] max-w-4xl max-h-[94dvh] bg-white shadow-2xl backdrop:bg-slate-900/50">
     <div className="flex flex-col max-h-[94dvh]">
       <header className="flex justify-between items-start gap-3 border-b border-slate-200 p-4 sm:p-6 shrink-0"><div><h2 id="contract-wizard-title" className="text-lg sm:text-xl font-bold text-slate-900">{existing ? 'Xem hợp đồng đã lưu' : renewalOf ? 'Ký tiếp hợp đồng ' + renewalOf.contractNumber : 'Tạo hợp đồng thuê'}</h2><p className="text-xs text-slate-500 mt-1">Thông tin hai bên và tài sản được lấy từ hồ sơ đã lưu.</p></div><button type="button" onClick={close} disabled={saving} aria-label="Đóng trình tạo hợp đồng" className="p-2 rounded-lg hover:bg-slate-100"><X className="w-5 h-5" /></button></header>
