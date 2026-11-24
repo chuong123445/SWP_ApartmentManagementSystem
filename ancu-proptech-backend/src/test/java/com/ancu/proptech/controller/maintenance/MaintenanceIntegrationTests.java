@@ -32,6 +32,20 @@ class MaintenanceIntegrationTests {
  @Autowired com.ancu.proptech.repository.contract.RentalContractRepository contracts;
  private AuthAccount account(AuthAccount.Role role){var a=new AuthAccount();a.setEmail(com.ancu.proptech.support.TestIds.next()+"@example.invalid");a.setFullName("Kiểm thử bảo trì");a.setPasswordHash(encoder.encode("Test!12345678"));a.setRole(role);a.setStatus(AuthAccount.Status.ACTIVE);a.setEmailVerified(true);a.setContactVerified(true);return accounts.saveAndFlush(a);}
  private String token(AuthAccount a){return "Bearer "+auth.login(a.getEmail(),"Test!12345678").tokens().accessToken();}
+ @Test void repairBillingMonthMustStayWithinOriginalContract()throws Exception{
+  var owner=account(AuthAccount.Role.OWNER);var customer=account(AuthAccount.Role.CUSTOMER);
+  var p=new Property();p.setOwner(owner);p.setName("Tòa kiểm thử tháng thu phí");p.setAddress("Địa chỉ thử");p.setCity("Test");p.setDistrict("Test");p.setApprovalStatus(Property.ApprovalStatus.APPROVED);properties.saveAndFlush(p);
+  var a=new com.ancu.proptech.model.apartment.Apartment();a.setProperty(p);a.setTitle("Phòng thử");a.setRoomNumber("A.101");a.setDescription("Thử");a.setAreaM2(java.math.BigDecimal.TEN);a.setAdvertisedMonthlyRent(java.math.BigDecimal.TEN);a.setPublicationStatus(com.ancu.proptech.model.apartment.Apartment.PublicationStatus.PUBLISHED);a.setAvailability(com.ancu.proptech.model.apartment.Apartment.Availability.OCCUPIED);a.setCreatedAt(Instant.now());apartments.saveAndFlush(a);
+  var c=new com.ancu.proptech.model.contract.RentalContract();c.setApartment(a);c.setCustomer(customer);c.setStatus(com.ancu.proptech.model.contract.RentalContract.Status.ACTIVE);c.setStartDate(java.time.LocalDate.of(2026,1,15));c.setEndDate(java.time.LocalDate.of(2026,11,15));c.setMonthlyRent(java.math.BigDecimal.TEN);c.setElectricityUnitPrice(java.math.BigDecimal.ZERO);c.setWaterUnitPrice(java.math.BigDecimal.ZERO);contracts.saveAndFlush(c);
+  var t=new MaintenanceTicket();t.setProperty(p);t.setApartment(a);t.setReporter(customer);t.setTenant(customer);t.setBillingContract(c);t.setTitle("Kiểm thử tháng thu phí");t.setDescription("Thử");t.setCategory(MaintenanceTicket.Category.OTHER);t.setPriority(MaintenanceTicket.Priority.NORMAL);t.setStatus(MaintenanceTicket.Status.IN_PROGRESS);t.setCreatedAt(Instant.now());tickets.saveAndFlush(t);
+  String path="/api/v1/owner/maintenance-tickets/"+t.getId()+"/actions",auth=token(owner);
+  String input="{\"version\":"+t.getVersion()+",\"action\":\"READY\",\"note\":\"Đã sửa\",\"actualCost\":\"200000\",\"costResponsibility\":\"CUSTOMER\",\"billingPeriod\":\"%s\"}";
+  mvc.perform(post(path).header("Authorization",auth).contentType("application/json").content(input.formatted("2026-12")))
+   .andExpect(status().isConflict()).andExpect(jsonPath("$.message").value("Tháng thu phí không được sau tháng kết thúc hợp đồng (2026-11)."));
+  mvc.perform(post(path).header("Authorization",auth).contentType("application/json").content(input.formatted("2025-12"))).andExpect(status().isConflict());
+  mvc.perform(post(path).header("Authorization",auth).contentType("application/json").content(input.formatted("2026-11")))
+   .andExpect(status().isOk()).andExpect(jsonPath("$.billingPeriod").value("2026-11"));
+ }
  @Test void customerCanOnlyReportOccupiedApartmentWithOwnActiveLease()throws Exception{
   var owner=account(AuthAccount.Role.OWNER);var customer=account(AuthAccount.Role.CUSTOMER);var outsider=account(AuthAccount.Role.CUSTOMER);
   var p=new Property();p.setOwner(owner);p.setName("Tòa thử quan hệ thuê");p.setAddress("Địa chỉ thử");p.setCity("Test");p.setDistrict("Test");p.setApprovalStatus(Property.ApprovalStatus.APPROVED);properties.saveAndFlush(p);
