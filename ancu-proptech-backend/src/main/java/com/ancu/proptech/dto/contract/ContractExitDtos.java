@@ -10,7 +10,7 @@ public final class ContractExitDtos {
  public enum Action { PROPOSE_TERMINATION,ACCEPT_TERMINATION,REJECT_TERMINATION,WITHDRAW_TERMINATION,PROPOSE_HANDOVER,CONFIRM_HANDOVER,DISPUTE_HANDOVER,CANCEL_HANDOVER,PROPOSE_UNILATERAL_TERMINATION,OBJECT_UNILATERAL_TERMINATION,WITHDRAW_UNILATERAL_TERMINATION,FINALIZE_UNILATERAL_TERMINATION }
  public record TermInput(@NotNull LocalDate returnDate,@NotBlank @Size(max=3000) String reason,@NotBlank @Size(max=3000) String clauseReference,
   @NotNull @DecimalMin("0") @Digits(integer=13,fraction=2) BigDecimal penaltyAmount,@NotBlank @Pattern(regexp="NONE|OWNER|CUSTOMER") String penaltyPayer){}
- public record HandInput(@NotNull LocalDate returnDate,@Min(0) @Max(2147483647) Long electricityReading,@Min(0) @Max(2147483647) Long waterReading,
+ public record HandInput(LocalDate returnDate,@Min(0) @Max(2147483647) Long electricityReading,@Min(0) @Max(2147483647) Long waterReading,
   @Min(0) @Max(2147483647) Long electricityStartReading,@Min(0) @Max(2147483647) Long waterStartReading,
   @AssertTrue boolean keysReturned,@NotBlank @Size(max=3000) String conditionNotes,@NotNull @Size(max=5) List<@NotNull @Positive Long> evidenceIds,@Valid HandDetails details){}
  public record UnilateralInput(@NotBlank @Size(max=3000) String reason,@NotBlank @Size(max=3000) String clauseReference){}

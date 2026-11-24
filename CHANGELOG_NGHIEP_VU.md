@@ -141,3 +141,5 @@
 - 24/11/2026 — Đăng tải tài sản: bỏ khung quét đối chiếu AI tự động ở bước cuối (Kiểm tra trước khi gửi), người dùng xem trước thông tin và bấm gửi duyệt trực tiếp mà không bị báo lỗi quét tệp; giữ nguyên bước đọc trích xuất giấy tờ ban đầu. 181 frontend unit tests, TypeScript/build và Playwright E2E PASS. Commit: Bỏ quét AI đối chiếu ở bước cuối đăng tải tài sản.
 
 - 24/11/2026 — Dừng làm hợp đồng inline: thay nút Hủy / lịch sử làm hợp đồng bằng nút Dừng làm hợp đồng inline; khi có đề nghị dừng hiển thị thông báo kèm 2 nút Có/Không, từ chối dừng sẽ trở lại trạng thái ban đầu; gỡ bỏ khối Lịch sử xử lý hủy khỏi giao diện. 181 frontend unit tests, TypeScript/build PASS. Commit: Hiển thị thao tác dừng làm hợp đồng inline và gỡ lịch sử hủy.
+
+- 25/11/2026 — Lập biên bản bàn giao: cố định ngày bàn giao là ngày lập biên bản (hôm nay), ẩn ô chọn ngày trên biểu mẫu, hiển thị ngày trên biên bản PDF bàn giao. 29/29 ContractExitIntegrationTests và 181 frontend tests PASS.

@@ -122,8 +122,7 @@ public class ContractExitService {
     owner(s);if(input.handover()==null)throw bad("Cần thông tin bàn giao.");
     if(!canProposeHandover(s))throw conflict("HANDOVER_UNAVAILABLE","Chưa đủ điều kiện lập hoặc thay biên bản bàn giao.");
     requireNoCompetingFlow(c);requireNoDraft(c);var v=input.handover();
-    var earliest=root.getTerminationState().equals("AGREED")?t.returnDate():c.getEndDate();
-    if(v.returnDate().isBefore(earliest)||v.returnDate().isAfter(dates.today()))throw bad("Ngày bàn giao thực tế phải từ ngày kết thúc đã thỏa thuận đến hôm nay.");
+    var returnDate=dates.today();
     if(!v.keysReturned())throw bad("Cần xác nhận bàn giao chìa khóa và tài sản.");
     if(v.details()==null)throw bad("Cần địa điểm, danh mục tài sản và số chìa khóa bàn giao.");
     var ids=selectedEvidence(s,v.evidenceIds());
@@ -136,8 +135,8 @@ public class ContractExitService {
      utility=electric.subtract(source[0]).multiply(c.getElectricityUnitPrice()).add(c.getWaterBillingMode()==com.ancu.proptech.model.property.PropertySettings.WaterBillingMode.METERED?water.subtract(source[1]).multiply(c.getWaterUnitPrice()):BigDecimal.ZERO);
     }
     root.setHandoverState("PENDING");
-    root.setHandoverJson(json.writeValueAsString(new Hand(v.returnDate(),source==null?null:source[0].toPlainString(),source==null?null:source[1].toPlainString(),str(electric),str(water),str(utility),v.conditionNotes().strip(),true,ids,null,null,List.of())));
-    var document=new Document("BBBG-HD-"+c.getId(),c.getStartDate(),c.getEndDate(),documentSnapshot(s),v.returnDate(),v.details(),v.conditionNotes().strip(),true,ids,source==null?null:source[0].toPlainString(),source==null?null:source[1].toPlainString(),str(electric),str(water),str(utility));
+    root.setHandoverJson(json.writeValueAsString(new Hand(returnDate,source==null?null:source[0].toPlainString(),source==null?null:source[1].toPlainString(),str(electric),str(water),str(utility),v.conditionNotes().strip(),true,ids,null,null,List.of())));
+    var document=new Document("BBBG-HD-"+c.getId(),c.getStartDate(),c.getEndDate(),documentSnapshot(s),returnDate,v.details(),v.conditionNotes().strip(),true,ids,source==null?null:source[0].toPlainString(),source==null?null:source[1].toPlainString(),str(electric),str(water),str(utility));
     root.setDocumentJson(json.writeValueAsString(document));root.setDocumentHash(AssistanceAudit.hash(root.getDocumentJson()));clearSignatures(root);reason=v.conditionNotes().strip();
    }
    case CONFIRM_HANDOVER -> throw conflict("HANDOVER_SIGNATURES_REQUIRED","Hai bên cần mở PDF và ký biên bản bàn giao bằng tài khoản của mình.");
