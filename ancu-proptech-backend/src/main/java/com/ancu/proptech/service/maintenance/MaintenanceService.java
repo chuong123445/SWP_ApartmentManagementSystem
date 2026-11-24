@@ -96,6 +96,8 @@ public class MaintenanceService {
                 var month=java.time.YearMonth.parse(period);
                 if(month.atEndOfMonth().isBefore(t.getBillingContract().getStartDate()))
                     throw conflict("Tháng thu phí không được trước ngày bắt đầu hợp đồng.");
+                if(month.atDay(1).isAfter(t.getBillingContract().getEndDate()))
+                    throw conflict("Tháng thu phí không được sau tháng kết thúc hợp đồng ("+java.time.YearMonth.from(t.getBillingContract().getEndDate())+").");
                 t.setBillingPeriod(period);
             } else t.setBillingPeriod(null);
             t.setActualCost(input.actualCost());t.setCustomerCost(share);t.setCostResponsibility(input.costResponsibility().name());

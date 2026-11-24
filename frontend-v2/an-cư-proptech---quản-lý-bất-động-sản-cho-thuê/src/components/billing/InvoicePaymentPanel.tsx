@@ -63,7 +63,7 @@ export function InvoicePaymentPanel({ invoiceId, additional = false, tenant = fa
     {error && <p role="alert" className="text-rose-700">{error}</p>}
     {!data && !error && <p role="status">Đang tải trạng thái thanh toán...</p>}
     {data?.status === 'PAID' && <p role="status" className="rounded-xl p-4 bg-emerald-50 text-emerald-800">
-      Đã thanh toán{data.paidAt && ` · Ghi nhận ${new Date(data.paidAt).toLocaleString('vi-VN')}`}
+      Đã thanh toán{data.paymentMethod === 'CASH' && ' bằng tiền mặt'}{data.paidAt && ` · Ghi nhận ${new Date(data.paidAt).toLocaleString('vi-VN')}`}
     </p>}
     {data?.status === 'UNPAID' && <p role="status" className="text-amber-800">Chưa thanh toán</p>}
     {data?.status === 'PLATFORM_UNAVAILABLE' && <p className="text-amber-800">Hệ thống chưa sẵn sàng nhận thanh toán. Vui lòng thử lại sau.</p>}

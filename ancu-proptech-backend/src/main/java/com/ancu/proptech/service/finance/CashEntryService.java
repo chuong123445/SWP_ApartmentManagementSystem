@@ -27,6 +27,7 @@ public class CashEntryService {
     private final PropertyRepository properties;
     private final AccountAccessService access;
     private final EntityManager em;
+    private final com.ancu.proptech.repository.payment.InvoicePaymentRepository invoicePayments;
 
     @Transactional public Entry create(Jwt jwt,Create input) {
         var owner=access.owner(jwt);
@@ -59,6 +60,9 @@ public class CashEntryService {
     @Transactional public Entry cancel(Jwt jwt,Long id,Cancel input) {
         var owner=access.owner(jwt);var e=locked(id,owner.getId());checkVersion(e,input.version());
         if(e.getStatus()==Status.CANCELLED)throw conflict("Phiếu đã được hủy.");
+        if(e.getSourceInvoiceId()!=null && invoicePayments.findByInvoiceId(e.getSourceInvoiceId())
+            .filter(p->p.getPaymentMethod()==com.ancu.proptech.model.payment.InvoicePayment.Method.CASH&&p.getPaidAt()!=null).isPresent())
+            throw conflict("Phiếu thu này xác nhận hóa đơn đã trả tiền mặt, không được hủy riêng làm lệch công nợ.");
         e.setStatus(Status.CANCELLED);e.setCancelledAt(Instant.now());e.setCancelledBy(owner);
         e.setCancellationReason(input.reason().strip());entries.flush();return response(e);
     }

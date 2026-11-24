@@ -280,7 +280,7 @@ public class SepayService {
    if(p!=null&&webhookSource(p.getOwnerId(), p.getCollectionOwnerId()).equals(ownerId)){
     e.setInvoiceId(p.getInvoiceId());
     // BIDV VA chính thức: gốc + subAccount=VA, hoặc accountNumber chính là VA.
-    boolean recipient=recipient(p.getBank(),p.getAccountNumber(),p.getVirtualAccount(),w);
+    boolean recipient=p.getBank()!=null&&recipient(p.getBank(),p.getAccountNumber(),p.getVirtualAccount(),w);
     var invoice=invoices.findWithContractById(p.getInvoiceId()).orElseThrow(SepayService::missing);
     contracts.lockById(invoice.getContract().getId()).orElseThrow(SepayService::missing);entities.refresh(invoice);entities.refresh(p);
     if(!recipient)e.setResult("ACCOUNT_MISMATCH");
@@ -303,7 +303,10 @@ public class SepayService {
  }
  private static Long webhookSource(Long owner, Long collector) { return collector == null ? owner : collector; }
  private static boolean recipient(String bank,String account,String va,Webhook w){return bank.equalsIgnoreCase(w.gateway())&&(va==null?account.equals(w.accountNumber())&&(w.subAccount()==null||w.subAccount().isBlank()):((account.equals(w.accountNumber())&&va.equals(w.subAccount()))||(va.equals(w.accountNumber())&&(w.subAccount()==null||w.subAccount().isBlank()||va.equals(w.subAccount())))));}
- private Payment paymentView(InvoicePayment p, boolean showQr){return paymentView(p.getBank(),p.getAccountNumber(),p.getVirtualAccount(),p.getAccountHolderName(),p.getAmount(),p.getPaymentCode(),p.getPaidAt(),showQr);}
+ private Payment paymentView(InvoicePayment p, boolean showQr){
+  if(p.getPaymentMethod()==InvoicePayment.Method.CASH)return new Payment("PAID",null,p.getAmount().toPlainString(),null,null,null,null,p.getPaidAt(),"CASH");
+  return paymentView(p.getBank(),p.getAccountNumber(),p.getVirtualAccount(),p.getAccountHolderName(),p.getAmount(),p.getPaymentCode(),p.getPaidAt(),showQr);
+ }
  private Payment paymentView(String bank,String account,String va,String holder,BigDecimal amount,String code,Instant paidAt,boolean showQr){
   String recipient=va==null?account:va;
   String qr=showQr&&paidAt==null?"https://vietqr.app/img?bank="+bank+"&acc="+URLEncoder.encode(recipient,StandardCharsets.UTF_8)+"&amount="+amount.toBigIntegerExact()+"&des="+(bank.equalsIgnoreCase("VietinBank")?"SEVQR%20":"")+code+"&template=compact&showinfo=true&holder="+URLEncoder.encode(holder,StandardCharsets.UTF_8):null;

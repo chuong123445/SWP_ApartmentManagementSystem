@@ -198,6 +198,73 @@ class BillingIntegrationTests {
     private ResultActions create(String token,String body)throws Exception{return mvc.perform(post("/api/v1/owner/contracts/"+contract.getId()+"/invoices").header("Authorization","Bearer "+token).contentType("application/json").content(body));}
     private String createDraft()throws Exception{return JsonPath.read(create(ownerToken,body("2026-10",0,"1120","208")).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(),"$.id");}
     private ResultActions send(String token,String id,long version)throws Exception{return mvc.perform(post("/api/v1/owner/invoices/"+id+"/send").header("Authorization","Bearer "+token).contentType("application/json").content("{\"version\":"+version+"}"));}
+    private ResultActions cashPayment(String token,String id,long version,LocalDate date)throws Exception{
+        return mvc.perform(post("/api/v1/owner/invoices/"+id+"/cash-payment").header("Authorization","Bearer "+token)
+            .contentType("application/json").content("{\"version\":"+version+",\"transactionDate\":\""+date+"\",\"note\":\"Đã nhận đủ tiền trực tiếp\"}"));
+    }
+    @Test void cashReceiptPaysInvoiceAndPostsExactlyOneLinkedIncome()throws Exception{
+        String id=createDraft();send(ownerToken,id,0).andExpect(status().isOk());
+        var date=LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+        String receipt=cashPayment(ownerToken,id,1,date).andExpect(status().isOk())
+            .andExpect(jsonPath("$.amount").value("540000.00")).andReturn().getResponse().getContentAsString();
+        String cashId=JsonPath.read(receipt,"$.cashEntryId");
+        cashPayment(ownerToken,id,1,date).andExpect(status().isOk()).andExpect(jsonPath("$.cashEntryId").value(cashId));
+        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM cash_entries WHERE source_invoice_id=?",Integer.class,id));
+        for(String t:List.of(ownerToken,tenantToken))mvc.perform(get("/api/v1/invoices/"+id+"/payment").header("Authorization","Bearer "+t))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("PAID")).andExpect(jsonPath("$.paymentMethod").value("CASH"))
+            .andExpect(jsonPath("$.qrUrl").isEmpty()).andExpect(jsonPath("$.bank").isEmpty());
+        mvc.perform(get("/api/v1/owner/invoices?paymentStatus=PAID").header("Authorization","Bearer "+ownerToken))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].paymentStatus").value("PAID"));
+        mvc.perform(get("/api/v1/owner/cash-entries/"+cashId).header("Authorization","Bearer "+ownerToken))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("POSTED"))
+            .andExpect(jsonPath("$.paymentMethod").value("CASH")).andExpect(jsonPath("$.amount").value("540000.00"));
+        mvc.perform(post("/api/v1/owner/cash-entries/"+cashId+"/cancel").header("Authorization","Bearer "+ownerToken)
+            .contentType("application/json").content("{\"version\":1,\"reason\":\"Thử hủy riêng phiếu thu\"}"))
+            .andExpect(status().isConflict());
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM settlement_entries WHERE owner_id=?",Integer.class,owner.getId()));
+    }
+    @Test void cashPaymentEnforcesOwnershipInvoiceStateVersionAndReceiptDate()throws Exception{
+        String id=createDraft();var date=LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+        cashPayment(ownerToken,id,0,date).andExpect(status().isConflict());
+        send(ownerToken,id,0).andExpect(status().isOk());
+        cashPayment(tenantToken,id,1,date).andExpect(status().isForbidden());
+        cashPayment(token(otherOwner),id,1,date).andExpect(status().isNotFound());
+        cashPayment(ownerToken,id,0,date).andExpect(status().isConflict());
+        cashPayment(ownerToken,id,1,date.plusDays(1)).andExpect(status().isBadRequest());
+        cashPayment(ownerToken,id,1,date.minusDays(1)).andExpect(status().isBadRequest());
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM invoice_payments WHERE invoice_id=?",Integer.class,id));
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM cash_entries WHERE source_invoice_id=?",Integer.class,id));
+    }
+    @Test void cashCannotOverwriteBankPaymentOrUnreconciledIncomingFunds()throws Exception{
+        String id=createDraft();send(ownerToken,id,0).andExpect(status().isOk());
+        var payment=new com.ancu.proptech.model.payment.InvoicePayment();payment.setInvoiceId(Long.valueOf(id));payment.setOwnerId(owner.getId());
+        payment.setPaymentCode("ANCU"+UUID.randomUUID().toString().replace("-","").substring(0,24).toUpperCase(Locale.ROOT));payment.setBank("MB");payment.setAccountNumber("123456789");payment.setAccountHolderName("Owner");payment.setAmount(new BigDecimal("540000"));
+        var repo=paymentsForCash;repo.saveAndFlush(payment);
+        var event=new com.ancu.proptech.model.payment.SepayEvent();event.setInvoiceId(Long.valueOf(id));event.setOwnerId(owner.getId());event.setTransactionId(System.nanoTime());event.setAmount(new BigDecimal("100000"));event.setResult("AMOUNT_MISMATCH");event.setReceivedAt(java.time.Instant.now());eventsForCash.saveAndFlush(event);
+        var date=LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+        cashPayment(ownerToken,id,1,date).andExpect(status().isConflict());
+        payment.setPaidAt(java.time.Instant.now());repo.saveAndFlush(payment);
+        cashPayment(ownerToken,id,1,date).andExpect(status().isConflict());
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM cash_entries WHERE source_invoice_id=?",Integer.class,id));
+    }
+    @Autowired com.ancu.proptech.repository.payment.InvoicePaymentRepository paymentsForCash;
+    @Autowired com.ancu.proptech.repository.payment.SepayEventRepository eventsForCash;
+    @Test void concurrentCashConfirmationsPostOnlyOneReceipt()throws Exception{
+        String id=createDraft();send(ownerToken,id,0).andExpect(status().isOk());
+        var date=LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+        TestTransaction.flagForCommit();TestTransaction.end();
+        var pool=Executors.newFixedThreadPool(2);var gate=new CountDownLatch(1);
+        try{
+            Callable<Integer> task=()->{gate.await();return cashPayment(ownerToken,id,1,date).andReturn().getResponse().getStatus();};
+            var first=pool.submit(task);var second=pool.submit(task);gate.countDown();
+            assertEquals(200,first.get(20,TimeUnit.SECONDS));assertEquals(200,second.get(20,TimeUnit.SECONDS));
+            assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM cash_entries WHERE source_invoice_id=? AND status='POSTED'",Integer.class,id));
+            assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM invoice_payments WHERE invoice_id=? AND payment_method='CASH' AND paid_at IS NOT NULL",Integer.class,id));
+        }finally{
+            pool.shutdownNow();jdbc.update("DELETE FROM cash_entries WHERE source_invoice_id=?",id);
+            jdbc.update("DELETE FROM invoice_payments WHERE invoice_id=?",id);cleanupCommitted();
+        }
+    }
     @Test void propertyFilterControlsInvoiceCountBeforePaginationAndKeepsOwnerScope()throws Exception{
         String firstId=createDraft();
         send(ownerToken,firstId,0).andExpect(status().isOk());
