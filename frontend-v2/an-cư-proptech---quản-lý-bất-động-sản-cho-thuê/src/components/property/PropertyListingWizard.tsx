@@ -16,7 +16,7 @@ type ScanIssue={fileId:string|null;message:string};
 const documentWarning='Chưa thể tiếp tục. Bỏ tệp không phù hợp, gửi lại giấy tờ đúng loại và quét lại.';
 const field='mt-1 w-full min-w-0 border border-slate-300 rounded-lg px-3 py-2 bg-white';
 const button='rounded-lg border px-4 py-2 text-sm disabled:opacity-50';
-const steps=['Giấy tờ','Thông tin & ảnh tài sản','Căn/phòng','Xem trước & gửi'];
+const steps=['Giấy tờ','Thông tin & ảnh tài sản','Căn/phòng'];
 export function PropertyListingWizard({rightType}:{rightType:Dossier['rightType']}){
  const navigate=useNavigate();const [query,setQuery]=useSearchParams();const draftId=query.get('draft');
  const [draft,setDraft]=useState<ListingDraft|null>(null);const [saved,setSaved]=useState<ListingDraft[]>([]);const [state,setState]=useState<ListingState>(blankListing);
@@ -115,7 +115,7 @@ export function PropertyListingWizard({rightType}:{rightType:Dossier['rightType'
    if(state.step>=2&&units.some(u=>!u.imageIds.length))throw new Error('Cần ít nhất một ảnh riêng cho từng căn/phòng đã chọn.');
    return true;
  };
- const next=(event:FormEvent)=>{event.preventDefault();void run(async()=>{if(!validate())return;if(state.step<3){await persist({...state,step:state.step+1});return;}
+ const next=(event:FormEvent)=>{event.preventDefault();void run(async()=>{if(!validate())return;if(state.step<2){await persist({...state,step:state.step+1});return;}
    if(!draft)return;await finishListingDraft(draft,listingProperty(state),dossier());navigate('/account/rental-properties');
  });};
  if(loading)return <p role="status">Đang tải bản nháp...</p>;
@@ -163,8 +163,8 @@ export function PropertyListingWizard({rightType}:{rightType:Dossier['rightType'
      </section>)}
      {state.rentalMode==='MULTI_UNIT'&&<button type="button" disabled={state.units.length>=50} className={button} onClick={()=>change({units:[...state.units,blankListingUnit()]})}>Thêm phòng</button>}
    </>}
-   {state.step===3&&<><h2 className="text-xl font-bold">Kiểm tra trước khi gửi</h2><section className="border rounded-xl p-4 space-y-2"><h3 className="font-bold">Nội dung khách thuê sẽ thấy sau khi công khai</h3><p>{state.name} · {state.address}</p>{units.map(u=><div key={u.key} className="border-t pt-2"><strong>{u.roomNumber} · {u.areaM2} m² · {Number(u.advertisedMonthlyRent).toLocaleString('vi-VN')} đ/tháng</strong><p className="text-sm break-words">{u.description}</p><p className="text-sm">{u.imageIds.length} ảnh riêng · {u.amenities.join(', ')}</p></div>)}</section><section className="rounded-xl bg-slate-50 p-4"><h3 className="font-bold">Hồ sơ riêng tư gửi Admin</h3><p>{rightLabels[rightType]} · {files.length} chứng từ</p>{legalKeys.map(([key,label])=>state.legal[key]&&<p key={key} className="text-sm break-words">{label}: {dossierFieldDisplay(key,state.legal[key])}</p>)}</section><p className="text-sm text-amber-900">Gửi hồ sơ chưa công khai các phòng. Sau khi Admin duyệt, bạn chọn công khai từng căn. Tiền cọc do hai bên tự quản lý ngoài hệ thống.</p></>}
-   <div className="flex flex-wrap gap-3 border-t pt-4">{state.step>0&&<button type="button" className={button} onClick={()=>void run(async()=>{await persist({...state,step:state.step-1});})}>Quay lại</button>}<button type="button" className={button} onClick={()=>void run(async()=>{await persist(state);})}>Lưu tiến trình</button><button type="submit" className={`${button} bg-brand-700 text-white`}>{busy?'Đang xử lý…':state.step===3?'Gửi hồ sơ kiểm duyệt':'Lưu và tiếp tục'}</button></div>
+   {state.step===2&&<p className="text-sm text-amber-900">Gửi hồ sơ chưa công khai các phòng. Sau khi Admin duyệt, bạn chọn công khai từng căn. Tiền cọc do hai bên tự quản lý ngoài hệ thống.</p>}
+   <div className="flex flex-wrap gap-3 border-t pt-4">{state.step>0&&<button type="button" className={button} onClick={()=>void run(async()=>{await persist({...state,step:state.step-1});})}>Quay lại</button>}<button type="button" className={button} onClick={()=>void run(async()=>{await persist(state);})}>Lưu tiến trình</button><button type="submit" className={`${button} bg-brand-700 text-white`}>{busy?'Đang xử lý…':state.step===2?'Gửi hồ sơ kiểm duyệt':'Lưu và tiếp tục'}</button></div>
    </fieldset></form>
    {notice&&<p role={notice===documentWarning?'alert':'status'} className={notice===documentWarning?'rounded-lg bg-rose-50 p-3 text-sm font-medium text-red-700':'text-sm text-emerald-800'}>{notice}</p>}{error&&<div role="alert" className="rounded-lg bg-rose-50 p-3 text-rose-800 text-sm">{error}<button className="ml-3 underline" onClick={()=>window.location.reload()}>Tải lại bản đã lưu</button></div>}
  </section>;

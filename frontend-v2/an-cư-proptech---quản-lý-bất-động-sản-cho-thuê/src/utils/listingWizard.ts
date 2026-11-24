@@ -14,7 +14,7 @@ export function restoreListing(payload:unknown):ListingState {
  const data=payload as Partial<ListingState>;
  const result={...initial};
  for(const key of ['name','address','city','district','ward'] as const)if(typeof data[key]==='string')result[key]=data[key];
- result.step=Number.isInteger(data.step)?Math.max(0,Math.min(3,data.photoLayoutVersion===2?data.step!:data.step===4?3:data.step===3?2:data.step!)):0;
+ result.step=Number.isInteger(data.step)?Math.max(0,Math.min(2,data.photoLayoutVersion===2?data.step!:data.step===4?3:data.step===3?2:data.step!)):0;
  result.photoLayoutVersion=2;
  result.confirmed=data.confirmed===true;
  result.autoValues=data.autoValues&&typeof data.autoValues==='object'?data.autoValues:{};

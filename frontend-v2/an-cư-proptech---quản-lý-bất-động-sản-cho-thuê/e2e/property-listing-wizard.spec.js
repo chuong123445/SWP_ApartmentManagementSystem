@@ -79,13 +79,10 @@ async function exerciseWizard(page, outputPath, origin) {
    await description.fill('Phòng 24 m², giá thuê 4 triệu đồng mỗi tháng. Liên hệ để xem phòng.');
    await p.getByRole('button',{name:'Thêm phòng',exact:true}).click();
    await p.getByRole('checkbox').nth(1).uncheck();
-   await p.getByRole('button',{name:'Lưu và tiếp tục'}).click();
-   await p.getByRole('heading',{name:'Kiểm tra trước khi gửi'}).waitFor();
-   if(await p.getByRole('heading',{name:'Kiểm tra hồ sơ trước khi nộp'}).count())throw Error('Precheck panel should not be present');if(await p.getByRole('button',{name:'Quét chứng từ bằng AI',exact:true}).count())throw Error('Final manual scan button still present');
-   await p.evaluate(()=>window.scrollTo(0,0));
-   if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Horizontal overflow');
-   await p.screenshot({path:outputPath(`listing-wizard-${width}.png`),fullPage:true});
-   await p.getByRole('button',{name:'Gửi hồ sơ kiểm duyệt',exact:true}).click();
+    await p.evaluate(()=>window.scrollTo(0,0));
+    if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Horizontal overflow');
+    await p.screenshot({path:outputPath(`listing-wizard-${width}.png`),fullPage:true});
+    await p.getByRole('button',{name:'Gửi hồ sơ kiểm duyệt',exact:true}).click();
    await p.waitForURL('**/account/rental-properties');
    if(complete.property.apartments[0].description!=='Phòng 24 m², giá thuê 4 triệu đồng mỗi tháng. Liên hệ để xem phòng.')throw Error('Edited description was not submitted');
    if(complete.property.apartments.length!==1||complete.property.apartments[0].electricityIndex!==null||complete.dossier.principalDocumentNumber!=='999000000101'||complete.dossier.rightsValidFrom!=='2026-06-05'||complete.dossier.certificateIssueDate!=='2025-12-15')throw Error('Incorrect completion command');

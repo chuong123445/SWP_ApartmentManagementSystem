@@ -28,6 +28,6 @@ test('old photo-step drafts resume in rooms and preserve all photo IDs',()=>{
  const state=blankListing();state.imageIds=['10'];state.units[0].imageIds=['11'];
  const restored=restoreListing({...state,photoLayoutVersion:undefined,step:3});
  assert.equal(restored.step,2);assert.deepEqual(restored.imageIds,['10']);assert.deepEqual(restored.units[0].imageIds,['11']);
- assert.equal(restoreListing({...state,photoLayoutVersion:undefined,step:4}).step,3);
- assert.equal(restoreListing({...state,photoLayoutVersion:2,step:3}).step,3);
+ assert.equal(restoreListing({...state,photoLayoutVersion:undefined,step:4}).step,2);
+ assert.equal(restoreListing({...state,photoLayoutVersion:2,step:3}).step,2);
 });
