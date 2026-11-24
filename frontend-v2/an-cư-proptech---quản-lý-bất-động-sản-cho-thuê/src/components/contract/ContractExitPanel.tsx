@@ -23,6 +23,34 @@ function addDays(isoDate: string, days: number): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
 }
+
+function daysBetween(startIso: string, endIso: string): number {
+  if (!startIso || !endIso) return 0;
+  const [y1, m1, d1] = startIso.split('-').map(Number);
+  const [y2, m2, d2] = endIso.split('-').map(Number);
+  const dt1 = new Date(y1, m1 - 1, d1);
+  const dt2 = new Date(y2, m2 - 1, d2);
+  return Math.round((dt2.getTime() - dt1.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function getTerminationDateBounds(todayIso: string, endDateIso: string) {
+  if (!todayIso) {
+    return { minDate: '', maxDate: endDateIso || '', defaultDate: '', isOver3Weeks: false, remainingDays: 0 };
+  }
+  const remainingDays = endDateIso ? daysBetween(todayIso, endDateIso) : 999;
+  const isOver3Weeks = remainingDays > 21;
+  if (isOver3Weeks) {
+    const minDate = addDays(todayIso, 21);
+    const maxDate = endDateIso || '';
+    const defaultDate = minDate;
+    return { minDate, maxDate, defaultDate, isOver3Weeks: true, remainingDays };
+  } else {
+    const minDate = todayIso;
+    const maxDate = endDateIso || '';
+    const defaultDate = remainingDays > 0 ? addDays(todayIso, 1) : todayIso;
+    return { minDate, maxDate, defaultDate, isOver3Weeks: false, remainingDays };
+  }
+}
 export function ContractExitPanel({draft,onChanged,initialOpen=false,documentPage=false,initialAction=null}:{draft:ContractDraft;onChanged:()=>void|Promise<void>;initialOpen?:boolean;documentPage?:boolean;initialAction?:ExitAction|null}){
  const panel=useRef<HTMLElement>(null),linkedOnce=useRef(false);
  const navigate=useNavigate();
@@ -34,17 +62,25 @@ export function ContractExitPanel({draft,onChanged,initialOpen=false,documentPag
  const [keys,setKeys]=useState(false);const [consent,setConsent]=useState(false);const [ids,setIds]=useState<string[]>([]);const [busy,setBusy]=useState(false);const [blocked,setBlocked]=useState(false);const [error,setError]=useState('');const [notice,setNotice]=useState('');
  const writing=useRef(false);const form=useRef<HTMLFormElement>(null);const callbacks=useRef(onChanged);callbacks.current=onChanged;const epoch=useRef(0);
  useEffect(()=>{const ticket=++epoch.current;if(!open)return;const c=new AbortController();setData(null);setError('');setNotice('');setBusy(false);setBlocked(false);setSelected(null);setConsent(false);
-  getContractExit(draft.id,c.signal).then(value=>{if(!c.signal.aborted&&epoch.current===ticket){setData(value);const today = value.today; setDate(initialAction === 'PROPOSE_TERMINATION' && today ? addDays(today, 21) : today);if(initialAction){choose(initialAction,value);}}}).catch(e=>{if(!c.signal.aborted&&epoch.current===ticket)setError(e.message);});
+  getContractExit(draft.id,c.signal).then(value=>{if(!c.signal.aborted&&epoch.current===ticket){setData(value);const bounds = getTerminationDateBounds(value.today, value.endDate ?? draft.endDate ?? ''); setDate(initialAction === 'PROPOSE_TERMINATION' ? bounds.defaultDate : value.today);if(initialAction){choose(initialAction,value);}}}).catch(e=>{if(!c.signal.aborted&&epoch.current===ticket)setError(e.message);});
   return()=>{epoch.current++;c.abort();};
  },[draft.id,open,revision]);
  useEffect(()=>{if(linked&&data&&!linkedOnce.current){panel.current?.scrollIntoView({block:'start'});linkedOnce.current=true;}},[linked,data]);
- const choose=(action:ExitAction,overrideData?:ContractExit)=>{const d=overrideData??data;setSelected(action);setConsent(false);setError('');setNotice('');setReason('');setIds([]);setKeys(false);const today = d?.today ?? ''; setDate(action === 'PROPOSE_TERMINATION' && today ? addDays(today, 21) : today);setLocation(d?.document?.details.location??draft.snapshot.asset.address??'');setInventory(d?.document?.details.inventory??draft.snapshot.asset.amenities.join(', '));setKeyCount(String(d?.document?.details.keyCount??1));setNotes(d?.document?.details.notes??'');setIncludeMeters(false);setElectric('');setWater('');};
+ const choose=(action:ExitAction,overrideData?:ContractExit)=>{const d=overrideData??data;setSelected(action);setConsent(false);setError('');setNotice('');setReason('');setIds([]);setKeys(false);const bounds = getTerminationDateBounds(d?.today ?? '', d?.endDate ?? draft.endDate ?? ''); setDate(action === 'PROPOSE_TERMINATION' ? bounds.defaultDate : (d?.today ?? ''));setLocation(d?.document?.details.location??draft.snapshot.asset.address??'');setInventory(d?.document?.details.inventory??draft.snapshot.asset.amenities.join(', '));setKeyCount(String(d?.document?.details.keyCount??1));setNotes(d?.document?.details.notes??'');setIncludeMeters(false);setElectric('');setWater('');};
  const perform=async()=>{
   if(!data||!selected||!consent||blocked||writing.current||!form.current?.reportValidity())return;
-   const minTerminationDate = data.today ? addDays(data.today, 21) : '';
-   if(selected === 'PROPOSE_TERMINATION' && minTerminationDate && date < minTerminationDate) {
-     setError('Ngày đề nghị kết thúc phải cách hiện tại ít nhất 3 tuần (từ ngày ' + dossierDateDisplay(minTerminationDate) + ') để đối phương chuẩn bị.');
-     return;
+   if (selected === 'PROPOSE_TERMINATION' && data) {
+     const bounds = getTerminationDateBounds(data.today, data.endDate ?? draft.endDate ?? '');
+     if (bounds.minDate && date < bounds.minDate) {
+       setError(bounds.isOver3Weeks
+         ? 'Ngày đề nghị kết thúc phải cách hiện tại ít nhất 3 tuần (từ ngày ' + dossierDateDisplay(bounds.minDate) + ') để đối phương chuẩn bị.'
+         : 'Ngày đề nghị kết thúc phải từ hôm nay (' + dossierDateDisplay(bounds.minDate) + ').');
+       return;
+     }
+     if (bounds.maxDate && date > bounds.maxDate) {
+       setError('Ngày đề nghị kết thúc không được vượt quá ngày hết hạn hợp đồng (' + dossierDateDisplay(bounds.maxDate) + ').');
+       return;
+     }
    }
    const ticket=epoch.current;writing.current=true;setBusy(true);setError('');setNotice('');let updated=false;
   try{const value=await actOnContractExit(draft.id,selected,data.sourceVersion,{reason:reason.trim(),...(selected==='PROPOSE_TERMINATION'?{termination:{returnDate:date,reason:reason.trim(),clauseReference:clause.trim() || 'Báo trước 3 tuần để chuẩn bị theo thỏa thuận kết thúc sớm',penaltyAmount:penalty,penaltyPayer:payer}}:{}),...(selected==='PROPOSE_HANDOVER'?{handover:{returnDate:data.today,...(includeMeters?{electricityReading:Number(electric),waterReading:Number(water)}:{}),...(electricStart!==''?{electricityStartReading:Number(electricStart)}:{}),...(waterStart!==''?{waterStartReading:Number(waterStart)}:{}),keysReturned:keys,conditionNotes:reason.trim(),evidenceIds:ids,details:{location:location.trim(),inventory:inventory.trim(),keyCount:Number(keyCount),notes:notes.trim()}}}:{}),...(selected==='DISPUTE_HANDOVER'?{evidenceIds:ids}:{})});
@@ -53,7 +89,7 @@ export function ContractExitPanel({draft,onChanged,initialOpen=false,documentPag
  };
  const upload=async(file:File)=>{if(writing.current||!data)return;if(!['image/png','image/jpeg'].includes(file.type)||file.size>1000000){setError('Chỉ nhận JPEG/PNG tối đa 1 MB.');return;}const ticket=epoch.current;writing.current=true;setBusy(true);setError('');try{const e=await uploadExitEvidence(draft.id,file);if(ticket===epoch.current){setData(v=>v?{...v,evidence:[...v.evidence,e]}:v);setIds(v=>v.length<5?[...v,e.id]:v);}}catch(e){if(ticket===epoch.current)setError(e instanceof Error?e.message:'Không tải được ảnh.');}finally{writing.current=false;if(ticket===epoch.current)setBusy(false);}};
  if(!['ACTIVE','ENDED'].includes(draft.status))return null;
- const proposing=selected==='PROPOSE_TERMINATION';const handing=selected==='PROPOSE_HANDOVER';const needsReason=proposing||handing||selected==='REJECT_TERMINATION'||selected==='DISPUTE_HANDOVER'||selected==='CANCEL_HANDOVER';
+ const termBounds = getTerminationDateBounds(data?.today ?? '', data?.endDate ?? draft.endDate ?? ''); const proposing=selected==='PROPOSE_TERMINATION';const handing=selected==='PROPOSE_HANDOVER';const needsReason=proposing||handing||selected==='REJECT_TERMINATION'||selected==='DISPUTE_HANDOVER'||selected==='CANCEL_HANDOVER';
  const available:ExitAction[]=data?[...(data.canProposeTermination?['PROPOSE_TERMINATION' as const]:[]),...(data.canRespondTermination?['ACCEPT_TERMINATION' as const,'REJECT_TERMINATION' as const]:[]),...(data.canWithdrawTermination?['WITHDRAW_TERMINATION' as const]:[]),...(data.canProposeHandover?['PROPOSE_HANDOVER' as const]:[]),...(data.canConfirmHandover?['CONFIRM_HANDOVER' as const]:[]),...(data.canDisputeHandover?['DISPUTE_HANDOVER' as const]:[]),...(data.canCancelHandover?['CANCEL_HANDOVER' as const]:[])]:[];
   return <section ref={panel} className={`${initialAction ? '' : 'border rounded-xl p-4'} space-y-4 bg-white`} aria-label="Kết thúc thuê và bàn giao">
    {!documentPage&&!initialAction&&<button type="button" disabled={busy} className="font-bold text-emerald-800 underline" onClick={()=>setOpen(v=>!v)}>Kết thúc thuê / bàn giao cư trú</button>}
@@ -109,7 +145,7 @@ export function ContractExitPanel({draft,onChanged,initialOpen=false,documentPag
       {selected&&!blocked&&<form ref={form} aria-label={handing?'Thông tin bàn giao cư trú':'Xử lý kết thúc thuê'} onSubmit={e=>{e.preventDefault();void perform();}} className={`${initialAction ? '' : 'border rounded-xl p-3'} space-y-4`}>
        {!initialAction&&<h4 className="font-semibold">{labels[selected]}</h4>}
        <fieldset disabled={busy} className="space-y-3 min-w-0">
-        {proposing&&<div><label className="block text-sm">Ngày đề nghị kết thúc (dd/MM/yyyy)<DossierDateInput className={control} required min={data ? addDays(data.today, 21) : undefined} value={date} onChange={setDate}/></label><p className="text-xs text-slate-500 mt-1">Cần báo trước ít nhất 3 tuần (từ ngày {dossierDateDisplay(data ? addDays(data.today, 21) : '')}) để đối phương chuẩn bị.</p></div>}
+        {proposing&&<div><label className="block text-sm">Ngày đề nghị kết thúc (dd/MM/yyyy)<DossierDateInput className={control} required min={termBounds.minDate} max={termBounds.maxDate} value={date} onChange={setDate}/></label><p className="text-xs text-slate-500 mt-1">{termBounds.isOver3Weeks ? `Cần báo trước ít nhất 3 tuần (từ ngày ${dossierDateDisplay(termBounds.minDate)}) để đối phương chuẩn bị.` : `Thời hạn hợp đồng còn dưới 3 tuần (đến ngày ${dossierDateDisplay(termBounds.maxDate)}), bạn có thể chọn ngày kết thúc trong khoảng thời gian còn lại đến khi hết hạn.`}</p></div>}
         {proposing&&<><label className="block text-sm">Khoản phạt / bồi thường đề xuất (đ)<input aria-label="Khoản đề xuất kết thúc sớm" type="number" min="0" max="9999999999999.99" step="0.01" required className={control} value={penalty} onChange={e=>{setPenalty(e.target.value);if(Number(e.target.value)===0)setPayer('NONE');}}/></label><label className="block text-sm">Bên chịu khoản đề xuất<select className={control} value={payer} onChange={e=>setPayer(e.target.value as typeof payer)}><option value="NONE">Không phát sinh</option><option value="OWNER">Chủ nhà</option><option value="CUSTOMER">Người thuê</option></select></label></>}
         {handing&&<>
          <div className="rounded-lg bg-slate-50 p-3 text-sm space-y-1"><p>Bên nhận lại nhà: {draft.snapshot.owner.fullName}</p><p>Bên bàn giao: {draft.snapshot.customer.fullName}</p><p>Căn/phòng: {draft.snapshot.asset.roomNumber} · {draft.snapshot.asset.address}</p><p>Diện tích: {draft.snapshot.asset.areaM2??'Chưa cung cấp'} m²</p></div>

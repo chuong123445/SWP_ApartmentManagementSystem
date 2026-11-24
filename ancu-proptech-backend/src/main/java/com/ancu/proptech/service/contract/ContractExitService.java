@@ -105,7 +105,7 @@ public class ContractExitService {
     if(input.termination()==null)throw bad("Cần thông tin đề nghị kết thúc sớm.");
     if(!canProposeTermination(s))throw conflict("EXIT_UNAVAILABLE","Đã có đề nghị kết thúc/bàn giao/thuê tiếp hoặc hợp đồng đã đến hạn.");
     var v=input.termination();
-    if(v.returnDate().isBefore(dates.today())||v.returnDate().isBefore(c.getStartDate())||!v.returnDate().isBefore(c.getEndDate()))throw bad("Ngày kết thúc sớm phải từ hôm nay, trong thời hạn hợp đồng.");
+    if(v.returnDate().isBefore(dates.today())||v.returnDate().isBefore(c.getStartDate())||v.returnDate().isAfter(c.getEndDate()))throw bad("Ngày kết thúc sớm phải từ hôm nay, trong thời hạn hợp đồng.");
     if(v.penaltyAmount().signum()==0&&!v.penaltyPayer().equals("NONE")||v.penaltyAmount().signum()>0&&v.penaltyPayer().equals("NONE"))throw bad("Cần chỉ rõ bên chịu khoản đề xuất; số tiền 0 chọn Không phát sinh.");
     root.setTerminationState("PENDING");root.setTerminationJson(json.writeValueAsString(new Term(actor.toString(),v.returnDate(),v.reason().strip(),v.clauseReference().strip(),v.penaltyAmount().toPlainString(),v.penaltyPayer(),null,null)));reason=v.reason().strip();
    }
