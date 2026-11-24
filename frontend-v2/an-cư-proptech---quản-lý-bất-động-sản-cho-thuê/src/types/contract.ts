@@ -10,7 +10,7 @@ export interface ContractSnapshot {
   receivingAccount: { bank: string; accountNumber: string; accountHolderName: string } | null;
 }
 export interface ContractTerms {
-  rentCycleMonths?: 1 | 3 | 6 | 12;
+  rentCycleMonths?: number;
   waterBillingMode?: 'METERED'|'PER_PERSON';occupantCount?:number;internetFee?:string;garbageFee?:string;
   templateType?: 'APARTMENT' | 'HOUSE' | 'ROOM' | 'BUSINESS' | 'SHARED';
   startDate: string; endDate: string; monthlyRent: string; electricityUnitPrice: string; waterUnitPrice: string; deposit: string;

@@ -695,7 +695,7 @@
     "/api/v1/me/rental-properties/{id}/withdraw": {
       "post": {
         "summary": "Remove own unfinished property or withdraw initial pending dossier",
-        "description": "Authenticated exact applicant only. Locks account/property/dossiers and checks property version. Sets property WITHDRAWN, withdrawal timestamp, pending dossiers WITHDRAWN and completes its listing draft. Excludes withdrawn property/units from management and inventory. Keeps private submitted evidence/history. Repeated own withdrawal is idempotent. Approved/source properties, previous approved rights and any public/hidden/occupied unit or rental history block withdrawal. Not a command to revoke existing approved rights or leases.",
+        "description": "Authenticated exact applicant only. Locks account/property/dossiers and checks property version. Sets property WITHDRAWN, withdrawal timestamp, pending dossiers WITHDRAWN and completes its listing draft. Excludes withdrawn property/units from management and inventory. Keeps private submitted evidence/history. Repeated own withdrawal is idempotent. Approved/source properties, previous approved rights and any public/hidden/occupied unit or rental history block withdrawal. Not a command to revoke existing approved rights or leases. After withdrawal (including retry), an OWNER with no remaining APPROVED property becomes CUSTOMER in the same transaction. Other approved assets preserve OWNER; Admin is unchanged. Client must reload /me for current roles. Direct database cleanup must reconcile memberships separately.",
         "parameters": [
           {
             "name": "id",

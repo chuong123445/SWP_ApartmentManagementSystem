@@ -57,7 +57,7 @@ async function exercise(page:Page,width:number,scenario:string){
   await dialog.getByRole('alert').filter({hasText:'Thời hạn thuê tối thiểu phải từ 30 ngày'}).waitFor();
   if(postCount||putCount)throw Error('Short lease sent');
   await dialog.getByLabel('Ngày kết thúc',{exact:true}).fill(add(119));
-  await dialog.getByText('Tiền thuê theo tháng lịch: kỳ đầu gồm phần tháng bắt đầu',{exact:false}).waitFor();
+  if(await dialog.getByText('Tiền thuê theo tháng lịch: kỳ đầu gồm phần tháng bắt đầu',{exact:false}).count())throw Error('Removed form help remains');
   await dialog.locator('option[value="3"]:disabled').waitFor({state:'attached'});
   if(await dialog.getByRole('option',{name:'3 tháng / lần',exact:true}).getAttribute('disabled')===null)throw Error('Multi-month package cycle enabled');
   await dialog.getByRole('button',{name:'Tiếp theo →',exact:true}).click();

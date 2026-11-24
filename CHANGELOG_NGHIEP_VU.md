@@ -70,3 +70,40 @@
 - Hợp đồng mới/nháp chưa ký được chủ động sửa thu theo tháng lịch: kỳ đầu gồm ngày lẻ + các tháng còn lại của chu kỳ; kỳ cuối chốt đúng ngày hết thuê. Giá tháng ÷ ngày thực tế × ngày thuê, cộng rồi làm tròn đến đồng HALF_UP. Kỳ đầu tự lập/gửi khi ACTIVE, hạn đóng ngày bắt đầu; tương lai chờ hiệu lực. Kỳ sau dùng ngày đến hạn đã chọn, gửi từ D-7 và bắt kịp kỳ bị bỏ lỡ. Giữ nguyên hợp đồng đã ký, gói cũ và chuỗi điện nước.
 - V73 lưu cờ chính sách và công thức hóa đơn. Lập lại chủ động bù kỳ RENT đã hủy; scheduler không tự gửi lại. Công thức hiển thị trong preview/chi tiết và chính sách có trong PDF/nội dung ký. Xem docs/decisions/calendar-rent-billing-v1.md.
 - 89backendPASS qua các lượt; 176frontend/TypeScript/buildPASS, 8Playwright desktop/mobile API fixturePASS; ảnh mobile đã xem. Không full-suite/live-provider/appDB claim. Cần restart backend áp dụng V73 và reload frontend; chưa push.
+
+## Bổ sung migration khi khởi động — 24/11/2026
+
+- Sửa thiếu đăng ký V70–V73 trong spring.sql.init.schema-locations. Database đang có hợp đồng thiếu hai cột boolean làm truy vấn hợp đồng thất bại và ảnh hưởng tải workspace. Chỉ có file migration chưa đủ; startup phải liệt kê chúng. Đã nâng schema local có sao lưu, chạy hai lần an toàn, giữ 2 hợp đồng test và chính sách cũ. Không thay dữ liệu tài sản đã dọn.
+- Kiểm tra: 70 resource SQL resolve, SQLreadback đủ cột, rowcounts/dates/flags giữ nguyên; 6 backend integration PASS (5OwnerApartment +1ContractDraft) trên DB test riêng. Chưa xác minh lại trang Owner bằng session đăng nhập thật; đã yêu cầu backendexception log nếu tiếp tục500. Commit fix(db): chạy đầy đủ migration hợp đồng và tài sản khi khởi động; hash tra git log. Chưa push.
+
+## Bỏ nguồn tài sản VNeID/Auth0 — 24/11/2026
+
+- Cả tài khoản Auth0 và thường tạo chính chủ qua hồ sơ nhập thủ công/Admin; bỏ consent/chọn tài sản/bổ sung phòng từ nguồn và nhãn miễn duyệt. Auth0 chỉ còn đăng nhập/xác minh. API list/import/append và consentwrite cũ trả410, không gọi provider/cấpOwner/tựduyệt. Giữ tài sản và hợp đồng lịch sử; nguồn cũ bổ sung phòng bằng quy tắc thủ công chung.
+- 43backendPASS (24luồngtài sản/upgrade/manual,18login/xácminh,1manuallegacy),170frontend/TypeScript/buildPASS,8PlaywrightMCP desktop/mobile x2nguồnx2rolesPASS; không gọi API nguồn, lỗi console hay tràn ngang, ảnhmobileđãxem. API fixtures/DBtest riêng, không Auth0live/appDB mutation. Cần restartbackend vàreloadfrontend; chưa push. ADR retire-vneid-property-source-v1; commit feat(property): bỏ nguồn tài sản VNeID và dùng hồ sơ thủ công, hash tra gitlog.
+
+## Thu hồi Owner khi không còn tài sản được duyệt — 24/11/2026
+
+- Rút hồ sơ xong hoặc retry: không còn APPROVED thì Owner vềCustomer trong cùngtransaction; còn tài sản được duyệt thì giữOwner. Menu đọc lại quyền ngay, Customer không vào /app/APIowner bằngtoken cũ. Không xóa tài khoản/identity/phiên hoặc mở quyền xóa tài sản đãduyệt.
+- Thu Hà: role cũ còn sau lầncleanup trước, nhưng trong lúc audit đã có tài sản10031 Căn hộ Thu Hà đượcAPPROVED. Guard hạ quyền đãrollback, giữ tài sản/quyền mới; không tuyên bố đã hạThuHavềCustomer.
+-30backendPASS/170frontend/TypeScript/build/4MCPdesktopmobilePASS; ảnhmobileđãxem. DBtest/API fixtures; live chỉread+guardrollback. ADR owner-role-after-withdrawal-v1. Cầnrestartbackend/reloadfrontend, chưapush. Commit fix(property): đồng bộ quyền Customer sau khi rút hồ sơ, hashgitlog.
+
+## Lỗi cạnh ô nhập hợp đồng — 24/11/2026
+
+- Tạo/sửa/thuê tiếp: lỗi ngày, số tiền, hạn đóng, thông tin thuê và từng điều khoản hiện dưới đúng ô với viền đỏ; tự quay đúng bước và cuộn/focus lỗi đầu tiên. Sửa ô này không xóa lỗi ô khác, giữ dữ liệu; lỗi ngày server về đúng trường. Lỗi mạng/xung đột giữ thông báo chung nhưng tự cuộn tới.
+-174frontend/TypeScript/build +10MCPdesktopmobilePASS (6validation/recovery/server/network+4date-regression), ảnhmobileđãxem; APIfixtures, không backend/appDBchange. Chỉ luồng hợp đồng, không tuyên bố sửa tất cả form. ADR contract-inline-errors-v1; commit fix(ui): hiển thị lỗi hợp đồng cạnh trường nhập, hashgitlog. Chưapush.
+
+## Chỉ báo lỗi sau Tiếp theo và rút gọn form hợp đồng — 24/11/2026
+
+- Chỉ kiểm tra khi bấm Tiếp theo/rá soát/lưu; vào bước và nhập chưa hiện lỗi đỏ. Sửa ngày trống bị nhầm là quá khứ, bỏ hint đỏ trùng; mỗi ô một thông báo. Nhập chỉ xóa thông báo cũ liên quan, không tự validate. Xóa nguyên đoạn giải thích30ngày/thánglịch/ngàylẻ theo yêu cầu, giữ quy tắc nghiệp vụ.
+-174frontend/TypeScript/build và10MCPdesktopmobilePASS; thêm kiểm tra entry/blurkhônglỗi,Nextmớibáo/khôngtrùng. APIfixtures, không backend/DBchange. Commit fix(ui): chỉ báo lỗi hợp đồng khi tiếp tục và rút gọn hướng dẫn; hashgitlog. Chưapush.
+
+## Hợp đồng chuyển tab sau hai chữ ký — 24/11/2026
+
+- Chưa ký/mới ký một bên ở Yêu cầu thuê và vẫn xem/ký được; chỉ đủ hai chữ ký mới vào tab Hợp đồng của Owner/Customer, kể cả chờ hiệu lực. Customer query lọc trước phân trang, giữ lịch sử/hủy; trang chi tiết dự thảo quay lại Yêu cầu thuê. Không đổi điều kiện ký/activation.
+-74backend/175frontend/TypeScript/build/4MCPdesktopmobilePASS, ảnhmobileđãxem; SQLtest/API fixtures, không ký/đổi appDB. ADR contract-tabs-after-signing-v1. Cầnrestartbackend/reloadfrontend, chưapush. Commit fix(contract): chuyển tab hợp đồng sau khi hai bên ký đủ, hashgitlog.
+
+
+## Tích hợp origin/main vào duy/contracts-after-signing — 24/11/2026
+
+- Gộp nhánh origin/main (chu kỳ thuê linh hoạt 1-12 tháng, cảnh báo 48h hoàn tất chữ ký, tùy chọn gõ tên ký số) vào nhánh local; ưu tiên giữ trải nghiệm báo lỗi cạnh ô nhập, cuộn tới lỗi, bỏ hướng dẫn dài và điều hướng tab hợp đồng/yêu cầu thuê theo bản local.
+- 179/179 frontend tests PASS; TypeScript & Vite build đạt 100%. Commit merge: `f24c7fa3`.

@@ -26,7 +26,7 @@ public class SelectionCancellationService {
  private final ApartmentRepository apartments;private final SelectionCancellationRepository cancellations;private final SelectionCancellationEventRepository events;
  private final AccountAccessService access;private final ObjectMapper json;private final jakarta.persistence.EntityManager entities;
  private record Selection(RentalRequest request,ContractDraft draft,RentalContract contract,SelectionCancellation cancellation){}
- @Transactional(readOnly=true) public View get(Jwt jwt,Long id){var actor=access.account(jwt);return view(load(actor,id,false),actor.getId());}
+ @Transactional public View get(Jwt jwt,Long id){var actor=access.account(jwt);return view(load(actor,id,false),actor.getId());}
  @Transactional public View act(Jwt jwt,Long id,Command command){
   var actor=access.account(jwt);var s=load(actor,id,true);var r=s.request();var root=s.cancellation();String reason=clean(command.reason());
   if(repeated(root,actor.getId(),command.action(),reason))return view(s,actor.getId());
@@ -59,7 +59,65 @@ public class SelectionCancellationService {
   }
   return view(after,actor.getId());
  }
+ public static final java.time.Duration CANCELLATION_TIMEOUT = java.time.Duration.ofHours(48);
+
+ @Transactional
+ public boolean expireIfTimeout(Long id) {
+  var root = cancellations.findById(id).orElse(null);
+  if (root == null || root.getState() != SelectionCancellation.State.PENDING) return false;
+  if (!now().isAfter(root.getUpdatedAt().plus(CANCELLATION_TIMEOUT))) return false;
+  var r = requests.findById(id).orElse(null);
+  if (r == null) return false;
+  var d = drafts.findByRentalRequestId(id).orElse(null);
+  var c = d == null ? null : d.getContract();
+  var s = new Selection(r, d, c, root);
+  if (!eligible(s)) return false;
+
+  String before = json.writeValueAsString(snapshot(s));
+  String autoReason = "Tự động chấp thuận hủy do quá 48 giờ không có phản hồi.";
+  finish(s, autoReason);
+  root.setState(SelectionCancellation.State.CANCELLED);
+  root.setResponderId(0L);
+  root.setResponseReason(autoReason);
+  root.setUpdatedAt(now());
+  root = cancellations.saveAndFlush(root);
+  entities.flush();
+
+  var after = new Selection(r, s.draft(), s.contract(), root);
+  var event = new SelectionCancellationEvent();
+  event.setRequestId(id);
+  event.setActorId(0L);
+  event.setActorName("Hệ thống tự động");
+  event.setAction("AUTO_ACCEPTED");
+  event.setReason(autoReason);
+  event.setCreatedAt(root.getUpdatedAt());
+  event.setBeforeJson(before);
+  event.setAfterJson(json.writeValueAsString(snapshot(after)));
+  events.saveAndFlush(event);
+
+  if (root.getState() == SelectionCancellation.State.CANCELLED && s.contract() != null && signatureCount(s) == 0) {
+   drafts.delete(s.draft());
+   drafts.flush();
+   contracts.delete(s.contract());
+   contracts.flush();
+  }
+  return true;
+ }
+
+ @Transactional
+ public void expirePendingCancellations() {
+  for (var c : cancellations.findByState(SelectionCancellation.State.PENDING)) {
+   try {
+    expireIfTimeout(c.getRequestId());
+   } catch (Exception ignored) {}
+  }
+ }
+
  private Selection load(AuthAccount actor,Long id,boolean lock){
+  var preCheck = cancellations.findById(id).orElse(null);
+  if (preCheck != null && preCheck.getState() == SelectionCancellation.State.PENDING && now().isAfter(preCheck.getUpdatedAt().plus(CANCELLATION_TIMEOUT))) {
+   expireIfTimeout(id);
+  }
   var r=requests.findById(id).orElseThrow(SelectionCancellationService::missing);party(r,actor.getId());
   if(lock){r=requests.findForOwnerUpdate(id,r.getApartment().getProperty().getOwner().getId()).orElseThrow(SelectionCancellationService::missing);entities.refresh(r);party(r,actor.getId());}
   else entities.refresh(r);

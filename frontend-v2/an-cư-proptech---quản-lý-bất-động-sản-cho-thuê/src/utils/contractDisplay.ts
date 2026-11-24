@@ -1,5 +1,9 @@
 import type { ContractDraft } from '@/types/contract';
 
+export function hasBothContractSignatures(draft:ContractDraft):boolean {
+  return !!draft.signing?.ownerSignedAt&&!!draft.signing?.customerSignedAt;
+}
+
 export function contractLifecycleActions(draft: ContractDraft, accountId?: string) {
   const life = draft.lifecycle;
   const owner = !!accountId && accountId === (draft.signing?.ownerAccountId ?? draft.snapshot.owner.id);

@@ -9,7 +9,7 @@ export function DossierDetails({ dossier }: { dossier: Dossier }) {
     <p><strong>{dossierStatusLabels[dossier.status]}</strong> · Gửi lúc {new Date(dossier.submittedAt).toLocaleString('vi-VN')}</p>
     <p>Người nộp: <strong>{dossier.applicantName}</strong></p>
     <p>Quyền cho thuê: {rightLabels[dossier.rightType]}</p>
-    {dossier.applicantDocumentNumber&&<p>CCCD người nộp đã xác thực VNeID: {dossier.applicantDocumentNumber}</p>}
+    {dossier.applicantDocumentNumber&&<p>CCCD người nộp đã xác thực: {dossier.applicantDocumentNumber}</p>}
     {dossier.rightType!=='OWNERSHIP'&&<div className="border rounded-lg p-3 space-y-1"><p>Chủ sở hữu gốc: {dossier.principalName||'Chưa cung cấp'} · CCCD: {dossier.principalDocumentNumber||'Chưa cung cấp'}</p><p>Quyền cho thuê: {dossierDateDisplay(dossier.rightsValidFrom)||'Chưa có'} đến hết {dossierDateDisplay(dossier.rightsValidUntil)||'Chưa có'}</p>{dossier.rightType==='SUBLEASE'&&<p>Hợp đồng thuê gốc: {dossierDateDisplay(dossier.originalLeaseFrom)||'Chưa có'} đến hết {dossierDateDisplay(dossier.originalLeaseUntil)||'Chưa có'}</p>}{dossier.renewal&&<p>Hồ sơ gia hạn/bổ sung quyền cho thuê</p>}</div>}
     <p>Căn cứ quyền khai thác: {dossier.exploitationRightDescription || 'Chưa cung cấp'}</p>
     <div className="border rounded-lg p-3 space-y-1"><p>Số giấy chứng nhận: {dossier.certificateNumber || 'Chưa cung cấp'}</p><p>Ngày cấp: {dossierDateDisplay(dossier.certificateIssueDate) || 'Chưa cung cấp'}</p><p>Nơi cấp: {dossier.certificateIssuePlace || 'Chưa cung cấp'}</p></div>

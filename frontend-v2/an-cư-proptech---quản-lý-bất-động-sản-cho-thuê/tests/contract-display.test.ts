@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { contractActionLabel, contractStatusLabel, contractLifecycleActions, contractListTitle } from '../src/utils/contractDisplay.ts';
+import { hasBothContractSignatures, contractActionLabel, contractStatusLabel, contractLifecycleActions, contractListTitle } from '../src/utils/contractDisplay.ts';
 import type { ContractDraft } from '../src/types/contract.ts';
 
 test('list lifecycle actions follow exact party, request/handover conflicts and server handover permission', () => {
@@ -44,4 +44,13 @@ test('existing fixture contracts use ordinary contract headings', () => {
   }
   const regular={contractNumber:'HD-8',snapshot:{asset:{roomNumber:'A101',title:'Căn hộ Lê Văn Sỹ'}}} as ContractDraft;
   assert.equal(contractListTitle(regular),'A101 · Căn hộ Lê Văn Sỹ');
+});
+
+test('Contract tab needs both signature timestamps even when status or signing label claims completion',()=>{
+ const draft={status:'DRAFT',signing:{state:'SIGNED',ownerSignedAt:null,customerSignedAt:null}} as unknown as ContractDraft;
+ assert.equal(hasBothContractSignatures(draft),false);
+ assert.equal(hasBothContractSignatures({...draft,signing:{...draft.signing!,ownerSignedAt:'2026-11-24T00:00:00Z'}}),false);
+ assert.equal(hasBothContractSignatures({...draft,signing:{...draft.signing!,customerSignedAt:'2026-11-24T00:00:00Z'}}),false);
+ assert.equal(hasBothContractSignatures({...draft,status:'ACTIVE'}),false);
+ assert.equal(hasBothContractSignatures({...draft,signing:{...draft.signing!,ownerSignedAt:'2026-11-24T00:00:00Z',customerSignedAt:'2026-11-24T00:01:00Z'}}),true);
 });

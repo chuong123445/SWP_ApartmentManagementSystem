@@ -78,7 +78,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ buildings, onClose, 
           </button>
         </div>
 
-        {!buildings.length&&<p className="mt-4 text-sm">Cần tài sản nhiều phòng đã duyệt để bổ sung phòng thủ công. <Link to="/account/properties" className="underline">Mở quản lý tài sản và bổ sung từ nguồn Auth0 nếu có.</Link></p>}
+        {!buildings.length&&<p className="mt-4 text-sm">Cần tài sản nhiều phòng đã duyệt để bổ sung phòng thủ công. <Link to="/account/properties" className="underline">Mở quản lý tài sản và hồ sơ quyền cho thuê.</Link></p>}
         <form onSubmit={handleSubmit} className="mt-4 space-y-3 text-xs">
           {saveError && (
             <p role="alert" className="rounded-lg bg-rose-50 border border-rose-200 p-3 text-rose-700">

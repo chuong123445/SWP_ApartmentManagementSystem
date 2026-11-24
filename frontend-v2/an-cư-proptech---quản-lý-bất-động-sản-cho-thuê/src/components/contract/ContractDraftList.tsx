@@ -7,7 +7,7 @@ import { getDrafts } from '@/services/contract/contractService';
 import { formatRent } from '@/utils/format';
 import type { ContractDraft } from '@/types/contract';
 import { useAuth } from '@/hooks/useAuth';
-import { contractActionLabel, contractLifecycleActions, contractStatusLabel, contractListTitle } from '@/utils/contractDisplay';
+import { hasBothContractSignatures, contractActionLabel, contractLifecycleActions, contractStatusLabel, contractListTitle } from '@/utils/contractDisplay';
 import { ContractListActionModal } from '@/components/contract/ContractListActionModal';
 import { useTenancyContext } from '@/contexts/TenancyContext';
 export function ContractDraftList({ owner = false, propertyId, onLoaded }: { owner?: boolean; propertyId?: string; onLoaded?: (drafts: ContractDraft[]) => void }) {
@@ -20,10 +20,11 @@ export function ContractDraftList({ owner = false, propertyId, onLoaded }: { own
   useEffect(() => { let active = true;setLoading(true);setError('');getDrafts(owner, propertyId).then(data => { if (active) { setItems(data);onLoaded?.(data); } }).catch(e => { if (active) setError(e.message); }).finally(() => { if (active) setLoading(false); });return () => { active = false; }; }, [owner, propertyId, reloadKey, onLoaded]);
   useEffect(() => { const refresh = () => { if (document.visibilityState === 'visible') setReloadKey(value => value + 1); };window.addEventListener('ancu:tenancy-changed', refresh);window.addEventListener('focus', refresh);return () => { window.removeEventListener('ancu:tenancy-changed', refresh);window.removeEventListener('focus', refresh); }; }, []);
   useEffect(() => { if (!loading && !error && focusId && focused.current !== focusId && items.some(item => item.id === focusId)) { const element = document.getElementById(`contract-${focusId}`);element?.focus({ preventScroll: true });element?.scrollIntoView({ block: 'center' });focused.current = focusId; } }, [items, loading, error, focusId]);
-  const legacy = tenancy.tenancies.filter(contract => !items.some(document => document.id === contract.id));
+  const signed=items.filter(hasBothContractSignatures);
+  const legacy = tenancy.tenancies.filter(contract => ['ACTIVE','ENDED'].includes(contract.status)&&!items.some(document => document.id === contract.id));
   return <section className="space-y-4"><div className="flex flex-wrap justify-between gap-3"><h2 className="text-lg font-bold">Danh sách hợp đồng</h2><button onClick={() => setReloadKey(n => n + 1)} className="text-sm text-emerald-700">Làm mới danh sách hợp đồng</button></div>
     {error && <p role="alert" className="text-rose-700">{error}</p>}{loading && <p role="status">Đang tải hợp đồng...</p>}
-    {!loading && !error && <>{!items.length && (owner || (!tenancy.loading && !tenancy.error && !legacy.length)) && <p className="text-sm text-slate-500">Chưa có hợp đồng được tạo từ yêu cầu thuê của bạn.</p>}{!owner && tenancy.loading && <p role="status" className="text-sm text-slate-500">Đang tải lịch sử thuê...</p>}<div className="grid md:grid-cols-2 gap-4">{items.map(d => {
+    {!loading && !error && <>{!signed.length && (owner || (!tenancy.loading && !tenancy.error && !legacy.length)) && <p className="text-sm text-slate-500">Chưa có hợp đồng đã đủ chữ ký hai bên. Tiếp tục xem và ký tại mục Yêu cầu thuê.</p>}{!owner && tenancy.loading && <p role="status" className="text-sm text-slate-500">Đang tải lịch sử thuê...</p>}<div className="grid md:grid-cols-2 gap-4">{signed.map(d => {
       const actions = contractLifecycleActions(d, user?.id);
       return <article key={d.id} id={`contract-${d.id}`} tabIndex={-1} data-testid="contract-draft-card" className={`bg-white border rounded-xl p-5 space-y-3 min-w-0 ${focusId === d.id ? 'border-emerald-600 ring-2 ring-emerald-100' : 'border-slate-200'}`}>
         <span className="text-xs rounded-full px-3 py-1 bg-amber-50 text-amber-800">{signingLabel(d)}</span><h3 className="font-bold">{contractListTitle(d)}</h3><p className="text-sm text-slate-500 break-words">{owner ? d.snapshot.customer.fullName : d.snapshot.owner.fullName}</p><p className="text-sm">{d.startDate} → {d.endDate}</p><p className="font-semibold text-emerald-700">{formatRent(d.monthlyRent)} / tháng</p><p className="text-xs text-slate-500 break-all">{d.contractNumber}</p>

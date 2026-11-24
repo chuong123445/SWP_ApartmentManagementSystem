@@ -3,7 +3,7 @@
   "info": {
     "title": "An Cu — self asset management and asset-bound lessor activation",
     "version": "2.0.0",
-    "description": "Implemented28October2026. Shared Customer layout and detail, private own draft access, strict owner edit/gallery/price commands. OWNER only after successful source property creation or manual property Admin approval; consent alone never promotes. No data reset or demotion of existing Owners."
+    "description": "Updated 24 November 2026: Auth0/VNeID is account authentication/identity verification only. Property source selection, import, append and consent writes are retired. All new property rights use manual input and dossier/Admin review. Historical property provenance remains readable without automatic data reset or demotion."
   },
   "security": [
     {
@@ -55,7 +55,7 @@
     },
     "/api/v1/me/property-source-consent": {
       "get": {
-        "summary": "Read linked-source consent state, no provider asset fetch",
+        "summary": "Legacy status: consented=false and assetServiceAvailable=false",
         "responses": {
           "200": {
             "description": "Private no-store result.",
@@ -92,45 +92,21 @@
           "409": {
             "description": "Stale version, apartment not VACANT, PENDING_REQUESTS_EXIST"
           }
-        }
+        },
+        "deprecated": true,
+        "description": "Authenticated account compatibility response only; no provider read and no source authorization."
       },
       "post": {
-        "summary": "Explicitly consent after OWNERSHIP selection; exact account/binding/version, never role promotion",
+        "summary": "Retired property source operation",
         "responses": {
-          "200": {
-            "description": "Private no-store result.",
-            "headers": {
-              "Cache-Control": {
-                "schema": {
-                  "type": "string",
-                  "enum": [
-                    "no-store"
-                  ]
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConsentStatus"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid/unknown fields, invalid image list"
+          "410": {
+            "description": "PROPERTY_SOURCE_RETIRED — use manual property dossier flow"
           },
           "401": {
-            "description": "Missing/revoked session"
+            "description": "Authentication required"
           },
-          "403": {
-            "description": "Ineligible account, missing VERIFIED evidence or CSRF"
-          },
-          "404": {
-            "description": "Resource is not owned by current account"
-          },
-          "409": {
-            "description": "Stale version, apartment not VACANT, PENDING_REQUESTS_EXIST"
+          "400": {
+            "description": "Invalid legacy request body"
           }
         },
         "requestBody": {
@@ -148,7 +124,9 @@
             "internalBearer": [],
             "csrf": []
           }
-        ]
+        ],
+        "deprecated": true,
+        "description": "Authenticated valid requests return 410 PROPERTY_SOURCE_RETIRED. No Auth0 property read, import, publication or role grant is performed. Old consent cannot authorize this operation."
       }
     },
     "/api/v1/me/apartments/{id}": {
@@ -292,7 +270,7 @@
     "/api/v1/me/rental-properties/{id}/withdraw": {
       "post": {
         "summary": "Remove own unfinished property or withdraw initial pending dossier",
-        "description": "Authenticated exact applicant only. Locks account/property/dossiers and checks property version. Sets property WITHDRAWN, withdrawal timestamp, pending dossiers WITHDRAWN and completes its listing draft. Excludes withdrawn property/units from management and inventory. Keeps private submitted evidence/history. Repeated own withdrawal is idempotent. Approved/source properties, previous approved rights and any public/hidden/occupied unit or rental history block withdrawal. Not a command to revoke existing approved rights or leases.",
+        "description": "Authenticated exact applicant only. Locks account/property/dossiers and checks property version. Sets property WITHDRAWN, withdrawal timestamp, pending dossiers WITHDRAWN and completes its listing draft. Excludes withdrawn property/units from management and inventory. Keeps private submitted evidence/history. Repeated own withdrawal is idempotent. Approved/source properties, previous approved rights and any public/hidden/occupied unit or rental history block withdrawal. Not a command to revoke existing approved rights or leases. After withdrawal (including retry), an OWNER with no remaining APPROVED property becomes CUSTOMER in the same transaction. Other approved assets preserve OWNER; Admin is unchanged. Client must reload /me for current roles. Direct database cleanup must reconcile memberships separately.",
         "parameters": [
           {
             "name": "id",
