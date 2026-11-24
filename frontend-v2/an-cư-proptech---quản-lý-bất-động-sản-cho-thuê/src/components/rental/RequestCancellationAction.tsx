@@ -1,3 +1,4 @@
+import {useAuth} from '@/hooks/useAuth';
 import {LeaseRequestResultCard} from './LeaseRequestResultCard';
 import {cancellationResult,resultActorRole} from '@/utils/leaseRequestResults';
 import { useEffect, useState } from 'react';
@@ -242,6 +243,7 @@ function RequestCancellationControls({
 }
 
 export function RequestCancellationAction(props:{request:RentalRequest;owner?:boolean;onChanged?:()=>void}){
+ const {user}=useAuth();
  const [data,setData]=useState<SelectionCancellation|null>(null),[loadError,setLoadError]=useState('');const result=cancellationResult(data);
- return <>{loadError&&<p role="alert" className="mt-3 text-xs text-rose-700">Chưa tải được kết quả dừng làm hợp đồng. {loadError} <button className="underline" onClick={()=>window.dispatchEvent(new Event('ancu:tenancy-changed'))}>Thử lại</button></p>}{result&&<LeaseRequestResultCard result={result} history={data!.history.map(event=>({...event,actorRole:resultActorRole(event)}))}/>}<RequestCancellationControls {...props} onLoaded={setData} onLoadError={setLoadError}/></>;
+ return <>{loadError&&<p role="alert" className="mt-3 text-xs text-rose-700">Chưa tải được kết quả dừng làm hợp đồng. {loadError} <button className="underline" onClick={()=>window.dispatchEvent(new Event('ancu:tenancy-changed'))}>Thử lại</button></p>}{result&&<LeaseRequestResultCard viewerId={user?.id} result={result} history={data!.history.map(event=>({...event,actorRole:resultActorRole(event)}))}/>}<RequestCancellationControls {...props} onLoaded={setData} onLoadError={setLoadError}/></>;
 }

@@ -13,3 +13,15 @@ test('agreement explicitly requires handover while lease remains open',()=>{asse
 test('withdrawn and automatically accepted cancellation results remain visible with their real actor',()=>{assert.match(render({...base,kind:'CANCELLATION',state:'WITHDRAWN'}),/đã được rút/);const html=render({...base,kind:'CANCELLATION',state:'CANCELLED',event:{...base.event,actorId:'0',actorRole:'SYSTEM',actorName:'Hệ thống'}});assert.match(html,/đã được chấp thuận/);assert.match(html,/Người xử lý: Hệ thống/);});
 test('cancellation result uses the last event without dropping rejected or withdrawn records',()=>{const data={requestId:'71',state:'REJECTED',reason:'Chuyển nơi ở',history:[{...base.event,action:'PROPOSED',before:{ownerId:'3'},after:{}},{...base.event,action:'REJECTED',before:{ownerId:'3'},after:{}}]} as unknown as SelectionCancellation;assert.equal(cancellationResult(data)?.event.action,'REJECTED');assert.equal(cancellationResult(data)?.event.actorRole,'OWNER');assert.equal(cancellationResult({...data,state:'WITHDRAWN'})?.state,'WITHDRAWN');assert.equal(cancellationResult({...data,state:'NONE'}),null);});
 test('party labels use the contract relationship rather than account authority',()=>{assert.equal(resultActorRole({actorId:'2',after:{ownerId:'3'}}),'CUSTOMER');assert.equal(resultActorRole({actorId:'3'},'3'),'OWNER');assert.equal(resultActorRole({actorId:'0'}),'SYSTEM');});
+
+test('decision result is hidden for its own responder and visible for the other party in both workflows',()=>{
+ for(const kind of ['TERMINATION','CANCELLATION'] as const)for(const actorId of ['2','3'])for(const accepted of [true,false]){
+  const action=kind==='TERMINATION'?(accepted?'ACCEPT_TERMINATION':'REJECT_TERMINATION'):(accepted?'ACCEPTED':'REJECTED');
+  const result={...base,kind,event:{...base.event,actorId,action}};
+  assert.equal(renderToStaticMarkup(createElement(LeaseRequestResultCard,{result,viewerId:actorId})), '');
+  assert.match(renderToStaticMarkup(createElement(LeaseRequestResultCard,{result,viewerId:actorId==='2'?'3':'2'})), /Xem chi tiết và lịch sử/);
+ }
+});
+test('pending, withdrawal and automatic results are retained even for the event actor',()=>{
+ for(const action of ['PROPOSE_TERMINATION','PROPOSED','WITHDRAW_TERMINATION','WITHDRAWN','AUTO_ACCEPTED'])assert.notEqual(renderToStaticMarkup(createElement(LeaseRequestResultCard,{result:{...base,event:{...base.event,action}},viewerId:'3'})), '');
+});
