@@ -20,6 +20,6 @@ public class ContractTerminationResultRepository {
    SELECT contract_id,action,actor_id,actor_name,actor_role,created_at,reason,
     JSON_VALUE(after_json,'$.termination.reason') proposal_reason,JSON_VALUE(after_json,'$.termination.returnDate') return_date
    FROM ranked WHERE rank_number=1
-   """,Map.of("actor",actor,"ids",ids),(rs,index)->new ContractTerminationResult(rs.getString("contract_id"),switch(rs.getString("action")){case "PROPOSE_TERMINATION"->"PENDING";case "ACCEPT_TERMINATION"->"AGREED";case "REJECT_TERMINATION"->"REJECTED";default->"WITHDRAWN";},rs.getString("action"),rs.getString("actor_id"),rs.getString("actor_name"),rs.getString("actor_role"),rs.getTimestamp("created_at").toInstant(),rs.getString("reason"),rs.getString("proposal_reason"),rs.getString("return_date")));
+   """,Map.of("actor",actor,"ids",ids),(rs,index)->new ContractTerminationResult(rs.getString("contract_id"),switch(rs.getString("action")){case "PROPOSE_TERMINATION"->"PENDING";case "ACCEPT_TERMINATION"->"AGREED";case "REJECT_TERMINATION"->"REJECTED";default->"WITHDRAWN";},rs.getString("action"),rs.getString("actor_id"),rs.getString("actor_name"),rs.getString("actor_role"),rs.getTimestamp("created_at",Calendar.getInstance(TimeZone.getTimeZone("UTC"))).toInstant(),rs.getString("reason"),rs.getString("proposal_reason"),rs.getString("return_date")));
  }
 }

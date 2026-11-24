@@ -267,7 +267,7 @@ class ContractExitIntegrationTests {
   mvc.perform(get(resultPath())).andExpect(status().isUnauthorized());
   mvc.perform(get(resultPath()).header("Authorization",ct)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
   act(ct,"PROPOSE_TERMINATION",term()).andExpect(status().isOk());
-  for(String actor:List.of(ot,ct))mvc.perform(get(resultPath()).header("Authorization",actor)).andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store")).andExpect(jsonPath("$[0].state").value("PENDING")).andExpect(jsonPath("$[0].actorRole").value("CUSTOMER")).andExpect(jsonPath("$[0].proposalReason").value("Move away")).andExpect(jsonPath("$[0].updatedAt").isNotEmpty());
+  for(String actor:List.of(ot,ct))mvc.perform(get(resultPath()).header("Authorization",actor)).andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store")).andExpect(jsonPath("$[0].state").value("PENDING")).andExpect(jsonPath("$[0].actorRole").value("CUSTOMER")).andExpect(jsonPath("$[0].proposalReason").value("Move away")).andExpect(jsonPath("$[0].updatedAt").value(noticeNow.toString()));
   act(ot,"REJECT_TERMINATION",Map.of("reason","Need another date")).andExpect(status().isOk());
   for(int i=0;i<2;i++)mvc.perform(get(resultPath()).header("Authorization",ct)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].state").value("REJECTED")).andExpect(jsonPath("$[0].actorRole").value("OWNER")).andExpect(jsonPath("$[0].actorName").value(owner.getFullName())).andExpect(jsonPath("$[0].reason").value("Need another date"));
   act(ct,"PROPOSE_TERMINATION",term()).andExpect(status().isOk());act(ct,"WITHDRAW_TERMINATION",Map.of()).andExpect(status().isOk());

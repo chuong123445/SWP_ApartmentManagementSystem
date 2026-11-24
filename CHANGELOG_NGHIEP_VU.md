@@ -165,3 +165,5 @@
 - 25/11/2026 — Thông báo dừng làm hợp đồng/kết thúc thuê sớm: ghi rõ Chủ nhà/Người thuê đã đồng ý/từ chối đề nghị của bạn hoặc đã rút đề nghị; kèm tên người xử lý, mã yêu cầu/hợp đồng/phòng và lý do. Giữ mã thông báo, người nhận, liên kết và trạng thái đã đọc. 36 backend SQL riêng +4 Playwright hai vai trò ×desktop/mobile PASS. Vị trí hiển thị kết quả trên thẻ mới là đề xuất, chưa triển khai theo phạm vi yêu cầu.
 
 - 25/11/2026 — API kết quả kết thúc sớm trên thẻ: đọc sự kiện mới nhất của đúng hai bên, giữ cả chấp thuận/từ chối/rút; giới hạn 100 ID mỗi lượt, chỉ metadata người xử lý/thời gian/lý do. Không đổi trạng thái hợp đồng/phòng. 30 ContractExit integration tests trên SQL riêng PASS; UI đang triển khai.
+
+- 25/11/2026 — Kết quả kết thúc sớm: đọc timestamp SQL theo UTC trước khi hiển thị giờ Việt Nam, tránh phụ thuộc timezone JVM. Ca API kết quả kiểm tra timestamp chính xác PASS. API trước đó: d68053e6.
