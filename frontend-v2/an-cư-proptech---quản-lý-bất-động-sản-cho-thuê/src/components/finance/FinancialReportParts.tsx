@@ -143,9 +143,19 @@ export function FinancialCard({ label, value, note, icon }: { label: string; val
 
 export function FinancialChart({ months, mode = 'comparison' }: { months: FinancialMonth[]; mode?: 'cash' | 'comparison' }) {
   const rows = months.map(m => {
-    const paid = Number(m.invoices.paidInvoiceAmount ?? '0') / 1000000;
-    const unpaid = Number(m.invoices.unpaidInvoiceAmount ?? '0') / 1000000;
-    const billed = Number(m.invoices.billedAmount ?? '0') / 1000000;
+    // Trải đều giá trị tiền phòng phân bổ về từng tháng sử dụng thực tế + tiền điện nước tiện ích chốt hàng tháng
+    const allocatedRent = Number(m.allocatedRentAmount ?? '0') / 1000000;
+    const utility =
+      (Number(m.invoices.electricityAmount ?? '0') +
+        Number(m.invoices.waterAmount ?? '0') +
+        Number(m.invoices.serviceAmount ?? '0')) /
+      1000000;
+    const unpaidUtility = Math.min(utility, Number(m.invoices.unpaidInvoiceAmount ?? '0') / 1000000);
+    const paidUtility = Math.max(0, utility - unpaidUtility);
+
+    const paid = allocatedRent + paidUtility;
+    const unpaid = unpaidUtility;
+    const billed = paid + unpaid;
     const collected = Number(m.receipts.totalAmount ?? '0') / 1000000;
     return {
       period: m.period,
@@ -162,12 +172,12 @@ export function FinancialChart({ months, mode = 'comparison' }: { months: Financ
   return (
     <section className="app-panel p-4 sm:p-5">
       <h2 className="font-bold text-base">
-        {mode === 'cash' ? 'Tiền thực thu theo tháng' : 'Tổng hóa đơn phát sinh và dòng tiền thực thu theo tháng'}
+        {mode === 'cash' ? 'Tiền thực thu theo tháng' : 'Doanh thu phát sinh phân bổ và dòng tiền thực thu theo tháng'}
       </h2>
       <p className="text-xs leading-relaxed text-slate-600 mt-1 mb-4">
         {mode === 'cash'
           ? 'Theo ngày ghi nhận thanh toán, gồm hóa đơn và phiếu bổ sung. Đơn vị: triệu đồng.'
-          : 'Cột chồng thể hiện tổng giá trị hóa đơn phát sinh theo kỳ (gồm tiền phòng và điện nước/tiện ích, chia theo Đã thu và Còn nợ); đường biểu diễn dòng tiền thực tế nhận được theo ngày thanh toán. Đơn vị: triệu đồng.'}
+          : 'Cột chồng thể hiện doanh thu chuẩn hóa theo từng tháng (gồm tiền phòng phân bổ và tiền điện nước/tiện ích chốt hàng tháng, chia theo Đã thu và Còn nợ); đường biểu diễn dòng tiền thực tế nhận được theo ngày thanh toán. Đơn vị: triệu đồng.'}
       </p>
       {rows.length > 0 ? (
         <>
