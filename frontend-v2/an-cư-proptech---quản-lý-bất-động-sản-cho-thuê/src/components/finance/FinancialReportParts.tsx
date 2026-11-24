@@ -159,14 +159,14 @@ export function FinancialChart({ months, mode = 'comparison' }: { months: Financ
           ? 'Theo ngày ghi nhận thanh toán, gồm hóa đơn và phiếu bổ sung. Đơn vị: triệu đồng.'
           : 'Tiền thuê phân bổ từ hóa đơn đã gửi theo từng tháng thuê; thực thu theo ngày thanh toán, gồm cả điện nước và phiếu bổ sung. Hai số liệu có thể khác nhau. Đơn vị: triệu đồng.'}
       </p>
-      {hasActivity ? (
+      {rows.length > 0 ? (
         <>
           <div className="h-64 w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={rows} margin={{ left: 0, right: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} width={42} />
+                <YAxis tick={{ fontSize: 10 }} width={42} allowDecimals={false} domain={[0, (dataMax: number) => (dataMax <= 0 ? 1 : 'auto')]} />
                 <Tooltip />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 {mode === 'comparison' && (
@@ -176,7 +176,11 @@ export function FinancialChart({ months, mode = 'comparison' }: { months: Financ
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <p className="text-xs text-slate-500 mt-3">Biểu đồ làm tròn để hiển thị; số tiền chi tiết trong bảng giữ nguyên độ chính xác.</p>
+          <p className="text-xs text-slate-500 mt-3">
+            {hasActivity
+              ? 'Biểu đồ làm tròn để hiển thị; số tiền chi tiết trong bảng giữ nguyên độ chính xác.'
+              : 'Chưa phát sinh tiền thuê hoặc tiền thực thu trong kỳ này. Số tiền chi tiết trong bảng giữ nguyên độ chính xác.'}
+          </p>
         </>
       ) : (
         <div className="grid justify-items-center gap-2 rounded-xl bg-brand-50 px-4 py-8 text-center text-sm text-slate-600">
