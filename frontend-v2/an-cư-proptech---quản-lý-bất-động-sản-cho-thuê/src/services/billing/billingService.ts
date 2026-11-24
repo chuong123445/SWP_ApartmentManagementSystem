@@ -40,6 +40,7 @@ export function invoiceView(i: BillingInvoice): Invoice {
     roomNumber: i.roomNumber, tenantName: i.tenantName, tenantPhone: '', createdAt: i.createdAt, dueDate: i.dueDate,
     status: i.paymentStatus==='PAID'?'paid':'unpaid', paidAmount: i.paymentStatus==='PAID'?Number(i.totalAmount):0, totalAmount: Number(i.totalAmount), apiInvoice: i,
     items: [
+      ...(i.maintenanceCharges??[]).map(charge=>({name:'Sửa chữa: '+charge.title+' · #'+charge.ticketId,unit:'khoản',quantity:1,unitPrice:Number(charge.customerCost),amount:Number(charge.customerCost)})),
       ...(i.kind==='UTILITY'?[]:[{ name: 'Tiền thuê', unit: 'tháng', quantity: i.rentMonths||1, unitPrice: Number(i.rentUnitPrice??i.monthlyRent), amount: Number(i.monthlyRent) }]),
       ...(i.kind==='RENT'?[]:[
       { name: 'Tiền điện', unit: 'kWh', oldIndex: Number(i.electricityStartReading), newIndex: Number(i.electricityEndReading), quantity: Number(i.electricityQuantity), unitPrice: Number(i.electricityUnitPrice), amount: Number(i.electricityAmount) },

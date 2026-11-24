@@ -107,3 +107,9 @@
 
 - Gộp nhánh origin/main (chu kỳ thuê linh hoạt 1-12 tháng, cảnh báo 48h hoàn tất chữ ký, tùy chọn gõ tên ký số) vào nhánh local; ưu tiên giữ trải nghiệm báo lỗi cạnh ô nhập, cuộn tới lỗi, bỏ hướng dẫn dài và điều hướng tab hợp đồng/yêu cầu thuê theo bản local.
 - 179/179 frontend tests PASS; TypeScript & Vite build đạt 100%. Commit merge: `f24c7fa3`.
+
+- 24/11/2026 — Phí bảo trì vào hóa đơn: khách nghiệm thu mới tạo khoản phải thu theo hợp đồng gốc và tháng thu; tự cộng vào hóa đơn mới/nháp, giữ nguyên hóa đơn đã gửi, hủy hóa đơn trả khoản phí về chờ thu; 7 kiểm thử SQL trên database riêng PASS. Commit: Tự động đưa chi phí sửa chữa đã nghiệm thu vào hóa đơn.
+
+- 24/11/2026 — Giao diện phí sửa chữa: chọn tháng và phần khách chịu khi báo sửa xong; khách xác nhận cả khoản phí; lập hóa đơn thấy sẵn từng sự cố và tổng dự kiến; hóa đơn chi tiết hiện phí riêng. TypeScript/build, 175 unit và 8 E2E desktop/mobile PASS. Commit: Hiện chi phí sửa chữa và tổng tiền trong hóa đơn tháng.
+
+- 24/11/2026 — Kiểm chứng phân bổ phí bảo trì: test API tạo phiếu gắn đúng hợp đồng, chủ chia 600.000 đ thành 400.000/200.000 đ, chỉ ghi khoản phải thu sau khách nghiệm thu; database riêng PASS. Commit: Kiểm tra luồng chia tiền sửa chữa và khách nghiệm thu.
