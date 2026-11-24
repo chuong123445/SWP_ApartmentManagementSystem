@@ -91,3 +91,8 @@
 
 - Tạo/sửa/thuê tiếp: lỗi ngày, số tiền, hạn đóng, thông tin thuê và từng điều khoản hiện dưới đúng ô với viền đỏ; tự quay đúng bước và cuộn/focus lỗi đầu tiên. Sửa ô này không xóa lỗi ô khác, giữ dữ liệu; lỗi ngày server về đúng trường. Lỗi mạng/xung đột giữ thông báo chung nhưng tự cuộn tới.
 -174frontend/TypeScript/build +10MCPdesktopmobilePASS (6validation/recovery/server/network+4date-regression), ảnhmobileđãxem; APIfixtures, không backend/appDBchange. Chỉ luồng hợp đồng, không tuyên bố sửa tất cả form. ADR contract-inline-errors-v1; commit fix(ui): hiển thị lỗi hợp đồng cạnh trường nhập, hashgitlog. Chưapush.
+
+## Chỉ báo lỗi sau Tiếp theo và rút gọn form hợp đồng — 24/11/2026
+
+- Chỉ kiểm tra khi bấm Tiếp theo/rá soát/lưu; vào bước và nhập chưa hiện lỗi đỏ. Sửa ngày trống bị nhầm là quá khứ, bỏ hint đỏ trùng; mỗi ô một thông báo. Nhập chỉ xóa thông báo cũ liên quan, không tự validate. Xóa nguyên đoạn giải thích30ngày/thánglịch/ngàylẻ theo yêu cầu, giữ quy tắc nghiệp vụ.
+-174frontend/TypeScript/build và10MCPdesktopmobilePASS; thêm kiểm tra entry/blurkhônglỗi,Nextmớibáo/khôngtrùng. APIfixtures, không backend/DBchange. Commit fix(ui): chỉ báo lỗi hợp đồng khi tiếp tục và rút gọn hướng dẫn; hashgitlog. Chưapush.

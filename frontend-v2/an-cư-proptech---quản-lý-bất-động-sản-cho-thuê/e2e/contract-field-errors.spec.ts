@@ -47,6 +47,16 @@ async function exercise(page:Page,width:number,scenario:string){
     await dialog.getByLabel('Tiền đặt cọc (VND)',{exact:true}).fill('900000');
   }else{for(let i=0;i<3;i++)await dialog.getByRole('button',{name:'Tiếp theo →',exact:true}).click();}
   const start=dialog.getByLabel('Ngày bắt đầu',{exact:true}),end=dialog.getByLabel('Ngày kết thúc',{exact:true});
+  if(await dialog.locator('[data-contract-field][aria-invalid="true"]').count())throw Error('Errors shown on entry');
+  if(await dialog.getByText('Ngày bắt đầu đã qua, vui lòng cập nhật lại ngày bắt đầu.',{exact:true}).count())throw Error('Empty date mistaken for past');
+  if(await dialog.getByText('Tiền thuê theo tháng lịch: kỳ đầu gồm phần tháng bắt đầu',{exact:false}).count())throw Error('Long policy paragraph remains');
+  await start.fill('2020-01-01');await start.blur();
+  if(await dialog.locator('[data-contract-field][aria-invalid="true"]').count()||await dialog.locator('#contract-error-startDate').count())throw Error('Validation before Next');
+  await dialog.getByRole('button',{name:'Tiếp theo →',exact:true}).click();
+  await dialog.locator('#contract-error-startDate').waitFor();
+  if(await start.locator('..').getByRole('alert').count()!==1)throw Error('Duplicate start messages');
+  if(await dialog.getByText('Ngày bắt đầu đã qua, vui lòng cập nhật lại ngày bắt đầu.',{exact:true}).count())throw Error('Duplicate past hint');
+
   const add=(days:number)=>{const d=new Date(`${today}T00:00:00Z`);d.setUTCDate(d.getUTCDate()+days);return d.toISOString().slice(0,10);};
   await start.fill(add(1));await end.fill(add(1));
   const rent=dialog.getByLabel('Tiền thuê mỗi tháng (VND)',{exact:true});await rent.fill('0');
