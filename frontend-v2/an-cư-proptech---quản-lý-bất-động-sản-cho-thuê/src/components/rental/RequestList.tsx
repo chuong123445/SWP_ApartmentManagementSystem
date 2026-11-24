@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import { Check, X, FileText, CheckCircle2, XCircle } from 'lucide-react';
 import type { RentalRequest, RentalRequestStatus } from '@/types/rental';
 import { formatRent, formatRequestDate, requestStatusLabel, rentalRequestPresentation } from '@/utils/format';
+import { RequestCancellationAction } from './RequestCancellationAction';
 
 const statusBadgeClass: Record<RentalRequestStatus, string> = {
   PENDING: 'bg-amber-50 text-amber-800 border border-amber-200',
@@ -68,7 +69,7 @@ export function RequestList({
           </p>
 
           {display.decisionReason && <p className="mt-3 text-sm text-slate-700 whitespace-pre-wrap break-words"><span className="font-semibold">{request.status === 'REJECTED' ? 'Lý do từ chối: ' : 'Lý do xử lý: '}</span>{display.decisionReason}</p>}
-          {onOpenCancellation && (request.status==='ACCEPTED'&&!request.contractCompleted||request.status==='CANCELLED') && <button type="button" className="text-sm text-red-700 underline mt-3" onClick={()=>onOpenCancellation(request)}>Hủy / lịch sử làm hợp đồng</button>}
+          <RequestCancellationAction request={request} owner={owner} />
           {/* Owner actions */}
           {owner && request.status === 'PENDING' && (
             <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-3">

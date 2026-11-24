@@ -139,3 +139,5 @@
 - 24/11/2026 — Đồng bộ vai trò chủ nhà: chỉ tài khoản có ít nhất một tài sản được duyệt mới có quyền OWNER; tài khoản không còn tài sản hợp lệ trong danh sách tự động đồng bộ về CUSTOMER, ẩn liên kết Trang quản lý và chặn vào /app. 16 Auth integration tests, 4 unit tests OwnerRoleReconciliation, 181 frontend tests và build đạt 100%.
 
 - 24/11/2026 — Đăng tải tài sản: bỏ khung quét đối chiếu AI tự động ở bước cuối (Kiểm tra trước khi gửi), người dùng xem trước thông tin và bấm gửi duyệt trực tiếp mà không bị báo lỗi quét tệp; giữ nguyên bước đọc trích xuất giấy tờ ban đầu. 181 frontend unit tests, TypeScript/build và Playwright E2E PASS. Commit: Bỏ quét AI đối chiếu ở bước cuối đăng tải tài sản.
+
+- 24/11/2026 — Dừng làm hợp đồng inline: thay nút Hủy / lịch sử làm hợp đồng bằng nút Dừng làm hợp đồng inline; khi có đề nghị dừng hiển thị thông báo kèm 2 nút Có/Không, từ chối dừng sẽ trở lại trạng thái ban đầu; gỡ bỏ khối Lịch sử xử lý hủy khỏi giao diện. 181 frontend unit tests, TypeScript/build PASS. Commit: Hiển thị thao tác dừng làm hợp đồng inline và gỡ lịch sử hủy.
