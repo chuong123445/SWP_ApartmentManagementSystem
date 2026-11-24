@@ -395,6 +395,54 @@
           }
         }
       }
+    },
+    "/api/v1/me/contract-exit-requests": {
+      "get": {
+        "summary": "Đề nghị kết thúc thuê đang chờ của đúng hai bên",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Danh sách PENDING, Cache-Control no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "contractId": {
+                        "type": "string"
+                      },
+                      "apartmentTitle": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string"
+                      },
+                      "requiresResponse": {
+                        "type": "boolean"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "responseDeadline": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chưa đăng nhập"
+          }
+        }
+      }
     }
   },
   "components": {

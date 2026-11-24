@@ -47,6 +47,36 @@ public class ContractExitService {
  private final java.time.Clock clock;
  record Context(AuthAccount actor,ContractDraft draft,RentalContract contract,ContractExitCase exit){}
 
+ public record PendingRequest(String contractId,String apartmentTitle,String kind,boolean requiresResponse,String reason,Instant responseDeadline){}
+ @Transactional(readOnly=true) public List<PendingRequest> pendingRequests(Jwt jwt){
+  var actor=access.account(jwt).getId();
+  return cases.pendingForParty(actor).stream().map(r->{
+   var c=contracts.findById(r.getContractId()).orElseThrow(ContractExitService::missing);
+   var t=term(r);var u=unilateral(r);boolean unilateral=r.getUnilateralState().equals("PENDING");
+   return new PendingRequest(c.getId().toString(),c.getApartment().getTitle(),unilateral?"UNILATERAL":"MUTUAL",
+    unilateral?c.getCustomer().getId().equals(actor):t!=null&&!t.proposerId().equals(actor.toString()),unilateral?u.reason():t.reason(),unilateral?u.responseDeadline():null);
+  }).toList();
+ }
+ @Transactional(readOnly=true) public List<Long> pendingUnilateralIds(){return cases.findByUnilateralState("PENDING").stream().map(ContractExitCase::getContractId).toList();}
+ /** Called through the service proxy: each scheduled contract has its own transaction and locks. */
+ @Transactional public boolean expireUnilateral(Long id){
+  var initial=contracts.findById(id).orElseThrow(ContractExitService::missing);
+  var d=drafts.findByContractId(id).orElseThrow(ContractExitService::missing);
+  var owner=initial.getApartment().getProperty().getOwner();
+  if(initial.getRenewalOfContractId()!=null)requests.findForOwnerUpdate(drafts.findRequestId(initial.getRenewalOfContractId()).orElseThrow(ContractExitService::missing),owner.getId()).orElseThrow(ContractExitService::missing);
+  requests.findForOwnerUpdate(d.getRentalRequest().getId(),owner.getId()).orElseThrow(ContractExitService::missing);
+  var c=contracts.lockById(id).orElseThrow(ContractExitService::missing);entities.refresh(c);
+  var r=cases.findById(id).orElse(null);if(r==null)return false;entities.refresh(r);
+  var u=unilateral(r);
+  if(!active(c)||!r.getUnilateralState().equals("PENDING")||u==null||now().isBefore(u.responseDeadline()))return false;
+  requireNoCompetingFlow(c);
+  var a=apartments.findForRequest(c.getApartment().getId()).orElseThrow(ContractExitService::missing);entities.refresh(a);
+  if(a.getAvailability()!=Apartment.Availability.OCCUPIED||contracts.findByApartmentId(a.getId()).stream().anyMatch(other->!other.getId().equals(id)&&other.isOpen())||requests.countOtherLiveAccepted(a.getId(),d.getRentalRequest().getId())>0)throw conflict("APARTMENT_HAS_OTHER_CLAIM","Phòng còn quan hệ thuê khác hoặc trạng thái đã thay đổi.");
+  var s=new Context(owner,d,c,r);String before=json.writeValueAsString(snapshot(s));
+  c.setStatus(RentalContract.Status.ENDED);c.setEndReason("UNILATERAL_NO_RESPONSE");c.setEndedAt(now());a.setAvailability(Apartment.Availability.VACANT);
+  r.setUnilateralState("COMPLETED");r.setUnilateralJson(json.writeValueAsString(new Unilateral(u.proposerId(),u.reason(),u.clauseReference(),u.proposedAt(),u.responseDeadline(),null,null,"Hệ thống tự kết thúc khi hết hạn thông báo mà người thuê không phản hồi. Công nợ giữ nguyên; không xác nhận bàn giao hay hoàn cọc.",List.of(),now())));r.setUpdatedAt(now());cases.saveAndFlush(r);entities.flush();
+  var e=new ContractExitEvent();e.setContractId(id);e.setActorId(owner.getId());e.setActorName("Hệ thống — theo thông báo chủ nhà");e.setAction("AUTO_END_UNILATERAL");e.setReason("Hết hạn thông báo đơn phương, không có phản đối. Hợp đồng đã kết thúc, phòng được mở lại; công nợ giữ nguyên.");e.setBeforeJson(before);e.setAfterJson(json.writeValueAsString(snapshot(s)));e.setCreatedAt(now());events.saveAndFlush(e);return true;
+ }
  @Transactional(readOnly=true) public View get(Jwt jwt,Long id){return view(load(jwt,id,false));}
  Context load(Jwt jwt,Long id,boolean lock){
   var actor=access.account(jwt);var c=contracts.findById(id).orElseThrow(ContractExitService::missing);party(c,actor.getId());
@@ -142,7 +172,7 @@ public class ContractExitService {
    case PROPOSE_UNILATERAL_TERMINATION -> {
     owner(s);if(!canProposeUnilateral(s))throw conflict("UNILATERAL_UNAVAILABLE","Cần xử lý đề nghị/bàn giao/thuê tiếp đang mở hoặc phản đối đã ghi nhận trước khi thông báo đơn phương.");
     var v=input.unilateral();if(v==null)throw bad("Cần lý do mất liên lạc và căn cứ/điều khoản kết thúc.");
-    var issued=now();var deadline=issued.plus(java.time.Duration.ofDays(30));
+    var issued=now();var deadline=issued.plus(java.time.Duration.ofDays(14));
     u=new Unilateral(s.actor().getId().toString(),v.reason().strip(),v.clauseReference().strip(),issued,deadline,null,null,null,List.of(),null);
     r.setUnilateralState("PENDING");
     reason="Chủ nhà gửi thông báo dự kiến kết thúc đơn phương. Hạn phản hồi: "+java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(java.time.ZoneId.of("Asia/Ho_Chi_Minh")).format(deadline)+" (giờ Việt Nam). Lý do: "+shortReason(v.reason());
@@ -158,7 +188,7 @@ public class ContractExitService {
    }
    case FINALIZE_UNILATERAL_TERMINATION -> {
     owner(s);if(!r.getUnilateralState().equals("PENDING")||u==null)throw conflict("UNILATERAL_NOT_PENDING","Không thể kết thúc: thông báo không còn chờ hoặc người thuê đã phản đối.");
-    if(now().isBefore(u.responseDeadline()))throw conflict("UNILATERAL_RESPONSE_WINDOW_OPEN","Chưa đủ 30 ngày kể từ khi gửi thông báo. Người thuê còn thời gian phản hồi.");
+    if(now().isBefore(u.responseDeadline()))throw conflict("UNILATERAL_RESPONSE_WINDOW_OPEN","Chưa đến hạn phản hồi ghi trong thông báo. Người thuê còn thời gian phản hồi.");
     requireNoCompetingFlow(c);requireNoDraft(c);
     var v=input.unilateralCompletion();if(v==null||!v.possessionRecovered()||!v.accountsReviewed())throw bad("Cần xác nhận đã thu hồi phòng và đối chiếu các khoản phải thu.");
     var ids=selectedEvidence(s,v.evidenceIds());if(ids.isEmpty())throw bad("Cần ít nhất một ảnh chứng cứ thu hồi phòng.");
@@ -168,7 +198,7 @@ public class ContractExitService {
     if(apartment.getAvailability()!=Apartment.Availability.OCCUPIED)throw conflict("APARTMENT_STATE_CHANGED","Phòng không còn ở trạng thái đang thuê.");
     c.setStatus(RentalContract.Status.ENDED);c.setEndReason("UNILATERAL_ABANDONMENT");c.setEndedAt(now());apartment.setAvailability(Apartment.Availability.VACANT);
     u=new Unilateral(u.proposerId(),u.reason(),u.clauseReference(),u.proposedAt(),u.responseDeadline(),null,null,v.conditionNotes().strip(),ids,now());r.setUnilateralState("COMPLETED");
-    reason="Chủ nhà xác nhận thu hồi phòng và kết thúc đơn phương sau 30 ngày không phản hồi. "+shortReason(v.conditionNotes());
+    reason="Chủ nhà xác nhận thu hồi phòng và kết thúc đơn phương sau thời hạn thông báo không phản hồi. "+shortReason(v.conditionNotes());
    }
    default -> throw bad("Thao tác đơn phương không hợp lệ.");
   }

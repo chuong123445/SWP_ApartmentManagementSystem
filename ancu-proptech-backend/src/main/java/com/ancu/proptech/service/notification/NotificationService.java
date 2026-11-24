@@ -19,10 +19,20 @@ public class NotificationService {
  public record Feed(List<Item> items,int page,int size,long totalElements,int totalPages,long unreadCount,Instant snapshotAt){}
  private static final String FEED="""
  WITH feed AS (
- SELECT CONCAT('contract-exit:',e.id) notification_key,CASE WHEN e.action LIKE '%UNILATERAL%' THEN N'Thông báo kết thúc đơn phương' ELSE N'Cập nhật kết thúc thuê / bàn giao' END title,
- CONCAT(N'HD-',c.id,N' — ',e.reason) message,CONCAT('/contracts/',c.id) url,e.created_at
+ SELECT CONCAT('contract-exit:',e.id) notification_key,CASE e.action
+ WHEN 'PROPOSE_TERMINATION' THEN N'Yêu cầu kết thúc thuê sớm — cần phản hồi'
+ WHEN 'ACCEPT_TERMINATION' THEN N'Đã đồng ý kết thúc thuê sớm'
+ WHEN 'REJECT_TERMINATION' THEN N'Đã từ chối kết thúc thuê sớm'
+ WHEN 'WITHDRAW_TERMINATION' THEN N'Đã rút yêu cầu kết thúc thuê sớm'
+ WHEN 'PROPOSE_UNILATERAL_TERMINATION' THEN N'Thông báo kết thúc đơn phương — cần phản hồi'
+ WHEN 'OBJECT_UNILATERAL_TERMINATION' THEN N'Người thuê phản đối kết thúc đơn phương'
+ WHEN 'WITHDRAW_UNILATERAL_TERMINATION' THEN N'Chủ nhà đã rút thông báo đơn phương'
+ WHEN 'AUTO_END_UNILATERAL' THEN N'Hợp đồng tự kết thúc do không phản hồi'
+ WHEN 'FINALIZE_UNILATERAL_TERMINATION' THEN N'Hợp đồng đã kết thúc đơn phương'
+ ELSE N'Cập nhật bàn giao cư trú' END title,
+ CONCAT(N'HD-',c.id,N' — ',e.reason) message,CONCAT('/contracts/',c.id,'?section=termination') url,e.created_at
  FROM contract_exit_events e JOIN rental_contracts c ON c.id=e.contract_id JOIN rental_apartments a ON a.id=c.apartment_id JOIN rental_properties p ON p.id=a.property_id
- WHERE e.actor_id<>:account AND (p.owner_id=:account OR c.customer_id=:account)
+ WHERE (e.actor_id<>:account OR e.action='AUTO_END_UNILATERAL') AND (p.owner_id=:account OR c.customer_id=:account)
  UNION ALL
  SELECT CONCAT('contract-expiry:',n.id) notification_key,N'Hợp đồng sắp hết hạn' title,
  CONCAT(N'HD-',c.id,N' hết hạn ngày ',CONVERT(varchar(10),n.expires_on,23),N'. Xem hợp đồng để yêu cầu thuê tiếp hoặc theo dõi bàn giao.') message,

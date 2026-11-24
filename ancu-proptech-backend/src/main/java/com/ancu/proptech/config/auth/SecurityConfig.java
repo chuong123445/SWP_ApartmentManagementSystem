@@ -137,7 +137,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/owner/properties/*/settings", "/api/v1/owner/contracts/*/utility-invoice-suggestion").authenticated()
                         .requestMatchers("/api/v1/owner/payment-qr/**", "/api/v1/invoices/*/payment-qr").authenticated()
                         .requestMatchers("/api/v1/owner/properties/*/payment-qr").authenticated()
-                        .requestMatchers("/api/v1/me/notifications", "/api/v1/me/notifications/**").authenticated()
+                        .requestMatchers("/api/v1/me/contract-exit-requests", "/api/v1/me/notifications", "/api/v1/me/notifications/**").authenticated()
                         .requestMatchers("/api/v1/owner/settlements", "/api/v1/owner/settlements/**", "/api/v1/admin/settlements/**").authenticated()
                         .requestMatchers("/api/v1/admin/accounts", "/api/v1/admin/accounts/**").authenticated()
                         .anyRequest().denyAll())

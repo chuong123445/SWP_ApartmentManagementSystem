@@ -127,3 +127,5 @@
 - 24/11/2026 — Nhận tiền mặt hóa đơn: API dành cho đúng chủ nhà, khóa giao dịch và chống xác nhận trùng; cập nhật công nợ và ghi một phiếu thu đã xác nhận trong cùng transaction, lưu người xác nhận/ghi chú, không cộng số dư SePay. Migration V75 giữ dữ liệu chuyển khoản. 5 billing (có đồng thời), 26 SePay (có webhook đến muộn), 6 sổ quỹ trên SQL test riêng PASS. Commit: Xác nhận tiền mặt và ghi sổ thu hóa đơn đồng bộ.
 
 - 24/11/2026 — Giao diện thu tiền mặt: Chi tiết hóa đơn có nút Đã nhận tiền mặt, chọn ngày/ghi chú và xác nhận đã nhận đủ; cập nhật danh sách hết nợ, khách thấy phương thức tiền mặt. 175 frontend unit, TypeScript/build và 6 E2E desktop/mobile PASS; ảnh mobile đã xem. Commit: Thêm xác nhận đã nhận tiền mặt trong chi tiết hóa đơn.
+
+- 24/11/2026 — Kết thúc đơn phương: thông báo mới chờ 14 ngày, hết hạn không phản đối tự kết thúc và mở lại phòng; giữ công nợ/chữ ký, thông báo rõ cả hai bên, API danh sách đề nghị chờ riêng tư. Hạn thông báo đã gửi giữ nguyên. 34 ca backend SQL riêng PASS qua hai lượt (lượt đầu 1 lỗi đồng hồ fixture, đã sửa và chạy lại PASS); giao diện đang làm.
