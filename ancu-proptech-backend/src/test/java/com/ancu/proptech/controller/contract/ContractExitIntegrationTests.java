@@ -262,4 +262,23 @@ class ContractExitIntegrationTests {
   org.mockito.Mockito.when(clock.instant()).thenReturn(noticeNow.plus(Duration.ofDays(40)));assertFalse(exitService.expireUnilateral(contract.getId()));assertEquals("PENDING",cases.findById(contract.getId()).orElseThrow().getTerminationState());
  }
 
+ private String resultPath(){return "/api/v1/me/contract-termination-results?ids="+contract.getId();}
+ @Test void terminationCardResultsPersistAcrossDecisionsAndAreExactPartyPrivate()throws Exception{
+  mvc.perform(get(resultPath())).andExpect(status().isUnauthorized());
+  mvc.perform(get(resultPath()).header("Authorization",ct)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+  act(ct,"PROPOSE_TERMINATION",term()).andExpect(status().isOk());
+  for(String actor:List.of(ot,ct))mvc.perform(get(resultPath()).header("Authorization",actor)).andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store")).andExpect(jsonPath("$[0].state").value("PENDING")).andExpect(jsonPath("$[0].actorRole").value("CUSTOMER")).andExpect(jsonPath("$[0].proposalReason").value("Move away")).andExpect(jsonPath("$[0].updatedAt").isNotEmpty());
+  act(ot,"REJECT_TERMINATION",Map.of("reason","Need another date")).andExpect(status().isOk());
+  for(int i=0;i<2;i++)mvc.perform(get(resultPath()).header("Authorization",ct)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].state").value("REJECTED")).andExpect(jsonPath("$[0].actorRole").value("OWNER")).andExpect(jsonPath("$[0].actorName").value(owner.getFullName())).andExpect(jsonPath("$[0].reason").value("Need another date"));
+  act(ct,"PROPOSE_TERMINATION",term()).andExpect(status().isOk());act(ct,"WITHDRAW_TERMINATION",Map.of()).andExpect(status().isOk());
+  mvc.perform(get(resultPath()).header("Authorization",ot)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].state").value("WITHDRAWN"));
+  act(ot,"PROPOSE_TERMINATION",term()).andExpect(status().isOk());act(ct,"ACCEPT_TERMINATION",Map.of()).andExpect(status().isOk());
+  act(ot,"PROPOSE_HANDOVER",hand()).andExpect(status().isOk());
+  mvc.perform(get(resultPath()).header("Authorization",ct)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].state").value("AGREED")).andExpect(jsonPath("$[0].actorRole").value("CUSTOMER"));
+  mvc.perform(get(resultPath()).header("Authorization",xt)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+  mvc.perform(get("/api/v1/me/contract-termination-results?ids=-1").header("Authorization",ct)).andExpect(status().isBadRequest());
+  mvc.perform(get("/api/v1/me/contract-termination-results?ids="+java.util.stream.IntStream.rangeClosed(1,101).mapToObj(String::valueOf).collect(java.util.stream.Collectors.joining(","))).header("Authorization",ct)).andExpect(status().isBadRequest());
+  assertEquals(RentalContract.Status.ACTIVE,contract.getStatus());assertEquals(Apartment.Availability.OCCUPIED,apartment.getAvailability());
+ }
+
 }
