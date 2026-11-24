@@ -72,7 +72,7 @@ export function FinancialFilters({ report }: { report: OwnerFinancialReport }) {
           Từ tháng
           <input
             aria-label="Từ tháng"
-            className={`border rounded-lg px-3 py-1.5 text-sm w-36 ${
+            className={`border rounded-lg px-3 py-1.5 text-sm min-w-40 sm:w-44 ${
               isInvalid ? 'border-red-500 bg-red-50/30' : 'border-slate-300'
             }`}
             type="month"
@@ -85,7 +85,7 @@ export function FinancialFilters({ report }: { report: OwnerFinancialReport }) {
           Đến tháng
           <input
             aria-label="Đến tháng"
-            className={`border rounded-lg px-3 py-1.5 text-sm w-36 ${
+            className={`border rounded-lg px-3 py-1.5 text-sm min-w-40 sm:w-44 ${
               isInvalid ? 'border-red-500 bg-red-50/30' : 'border-slate-300'
             }`}
             type="month"
@@ -148,6 +148,7 @@ export function FinancialChart({ months, mode = 'comparison' }: { months: Financ
     collected: Number(m.receipts.totalAmount) / 1000000,
   }));
   const hasActivity = rows.some(row => (mode === 'comparison' && row.allocated !== 0) || row.collected !== 0);
+  const yDomain = hasActivity ? ([0, 'auto'] as const) : ([0, 1] as const);
 
   return (
     <section className="app-panel p-4 sm:p-5">
@@ -166,13 +167,13 @@ export function FinancialChart({ months, mode = 'comparison' }: { months: Financ
               <BarChart data={rows} margin={{ left: 0, right: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} width={42} allowDecimals={false} domain={[0, (dataMax: number) => (dataMax <= 0 ? 1 : 'auto')]} />
+                <YAxis tick={{ fontSize: 10 }} width={42} allowDecimals={false} domain={yDomain} />
                 <Tooltip />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 {mode === 'comparison' && (
-                  <Bar dataKey="allocated" name="Tiền thuê phân bổ" fill="var(--app-primary)" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="allocated" name="Tiền thuê phân bổ" fill="#1d4ed8" radius={[3, 3, 0, 0]} />
                 )}
-                <Bar dataKey="collected" name="Tiền thực thu" fill="var(--app-secondary)" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="collected" name="Tiền thực thu" fill="#0284c7" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

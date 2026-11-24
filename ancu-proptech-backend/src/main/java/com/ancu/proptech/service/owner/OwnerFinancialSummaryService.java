@@ -67,7 +67,15 @@ public class OwnerFinancialSummaryService {
         try(var stream=reports.receipts(ownerId,propertyId,from,until)) {
             stream.forEach(row->{
                 if(row.paidAt()==null){debtCounts[2]++;debt[2]=debt[2].add(row.amount());}
-                else {var month=months.get(YearMonth.from(row.paidAt().atZone(ZONE)).toString());var property=byProperty.computeIfAbsent(row.propertyId(),id->new Accumulator());total.additional=total.additional.add(row.amount());if(month!=null)month.additional=month.additional.add(row.amount());property.additional=property.additional.add(row.amount());}
+                else {
+                    var month=months.get(YearMonth.from(row.paidAt().atZone(ZONE)).toString());
+                    if(month!=null){
+                        var property=byProperty.computeIfAbsent(row.propertyId(),id->new Accumulator());
+                        total.additional=total.additional.add(row.amount());
+                        month.additional=month.additional.add(row.amount());
+                        property.additional=property.additional.add(row.amount());
+                    }
+                }
             });
         }
         var units=new OwnerFinancialSummary.Inventory(inventory.stream().mapToLong(FinancialInventoryRow::units).sum(),inventory.stream().mapToLong(FinancialInventoryRow::occupied).sum(),inventory.stream().mapToLong(FinancialInventoryRow::vacant).sum());
