@@ -119,3 +119,5 @@
 - 24/11/2026 — Phân công thợ: sửa biểu thức kiểm tra điện thoại trên trình duyệt, báo lỗi ngay tại ô nhập và chặn gửi chuỗi chữ; nhập số hợp lệ phân công thành công. TypeScript/build và 2 E2E PASS. Commit: Báo lỗi điện thoại ngay trong biểu mẫu phân công thợ.
 
 - 24/11/2026 — Phân công thợ: chặn ngày giờ hẹn đã qua tại trình duyệt và server theo thời điểm thực, báo lỗi cạnh lịch hẹn; giữ nguyên lịch sử cũ. 2 backend SQL riêng, 2 E2E, TypeScript/build PASS. Commit: Chặn lịch phân công thợ trong quá khứ.
+
+- 24/11/2026 — Sổ quỹ sửa chữa: phiếu chi lấy toàn bộ tiền chủ nhà trả cho thợ, kể cả khách chịu 100%; phần khách được thu riêng qua hóa đơn. Giữ nguyên phiếu lịch sử. 6 backend SQL database riêng, TypeScript và 2 E2E desktop/mobile PASS. Commit: Ghi đủ tiền chủ nhà thanh toán cho thợ.

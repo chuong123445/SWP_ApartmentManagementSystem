@@ -35,9 +35,9 @@ public class CashSourceService {
  WHERE p.owner_id=:owner AND ip.owner_id=:owner AND (:property IS NULL OR p.id=:property) AND i.status='SENT' AND ip.paid_at>=:fromDate AND ip.paid_at<:untilDate
  AND ip.amount=i.total_amount AND NOT EXISTS(SELECT 1 FROM cash_entries e WHERE e.source_invoice_id=i.id)
  UNION ALL
- SELECT 'MAINTENANCE',t.id,p.id,p.name,t.title,t.actual_cost-t.customer_cost,:today
+ SELECT 'MAINTENANCE',t.id,p.id,p.name,t.title,t.actual_cost,:today
  FROM maintenance_tickets t JOIN rental_properties p ON p.id=t.property_id
- WHERE p.owner_id=:owner AND (:property IS NULL OR p.id=:property) AND t.status='RESOLVED' AND t.actual_cost>t.customer_cost AND t.customer_cost>=0
+ WHERE p.owner_id=:owner AND (:property IS NULL OR p.id=:property) AND t.status='RESOLVED' AND t.actual_cost>0 AND t.customer_cost>=0 AND t.customer_cost<=t.actual_cost
  AND NOT EXISTS(SELECT 1 FROM cash_entries e WHERE e.source_maintenance_id=t.id)
  """;
  @Transactional(readOnly=true) public PageResponse<SourceItem> sources(Jwt jwt,Long propertyId,String month,int page,int size){
@@ -62,7 +62,8 @@ public class CashSourceService {
    var t=tickets.findById(input.id()).orElseThrow(CashSourceService::missing);propertyId=t.getProperty().getId();properties.findOwnedForCreation(propertyId,owner.getId()).orElseThrow(CashSourceService::missing);
    var prior=entries.findBySourceMaintenanceId(input.id());if(prior.isPresent())return cash.detail(jwt,prior.get().getId());
    if(t.getStatus()!=com.ancu.proptech.model.maintenance.MaintenanceTicket.Status.RESOLVED||t.getActualCost()==null||t.getCustomerCost()==null||t.getCustomerCost().signum()<0)throw bad("Sự cố chưa nghiệm thu hoặc chưa phân bổ chi phí.");
-   amount=t.getActualCost().subtract(t.getCustomerCost());date=input.transactionDate();method=input.paymentMethod();category="Sửa chữa và bảo trì";who=t.getTechnicianName()==null||t.getTechnicianName().isBlank()?"Đơn vị sửa chữa":t.getTechnicianName();description="Chi phần chủ nhà chịu: "+t.getTitle();reference="MAINTENANCE:"+t.getId();
+   if(t.getCustomerCost().compareTo(t.getActualCost())>0)throw bad("Phần khách chịu không được vượt chi phí sửa chữa.");
+   amount=t.getActualCost();date=input.transactionDate();method=input.paymentMethod();category="Sửa chữa và bảo trì";who=t.getTechnicianName()==null||t.getTechnicianName().isBlank()?"Đơn vị sửa chữa":t.getTechnicianName();description="Chủ nhà thanh toán toàn bộ cho thợ: "+t.getTitle();reference="MAINTENANCE:"+t.getId();
   }
   try{amount=amount.setScale(2,RoundingMode.UNNECESSARY);if(amount.signum()<=0||amount.precision()-amount.scale()>13)throw new ArithmeticException();}catch(ArithmeticException e){throw bad("Số tiền nguồn không phù hợp giới hạn sổ quỹ; cần kiểm tra đối soát.");}
   var dto=cash.create(jwt,new Create(propertyId,UUID.nameUUIDFromBytes(reference.getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString(),input.type()==SourceType.INVOICE?Direction.INCOME:Direction.EXPENSE,method,amount,date,category,who,description,reference));
