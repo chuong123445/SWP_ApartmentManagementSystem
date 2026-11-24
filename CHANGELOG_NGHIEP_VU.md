@@ -16,6 +16,7 @@
 | 25/11/2026 | BIL03 | Bổ sung cột 'Đơn giá / tháng' trên chi tiết hóa đơn tiền thuê để hiển thị đủ 3 mục (đơn giá - chu kỳ - thành tiền); tạo bổ sung các hóa đơn tiền phòng và điện nước cho các kỳ trước của hợp đồng HH205.RENEW (Hữu Hà & Văn Chương). | 182/182 frontend tests và Vite build đạt; DB đã cập nhật và kiểm tra thực tế. | `db8ba858` |
 | 25/11/2026 | CON03 | Cập nhật thông báo sau khi gửi đề nghị kết thúc sớm thành 'Đề nghị kết thúc sớm đã được gửi · Chờ bên còn lại xác nhận' với giao diện thẻ trạng thái màu xanh; xóa bỏ toàn bộ phần lịch sử kết thúc thuê/bàn giao theo yêu cầu. | 182/182 frontend tests và Vite build đạt. | `53c11e84` |
 | 25/11/2026 | CON04 | Cho phép chọn ngày kết thúc trong thời gian còn lại đến khi hết hạn nếu hợp đồng còn không quá 3 tuần (<= 21 ngày); backend cho phép ngày kết thúc sớm lên đến ngày kết thúc hợp đồng; chỉ áp dụng quy tắc báo trước 3 tuần khi hợp đồng còn hơn 3 tuần. | 182/182 frontend tests và Vite build đạt. | `e50c34d9` |
+| 25/11/2026 | BIL04 | Tính đúng tiền phòng ngày lẻ kỳ cuối cho hợp đồng HH205.RENEW (cập nhật hóa đơn #101 về 2.833.333 đ cho 10 ngày lẻ từ 21/11–30/11); hiển thị chu kỳ '10 ngày' trực quan; sửa công thức Combo Chart tài chính để phản ánh đúng phần tiền phòng chưa thanh toán vào cột 'Hóa đơn còn nợ' thay vì gộp nhầm vào đã thu. | 183/183 frontend tests và Vite build đạt; DB đã cập nhật và kiểm tra thực tế. | `7f30c7f4` |
 
 ## Cần cân nhắc
 
