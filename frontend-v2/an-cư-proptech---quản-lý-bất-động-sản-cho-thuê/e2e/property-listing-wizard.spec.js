@@ -81,7 +81,7 @@ async function exerciseWizard(page, outputPath, origin) {
    await p.getByRole('checkbox').nth(1).uncheck();
    await p.getByRole('button',{name:'Lưu và tiếp tục'}).click();
    await p.getByRole('heading',{name:'Kiểm tra trước khi gửi'}).waitFor();
-   await p.getByText('Đã đọc đủ 2 tệp; hãy xem từng nhận xét bên dưới.').waitFor();if(await p.getByRole('button',{name:'Quét chứng từ bằng AI',exact:true}).count())throw Error('Final manual scan button still present');if(declared?.address!=='12 Đường Kiểm Thử, Phường Linh Trung, Thành phố Thủ Đức, TP. Hồ Chí Minh')throw Error('Unsaved property declarations missing from precheck');
+   if(await p.getByRole('heading',{name:'Kiểm tra hồ sơ trước khi nộp'}).count())throw Error('Precheck panel should not be present');if(await p.getByRole('button',{name:'Quét chứng từ bằng AI',exact:true}).count())throw Error('Final manual scan button still present');
    await p.evaluate(()=>window.scrollTo(0,0));
    if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Horizontal overflow');
    await p.screenshot({path:outputPath(`listing-wizard-${width}.png`),fullPage:true});
@@ -124,7 +124,7 @@ async function exerciseSourceAndGroups(page, outputPath, origin) {
     if(path.endsWith('/properties/vneid-imports')){imported=r.request().postDataJSON();return json({property:{id:'5'}});}
     if(path.includes('/payments/'))return json([]);
     if(path.includes('/invoices'))return json({items:[],page:0,size:20,totalElements:0,totalPages:0});
-    if(path.endsWith('/me/properties')||path.endsWith('/me/tenancies')||path.includes('notification'))return json([]);
+    if(path.endsWith('/me/properties')||path.endsWith('/me/tenancies')||path.endsWith('/me/listing-drafts')||path.includes('notification'))return json([]);
     if(path.endsWith('/apartments/address-options'))return json([{city:'TP. Hồ Chí Minh',district:'Thủ Đức',ward:null}]);
     if(path.endsWith('/apartments/property-groups')){
      groupsQueries.push(query.toString());return json({items:[{propertyId:'5',name:'Tòa có 10 phòng',address:'12 Đường Nguồn',minRent:query.get('maxRent')?'3000000':'3000000',maxRent:query.get('maxRent')?'4000000':'8000000',minArea:'24',maxArea:'33',matchingRooms:query.get('maxRent')?4:10,thumbnail:'/api/v1/property-images/1'}],page:0,size:6,totalElements:1,totalPages:1});
